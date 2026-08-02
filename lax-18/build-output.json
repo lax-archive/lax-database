@@ -4,5 +4,469 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 18
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-18",
+      "leanVersion": "v4.30.0",
+      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "title": "Szemerédi's Regularity Lemma",
+      "authors": [
+        {
+          "name": "Fatemeh Ghasemi"
+        }
+      ],
+      "bibEntries": [
+        "@book{diestel2017graph,\n  author    = {Reinhard Diestel},\n  title     = {Graph Theory},\n  edition   = {5},\n  series    = {Graduate Texts in Mathematics},\n  volume    = {173},\n  publisher = {Springer},\n  year      = {2017},\n  doi       = {10.1007/978-3-662-53622-3},\n  isbn      = {978-3-662-53621-6}\n}\n"
+      ]
+    },
+    "abstract": "This submission states Szemerédi's regularity lemma for finite simple graphs.\n\nThe formalization uses clean equitable vertex partitions: the parts are\nnonempty, pairwise disjoint, cover all vertices, and any two part sizes differ\nby at most one.  Edge densities are real-valued.  A pair of parts is\n\\(\\varepsilon\\)-regular when every sufficiently large pair of subsets has edge\ndensity within \\(\\varepsilon\\) of the density of the original pair.  A partition\nis \\(\\varepsilon\\)-regular when at most \\(\\varepsilon k^2\\) unordered pairs of\ndistinct parts are irregular, where \\(k\\) is the number of parts.\n\nThe proof architecture follows the textbook energy-increment argument.  It\nuses the weighted mean-square density of a partition, a bounded refinement\nwhich raises that energy whenever an equitable partition is irregular, and an\nequitable-cleanup lemma which restores equitability with arbitrarily small\nenergy loss.  This isolates the extra step needed to avoid an exceptional\nclass in the final statement.\n\nThe main statement is the standard lower-bound form: for every\n\\(\\varepsilon>0\\) and every \\(m_0>0\\), there is \\(M\\ge m_0\\) such that every\nfinite graph on at least \\(m_0\\) vertices has an equitable\n\\(\\varepsilon\\)-regular partition into \\(k\\) parts with \\(m_0\\le k\\le M\\).\n\nThe classical statement and the energy-increment presentation follow\nReinhard Diestel's *Graph Theory*, 5th edition, Section 7.4.  Diestel uses an\nexceptional class so that the remaining classes have exactly equal size; the\nform stated here uses the equivalent clean equipartition convention in which\nall vertices belong to nonempty parts whose sizes differ by at most one.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax18.EdgeDensity",
+      "path": "concepts/Lax18/EdgeDensity.lean",
+      "title": "Edge density between two vertex sets",
+      "type": "definition",
+      "description": "For a finite simple graph, the edge count between two vertex sets counts the\nordered cross-pairs \\((a,b)\\in A\\times B\\) which are adjacent in the graph.\nWhen the two sets are disjoint, this counts each edge between them exactly\nonce, in the direction from \\(A\\) to \\(B\\).\n\nThe edge density of \\(A\\) and \\(B\\) is this edge count divided by\n\\(|A||B|\\), as a real number.  If one side is empty, the density is defined to\nbe zero; regular pairs themselves require nonempty sides.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Basic",
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Basic\nimport Mathlib.Data.Real.Basic\n\n/-!\n---\ntitle: Edge density between two vertex sets\ntype: definition\n---\nFor a finite simple graph, the edge count between two vertex sets counts the\nordered cross-pairs \\((a,b)\\in A\\times B\\) which are adjacent in the graph.\nWhen the two sets are disjoint, this counts each edge between them exactly\nonce, in the direction from \\(A\\) to \\(B\\).\n\nThe edge density of \\(A\\) and \\(B\\) is this edge count divided by\n\\(|A||B|\\), as a real number.  If one side is empty, the density is defined to\nbe zero; regular pairs themselves require nonempty sides.\n-/\n\nnamespace Lax18.EdgeDensity\n\nuniverse u\n\nvariable {V : Type u} [Fintype V] [DecidableEq V]\n\n/-- The number of adjacent ordered pairs from `A` to `B`. -/\nnoncomputable def edgeCountBetween (G : SimpleGraph V)\n    (A B : Finset V) : ℕ := by\n  classical\n  exact ((A.product B).filter fun p : V × V => G.Adj p.1 p.2).card\n\n/-- The real-valued edge density between two vertex sets. -/\nnoncomputable def density (G : SimpleGraph V) (A B : Finset V) : ℝ :=\n  if A.card = 0 ∨ B.card = 0 then\n    0\n  else\n    (edgeCountBetween G A B : ℝ) / ((A.card : ℝ) * (B.card : ℝ))\n\nend Lax18.EdgeDensity\n",
+      "statements": []
+    },
+    {
+      "id": "Lax18.EnergyIncrement",
+      "path": "concepts/Lax18/EnergyIncrement.lean",
+      "title": "The energy-increment refinement lemma",
+      "type": "theorem",
+      "description": "This is the standard energy-increment step.  If an equitable partition P is\nnot ε-regular, witnesses for all\nirregular pairs simultaneously split its classes.  The resulting refinement\nhas at most k·2^k classes and raises the energy by at least ε⁵/4.\nThe constant is deliberately conservative; what matters\nfor the regularity lemma is a positive increment depending only on\nε.",
+      "imports": [
+        "Lax18.PartitionEnergy"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax18.PartitionEnergy\n\n/-!\n---\ntitle: The energy-increment refinement lemma\ntype: theorem\n---\nThis is the standard energy-increment step.  If an equitable partition P is\nnot ε-regular, witnesses for all\nirregular pairs simultaneously split its classes.  The resulting refinement\nhas at most k·2^k classes and raises the energy by at least ε⁵/4.\nThe constant is deliberately conservative; what matters\nfor the regularity lemma is a positive increment depending only on\nε.\n-/\n\nnamespace Lax18.EnergyIncrement\n\nopen Lax18.FiniteGraphPartitions\nopen Lax18.PartitionEnergy\nopen Lax18.RegularPartitions\n\nuniverse u\n\n/-- An irregular equitable partition admits a bounded refinement with a\ndefinite energy increment. -/\naxiom energy_increment_refinement :\n  ∀ (ε : ℝ),\n    0 < ε →\n      ∀ {V : Type u} [Fintype V] [DecidableEq V]\n        (G : SimpleGraph V) (P : VertexPartition V),\n          P.Equitable →\n            ¬ IsRegularPartition G ε P →\n              ∃ Q : VertexPartition V,\n                Refines Q P ∧\n                  P.partCount ≤ Q.partCount ∧\n                    Q.partCount ≤ P.partCount * 2 ^ P.partCount ∧\n                      partitionEnergy G P + ε ^ 5 / 4 ≤\n                        partitionEnergy G Q\n\nend Lax18.EnergyIncrement\n",
+      "statements": [
+        {
+          "id": "Lax18.EnergyIncrement.energy_increment_refinement",
+          "signature": "energy_increment_refinement : ∀ (ε : Real),\n  Real.instLT.lt 0 ε →\n    ∀ {V : Type u} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V)\n      (P : Lax18.FiniteGraphPartitions.VertexPartition V),\n      P.Equitable →\n        Not (Lax18.RegularPartitions.IsRegularPartition G ε P) →\n          Exists fun Q =>\n            And (Lax18.PartitionEnergy.Refines Q P)\n              (And (instLENat.le P.partCount Q.partCount)\n                (And (instLENat.le Q.partCount (instHMul.hMul P.partCount (instHPow.hPow 2 P.partCount)))\n                  (Real.instLE.le\n                    (instHAdd.hAdd (Lax18.PartitionEnergy.partitionEnergy G P) (instHDiv.hDiv (instHPow.hPow ε 5) 4))\n                    (Lax18.PartitionEnergy.partitionEnergy G Q))))",
+          "startLine": 25,
+          "endLine": 39,
+          "doc": "An irregular equitable partition admits a bounded refinement with a\ndefinite energy increment."
+        }
+      ]
+    },
+    {
+      "id": "Lax18.EquitableCleanup",
+      "path": "concepts/Lax18/EquitableCleanup.lean",
+      "title": "Equitable cleanup of a bounded partition",
+      "type": "theorem",
+      "description": "For every error tolerance η > 0 and bound r on the number of classes,\nthere are uniform bounds K,N with the following property. Every partition\nof a graph on at least N vertices into at most r classes can be\nreplaced by an equitable partition into between its original number of\nclasses and K classes, while losing at most η of its energy.\n\nConceptually, each old class is cut into nearly equal small pieces and the\nfew remainders are redistributed.  This is the cleanup step that allows the\nenergy-increment proof to maintain the clean textbook formulation without an\nexceptional class.",
+      "imports": [
+        "Lax18.PartitionEnergy"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax18.PartitionEnergy\n\n/-!\n---\ntitle: Equitable cleanup of a bounded partition\ntype: theorem\n---\nFor every error tolerance η > 0 and bound r on the number of classes,\nthere are uniform bounds K,N with the following property. Every partition\nof a graph on at least N vertices into at most r classes can be\nreplaced by an equitable partition into between its original number of\nclasses and K classes, while losing at most η of its energy.\n\nConceptually, each old class is cut into nearly equal small pieces and the\nfew remainders are redistributed.  This is the cleanup step that allows the\nenergy-increment proof to maintain the clean textbook formulation without an\nexceptional class.\n-/\n\nnamespace Lax18.EquitableCleanup\n\nopen Lax18.FiniteGraphPartitions\nopen Lax18.PartitionEnergy\n\nuniverse u\n\n/-- A bounded partition can be made equitable with arbitrarily small loss of\nenergy, uniformly over all sufficiently large finite graphs. -/\naxiom equitable_cleanup :\n  ∀ (η : ℝ) (r : ℕ),\n    0 < η →\n      0 < r →\n        ∃ K N : ℕ,\n          r ≤ K ∧\n            r ≤ N ∧\n              ∀ {V : Type u} [Fintype V] [DecidableEq V]\n                (G : SimpleGraph V) (P : VertexPartition V),\n                  P.partCount ≤ r →\n                    N ≤ Fintype.card V →\n                      ∃ Q : VertexPartition V,\n                        Q.Equitable ∧\n                          P.partCount ≤ Q.partCount ∧\n                            Q.partCount ≤ K ∧\n                              partitionEnergy G P ≤\n                                partitionEnergy G Q + η\n\nend Lax18.EquitableCleanup\n",
+      "statements": [
+        {
+          "id": "Lax18.EquitableCleanup.equitable_cleanup",
+          "signature": "equitable_cleanup : ∀ (η : Real) (r : Nat),\n  Real.instLT.lt 0 η →\n    instLTNat.lt 0 r →\n      Exists fun K =>\n        Exists fun N =>\n          And (instLENat.le r K)\n            (And (instLENat.le r N)\n              (∀ {V : Type u} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V)\n                (P : Lax18.FiniteGraphPartitions.VertexPartition V),\n                instLENat.le P.partCount r →\n                  instLENat.le N (Fintype.card V) →\n                    Exists fun Q =>\n                      And Q.Equitable\n                        (And (instLENat.le P.partCount Q.partCount)\n                          (And (instLENat.le Q.partCount K)\n                            (Real.instLE.le (Lax18.PartitionEnergy.partitionEnergy G P)\n                              (instHAdd.hAdd (Lax18.PartitionEnergy.partitionEnergy G Q) η))))))",
+          "startLine": 27,
+          "endLine": 45,
+          "doc": "A bounded partition can be made equitable with arbitrarily small loss of\nenergy, uniformly over all sufficiently large finite graphs."
+        }
+      ]
+    },
+    {
+      "id": "Lax18.FiniteGraphPartitions",
+      "path": "concepts/Lax18/FiniteGraphPartitions.lean",
+      "title": "Finite graph vertex partitions",
+      "type": "definition",
+      "description": "A finite vertex partition is an indexed family of nonempty vertex sets which\nare pairwise disjoint and cover the whole vertex set.  The indexing keeps the\nnumber of parts explicit, which is convenient for the regularity lemma.\n\nAn equitable partition is one in which any two parts have sizes differing by\nat most one.  This is the clean textbook convention: there is no exceptional\nleftover class.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.Finset.Basic",
+        "Mathlib.Data.Finset.Card",
+        "Mathlib.Data.Fintype.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.Finset.Basic\nimport Mathlib.Data.Finset.Card\nimport Mathlib.Data.Fintype.Basic\n\n/-!\n---\ntitle: Finite graph vertex partitions\ntype: definition\n---\nA finite vertex partition is an indexed family of nonempty vertex sets which\nare pairwise disjoint and cover the whole vertex set.  The indexing keeps the\nnumber of parts explicit, which is convenient for the regularity lemma.\n\nAn equitable partition is one in which any two parts have sizes differing by\nat most one.  This is the clean textbook convention: there is no exceptional\nleftover class.\n-/\n\nnamespace Lax18.FiniteGraphPartitions\n\nuniverse u\n\n/-- An indexed partition of a finite vertex set. -/\nstructure VertexPartition (V : Type u) [Fintype V] [DecidableEq V] where\n  /-- The number of parts. -/\n  partCount : ℕ\n  /-- The part indexed by `i`. -/\n  part : Fin partCount → Finset V\n  /-- Every part is nonempty. -/\n  nonempty_part : ∀ i : Fin partCount, (part i).Nonempty\n  /-- Distinct parts are disjoint. -/\n  pairwise_disjoint :\n    ∀ i j : Fin partCount, i ≠ j → Disjoint (part i) (part j)\n  /-- The parts cover all vertices. -/\n  covers : ∀ v : V, ∃ i : Fin partCount, v ∈ part i\n\nnamespace VertexPartition\n\nvariable {V : Type u} [Fintype V] [DecidableEq V]\n\n/-- The size of a part of a vertex partition. -/\ndef partSize (P : VertexPartition V) (i : Fin P.partCount) : ℕ :=\n  (P.part i).card\n\n/-- A partition is equitable if any two part sizes differ by at most one. -/\ndef Equitable (P : VertexPartition V) : Prop :=\n  ∀ i j : Fin P.partCount,\n    P.partSize i ≤ P.partSize j + 1 ∧\n      P.partSize j ≤ P.partSize i + 1\n\n/-- A partition has exactly `k` parts. -/\ndef HasPartCount (P : VertexPartition V) (k : ℕ) : Prop :=\n  P.partCount = k\n\nend VertexPartition\n\nend Lax18.FiniteGraphPartitions\n",
+      "statements": []
+    },
+    {
+      "id": "Lax18.PartitionEnergy",
+      "path": "concepts/Lax18/PartitionEnergy.lean",
+      "title": "Refinement and the index of a graph partition",
+      "type": "definition",
+      "description": "A partition Q refines a partition P when every class of Q is contained in a\nclass of P.\n\nThe index, also called the mean-square density or energy, of a partition is\nthe weighted average of the squared densities between all ordered pairs of\nits classes. The weight of the pair (Vᵢ,Vⱼ) is |Vᵢ||Vⱼ|/|V|².\nIncluding diagonal pairs makes this an exact conditional mean-square and is\nconvenient for the refinement argument.",
+      "imports": [
+        "Lax18.RegularPartitions"
+      ],
+      "mathlibImports": [
+        "Mathlib.Algebra.BigOperators.Group.Finset.Basic"
+      ],
+      "sourceText": "import Mathlib.Algebra.BigOperators.Group.Finset.Basic\nimport Lax18.RegularPartitions\n\n/-!\n---\ntitle: Refinement and the index of a graph partition\ntype: definition\n---\nA partition Q refines a partition P when every class of Q is contained in a\nclass of P.\n\nThe index, also called the mean-square density or energy, of a partition is\nthe weighted average of the squared densities between all ordered pairs of\nits classes. The weight of the pair (Vᵢ,Vⱼ) is |Vᵢ||Vⱼ|/|V|².\nIncluding diagonal pairs makes this an exact conditional mean-square and is\nconvenient for the refinement argument.\n-/\n\nnamespace Lax18.PartitionEnergy\n\nopen Lax18.EdgeDensity\nopen Lax18.FiniteGraphPartitions\nopen scoped BigOperators\n\nuniverse u\n\nvariable {V : Type u} [Fintype V] [DecidableEq V]\n\n/-- `Q.Refines P` means that every class of `Q` lies in a class of `P`. -/\ndef Refines (Q P : VertexPartition V) : Prop :=\n  ∀ j : Fin Q.partCount,\n    ∃ i : Fin P.partCount, Q.part j ⊆ P.part i\n\n/-- The normalized weight of the ordered pair of classes `(i,j)`. -/\nnoncomputable def pairWeight (P : VertexPartition V)\n    (i j : Fin P.partCount) : ℝ :=\n  ((P.partSize i : ℝ) * (P.partSize j : ℝ)) /\n    (Fintype.card V : ℝ) ^ 2\n\n/-- The weighted mean-square density (or index) of a graph partition. -/\nnoncomputable def partitionEnergy (G : SimpleGraph V)\n    (P : VertexPartition V) : ℝ :=\n  ∑ i : Fin P.partCount,\n    ∑ j : Fin P.partCount,\n      pairWeight P i j * (density G (P.part i) (P.part j)) ^ 2\n\nend Lax18.PartitionEnergy\n",
+      "statements": []
+    },
+    {
+      "id": "Lax18.PartitionEnergyBounds",
+      "path": "concepts/Lax18/PartitionEnergyBounds.lean",
+      "title": "Bounds for partition energy",
+      "type": "theorem",
+      "description": "The weighted mean-square density of every finite graph partition lies in the\ninterval from zero to one. This boundedness forces the energy-increment\nprocess to terminate after a number of steps depending only on the regularity\nparameter.",
+      "imports": [
+        "Lax18.PartitionEnergy"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax18.PartitionEnergy\n\n/-!\n---\ntitle: Bounds for partition energy\ntype: theorem\n---\nThe weighted mean-square density of every finite graph partition lies in the\ninterval from zero to one. This boundedness forces the energy-increment\nprocess to terminate after a number of steps depending only on the regularity\nparameter.\n-/\n\nnamespace Lax18.PartitionEnergyBounds\n\nopen Lax18.FiniteGraphPartitions\nopen Lax18.PartitionEnergy\n\nuniverse u\n\n/-- Partition energy lies between zero and one. -/\naxiom partitionEnergy_mem_unitInterval :\n  ∀ {V : Type u} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (P : VertexPartition V),\n      0 ≤ partitionEnergy G P ∧ partitionEnergy G P ≤ 1\n\nend Lax18.PartitionEnergyBounds\n",
+      "statements": [
+        {
+          "id": "Lax18.PartitionEnergyBounds.partitionEnergy_mem_unitInterval",
+          "signature": "partitionEnergy_mem_unitInterval : ∀ {V : Type u} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V)\n  (P : Lax18.FiniteGraphPartitions.VertexPartition V),\n  And (Real.instLE.le 0 (Lax18.PartitionEnergy.partitionEnergy G P))\n    (Real.instLE.le (Lax18.PartitionEnergy.partitionEnergy G P) 1)",
+          "startLine": 21,
+          "endLine": 25,
+          "doc": "Partition energy lies between zero and one."
+        }
+      ]
+    },
+    {
+      "id": "Lax18.PartitionEnergyMonotonicity",
+      "path": "concepts/Lax18/PartitionEnergyMonotonicity.lean",
+      "title": "Monotonicity of partition energy under refinement",
+      "type": "theorem",
+      "description": "If one graph partition refines another, then its weighted mean-square density\nis at least that of the coarser partition. This is the finite conditional\nvariance inequality underlying the energy-increment proof.",
+      "imports": [
+        "Lax18.PartitionEnergy"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax18.PartitionEnergy\n\n/-!\n---\ntitle: Monotonicity of partition energy under refinement\ntype: theorem\n---\nIf one graph partition refines another, then its weighted mean-square density\nis at least that of the coarser partition. This is the finite conditional\nvariance inequality underlying the energy-increment proof.\n-/\n\nnamespace Lax18.PartitionEnergyMonotonicity\n\nopen Lax18.FiniteGraphPartitions\nopen Lax18.PartitionEnergy\n\nuniverse u\n\n/-- Refining a partition cannot decrease its energy. -/\naxiom partitionEnergy_mono_of_refines :\n  ∀ {V : Type u} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (P Q : VertexPartition V),\n      Refines Q P → partitionEnergy G P ≤ partitionEnergy G Q\n\nend Lax18.PartitionEnergyMonotonicity\n",
+      "statements": [
+        {
+          "id": "Lax18.PartitionEnergyMonotonicity.partitionEnergy_mono_of_refines",
+          "signature": "partitionEnergy_mono_of_refines : ∀ {V : Type u} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V)\n  (P Q : Lax18.FiniteGraphPartitions.VertexPartition V),\n  Lax18.PartitionEnergy.Refines Q P →\n    Real.instLE.le (Lax18.PartitionEnergy.partitionEnergy G P) (Lax18.PartitionEnergy.partitionEnergy G Q)",
+          "startLine": 20,
+          "endLine": 24,
+          "doc": "Refining a partition cannot decrease its energy."
+        }
+      ]
+    },
+    {
+      "id": "Lax18.RegularPairs",
+      "path": "concepts/Lax18/RegularPairs.lean",
+      "title": "Regular pairs",
+      "type": "definition",
+      "description": "An \\(\\varepsilon\\)-regular pair in a finite simple graph is a pair of nonempty\nvertex sets \\(A,B\\) such that every \\(X\\subseteq A\\) and \\(Y\\subseteq B\\) with\n\\(|X|\\ge \\varepsilon |A|\\) and \\(|Y|\\ge \\varepsilon |B|\\) has density within\n\\(\\varepsilon\\) of the density of \\(A,B\\).\n\nThis is the standard textbook definition, stated with real-valued densities.\nThe definition itself does not require \\(A\\) and \\(B\\) to be disjoint; in the\nregularity lemma they are used as distinct blocks of a vertex partition, hence\nare disjoint there.",
+      "imports": [
+        "Lax18.EdgeDensity"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax18.EdgeDensity\n\n/-!\n---\ntitle: Regular pairs\ntype: definition\n---\nAn \\(\\varepsilon\\)-regular pair in a finite simple graph is a pair of nonempty\nvertex sets \\(A,B\\) such that every \\(X\\subseteq A\\) and \\(Y\\subseteq B\\) with\n\\(|X|\\ge \\varepsilon |A|\\) and \\(|Y|\\ge \\varepsilon |B|\\) has density within\n\\(\\varepsilon\\) of the density of \\(A,B\\).\n\nThis is the standard textbook definition, stated with real-valued densities.\nThe definition itself does not require \\(A\\) and \\(B\\) to be disjoint; in the\nregularity lemma they are used as distinct blocks of a vertex partition, hence\nare disjoint there.\n-/\n\nnamespace Lax18.RegularPairs\n\nopen Lax18.EdgeDensity\n\nuniverse u\n\nvariable {V : Type u} [Fintype V] [DecidableEq V]\n\n/-- `X` is a large enough subset of `A` for the threshold `ε`. -/\ndef LargeSubset (ε : ℝ) (A X : Finset V) : Prop :=\n  X ⊆ A ∧ ε * (A.card : ℝ) ≤ (X.card : ℝ)\n\n/-- The pair `(A,B)` is `ε`-regular in `G`. -/\ndef IsRegularPair (G : SimpleGraph V) (ε : ℝ) (A B : Finset V) : Prop :=\n  A.Nonempty ∧ B.Nonempty ∧\n    ∀ X Y : Finset V,\n      LargeSubset ε A X →\n        LargeSubset ε B Y →\n          |density G X Y - density G A B| ≤ ε\n\nend Lax18.RegularPairs\n",
+      "statements": []
+    },
+    {
+      "id": "Lax18.RegularPartitions",
+      "path": "concepts/Lax18/RegularPartitions.lean",
+      "title": "Regular partitions",
+      "type": "definition",
+      "description": "For a vertex partition with \\(k\\) parts, an unordered pair of distinct parts is\nirregular if it is not an \\(\\varepsilon\\)-regular pair.  A partition is\n\\(\\varepsilon\\)-regular when the number of irregular unordered pairs is at most\n\\(\\varepsilon k^2\\).\n\nAn equitable \\(\\varepsilon\\)-regular partition is an \\(\\varepsilon\\)-regular\npartition whose part sizes differ by at most one.",
+      "imports": [
+        "Lax18.FiniteGraphPartitions",
+        "Lax18.RegularPairs"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax18.FiniteGraphPartitions\nimport Lax18.RegularPairs\n\n/-!\n---\ntitle: Regular partitions\ntype: definition\n---\nFor a vertex partition with \\(k\\) parts, an unordered pair of distinct parts is\nirregular if it is not an \\(\\varepsilon\\)-regular pair.  A partition is\n\\(\\varepsilon\\)-regular when the number of irregular unordered pairs is at most\n\\(\\varepsilon k^2\\).\n\nAn equitable \\(\\varepsilon\\)-regular partition is an \\(\\varepsilon\\)-regular\npartition whose part sizes differ by at most one.\n-/\n\nnamespace Lax18.RegularPartitions\n\nopen Lax18.FiniteGraphPartitions\nopen Lax18.RegularPairs\n\nuniverse u\n\nvariable {V : Type u} [Fintype V] [DecidableEq V]\n\n/-- The unordered irregular pairs of parts, represented by index pairs\n`i < j`. -/\nnoncomputable def irregularPairIndices\n    (G : SimpleGraph V) (ε : ℝ)\n    (P : VertexPartition V) : Finset (Fin P.partCount × Fin P.partCount) := by\n  classical\n  exact\n    (Finset.univ.product Finset.univ).filter\n      (fun p : Fin P.partCount × Fin P.partCount =>\n        p.1 < p.2 ∧\n          ¬ IsRegularPair G ε (P.part p.1) (P.part p.2))\n\n/-- The number of unordered irregular pairs of parts. -/\nnoncomputable def irregularPairCount\n    (G : SimpleGraph V) (ε : ℝ)\n    (P : VertexPartition V) : ℕ :=\n  (irregularPairIndices G ε P).card\n\n/-- A partition is `ε`-regular if it has at most `ε k^2` irregular unordered\npairs of distinct parts. -/\ndef IsRegularPartition (G : SimpleGraph V) (ε : ℝ)\n    (P : VertexPartition V) : Prop :=\n  (irregularPairCount G ε P : ℝ) ≤ ε * (P.partCount : ℝ) ^ 2\n\n/-- A clean equitable `ε`-regular partition. -/\ndef IsEquitableRegularPartition\n    (G : SimpleGraph V) (ε : ℝ) (P : VertexPartition V) : Prop :=\n  P.Equitable ∧ IsRegularPartition G ε P\n\nend Lax18.RegularPartitions\n",
+      "statements": []
+    },
+    {
+      "id": "Lax18.SzemerediRegularityLemma",
+      "path": "concepts/Lax18/SzemerediRegularityLemma.lean",
+      "title": "Szemerédi's regularity lemma",
+      "type": "theorem",
+      "description": "Szemerédi's regularity lemma says that for every \\(\\varepsilon>0\\) and every\npositive lower bound \\(m_0\\), there is an upper bound \\(M\\ge m_0\\) such that\nevery finite simple graph on at least \\(m_0\\) vertices has an equitable\n\\(\\varepsilon\\)-regular partition into \\(k\\) parts with \\(m_0\\le k\\le M\\).\n\nThe partition is clean: its parts are nonempty, pairwise disjoint, cover all\nvertices, and have sizes differing by at most one.  There is no exceptional\nleftover class.",
+      "sections": [
+        {
+          "title": "Source",
+          "markdown": "The classical lower-bound statement and its energy-increment presentation\nfollow Reinhard Diestel, *Graph Theory*, 5th edition, Section 7.4.  Diestel\nuses an exceptional class to make the remaining classes exactly equal; the\nstatement here uses the equivalent clean equipartition convention, with all\npart sizes differing by at most one."
+        }
+      ],
+      "imports": [
+        "Lax18.EnergyIncrement",
+        "Lax18.EquitableCleanup",
+        "Lax18.PartitionEnergyBounds",
+        "Lax18.PartitionEnergyMonotonicity"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax18.EnergyIncrement\nimport Lax18.EquitableCleanup\nimport Lax18.PartitionEnergyBounds\nimport Lax18.PartitionEnergyMonotonicity\n\n/-!\n---\ntitle: Szemerédi's regularity lemma\ntype: theorem\n---\nSzemerédi's regularity lemma says that for every \\(\\varepsilon>0\\) and every\npositive lower bound \\(m_0\\), there is an upper bound \\(M\\ge m_0\\) such that\nevery finite simple graph on at least \\(m_0\\) vertices has an equitable\n\\(\\varepsilon\\)-regular partition into \\(k\\) parts with \\(m_0\\le k\\le M\\).\n\nThe partition is clean: its parts are nonempty, pairwise disjoint, cover all\nvertices, and have sizes differing by at most one.  There is no exceptional\nleftover class.\n\n# Source\nThe classical lower-bound statement and its energy-increment presentation\nfollow Reinhard Diestel, *Graph Theory*, 5th edition, Section 7.4.  Diestel\nuses an exceptional class to make the remaining classes exactly equal; the\nstatement here uses the equivalent clean equipartition convention, with all\npart sizes differing by at most one.\n-/\n\nnamespace Lax18.SzemerediRegularityLemma\n\nopen Lax18.FiniteGraphPartitions\nopen Lax18.RegularPartitions\n\nuniverse u\n\n/-- Szemerédi's regularity lemma for finite simple graphs, in the standard\nlower-bound form. -/\naxiom szemeredi_regularity_lemma :\n  ∀ (ε : ℝ) (m₀ : ℕ),\n    0 < ε →\n      0 < m₀ →\n        ∃ M : ℕ,\n          m₀ ≤ M ∧\n            ∀ {V : Type u} [Fintype V] [DecidableEq V]\n              (G : SimpleGraph V),\n                m₀ ≤ Fintype.card V →\n                  ∃ P : VertexPartition V,\n                    m₀ ≤ P.partCount ∧\n                      P.partCount ≤ M ∧\n                        IsEquitableRegularPartition G ε P\n\nend Lax18.SzemerediRegularityLemma\n",
+      "statements": [
+        {
+          "id": "Lax18.SzemerediRegularityLemma.szemeredi_regularity_lemma",
+          "signature": "szemeredi_regularity_lemma : ∀ (ε : Real) (m₀ : Nat),\n  Real.instLT.lt 0 ε →\n    instLTNat.lt 0 m₀ →\n      Exists fun M =>\n        And (instLENat.le m₀ M)\n          (∀ {V : Type u} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V),\n            instLENat.le m₀ (Fintype.card V) →\n              Exists fun P =>\n                And (instLENat.le m₀ P.partCount)\n                  (And (instLENat.le P.partCount M) (Lax18.RegularPartitions.IsEquitableRegularPartition G ε P)))",
+          "startLine": 35,
+          "endLine": 49,
+          "doc": "Szemerédi's regularity lemma for finite simple graphs, in the standard\nlower-bound form."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax18Proofs.energy_increment_refinement",
+      "path": "proofs/Lax18Proofs/EnergyIncrement.lean",
+      "conclusion": "Lax18.EnergyIncrement.energy_increment_refinement",
+      "assumptions": [],
+      "description": "Every class is atomised simultaneously along the witnesses supplied by its\nirregular partners. A weighted variance calculation on each old pair gives\nthe required global energy increment."
+    },
+    {
+      "id": "Lax18Proofs.equitable_cleanup",
+      "path": "proofs/Lax18Proofs/EquitableCleanup.lean",
+      "conclusion": "Lax18.EquitableCleanup.equitable_cleanup",
+      "assumptions": [],
+      "description": "Choose a sufficiently fine uniform scale, equitabilise each old class at that\nscale, and bound the energy lost in the few mixed remainder blocks."
+    },
+    {
+      "id": "Lax18Proofs.partitionEnergy_mem_unitInterval",
+      "path": "proofs/Lax18Proofs/PartitionEnergyBounds.lean",
+      "conclusion": "Lax18.PartitionEnergyBounds.partitionEnergy_mem_unitInterval",
+      "assumptions": [],
+      "description": "The density between two finite vertex sets lies in the unit interval. Hence\neach energy summand is nonnegative and at most its pair weight. Disjointness\nof the partition classes bounds the total pair weight by one."
+    },
+    {
+      "id": "Lax18Proofs.partitionEnergy_mono_of_refines",
+      "path": "proofs/Lax18Proofs/PartitionEnergyMonotonicity.lean",
+      "conclusion": "Lax18.PartitionEnergyMonotonicity.partitionEnergy_mono_of_refines",
+      "assumptions": [],
+      "description": "The density on each coarse pair is the weighted average of the densities on\nthe fine pairs above it. Finite Cauchy–Schwarz on every fibre, followed by\nsummation, proves that refinement cannot decrease partition energy."
+    },
+    {
+      "id": "Lax18Proofs.szemeredi_regularity_lemma",
+      "path": "proofs/Lax18Proofs/RegularityLemma.lean",
+      "conclusion": "Lax18.SzemerediRegularityLemma.szemeredi_regularity_lemma",
+      "assumptions": [],
+      "description": "The proof translates mathlib's equitable uniform partition into the indexed\npartition and non-strict regularity conventions used by this submission.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Apply mathlib's effective equitable form of Szemerédi's regularity lemma, map\nits finite partition to the indexed partition used by the concept package,\nand transport equitability and regularity across the two definitions."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "The mathematical statement and energy-increment presentation follow Reinhard\nDiestel, *Graph Theory*, 5th edition, Section 7.4.  The checked proof concludes\nthe clean equipartition variant by translating the theorem formalized in\nmathlib by Yaël Dillies and Bhavik Mehta."
+        }
+      ]
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "67d742a868d121292e277a0fc3ffd77943f1c2f9951100d83a38fb6b820ea795",
+    "sourceCommit": "35e33040b5f561131c764c4e0dad922eeecd2dc2",
+    "leanToolchain": "leanprover/lean4:v4.30.0",
+    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "files": [
+      {
+        "path": "concepts/lib/Lax18/EdgeDensity.olean",
+        "bytes": 14488,
+        "sha256": "3c124458349fcb87aabffbe8b614cf158d7dfdc41dd5497ca57f805453eae9eb"
+      },
+      {
+        "path": "concepts/lib/Lax18/EnergyIncrement.olean",
+        "bytes": 16896,
+        "sha256": "cecc877d95e5258c8463fcce51633c0e5ef50544bc95fc5e51ed988683e0e5fb"
+      },
+      {
+        "path": "concepts/lib/Lax18/EquitableCleanup.olean",
+        "bytes": 13928,
+        "sha256": "b0ac47098d7c46bf9ff86d1b8155a76d5f2a51349ba9690c0480ad795e597853"
+      },
+      {
+        "path": "concepts/lib/Lax18/FiniteGraphPartitions.olean",
+        "bytes": 92376,
+        "sha256": "bad67b438805b2a8829f7bc7ba2fa9b0108a13ddf39492ca3c900f0efb3958c7"
+      },
+      {
+        "path": "concepts/lib/Lax18/PartitionEnergy.olean",
+        "bytes": 19112,
+        "sha256": "6f61d2cbf040d085a68387d2b27e1eb4ecabf2f69322d73a8aa6bc39f7d3a191"
+      },
+      {
+        "path": "concepts/lib/Lax18/PartitionEnergyBounds.olean",
+        "bytes": 8608,
+        "sha256": "e37d88e836f0faa1a592a10b646bf2b72e64ec0761e12583a16d315623d2eae5"
+      },
+      {
+        "path": "concepts/lib/Lax18/PartitionEnergyMonotonicity.olean",
+        "bytes": 8104,
+        "sha256": "5a1785d4e822a1030424641c8f7b2add9768b6d062fa336288c00a65573e1208"
+      },
+      {
+        "path": "concepts/lib/Lax18/RegularPairs.olean",
+        "bytes": 13712,
+        "sha256": "68a9b5fe059115f97706f6d911c7418c4209aad48511d525bfa28637310273a2"
+      },
+      {
+        "path": "concepts/lib/Lax18/RegularPartitions.olean",
+        "bytes": 20576,
+        "sha256": "746449412265152fe33190e827131f2f903ced336e0348337ee5ba20bea1510c"
+      },
+      {
+        "path": "concepts/lib/Lax18/SzemerediRegularityLemma.olean",
+        "bytes": 12624,
+        "sha256": "61ec7ba0613ece06d1046a4859f5e24e7a544357e3e4b83e7240cd2ed4110c9d"
+      },
+      {
+        "path": "concepts/lib/Lax18.olean",
+        "bytes": 2408,
+        "sha256": "fc43ea74fb01b4c70afe6d674ce93512df2a4d53409651448e602894817f111b"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3162,
+        "sha256": "a0cdc406f106d3b403d989288de4bf470ae19da1d1da7c4c53478757d0b9403f"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 314,
+        "sha256": "3223aa2b448978eac68c0ca12086dbb8067572598db42200c978b1b0c7716854"
+      },
+      {
+        "path": "concepts/package/Lax18/EdgeDensity.lean",
+        "bytes": 1230,
+        "sha256": "b098a0b1a5ca2d298d62df89e87ff5c817f887fc54e40e9d5bb943635cf24a25"
+      },
+      {
+        "path": "concepts/package/Lax18/EnergyIncrement.lean",
+        "bytes": 1292,
+        "sha256": "d4a2cc7b148c9788c3fad321d6a6463597773838d78efea0e058765c1042ee26"
+      },
+      {
+        "path": "concepts/package/Lax18/EquitableCleanup.lean",
+        "bytes": 1641,
+        "sha256": "1a7286404e719ac97c9f9292d8d1d4cd6f43b86780a0483028627990c4021c26"
+      },
+      {
+        "path": "concepts/package/Lax18/FiniteGraphPartitions.lean",
+        "bytes": 1807,
+        "sha256": "de8ebc4255dfd1e129706b3fca68f2bdb037f978771d615c611b6c1e38ffa58c"
+      },
+      {
+        "path": "concepts/package/Lax18/PartitionEnergy.lean",
+        "bytes": 1531,
+        "sha256": "e3b5fe37a4520b0af4f1202d48fe0cc5d7bd180f34d43e86749c3e7577993b2f"
+      },
+      {
+        "path": "concepts/package/Lax18/PartitionEnergyBounds.lean",
+        "bytes": 728,
+        "sha256": "4f2c6830631e69aa3c7dea9026b70b61da0fc0764ff0783ae8150bf8a7aff719"
+      },
+      {
+        "path": "concepts/package/Lax18/PartitionEnergyMonotonicity.lean",
+        "bytes": 745,
+        "sha256": "b0f44027c67f21ece37621d70ec104a842e4aac6e5153a712ccd6e17cc02aa1c"
+      },
+      {
+        "path": "concepts/package/Lax18/RegularPairs.lean",
+        "bytes": 1218,
+        "sha256": "608ef07c5901b85b0c2021ae0c1e55b1c193d05e22dc874c4238510e291465c9"
+      },
+      {
+        "path": "concepts/package/Lax18/RegularPartitions.lean",
+        "bytes": 1791,
+        "sha256": "507913b1350e418e8a5b93eb10313aabcbe4761d7e2df8303c93ab55b40e4c68"
+      },
+      {
+        "path": "concepts/package/Lax18/SzemerediRegularityLemma.lean",
+        "bytes": 1748,
+        "sha256": "ef773806f803f68924a28c179405a4e90b92e5c7bb6ede9c26e8c577c70498b8"
+      },
+      {
+        "path": "concepts/package/Lax18.lean",
+        "bytes": 319,
+        "sha256": "61ed92df2000cbcc0595e1de1cbc09c3f42ee1a95d161d3d930a71a9831f1b7f"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      },
+      {
+        "path": "proofs/lib/Lax18Proofs/EnergyIncrement.olean",
+        "bytes": 1249176,
+        "sha256": "a719dff57cd8183d438e0ab12ad384f288811b84c70b30268dbe9c70ffe98e1d"
+      },
+      {
+        "path": "proofs/lib/Lax18Proofs/EquitableCleanup.olean",
+        "bytes": 1031512,
+        "sha256": "485b45de2d2aa04fe11c04a36f3fc2320795be44d56f2b7347d4831a33c47597"
+      },
+      {
+        "path": "proofs/lib/Lax18Proofs/PartitionEnergyBounds.olean",
+        "bytes": 190184,
+        "sha256": "bed979d6a74d453bd91b516accdb9e6bbf8ee350c6ae9e2c3b78225492c69ca7"
+      },
+      {
+        "path": "proofs/lib/Lax18Proofs/PartitionEnergyMonotonicity.olean",
+        "bytes": 318248,
+        "sha256": "d8d1736f2acd054505eff1b637f47a755475f50921b1bebe6cc33b207f2c391d"
+      },
+      {
+        "path": "proofs/lib/Lax18Proofs/RegularityLemma.olean",
+        "bytes": 212200,
+        "sha256": "7017003b134df1cc62fa219da68a32868d2191a59644fd2dfe826b4caf0282db"
+      },
+      {
+        "path": "proofs/lib/Lax18Proofs.olean",
+        "bytes": 1824,
+        "sha256": "ddea50038d75c749bb14ac57ca20978a047845909237489dd13b3eff6bd85676"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3348,
+        "sha256": "6c6c29961509e0be6d076a1b90a77cd4ef06e889ec819107c0c84f29f3a41c41"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 381,
+        "sha256": "e0b04f8b6dad9c7709b4d5401e112c3f6fac65c97d93aa8bd9e70b6cb6ec089e"
+      },
+      {
+        "path": "proofs/package/Lax18Proofs/EnergyIncrement.lean",
+        "bytes": 37561,
+        "sha256": "e72f79ec1b545c04d3229d0bd2a4551511240e3a50131d27ad6f8c2b4768040a"
+      },
+      {
+        "path": "proofs/package/Lax18Proofs/EquitableCleanup.lean",
+        "bytes": 28311,
+        "sha256": "b2303c4f003836c5b0f442d3b00c367e6ea7da01895f1e4e7a9f4b125e5489b1"
+      },
+      {
+        "path": "proofs/package/Lax18Proofs/PartitionEnergyBounds.lean",
+        "bytes": 4571,
+        "sha256": "fe554a27c9aa24bd08dec11d1992df138a87b0dd4282ee143399daae4f23392f"
+      },
+      {
+        "path": "proofs/package/Lax18Proofs/PartitionEnergyMonotonicity.lean",
+        "bytes": 9415,
+        "sha256": "e73a5bbcb735878a7417d0ed76b29abdf8aacf76d43f6a8f9f0eb5fb922d6df3"
+      },
+      {
+        "path": "proofs/package/Lax18Proofs/RegularityLemma.lean",
+        "bytes": 8311,
+        "sha256": "0151ff55236707285e9ffc9a2dbe75362fba6d5ed0caf4ed1a5022a33401987d"
+      },
+      {
+        "path": "proofs/package/Lax18Proofs.lean",
+        "bytes": 194,
+        "sha256": "50ca8e9193774f61a7dd05a4dee20c7fdbaae7a833f9df5eaba295a19316a068"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      }
+    ],
+    "downloadUrl": "https://github.com/lax-archive/lax-database/releases/download/lax-capture-lax-18-67d742a868d121292e277a0fc3ffd77943f1c2f9951100d83a38fb6b820ea795/capture.tar"
   }
 }
