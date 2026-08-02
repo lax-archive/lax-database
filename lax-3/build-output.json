@@ -4,5 +4,1299 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 3
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-3",
+      "leanVersion": "v4.30.0",
+      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "title": "First-Order Model Checking on Nowhere Dense Graph Classes in Almost Linear Time",
+      "authors": [
+        {
+          "name": "Jan Dreier"
+        },
+        {
+          "name": "Claude Fable 5 (Anthropic)"
+        }
+      ],
+      "bibEntries": [
+        "@article{GroheKreutzerSiebertz2017,\n  author  = {Grohe, Martin and Kreutzer, Stephan and Siebertz, Sebastian},\n  title   = {Deciding First-Order Properties of Nowhere Dense Graphs},\n  journal = {Journal of the ACM},\n  volume  = {64},\n  number  = {3},\n  pages   = {17:1--17:32},\n  year    = {2017},\n  doi     = {10.1145/3051095},\n  note    = {Cited by the section numbering of the arXiv version,\n             arXiv:1311.3899}\n}\n",
+        "@misc{DreierTorunczyk2026,\n  author        = {Dreier, Jan and Toru{\\'n}czyk, Szymon},\n  title         = {A Rank-Preserving Locality Theorem},\n  year          = {2026},\n  eprint        = {2606.23180},\n  archivePrefix = {arXiv}\n}\n",
+        "@misc{pilipczuk-sparsity-notes,\n  author = {Micha{\\l} Pilipczuk and Sebastian Siebertz},\n  title  = {Sparsity --- lecture notes for the course ``Sparsity''},\n  year   = {2020},\n  note   = {University of Warsaw, Faculty of Mathematics, Informatics and Mechanics.\n            Cited by the numbering of the winter term 2019/20 edition;\n            Chapter~4 compiled 2019-12-12},\n  url    = {https://www.mimuw.edu.pl/~mp248287/sparsity2/}\n}\n"
+      ]
+    },
+    "abstract": "First-order model checking is fixed-parameter tractable on nowhere\ndense graph classes (Grohe–Kreutzer–Siebertz, JACM 2017), realized as\na verified program on the word RAM of Lax13: for every nowhere dense\nclass C and every ε > 0, deciding a first-order sentence φ on n-vertex\nmembers of C takes time f(φ, ε, C) · n^(1+ε).\n\nThe route is not the original proof. The logic engine is the\nrank-preserving locality theorem of Dreier–Toruńczyk\n(arXiv 2606.23180), a purely syntactic rewriting; around it the\nalgorithm is rebuilt from an isolation-form splitter game and sparse\nneighborhood covers obtained from weak coloring orderings. The\ncombinatorial hypotheses — nowhere denseness, uniform quasi-wideness,\nsubpolynomial weak coloring numbers — are consumed from Lax12; the\nmachine model and timed computation from Lax13; graph encodings from\nLax11.\n\n(Draft abstract — to be rewritten at P8.)\n"
+  },
+  "requiredByConcepts": [
+    "Lax11",
+    "Lax12",
+    "Lax13"
+  ],
+  "requiredByProofs": [
+    "Lax11",
+    "Lax12",
+    "Lax12Proofs",
+    "Lax13",
+    "Lax13Proofs"
+  ],
+  "concepts": [
+    {
+      "id": "Lax3.ColoredGraphs",
+      "path": "concepts/Lax3/ColoredGraphs.lean",
+      "title": "Colored graphs and walk distance",
+      "type": "definition",
+      "description": "An *L*-colored graph on *n* vertices is a graph on the vertex set\n{0, …, *n* − 1} together with *L* distinguished sets of vertices, its\ncolor classes. The two halves are passed side by side rather than\nbundled into a single object: a statement about colored graphs takes a\n`SimpleGraph (Fin n)` and a `Coloring n L` as separate arguments.\n\nTwo vertices are within distance *d* of each other if some walk between\nthem has length at most *d*, and the ball of radius *r* around a vertex\nis the set of vertices within distance *r* of it. This is the metric the\nlogic of this submission measures with: its distance atoms and its local\nquantifiers are all radius bounds in this sense.\n\nColored graphs are the structures the first-order logic of this\nsubmission is interpreted in. The source theorem (arXiv:2606.23180)\nstates its locality theorem over arbitrary finite relational signatures;\nfixing the signature to one binary symmetric relation plus finitely many\nunary predicates is a genuine specialization, and it is stated here as\none. It is also the full strength that model checking on a class of\n*graphs* consumes: the Gaifman graph of a colored graph is the graph\nitself, every structure the algorithm builds along the way is the input\ngraph with edges deleted and colors added, and no step ever leaves this\nsignature. The same move is made by the MSO concept of submission Lax11,\nwhich pins its logic to MSO₁ rather than claiming a version of\nsecond-order quantification it does not formalize.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "A colored graph is a pair of arguments, not a structure. Bundling would\nforce a coercion at every one of the many places where the graph changes\nand the coloring does not (deleting the edges incident to a vertex set)\nor the coloring changes and the graph does not (recording distance\nprofiles as new colors), and the concepts of the submissions this one\nbuilds on already pass their data unbundled — the set environments of\nLax11's MSO satisfaction, the graph classes of Lax12. Colors are `Set`s\nof vertices rather than a predicate `Fin L → Fin n → Prop` for the same\nreason Lax12 states its vertex sets as `Set`s: the two are definitionally\ninterchangeable and the `Set` form composes with the existing library of\n`Set.ncard` cardinality lemmas.\n\nOnly finite structures are considered: the vertex type is `Fin n` and\nthe color index type is `Fin L` throughout. The source's scatter values\nmay in principle be infinite; over finite structures that case\ndegenerates and is not carried.\n\nDistance is a predicate on walks, `WithinDist`, and not mathlib's\n`SimpleGraph.dist` or `SimpleGraph.edist`. Two vertices are within\ndistance `d` exactly when some walk between them has length at most `d`,\nwhich needs no connectivity hypothesis, no `ℕ∞` arithmetic and no\ndecidability instance, and — the deciding reason — it is verbatim the\nvocabulary of the sparsity concepts this submission consumes: Lax12's\n`DistIndependent` says that every walk between two distinct members of a\nset is longer than `r`, so its negation and `WithinDist` are the same\nstatement. A translation layer between two notions of distance at that\ninterface would be pure friction.\n\nFor the same reason, neither `DistIndependent` nor `deleteVerts` is\nrestated here. Both are Lax12 concepts, already endorsed, and this\nsubmission uses them as they stand: `deleteVerts G S` — the graph with\nevery edge incident to `S` removed and the vertex type unchanged — is\nexactly the isolation move this submission's splitter game and its\nrewriting step perform.\n\n`WithinDist` and `ball` are stated for an arbitrary vertex type, as\nLax12 states `DistIndependent` and `deleteVerts`, since both are\npointwise notions and the proofs consuming them pass through\nintermediate carriers. Only `Coloring`, which fixes the two index\nranges, is tied to `Fin`."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Walk.Basic"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Walk.Basic\n\n/-!\n---\ntitle: Colored graphs and walk distance\ntype: definition\n---\nAn *L*-colored graph on *n* vertices is a graph on the vertex set\n{0, …, *n* − 1} together with *L* distinguished sets of vertices, its\ncolor classes. The two halves are passed side by side rather than\nbundled into a single object: a statement about colored graphs takes a\n`SimpleGraph (Fin n)` and a `Coloring n L` as separate arguments.\n\nTwo vertices are within distance *d* of each other if some walk between\nthem has length at most *d*, and the ball of radius *r* around a vertex\nis the set of vertices within distance *r* of it. This is the metric the\nlogic of this submission measures with: its distance atoms and its local\nquantifiers are all radius bounds in this sense.\n\nColored graphs are the structures the first-order logic of this\nsubmission is interpreted in. The source theorem (arXiv:2606.23180)\nstates its locality theorem over arbitrary finite relational signatures;\nfixing the signature to one binary symmetric relation plus finitely many\nunary predicates is a genuine specialization, and it is stated here as\none. It is also the full strength that model checking on a class of\n*graphs* consumes: the Gaifman graph of a colored graph is the graph\nitself, every structure the algorithm builds along the way is the input\ngraph with edges deleted and colors added, and no step ever leaves this\nsignature. The same move is made by the MSO concept of submission Lax11,\nwhich pins its logic to MSO₁ rather than claiming a version of\nsecond-order quantification it does not formalize.\n\n# Formalization notes\n\nA colored graph is a pair of arguments, not a structure. Bundling would\nforce a coercion at every one of the many places where the graph changes\nand the coloring does not (deleting the edges incident to a vertex set)\nor the coloring changes and the graph does not (recording distance\nprofiles as new colors), and the concepts of the submissions this one\nbuilds on already pass their data unbundled — the set environments of\nLax11's MSO satisfaction, the graph classes of Lax12. Colors are `Set`s\nof vertices rather than a predicate `Fin L → Fin n → Prop` for the same\nreason Lax12 states its vertex sets as `Set`s: the two are definitionally\ninterchangeable and the `Set` form composes with the existing library of\n`Set.ncard` cardinality lemmas.\n\nOnly finite structures are considered: the vertex type is `Fin n` and\nthe color index type is `Fin L` throughout. The source's scatter values\nmay in principle be infinite; over finite structures that case\ndegenerates and is not carried.\n\nDistance is a predicate on walks, `WithinDist`, and not mathlib's\n`SimpleGraph.dist` or `SimpleGraph.edist`. Two vertices are within\ndistance `d` exactly when some walk between them has length at most `d`,\nwhich needs no connectivity hypothesis, no `ℕ∞` arithmetic and no\ndecidability instance, and — the deciding reason — it is verbatim the\nvocabulary of the sparsity concepts this submission consumes: Lax12's\n`DistIndependent` says that every walk between two distinct members of a\nset is longer than `r`, so its negation and `WithinDist` are the same\nstatement. A translation layer between two notions of distance at that\ninterface would be pure friction.\n\nFor the same reason, neither `DistIndependent` nor `deleteVerts` is\nrestated here. Both are Lax12 concepts, already endorsed, and this\nsubmission uses them as they stand: `deleteVerts G S` — the graph with\nevery edge incident to `S` removed and the vertex type unchanged — is\nexactly the isolation move this submission's splitter game and its\nrewriting step perform.\n\n`WithinDist` and `ball` are stated for an arbitrary vertex type, as\nLax12 states `DistIndependent` and `deleteVerts`, since both are\npointwise notions and the proofs consuming them pass through\nintermediate carriers. Only `Coloring`, which fixes the two index\nranges, is tied to `Fin`.\n-/\n\nnamespace Lax3.ColoredGraphs\n\n/-- A coloring of the vertices `Fin n` by `L` colors: one set of\nvertices per color. Colors need be neither disjoint nor covering, so a\nvertex may carry any set of colors. -/\nabbrev Coloring (n L : ℕ) : Type := Fin L → Set (Fin n)\n\n/-- The vertices `u` and `v` are within distance `d` in `G`: some walk\nfrom `u` to `v` has length at most `d`. -/\ndef WithinDist {V : Type*} (G : SimpleGraph V) (d : ℕ) (u v : V) : Prop :=\n  ∃ w : G.Walk u v, w.length ≤ d\n\n/-- The ball of radius `r` around `v` in `G`: the vertices within\ndistance `r` of `v`. -/\ndef ball {V : Type*} (G : SimpleGraph V) (r : ℕ) (v : V) : Set V :=\n  {u | WithinDist G r v u}\n\nend Lax3.ColoredGraphs\n",
+      "statements": []
+    },
+    {
+      "id": "Lax3.DistFO",
+      "path": "concepts/Lax3/DistFO.lean",
+      "title": "Distance logic and distance rank",
+      "type": "definition",
+      "description": "Distance logic extends first-order logic by two families of *distance\natoms* — the distance between two variables is at most *r*, and the\ndistance from a variable to a color class is smaller than *r* — and by\n*local quantification*, an existential quantifier that ranges only over\nthe vertices within a given radius of a recorded set of the variables\nin scope. As a logic it\nis no stronger than first-order logic: over a fixed signature, \"the\ndistance between *x* and *y* is at most *r*\" is already first-order\nexpressible, and a local quantifier is an ordinary quantifier\nconjoined with such a distance test. What the extra syntax buys is a\nfiner rank measure.\n\nThat measure is *distance rank*. A formula has distance rank (*k*, *q*)\nwhen it has at most *k* free variables, quantifier rank at most *q*,\nevery distance atom in it has radius at most ρ⁻(*k*, *q*), and every\nlocal quantifier in it guards at radius at most ρ⁺(*k*+1, *q*−1), where\nρ⁻ and ρ⁺ are the two *horizon functions*. The two functions decrease\nfast enough as one traverses the quantifiers of a formula inwards that\nthe radii do too: the region a subformula can see shrinks strictly at\nevery quantifier. This is exactly the control the locality theorem of\n`Lax3.Locality` needs — it rewrites a formula of distance rank (*k*,\n*q*) into a boolean combination of *local* formulas and scatter\nsentences of the *same* distance rank, which ordinary quantifier rank\ncould not express.\n\nThis is the logic distFO of the source note (arXiv:2606.23180, §2.1),\ninterpreted over the finite colored graphs of `Lax3.ColoredGraphs` —\nsee the discussion there for what fixing the signature does and does\nnot cost. Its distance is the walk distance of that file, which for a\ncolored graph is the distance in its Gaifman graph.\n\nA formula is *local* when it never uses unrestricted quantification.\nSemantic locality is the corresponding property of meaning rather than\nof shape: a formula is semantically *r*-local when its truth on a tuple\nis unchanged by discarding every vertex further than *r* from that\ntuple.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The horizon functions are the source's concrete pair, ρ⁻(*k*, *q*) =\n9^((*k*+*q*+1)*q*) and ρ⁺(*k*, *q*) = 9^((*k*+*q*)(*q*+1)), rather than\nan arbitrary pair satisfying the source's inequalities (1). The\nstatements on this surface are then about a definite logic with\ndefinite radii and can be read without carrying a parameter through\nevery one of them. The proofs behind those statements use nothing about\nthe pair beyond the two inequalities of (1), and are written against an\nabstract bundle of them; that bundle is an implementation detail and is\nnot part of the concept surface.\n\nThe distance rank is a *predicate* on formulas, not a second type\nindex. Its rank argument is independent of the type index: `DRank k' q\nφ` may be asserted of a `φ : DistFO L k` for any `k' ` — the source's\n\"at most *k* free variables\" is `k ≤ k'`, and demanding equality would\nforce a reindexing of the syntax at every step of every proof, for no\ngain. The source's Observations 4 and 6, which say that rank is\npreserved along the schedule, become monotonicity lemmas of this\npredicate.\n\n**Deviation, deliberate: the local guard radius is bounded, not\npinned.** The source's grammar admits the local quantifier only at the\nexact radius ρ⁺(*k*+1, *q*−1); here `DRank` requires `r ≤ ρ⁺(k'+1, q)`\nat rank (`k'`, `q`+1). The source's own Observation 4 — every formula\nof distance rank (*k*+1, *q*−1) with at most *k* free variables also\nhas distance rank (*k*, *q*) — is false for the exact reading as\nstated: a local quantifier of a (*k*+1, *q*−1)-formula guards at\nρ⁺(*k*+2, *q*−2), which is not the radius ρ⁺(*k*+1, *q*−1) that a\n(*k*, *q*)-formula is allowed. The source absorbs the mismatch\nsilently, by reading a guarded quantifier as an unrestricted quantifier\nover a conjunction with binary distance atoms — a rewriting, not an\nidentity of formulas. With the bound in place the observation is a\nplain monotonicity lemma about `DRank`, proved where it is used and not\nhere. The relaxation only adds sound inputs: a smaller guard radius\nmeans the quantifier ranges over fewer vertices, so every syntactic\nbound the locality proof draws from a guard still holds.\n\nSatisfaction is total, environments are `Fin k → Fin n`, and binders\nextend the environment at the last position; see `Lax3.FirstOrder` for\nthat discussion, which applies verbatim.\n\nThe guard of a local quantifier carries its variable set in the\nsyntax: `exL r g φ` ranges over the vertices within distance *r* of\nthe variables in the finite set `g`. This is the source's guard\ndist(x̄, *y*) ≤ *r* = ⋁_{x ∈ x̄} dist(*x*, *y*) ≤ *r* read as the\nsource writes it: the set x̄ is chosen when the formula is formed\n(\"we write φ(x̄) to indicate that x̄ *contains* the free variables of\nφ\") and does not change when the formula later occurs inside a larger\none. Recording the set is what makes that stability true here as\nwell — placing a one-variable formula at a bound variable of a wider\nformula, as the locality theorem's proof and the normal form's\nwritten-out scatter sentences both do, keeps its guards reading that\none variable, and renaming is sound with no side conditions because\nthe guard set travels along. A guard over everything in scope is the\nspecial case `g = univ`; the earlier revision of this file had only\nthat case, which widens a formula's guards whenever the context\ngrows, and under which the placement just described is unsound. With\n`g = ∅` the guard is an empty disjunction, so the quantifier is\nvacuously false — in particular a local quantifier over a sentence's\nempty context has no vertex to be local to, and the locality\ntheorem's sentence case produces scatter sentences precisely because\nlocal quantification cannot help there.\n\nThe unary distance atom is strict, dist(*x*, *Y*) < *r*, as in the\nsource; the binary one is not. The asymmetry is the source's and is\nkept — a translation that quietly aligned them would make the\nstatements here no longer the statements of the source note. Unary\ndistance atoms are carried at all only for faithfulness: the algorithm\nnever manufactures one, and its formulas stay in the fragment without\nthem.\n\n`SatWithin` is the source's relativization *A*[*N_r*(ā)] ⊨ φ(ā),\nwritten with the carrier kept: the induced substructure lives on the\nsame vertex type `Fin n`, and the restriction to `D` is imposed by the\ndefinition instead of by a subtype. That matches the uniform vertex\nnumbering every structure of this submission carries, and matches\nLax12's `deleteVerts`, which also isolates rather than removes. Inside\n`D` the atoms are the induced ones: an edge survives only if both its\nendpoints do, a color class is intersected with `D`, and a distance\natom measures along walks that stay in `D`. Satisfaction and\nrelativization to the full vertex set agree, but `SatWithin univ` is\n*not* how `Sat` is defined — the agreement is a lemma, proved where the\ntwo are compared, so that each definition can be read and audited on\nits own.\n\n`rename` is here because the sentences of `Lax3.Locality` need to place\na one-variable formula at each of several bound variables. It is a\ndefinition only; the lemmas relating it to satisfaction belong with the\nproofs that use them."
+        }
+      ],
+      "imports": [
+        "Lax3.ColoredGraphs"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Fin.Tuple.Basic",
+        "Mathlib.Data.Finset.Image"
+      ],
+      "sourceText": "import Lax3.ColoredGraphs\nimport Mathlib.Data.Fin.Tuple.Basic\nimport Mathlib.Data.Finset.Image\n\n/-!\n---\ntitle: Distance logic and distance rank\ntype: definition\n---\nDistance logic extends first-order logic by two families of *distance\natoms* — the distance between two variables is at most *r*, and the\ndistance from a variable to a color class is smaller than *r* — and by\n*local quantification*, an existential quantifier that ranges only over\nthe vertices within a given radius of a recorded set of the variables\nin scope. As a logic it\nis no stronger than first-order logic: over a fixed signature, \"the\ndistance between *x* and *y* is at most *r*\" is already first-order\nexpressible, and a local quantifier is an ordinary quantifier\nconjoined with such a distance test. What the extra syntax buys is a\nfiner rank measure.\n\nThat measure is *distance rank*. A formula has distance rank (*k*, *q*)\nwhen it has at most *k* free variables, quantifier rank at most *q*,\nevery distance atom in it has radius at most ρ⁻(*k*, *q*), and every\nlocal quantifier in it guards at radius at most ρ⁺(*k*+1, *q*−1), where\nρ⁻ and ρ⁺ are the two *horizon functions*. The two functions decrease\nfast enough as one traverses the quantifiers of a formula inwards that\nthe radii do too: the region a subformula can see shrinks strictly at\nevery quantifier. This is exactly the control the locality theorem of\n`Lax3.Locality` needs — it rewrites a formula of distance rank (*k*,\n*q*) into a boolean combination of *local* formulas and scatter\nsentences of the *same* distance rank, which ordinary quantifier rank\ncould not express.\n\nThis is the logic distFO of the source note (arXiv:2606.23180, §2.1),\ninterpreted over the finite colored graphs of `Lax3.ColoredGraphs` —\nsee the discussion there for what fixing the signature does and does\nnot cost. Its distance is the walk distance of that file, which for a\ncolored graph is the distance in its Gaifman graph.\n\nA formula is *local* when it never uses unrestricted quantification.\nSemantic locality is the corresponding property of meaning rather than\nof shape: a formula is semantically *r*-local when its truth on a tuple\nis unchanged by discarding every vertex further than *r* from that\ntuple.\n\n# Formalization notes\n\nThe horizon functions are the source's concrete pair, ρ⁻(*k*, *q*) =\n9^((*k*+*q*+1)*q*) and ρ⁺(*k*, *q*) = 9^((*k*+*q*)(*q*+1)), rather than\nan arbitrary pair satisfying the source's inequalities (1). The\nstatements on this surface are then about a definite logic with\ndefinite radii and can be read without carrying a parameter through\nevery one of them. The proofs behind those statements use nothing about\nthe pair beyond the two inequalities of (1), and are written against an\nabstract bundle of them; that bundle is an implementation detail and is\nnot part of the concept surface.\n\nThe distance rank is a *predicate* on formulas, not a second type\nindex. Its rank argument is independent of the type index: `DRank k' q\nφ` may be asserted of a `φ : DistFO L k` for any `k' ` — the source's\n\"at most *k* free variables\" is `k ≤ k'`, and demanding equality would\nforce a reindexing of the syntax at every step of every proof, for no\ngain. The source's Observations 4 and 6, which say that rank is\npreserved along the schedule, become monotonicity lemmas of this\npredicate.\n\n**Deviation, deliberate: the local guard radius is bounded, not\npinned.** The source's grammar admits the local quantifier only at the\nexact radius ρ⁺(*k*+1, *q*−1); here `DRank` requires `r ≤ ρ⁺(k'+1, q)`\nat rank (`k'`, `q`+1). The source's own Observation 4 — every formula\nof distance rank (*k*+1, *q*−1) with at most *k* free variables also\nhas distance rank (*k*, *q*) — is false for the exact reading as\nstated: a local quantifier of a (*k*+1, *q*−1)-formula guards at\nρ⁺(*k*+2, *q*−2), which is not the radius ρ⁺(*k*+1, *q*−1) that a\n(*k*, *q*)-formula is allowed. The source absorbs the mismatch\nsilently, by reading a guarded quantifier as an unrestricted quantifier\nover a conjunction with binary distance atoms — a rewriting, not an\nidentity of formulas. With the bound in place the observation is a\nplain monotonicity lemma about `DRank`, proved where it is used and not\nhere. The relaxation only adds sound inputs: a smaller guard radius\nmeans the quantifier ranges over fewer vertices, so every syntactic\nbound the locality proof draws from a guard still holds.\n\nSatisfaction is total, environments are `Fin k → Fin n`, and binders\nextend the environment at the last position; see `Lax3.FirstOrder` for\nthat discussion, which applies verbatim.\n\nThe guard of a local quantifier carries its variable set in the\nsyntax: `exL r g φ` ranges over the vertices within distance *r* of\nthe variables in the finite set `g`. This is the source's guard\ndist(x̄, *y*) ≤ *r* = ⋁_{x ∈ x̄} dist(*x*, *y*) ≤ *r* read as the\nsource writes it: the set x̄ is chosen when the formula is formed\n(\"we write φ(x̄) to indicate that x̄ *contains* the free variables of\nφ\") and does not change when the formula later occurs inside a larger\none. Recording the set is what makes that stability true here as\nwell — placing a one-variable formula at a bound variable of a wider\nformula, as the locality theorem's proof and the normal form's\nwritten-out scatter sentences both do, keeps its guards reading that\none variable, and renaming is sound with no side conditions because\nthe guard set travels along. A guard over everything in scope is the\nspecial case `g = univ`; the earlier revision of this file had only\nthat case, which widens a formula's guards whenever the context\ngrows, and under which the placement just described is unsound. With\n`g = ∅` the guard is an empty disjunction, so the quantifier is\nvacuously false — in particular a local quantifier over a sentence's\nempty context has no vertex to be local to, and the locality\ntheorem's sentence case produces scatter sentences precisely because\nlocal quantification cannot help there.\n\nThe unary distance atom is strict, dist(*x*, *Y*) < *r*, as in the\nsource; the binary one is not. The asymmetry is the source's and is\nkept — a translation that quietly aligned them would make the\nstatements here no longer the statements of the source note. Unary\ndistance atoms are carried at all only for faithfulness: the algorithm\nnever manufactures one, and its formulas stay in the fragment without\nthem.\n\n`SatWithin` is the source's relativization *A*[*N_r*(ā)] ⊨ φ(ā),\nwritten with the carrier kept: the induced substructure lives on the\nsame vertex type `Fin n`, and the restriction to `D` is imposed by the\ndefinition instead of by a subtype. That matches the uniform vertex\nnumbering every structure of this submission carries, and matches\nLax12's `deleteVerts`, which also isolates rather than removes. Inside\n`D` the atoms are the induced ones: an edge survives only if both its\nendpoints do, a color class is intersected with `D`, and a distance\natom measures along walks that stay in `D`. Satisfaction and\nrelativization to the full vertex set agree, but `SatWithin univ` is\n*not* how `Sat` is defined — the agreement is a lemma, proved where the\ntwo are compared, so that each definition can be read and audited on\nits own.\n\n`rename` is here because the sentences of `Lax3.Locality` need to place\na one-variable formula at each of several bound variables. It is a\ndefinition only; the lemmas relating it to satisfaction belong with the\nproofs that use them.\n-/\n\nnamespace Lax3.DistFO\n\nopen Lax3.ColoredGraphs\n\n/-- The lower horizon function ρ⁻ of the source: the largest radius a\ndistance atom of distance rank `(k, q)` may carry. -/\ndef rhoMinus (k q : ℕ) : ℕ := 9 ^ ((k + q + 1) * q)\n\n/-- The upper horizon function ρ⁺ of the source: the largest radius a\nlocal quantifier may guard at, one rank level in. -/\ndef rhoPlus (k q : ℕ) : ℕ := 9 ^ ((k + q) * (q + 1))\n\n-- the logic and the module carrying it have the same name on purpose\nset_option linter.dupNamespace false in\n/-- Formulas of distance logic over `L`-colored graphs, with `k` free\nvariables. Variables are `Fin k`, and both quantifiers bind the *new\nlast* index. Beyond the atoms of first-order logic there are colors and\nthe two distance atoms, and beyond unrestricted quantification there is\nlocal quantification, which ranges over the vertices within a given\nradius of the free variables. -/\ninductive DistFO (L : ℕ) : ℕ → Type\n  /-- The vertices `i` and `j` are adjacent. -/\n  | adj {k : ℕ} (i j : Fin k) : DistFO L k\n  /-- The vertices `i` and `j` are equal. -/\n  | eq {k : ℕ} (i j : Fin k) : DistFO L k\n  /-- The vertex `i` has color `c`. -/\n  | color {k : ℕ} (c : Fin L) (i : Fin k) : DistFO L k\n  /-- Binary distance atom: the distance between `i` and `j` is at most\n  `r`. -/\n  | distLe {k : ℕ} (r : ℕ) (i j : Fin k) : DistFO L k\n  /-- Unary distance atom: the distance from `i` to the color class `c`\n  is smaller than `r`. -/\n  | distColorLt {k : ℕ} (r : ℕ) (c : Fin L) (i : Fin k) : DistFO L k\n  /-- Negation. -/\n  | not {k : ℕ} (φ : DistFO L k) : DistFO L k\n  /-- Conjunction. -/\n  | and {k : ℕ} (φ ψ : DistFO L k) : DistFO L k\n  /-- Unrestricted quantification: there is a vertex satisfying `φ`,\n  bound at the last index. -/\n  | exU {k : ℕ} (φ : DistFO L (k + 1)) : DistFO L k\n  /-- Local quantification: there is a vertex within distance `r` of\n  some variable in the guard set `g` satisfying `φ`, bound at the last\n  index. The radius and the guard set are part of the syntax; which\n  radii are admissible at a given distance rank is the business of\n  `DRank`, and the guard set is unconstrained there, as in the\n  source. -/\n  | exL {k : ℕ} (r : ℕ) (g : Finset (Fin k)) (φ : DistFO L (k + 1)) : DistFO L k\n\nvariable {L n : ℕ}\n\n/-- Satisfaction of a formula in the `L`-colored graph `(G, col)` under\nthe environment `m`. A binary distance atom is a walk-length bound, a\nunary one asks for a color-class vertex strictly nearer than `r`, and a\nlocal quantifier ranges over the vertices within `r` of some variable\nin its guard set — an empty condition, hence unsatisfiable, when the\nset is empty. -/\ndef Sat (G : SimpleGraph (Fin n)) (col : Coloring n L) :\n    {k : ℕ} → (Fin k → Fin n) → DistFO L k → Prop\n  | _, m, .adj i j => G.Adj (m i) (m j)\n  | _, m, .eq i j => m i = m j\n  | _, m, .color c i => m i ∈ col c\n  | _, m, .distLe r i j => WithinDist G r (m i) (m j)\n  | _, m, .distColorLt r c i => ∃ y ∈ col c, ∃ w : G.Walk (m i) y, w.length < r\n  | _, m, .not φ => ¬ Sat G col m φ\n  | _, m, .and φ ψ => Sat G col m φ ∧ Sat G col m ψ\n  | _, m, .exU φ => ∃ v : Fin n, Sat G col (Fin.snoc m v) φ\n  | _, m, .exL r g φ =>\n      ∃ v : Fin n, (∃ i ∈ g, WithinDist G r (m i) v) ∧ Sat G col (Fin.snoc m v) φ\n\n/-- Renaming of variables along `f`. Under a binder the renaming is\nlifted to `Fin (k + 1) → Fin (k' + 1)` by sending the bound variable —\nthe last index — to the new last index. The guard set of a local\nquantifier is mapped along `f`, so a guard keeps naming the same\nvariables it named before. -/\ndef rename : {k k' : ℕ} → (Fin k → Fin k') → DistFO L k → DistFO L k'\n  | _, _, f, .adj i j => .adj (f i) (f j)\n  | _, _, f, .eq i j => .eq (f i) (f j)\n  | _, _, f, .color c i => .color c (f i)\n  | _, _, f, .distLe r i j => .distLe r (f i) (f j)\n  | _, _, f, .distColorLt r c i => .distColorLt r c (f i)\n  | _, _, f, .not φ => .not (rename f φ)\n  | _, _, f, .and φ ψ => .and (rename f φ) (rename f ψ)\n  | _, k', f, .exU φ => .exU (rename (Fin.snoc (fun i => (f i).castSucc) (Fin.last k')) φ)\n  | _, k', f, .exL r g φ =>\n      .exL r (g.image f) (rename (Fin.snoc (fun i => (f i).castSucc) (Fin.last k')) φ)\n\n/-- `DRank k' q φ` says that `φ` has distance rank `(k', q)`: its\nquantifier rank is at most `q`, every distance atom in it has radius at\nmost `ρ⁻` of the rank in force there, and every local quantifier guards\nat radius at most `ρ⁺` of the rank one level in. The rank argument\n`k'` is a bound on the number of free variables and is independent of\nthe type index. -/\ninductive DRank {L : ℕ} : ℕ → ℕ → {k : ℕ} → DistFO L k → Prop\n  /-- An adjacency atom has every distance rank. -/\n  | adj {k' q k : ℕ} (i j : Fin k) : DRank k' q (.adj i j)\n  /-- An equality atom has every distance rank. -/\n  | eq {k' q k : ℕ} (i j : Fin k) : DRank k' q (.eq i j)\n  /-- A color atom has every distance rank. -/\n  | color {k' q k : ℕ} (c : Fin L) (i : Fin k) : DRank k' q (.color c i)\n  /-- A binary distance atom has distance rank `(k', q)` when its\n  radius is at most `ρ⁻(k', q)`. -/\n  | distLe {k' q k : ℕ} {r : ℕ} (i j : Fin k) (hr : r ≤ rhoMinus k' q) :\n      DRank k' q (.distLe r i j)\n  /-- A unary distance atom has distance rank `(k', q)` when its radius\n  is at most `ρ⁻(k', q)`. -/\n  | distColorLt {k' q k : ℕ} {r : ℕ} (c : Fin L) (i : Fin k) (hr : r ≤ rhoMinus k' q) :\n      DRank k' q (.distColorLt r c i)\n  /-- Negation preserves the distance rank. -/\n  | not {k' q k : ℕ} {φ : DistFO L k} (h : DRank k' q φ) : DRank k' q (.not φ)\n  /-- Conjunction preserves the distance rank. -/\n  | and {k' q k : ℕ} {φ ψ : DistFO L k} (h : DRank k' q φ) (h' : DRank k' q ψ) :\n      DRank k' q (.and φ ψ)\n  /-- An unrestricted quantifier has distance rank `(k', q + 1)` when\n  its body has distance rank `(k' + 1, q)`. -/\n  | exU {k' q k : ℕ} {φ : DistFO L (k + 1)} (h : DRank (k' + 1) q φ) :\n      DRank k' (q + 1) (.exU φ)\n  /-- A local quantifier has distance rank `(k', q + 1)` when its body\n  has distance rank `(k' + 1, q)` and it guards at radius at most\n  `ρ⁺(k' + 1, q)`. The guard set is unconstrained. -/\n  | exL {k' q k : ℕ} {r : ℕ} {g : Finset (Fin k)} {φ : DistFO L (k + 1)}\n      (h : DRank (k' + 1) q φ) (hr : r ≤ rhoPlus (k' + 1) q) : DRank k' (q + 1) (.exL r g φ)\n\n/-- A formula is local when it uses no unrestricted quantification. -/\ndef IsLocal : {k : ℕ} → DistFO L k → Prop\n  | _, .adj _ _ => True\n  | _, .eq _ _ => True\n  | _, .color _ _ => True\n  | _, .distLe _ _ _ => True\n  | _, .distColorLt _ _ _ => True\n  | _, .not φ => IsLocal φ\n  | _, .and φ ψ => IsLocal φ ∧ IsLocal ψ\n  | _, .exU _ => False\n  | _, .exL _ _ φ => IsLocal φ\n\n/-- The vertices `u` and `v` are within distance `d` *inside* `D`: some\nwalk from `u` to `v` has length at most `d` and stays in `D`. This is\nthe walk distance of the substructure induced on `D`, with the carrier\nkept. -/\ndef WithinDistIn {V : Type*} (D : Set V) (G : SimpleGraph V) (d : ℕ) (u v : V) : Prop :=\n  ∃ w : G.Walk u v, w.length ≤ d ∧ ∀ x ∈ w.support, x ∈ D\n\n/-- Satisfaction in the substructure induced on `D`, with the carrier\nkept: quantifiers range over `D`, an edge counts only if both endpoints\nlie in `D`, color classes are intersected with `D`, and distances are\nmeasured along walks inside `D`. -/\ndef SatWithin (D : Set (Fin n)) (G : SimpleGraph (Fin n)) (col : Coloring n L) :\n    {k : ℕ} → (Fin k → Fin n) → DistFO L k → Prop\n  | _, m, .adj i j => G.Adj (m i) (m j) ∧ m i ∈ D ∧ m j ∈ D\n  | _, m, .eq i j => m i = m j\n  | _, m, .color c i => m i ∈ col c ∧ m i ∈ D\n  | _, m, .distLe r i j => WithinDistIn D G r (m i) (m j)\n  | _, m, .distColorLt r c i =>\n      ∃ y, y ∈ col c ∧ y ∈ D ∧ ∃ w : G.Walk (m i) y, w.length < r ∧ ∀ x ∈ w.support, x ∈ D\n  | _, m, .not φ => ¬ SatWithin D G col m φ\n  | _, m, .and φ ψ => SatWithin D G col m φ ∧ SatWithin D G col m ψ\n  | _, m, .exU φ => ∃ v ∈ D, SatWithin D G col (Fin.snoc m v) φ\n  | _, m, .exL r g φ =>\n      ∃ v ∈ D, (∃ i ∈ g, WithinDistIn D G r (m i) v) ∧ SatWithin D G col (Fin.snoc m v) φ\n\n/-- A formula is semantically `r`-local when its truth on a tuple never\ndepends on the vertices further than `r` from that tuple: satisfaction\nin the graph and satisfaction in the substructure induced on the union\nof the `r`-balls around the tuple agree, in every colored graph and at\nevery tuple. -/\ndef SemanticallyLocal (r : ℕ) {k : ℕ} (φ : DistFO L k) : Prop :=\n  ∀ (n : ℕ) (G : SimpleGraph (Fin n)) (col : Coloring n L) (m : Fin k → Fin n),\n    Sat G col m φ ↔ SatWithin (⋃ i, ball G r (m i)) G col m φ\n\nend Lax3.DistFO\n",
+      "statements": []
+    },
+    {
+      "id": "Lax3.FirstOrder",
+      "path": "concepts/Lax3/FirstOrder.lean",
+      "title": "First-order logic on graphs",
+      "type": "definition",
+      "description": "A first-order formula over graphs is built from two atoms — two\nvertices are adjacent, two vertices are equal — by negation,\nconjunction, and quantification over vertices. A formula holds in a\ngraph under an assignment of vertices to its free variables, by the\nusual reading of the connectives and the quantifier. The quantifier\nrank of a formula is the nesting depth of its quantifiers.\n\nThis is the input logic of the model-checking problem this submission\nis about: a statement of that problem is allowed to mention first-order\nsentences and graphs, and nothing else. The distance logic of\n`Lax3.DistFO` — first-order logic with distance atoms and local\nquantification — is the logic the algorithm manipulates internally; it\nis a different syntax with the same expressive power, introduced there\nbecause it admits a finer rank measure. Keeping the two apart is the\npoint: a theorem stated for `FO` cannot be weakened by any convenience\nbuilt into `DistFO`.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Free variables are counted rather than named: `FO k` is the type of\nformulas with `k` free variables, and the quantifier turns a formula\nwith one more free variable into a formula with one fewer. Satisfaction\nis therefore a total function of a formula and an environment\n`Fin k → Fin n`, one entry per free variable: there is no partial\nvaluation, no default value for an unassigned variable and no\nwell-formedness side condition. A sentence is a formula of `FO 0`, so\nbeing closed is a property of the type rather than a predicate to\ncheck. The price is that variables are de Bruijn positions rather than\nnames; the alternative, named variables, needs capture-avoiding\nsubstitution *inside the trusted definition*, which is a considerably\nworse object to audit than an index. This is the pattern of submission\nLax11's MSO concept, minus the set variables.\n\nVariables are levels, not indices: the quantifier extends the\nenvironment at its *last* position (`Fin.snoc`), so the outermost bound\nvariable of a formula is `0` and the innermost is the last. Nothing in\nthe definition shifts an index.\n\nOnly negation, conjunction and existential quantification are\nconstructors. Disjunction, implication and universal quantification are\nthe usual abbreviations, written out where they are used: each of them\nas a constructor would add a case to the definition of satisfaction and\nbuy nothing that is not already there.\n\nGraphs here are uncolored — the signature is one binary symmetric\nrelation. Colors are a device of the algorithm, not of the problem\nstatement: they record intermediate information (which vertices were\nisolated, which distance profile a vertex has) that the input never\ncarries. The logic that has them is `Lax3.DistFO`, over the colored\ngraphs of `Lax3.ColoredGraphs`."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Basic",
+        "Mathlib.Data.Fin.Tuple.Basic"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Basic\nimport Mathlib.Data.Fin.Tuple.Basic\n\n/-!\n---\ntitle: First-order logic on graphs\ntype: definition\n---\nA first-order formula over graphs is built from two atoms — two\nvertices are adjacent, two vertices are equal — by negation,\nconjunction, and quantification over vertices. A formula holds in a\ngraph under an assignment of vertices to its free variables, by the\nusual reading of the connectives and the quantifier. The quantifier\nrank of a formula is the nesting depth of its quantifiers.\n\nThis is the input logic of the model-checking problem this submission\nis about: a statement of that problem is allowed to mention first-order\nsentences and graphs, and nothing else. The distance logic of\n`Lax3.DistFO` — first-order logic with distance atoms and local\nquantification — is the logic the algorithm manipulates internally; it\nis a different syntax with the same expressive power, introduced there\nbecause it admits a finer rank measure. Keeping the two apart is the\npoint: a theorem stated for `FO` cannot be weakened by any convenience\nbuilt into `DistFO`.\n\n# Formalization notes\n\nFree variables are counted rather than named: `FO k` is the type of\nformulas with `k` free variables, and the quantifier turns a formula\nwith one more free variable into a formula with one fewer. Satisfaction\nis therefore a total function of a formula and an environment\n`Fin k → Fin n`, one entry per free variable: there is no partial\nvaluation, no default value for an unassigned variable and no\nwell-formedness side condition. A sentence is a formula of `FO 0`, so\nbeing closed is a property of the type rather than a predicate to\ncheck. The price is that variables are de Bruijn positions rather than\nnames; the alternative, named variables, needs capture-avoiding\nsubstitution *inside the trusted definition*, which is a considerably\nworse object to audit than an index. This is the pattern of submission\nLax11's MSO concept, minus the set variables.\n\nVariables are levels, not indices: the quantifier extends the\nenvironment at its *last* position (`Fin.snoc`), so the outermost bound\nvariable of a formula is `0` and the innermost is the last. Nothing in\nthe definition shifts an index.\n\nOnly negation, conjunction and existential quantification are\nconstructors. Disjunction, implication and universal quantification are\nthe usual abbreviations, written out where they are used: each of them\nas a constructor would add a case to the definition of satisfaction and\nbuy nothing that is not already there.\n\nGraphs here are uncolored — the signature is one binary symmetric\nrelation. Colors are a device of the algorithm, not of the problem\nstatement: they record intermediate information (which vertices were\nisolated, which distance profile a vertex has) that the input never\ncarries. The logic that has them is `Lax3.DistFO`, over the colored\ngraphs of `Lax3.ColoredGraphs`.\n-/\n\nnamespace Lax3.FirstOrder\n\n/-- Formulas of first-order logic over the adjacency signature, with\n`k` free variables. Variables are `Fin k`, and the quantifier binds the\n*new last* index. -/\ninductive FO : ℕ → Type\n  /-- The vertices `i` and `j` are adjacent. -/\n  | adj {k : ℕ} (i j : Fin k) : FO k\n  /-- The vertices `i` and `j` are equal. -/\n  | eq {k : ℕ} (i j : Fin k) : FO k\n  /-- Negation. -/\n  | not {k : ℕ} (φ : FO k) : FO k\n  /-- Conjunction. -/\n  | and {k : ℕ} (φ ψ : FO k) : FO k\n  /-- There is a vertex satisfying `φ`, bound at the last index. -/\n  | ex {k : ℕ} (φ : FO (k + 1)) : FO k\n\n/-- The quantifier rank: the nesting depth of quantifiers. -/\ndef rank : {k : ℕ} → FO k → ℕ\n  | _, .adj _ _ => 0\n  | _, .eq _ _ => 0\n  | _, .not φ => rank φ\n  | _, .and φ ψ => max (rank φ) (rank ψ)\n  | _, .ex φ => rank φ + 1\n\nvariable {n : ℕ}\n\n/-- Satisfaction of a formula in the graph `G` under the environment\n`m`, which assigns a vertex to each free variable. -/\ndef Sat (G : SimpleGraph (Fin n)) : {k : ℕ} → (Fin k → Fin n) → FO k → Prop\n  | _, m, .adj i j => G.Adj (m i) (m j)\n  | _, m, .eq i j => m i = m j\n  | _, m, .not φ => ¬ Sat G m φ\n  | _, m, .and φ ψ => Sat G m φ ∧ Sat G m ψ\n  | _, m, .ex φ => ∃ v : Fin n, Sat G (Fin.snoc m v) φ\n\nend Lax3.FirstOrder\n",
+      "statements": []
+    },
+    {
+      "id": "Lax3.Locality",
+      "path": "concepts/Lax3/Locality.lean",
+      "title": "Locality theorem for distance logic",
+      "type": "theorem",
+      "description": "Every formula of distance logic of distance rank (*k*, *q*) is\nequivalent to a boolean combination of *local* formulas and scatter\nsentences, all of distance rank (*k*, *q*). This is the locality\ntheorem of the source note (arXiv:2606.23180, Theorem 1), in the spirit\nof Gaifman's locality theorem and of the locality theorem of Grohe,\nKreutzer and Siebertz: unrestricted quantification is eliminated in\nfavour of quantification inside a bounded neighborhood of the free\nvariables, plus finitely many global assertions of the form \"there are\n*t* pairwise far apart vertices satisfying β\". What distinguishes this\nversion, and what makes it usable, is that the rewriting does not\nincrease the rank — and the rank it preserves, distance rank, controls\nthe radii of everything the resulting formulas mention.\n\nThe theorem holds for every scatter choice; which one is fixed is\ninvisible to the statement and decisive for the algorithm, which\nevaluates scatter sentences by running the greedy process. The\ncompanion statement `Lax3.NormalForm` — the analogue of Gaifman's\nnormal form — instantiates the maximum-size choice and writes the\nscatter sentences out in the logic itself.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The boolean combination is reified: `BC α` is the type of boolean\ncombinations of atoms drawn from `α`, with an evaluation map and a list\nof the atoms occurring in it. That list is what carries the side\nconditions of the theorem — \"all of distance rank (*k*, *q*)\" is a\nstatement about the atoms of the combination, and a bare `Prop`-level\nequivalence could not express it. Atoms are the sum type of formulas\nand scatter sentences, so one boolean combination mixes the two kinds\nand `Sum.elim` supplies their two evaluations.\n\nEffectiveness is deliberately absent. The source says the boolean\ncombination \"can be effectively computed\"; the statement here asserts\nonly that it exists. Nothing is lost: the rewriting is discharged by an\nexplicit Lean function on syntax with a soundness lemma, and it is that\nfunction — not the existential — that the model-checking algorithm of\nthis submission consumes, together with the fact that a Lean function\non an inductive syntax is by construction an algorithm. Stating\neffectiveness in the existential form (\"there is a computable map …\")\nwould add a machine model to a statement about logic, and the machine\nmodel this submission uses is the word RAM of submission Lax13, which\nenters at the headline theorem and not before.\n\nThe statement is an `axiom` on this concept surface and is proved in\nthe proofs package of this submission. It is also the interface a\nfuture merge-width submission consumes, which is why the rewriting\nfunction is proofs-side and the existential is here: a consumer that\nneeds the function can require the proofs package, and a consumer that\nneeds only the equivalence takes the statement."
+        }
+      ],
+      "imports": [
+        "Lax3.ScatterSentences"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax3.ScatterSentences\n\n/-!\n---\ntitle: Locality theorem for distance logic\ntype: theorem\n---\nEvery formula of distance logic of distance rank (*k*, *q*) is\nequivalent to a boolean combination of *local* formulas and scatter\nsentences, all of distance rank (*k*, *q*). This is the locality\ntheorem of the source note (arXiv:2606.23180, Theorem 1), in the spirit\nof Gaifman's locality theorem and of the locality theorem of Grohe,\nKreutzer and Siebertz: unrestricted quantification is eliminated in\nfavour of quantification inside a bounded neighborhood of the free\nvariables, plus finitely many global assertions of the form \"there are\n*t* pairwise far apart vertices satisfying β\". What distinguishes this\nversion, and what makes it usable, is that the rewriting does not\nincrease the rank — and the rank it preserves, distance rank, controls\nthe radii of everything the resulting formulas mention.\n\nThe theorem holds for every scatter choice; which one is fixed is\ninvisible to the statement and decisive for the algorithm, which\nevaluates scatter sentences by running the greedy process. The\ncompanion statement `Lax3.NormalForm` — the analogue of Gaifman's\nnormal form — instantiates the maximum-size choice and writes the\nscatter sentences out in the logic itself.\n\n# Formalization notes\n\nThe boolean combination is reified: `BC α` is the type of boolean\ncombinations of atoms drawn from `α`, with an evaluation map and a list\nof the atoms occurring in it. That list is what carries the side\nconditions of the theorem — \"all of distance rank (*k*, *q*)\" is a\nstatement about the atoms of the combination, and a bare `Prop`-level\nequivalence could not express it. Atoms are the sum type of formulas\nand scatter sentences, so one boolean combination mixes the two kinds\nand `Sum.elim` supplies their two evaluations.\n\nEffectiveness is deliberately absent. The source says the boolean\ncombination \"can be effectively computed\"; the statement here asserts\nonly that it exists. Nothing is lost: the rewriting is discharged by an\nexplicit Lean function on syntax with a soundness lemma, and it is that\nfunction — not the existential — that the model-checking algorithm of\nthis submission consumes, together with the fact that a Lean function\non an inductive syntax is by construction an algorithm. Stating\neffectiveness in the existential form (\"there is a computable map …\")\nwould add a machine model to a statement about logic, and the machine\nmodel this submission uses is the word RAM of submission Lax13, which\nenters at the headline theorem and not before.\n\nThe statement is an `axiom` on this concept surface and is proved in\nthe proofs package of this submission. It is also the interface a\nfuture merge-width submission consumes, which is why the rewriting\nfunction is proofs-side and the existential is here: a consumer that\nneeds the function can require the proofs package, and a consumer that\nneeds only the equivalence takes the statement.\n-/\n\nnamespace Lax3.Locality\n\nopen Lax3.ColoredGraphs Lax3.DistFO Lax3.ScatterSentences\n\nuniverse u\n\n/-- Boolean combinations of atoms drawn from `α`. Disjunction and\nimplication are the usual abbreviations; the empty combination is\n`tru`. -/\ninductive BC (α : Type u) : Type u\n  /-- An atom. -/\n  | atom (a : α) : BC α\n  /-- The empty combination, always true. -/\n  | tru : BC α\n  /-- Negation. -/\n  | not (b : BC α) : BC α\n  /-- Conjunction. -/\n  | and (b c : BC α) : BC α\n\n/-- The truth value of a boolean combination, given a truth value for\neach atom. -/\ndef BC.eval {α : Type u} (v : α → Prop) : BC α → Prop\n  | .atom a => v a\n  | .tru => True\n  | .not b => ¬ BC.eval v b\n  | .and b c => BC.eval v b ∧ BC.eval v c\n\n/-- The atoms occurring in a boolean combination, with multiplicity. -/\ndef BC.atoms {α : Type u} : BC α → List α\n  | .atom a => [a]\n  | .tru => []\n  | .not b => BC.atoms b\n  | .and b c => BC.atoms b ++ BC.atoms c\n\nvariable {L : ℕ}\n\n/-- **Locality theorem** (Theorem 1 of arXiv:2606.23180). Fix a scatter\nchoice. Every formula of distance rank `(k, q)` is equivalent to a\nboolean combination of local formulas of distance rank `(k, q)` and\nscatter sentences of distance rank `(k, q)`: there is a boolean\ncombination whose formula atoms are all local of distance rank `(k, q)`,\nwhose scatter-sentence atoms all have distance rank `(k, q)`, and which\nhas the same truth value as the formula in every finite colored graph\nunder every environment. -/\naxiom locality (choice : ScatterChoice) {k q : ℕ} (φ : DistFO L k)\n    (hφ : DistFO.DRank k q φ) :\n    ∃ b : BC (DistFO L k ⊕ ScatterSentence L),\n      (∀ ψ : DistFO L k, Sum.inl ψ ∈ b.atoms → DistFO.IsLocal ψ ∧ DistFO.DRank k q ψ) ∧\n      (∀ σ : ScatterSentence L, Sum.inr σ ∈ b.atoms → σ.DRank k q) ∧\n      ∀ (n : ℕ) (G : SimpleGraph (Fin n)) (col : Coloring n L) (m : Fin k → Fin n),\n        DistFO.Sat G col m φ ↔\n          b.eval (Sum.elim (DistFO.Sat G col m) (ScatterSentence.Sat choice G col))\n\nend Lax3.Locality\n",
+      "statements": [
+        {
+          "id": "Lax3.Locality.locality",
+          "signature": "locality : ∀ {L : Nat} (choice : Lax3.ScatterSentences.ScatterChoice) {k q : Nat} (φ : Lax3.DistFO.DistFO L k),\n  Lax3.DistFO.DRank k q φ →\n    Exists fun b =>\n      And\n        (∀ (ψ : Lax3.DistFO.DistFO L k),\n          List.instMembership.mem b.atoms (Sum.inl ψ) → And (Lax3.DistFO.IsLocal ψ) (Lax3.DistFO.DRank k q ψ))\n        (And\n          (∀ (σ : Lax3.ScatterSentences.ScatterSentence L),\n            List.instMembership.mem b.atoms (Sum.inr σ) → Lax3.ScatterSentences.ScatterSentence.DRank k q σ)\n          (∀ (n : Nat) (G : SimpleGraph (Fin n)) (col : Lax3.ColoredGraphs.Coloring n L) (m : Fin k → Fin n),\n            Iff (Lax3.DistFO.Sat G col m φ)\n              (Lax3.Locality.BC.eval\n                (Sum.elim (Lax3.DistFO.Sat G col m) (Lax3.ScatterSentences.ScatterSentence.Sat choice G col)) b)))",
+          "startLine": 95,
+          "endLine": 110,
+          "doc": "**Locality theorem** (Theorem 1 of arXiv:2606.23180). Fix a scatter\nchoice. Every formula of distance rank `(k, q)` is equivalent to a\nboolean combination of local formulas of distance rank `(k, q)` and\nscatter sentences of distance rank `(k, q)`: there is a boolean\ncombination whose formula atoms are all local of distance rank `(k, q)`,\nwhose scatter-sentence atoms all have distance rank `(k, q)`, and which\nhas the same truth value as the formula in every finite colored graph\nunder every environment."
+        }
+      ]
+    },
+    {
+      "id": "Lax3.ModelChecking",
+      "path": "concepts/Lax3/ModelChecking.lean",
+      "title": "First-order model checking on nowhere dense classes in almost linear time",
+      "type": "theorem",
+      "description": "Deciding a first-order sentence is fixed-parameter tractable on every\nnowhere dense class of graphs, in almost linear time on a word random\naccess machine: for every nowhere dense class, every sentence φ and\nevery ε > 0 there are one program, one constant *c* and one time bound\n*T* with *T*(x) ≤ *c* · (|x| + 1)^(1+ε), such that at every word\nlength *w*, on every member of the class given in compressed sparse\nrow form as a word *x* each of whose entries *v* satisfies\n*c*(|x| + *v* + 1) ≤ 2^*w*, the program halts within *T*(x) steps and\nwrites `1` if φ holds in the graph and `0` if it does not.\n\nThis is the theorem of Grohe, Kreutzer and Siebertz (JACM 2017), with\nthe algorithm realized on the word RAM of Lax13. Nowhere denseness is\nthe exact limit of this kind of tractability on monotone classes, and\nthe input is the graph *alone*: unlike the Courcelle theorem of Lax11,\nwhich is handed a k-expression alongside the graph, every auxiliary\nobject the algorithm consumes — orderings, neighborhood covers,\nsplitter moves, distance profiles — is computed from the input. That\ncomputation is the main algorithmic weight of the theorem.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The statement follows the house pattern of Lax11's Courcelle axiom:\nprogram and constant after the class data, the sentence and ε; before\nthe graph and the word length; inputs restricted to encodings whose\nentries fit the word length under the same `c * (x.length + v + 1) ≤\n2 ^ w` side condition; output by a classical `if` on satisfaction.\nThe differences are the ones the theorem is about. The hypothesis is\n`Lax12.NowhereDense` verbatim — the endorsed shallow-minor form, not a\nrestatement. The input predicate is `Lax11.EncodesGraph` alone: no\nexpression, no ordering, no promise beyond membership in the class.\nThe time bound cannot be the Courcelle form `c * (x.length + 1)`,\nsince `n^(1+ε)` has no elementary spelling over ℕ: the bound function\n`T : List ℕ → ℕ` is existentially quantified and pinned by the\nreal-valued side condition `(T x : ℝ) ≤ c * ((x.length : ℝ) + 1) ^\n(1 + ε)` — the same real-exponent idiom as Lax12's subpolynomial\nbounds, whose `^` is `Real.rpow`.\n\nThe sentence ranges over plain first-order logic on graphs, `FO 0` of\nthis submission — adjacency and equality, no colors: colors and\ndistance atoms are working machinery of the proof, and surfacing them\nin the headline would weaken it (a statement over colored graphs\nfollows by the standard encoding of colors as input, and the distance\nlogic's headline role is played by the locality theorem concept). The\nparameter dependence f(φ, ε, C) of the fixed-parameter claim lives in\nthe existential `c` and `T`, as in the source; the class enters\nthrough the choice of `c` and `T` only, the program depending on\nfinitely many of its excluded-minor thresholds."
+        }
+      ],
+      "imports": [
+        "Lax11.GraphEncoding",
+        "Lax12.NowhereDenseClasses",
+        "Lax13.RamComputes",
+        "Lax3.FirstOrder"
+      ],
+      "mathlibImports": [
+        "Mathlib.Analysis.SpecialFunctions.Pow.Real"
+      ],
+      "sourceText": "import Lax3.FirstOrder\nimport Lax12.NowhereDenseClasses\nimport Lax13.RamComputes\nimport Lax11.GraphEncoding\nimport Mathlib.Analysis.SpecialFunctions.Pow.Real\n\n/-!\n---\ntitle: First-order model checking on nowhere dense classes in almost linear time\ntype: theorem\n---\nDeciding a first-order sentence is fixed-parameter tractable on every\nnowhere dense class of graphs, in almost linear time on a word random\naccess machine: for every nowhere dense class, every sentence φ and\nevery ε > 0 there are one program, one constant *c* and one time bound\n*T* with *T*(x) ≤ *c* · (|x| + 1)^(1+ε), such that at every word\nlength *w*, on every member of the class given in compressed sparse\nrow form as a word *x* each of whose entries *v* satisfies\n*c*(|x| + *v* + 1) ≤ 2^*w*, the program halts within *T*(x) steps and\nwrites `1` if φ holds in the graph and `0` if it does not.\n\nThis is the theorem of Grohe, Kreutzer and Siebertz (JACM 2017), with\nthe algorithm realized on the word RAM of Lax13. Nowhere denseness is\nthe exact limit of this kind of tractability on monotone classes, and\nthe input is the graph *alone*: unlike the Courcelle theorem of Lax11,\nwhich is handed a k-expression alongside the graph, every auxiliary\nobject the algorithm consumes — orderings, neighborhood covers,\nsplitter moves, distance profiles — is computed from the input. That\ncomputation is the main algorithmic weight of the theorem.\n\n# Formalization notes\n\nThe statement follows the house pattern of Lax11's Courcelle axiom:\nprogram and constant after the class data, the sentence and ε; before\nthe graph and the word length; inputs restricted to encodings whose\nentries fit the word length under the same `c * (x.length + v + 1) ≤\n2 ^ w` side condition; output by a classical `if` on satisfaction.\nThe differences are the ones the theorem is about. The hypothesis is\n`Lax12.NowhereDense` verbatim — the endorsed shallow-minor form, not a\nrestatement. The input predicate is `Lax11.EncodesGraph` alone: no\nexpression, no ordering, no promise beyond membership in the class.\nThe time bound cannot be the Courcelle form `c * (x.length + 1)`,\nsince `n^(1+ε)` has no elementary spelling over ℕ: the bound function\n`T : List ℕ → ℕ` is existentially quantified and pinned by the\nreal-valued side condition `(T x : ℝ) ≤ c * ((x.length : ℝ) + 1) ^\n(1 + ε)` — the same real-exponent idiom as Lax12's subpolynomial\nbounds, whose `^` is `Real.rpow`.\n\nThe sentence ranges over plain first-order logic on graphs, `FO 0` of\nthis submission — adjacency and equality, no colors: colors and\ndistance atoms are working machinery of the proof, and surfacing them\nin the headline would weaken it (a statement over colored graphs\nfollows by the standard encoding of colors as input, and the distance\nlogic's headline role is played by the locality theorem concept). The\nparameter dependence f(φ, ε, C) of the fixed-parameter claim lives in\nthe existential `c` and `T`, as in the source; the class enters\nthrough the choice of `c` and `T` only, the program depending on\nfinitely many of its excluded-minor thresholds.\n-/\n\nnamespace Lax3.ModelChecking\n\nopen Lax3.FirstOrder\nopen Lax12.GraphClasses Lax12.NowhereDenseClasses\nopen Lax13.Ram Lax13.RamComputes\nopen Lax11.GraphEncoding\n\nopen Classical in\n/-- **First-order model checking on nowhere dense classes** (Grohe–\nKreutzer–Siebertz): for every nowhere dense class, sentence and\nε > 0, there are a program, a constant `c` and a time bound `T` with\n`T x ≤ c * (|x| + 1) ^ (1 + ε)`, such that at every word length `w`,\non every member of the class in compressed sparse row form as a word\n`x` each of whose entries `v` satisfies `c * (x.length + v + 1) ≤\n2 ^ w`, the program halts within `T x` steps, having written `1` if\nthe sentence holds in the graph and `0` otherwise. -/\naxiom exists_almostLinearTime_program_modelChecking :\n    ∀ (C : GraphClass), NowhereDense C →\n    ∀ (φ : FO 0) (ε : ℝ), 0 < ε →\n      ∃ (p : Program) (c : ℕ) (T : List ℕ → ℕ),\n        (∀ x : List ℕ, (T x : ℝ) ≤ c * ((x.length : ℝ) + 1) ^ (1 + ε)) ∧\n        ∀ (n : ℕ) (G : SimpleGraph (Fin n)) (w : ℕ), C n G →\n          ComputesInTime w p\n            {x | EncodesGraph x n G ∧ ∀ v ∈ x, c * (x.length + v + 1) ≤ 2 ^ w}\n            (fun _ => if Sat G Fin.elim0 φ then [1] else [0])\n            T\n\nend Lax3.ModelChecking\n",
+      "statements": [
+        {
+          "id": "Lax3.ModelChecking.exists_almostLinearTime_program_modelChecking",
+          "signature": "exists_almostLinearTime_program_modelChecking : ∀ (C : Lax12.GraphClasses.GraphClass),\n  Lax12.NowhereDenseClasses.NowhereDense C →\n    ∀ (φ : Lax3.FirstOrder.FO 0) (ε : Real),\n      Real.instLT.lt 0 ε →\n        Exists fun p =>\n          Exists fun c =>\n            Exists fun T =>\n              And\n                (∀ (x : List Nat),\n                  Real.instLE.le (T x).cast\n                    (instHMul.hMul c.cast (instHPow.hPow (instHAdd.hAdd x.length.cast 1) (instHAdd.hAdd 1 ε))))\n                (∀ (n : Nat) (G : SimpleGraph (Fin n)) (w : Nat),\n                  C n G →\n                    Lax13.RamComputes.ComputesInTime w p\n                      (setOf fun x =>\n                        And (Lax11.GraphEncoding.EncodesGraph x n G)\n                          (∀ (v : Nat),\n                            List.instMembership.mem x v →\n                              instLENat.le (instHMul.hMul c (instHAdd.hAdd (instHAdd.hAdd x.length v) 1))\n                                (instHPow.hPow 2 w)))\n                      (fun x => ite (Lax3.FirstOrder.Sat G Fin.elim0 φ) (List.cons 1 List.nil) (List.cons 0 List.nil))\n                      T)",
+          "startLine": 69,
+          "endLine": 86,
+          "doc": "**First-order model checking on nowhere dense classes** (Grohe–\nKreutzer–Siebertz): for every nowhere dense class, sentence and\nε > 0, there are a program, a constant `c` and a time bound `T` with\n`T x ≤ c * (|x| + 1) ^ (1 + ε)`, such that at every word length `w`,\non every member of the class in compressed sparse row form as a word\n`x` each of whose entries `v` satisfies `c * (x.length + v + 1) ≤\n2 ^ w`, the program halts within `T x` steps, having written `1` if\nthe sentence holds in the graph and `0` otherwise."
+        }
+      ]
+    },
+    {
+      "id": "Lax3.NeighborhoodCoverBound",
+      "path": "concepts/Lax3/NeighborhoodCoverBound.lean",
+      "title": "Neighborhood covers of weak coloring degree",
+      "type": "theorem",
+      "description": "Every graph has, for every radius *r*, an *r*-neighborhood cover of\nradius 2*r* whose degree is at most the weak 2*r*-coloring number of\nthe graph.\n\nThis is Theorem 6.2 of Grohe–Kreutzer–Siebertz (via their Lemma 6.9):\nfrom a vertex ordering witnessing the weak coloring number, take as\nthe cluster of *v* the set of vertices from which *v* is weakly\n2*r*-reachable. On a nowhere dense class this composes with Lax12's\nsubpolynomial weak coloring numbers to covers of degree *c* · *n*^ε\nfor every ε > 0 — the form the model-checking recursion consumes, on\nevery arena, since the weak coloring bound of Lax12 is uniform over\nsubgraphs of members.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The statement is per-graph and class-free, with the degree bound\n`wcol G (2r)` — Lax12's `wcol`, not restated. This is the strongest\nform the construction gives: the covering and radius properties hold\nfor the clusters of an arbitrary ordering, and only the degree needs\nthe ordering to be a good one, so the theorem composes with any wcol\nbound a consumer owns, not only the nowhere dense one. The n^ε class\nform is a corollary consumers derive by picking the ordering from\n`hasSubpolynomialWcol_of_nowhereDense`; it is deliberately not a\nsecond axiom.\n\nThe discharge constructs the cluster of `u` as\n`{w | u ∈ wreach G π (2r) w}` for an optimal ordering `π` and reads\nthe degree bound off `(wreach G π (2r) v).ncard ≤ wcol G (2r)`\ndirectly; covering and radius are elementary walk arguments. The\n*computation* of such a cover on the word RAM — including computing a\ngood-enough ordering — is the algorithmic content of a later phase\n(the augmentation-density work of the campaign plan) and is not part\nof this statement."
+        }
+      ],
+      "imports": [
+        "Lax12.ColoringNumbers",
+        "Lax3.NeighborhoodCovers"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax3.NeighborhoodCovers\nimport Lax12.ColoringNumbers\n\n/-!\n---\ntitle: Neighborhood covers of weak coloring degree\ntype: theorem\n---\nEvery graph has, for every radius *r*, an *r*-neighborhood cover of\nradius 2*r* whose degree is at most the weak 2*r*-coloring number of\nthe graph.\n\nThis is Theorem 6.2 of Grohe–Kreutzer–Siebertz (via their Lemma 6.9):\nfrom a vertex ordering witnessing the weak coloring number, take as\nthe cluster of *v* the set of vertices from which *v* is weakly\n2*r*-reachable. On a nowhere dense class this composes with Lax12's\nsubpolynomial weak coloring numbers to covers of degree *c* · *n*^ε\nfor every ε > 0 — the form the model-checking recursion consumes, on\nevery arena, since the weak coloring bound of Lax12 is uniform over\nsubgraphs of members.\n\n# Formalization notes\n\nThe statement is per-graph and class-free, with the degree bound\n`wcol G (2r)` — Lax12's `wcol`, not restated. This is the strongest\nform the construction gives: the covering and radius properties hold\nfor the clusters of an arbitrary ordering, and only the degree needs\nthe ordering to be a good one, so the theorem composes with any wcol\nbound a consumer owns, not only the nowhere dense one. The n^ε class\nform is a corollary consumers derive by picking the ordering from\n`hasSubpolynomialWcol_of_nowhereDense`; it is deliberately not a\nsecond axiom.\n\nThe discharge constructs the cluster of `u` as\n`{w | u ∈ wreach G π (2r) w}` for an optimal ordering `π` and reads\nthe degree bound off `(wreach G π (2r) v).ncard ≤ wcol G (2r)`\ndirectly; covering and radius are elementary walk arguments. The\n*computation* of such a cover on the word RAM — including computing a\ngood-enough ordering — is the algorithmic content of a later phase\n(the augmentation-density work of the campaign plan) and is not part\nof this statement.\n-/\n\nnamespace Lax3.NeighborhoodCoverBound\n\nopen Lax3.NeighborhoodCovers\nopen Lax12.ColoringNumbers\n\n/-- Every graph has an `r`-neighborhood cover of radius `2r` and\ndegree at most its weak `2r`-coloring number. -/\naxiom exists_neighborhoodCover_degree_wcol {n : ℕ}\n    (G : SimpleGraph (Fin n)) (r : ℕ) :\n    ∃ X : Fin n → Set (Fin n),\n      IsNeighborhoodCover G r X (wcol G (2 * r))\n\nend Lax3.NeighborhoodCoverBound\n",
+      "statements": [
+        {
+          "id": "Lax3.NeighborhoodCoverBound.exists_neighborhoodCover_degree_wcol",
+          "signature": "exists_neighborhoodCover_degree_wcol : ∀ {n : Nat} (G : SimpleGraph (Fin n)) (r : Nat),\n  Exists fun X => Lax3.NeighborhoodCovers.IsNeighborhoodCover G r X (Lax12.ColoringNumbers.wcol G (instHMul.hMul 2 r))",
+          "startLine": 49,
+          "endLine": 54,
+          "doc": "Every graph has an `r`-neighborhood cover of radius `2r` and\ndegree at most its weak `2r`-coloring number."
+        }
+      ]
+    },
+    {
+      "id": "Lax3.NeighborhoodCovers",
+      "path": "concepts/Lax3/NeighborhoodCovers.lean",
+      "title": "Sparse neighborhood covers",
+      "type": "definition",
+      "description": "An *r*-neighborhood cover of a graph is a family of vertex sets, the\nclusters, such that the *r*-ball of every vertex is contained in some\ncluster. Its radius is the largest radius of a cluster, and its degree\nis the largest number of clusters any one vertex belongs to. A cover\nis useful when its radius is not much larger than *r* and its degree\nis small: local computations can then be done inside single clusters,\nand the degree bounds how often each vertex pays for them.\n\nThis is the notion of Grohe–Kreutzer–Siebertz §6 (radius 2*r* there,\nas here). It is the load distributor of the model-checking algorithm:\nthe truth of a local formula at a vertex is decided inside a cluster\ncontaining the vertex's ball, and a degree of *n*^ε caps the total\nsize of all clusters at *n*^(1+ε).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Clusters are indexed by vertices — `X : Fin n → Set (Fin n)`, cluster\n`X u` centered at `u` — rather than given as a bare family of sets.\nThe ordering-based construction that discharges the existence theorem\nproduces exactly this shape (one cluster per vertex, some possibly\nempty, `X u` inside the 2`r`-ball of `u`), the algorithm's\ncover-assignment map \"read the truth of a formula at `v` inside the\ncluster of `f(v)`\" needs the index to point at a center, and a bare\nfamily is recovered as the image of the indexing if ever needed.\nCentering also makes the radius condition self-witnessing: `X u` lies\nin the ball *of its own index*, no existential center.\n\nThe three fields quantify over all of `Fin n`, including vertices\noutside every cluster of interest; an empty cluster satisfies both the\nradius and the degree conditions vacuously, so this costs nothing.\nDegree is stated with `Set.ncard`, the cardinality idiom of the Lax12\nconcepts this submission composes with."
+        }
+      ],
+      "imports": [
+        "Lax3.ColoredGraphs"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Set.Card"
+      ],
+      "sourceText": "import Lax3.ColoredGraphs\nimport Mathlib.Data.Set.Card\n\n/-!\n---\ntitle: Sparse neighborhood covers\ntype: definition\n---\nAn *r*-neighborhood cover of a graph is a family of vertex sets, the\nclusters, such that the *r*-ball of every vertex is contained in some\ncluster. Its radius is the largest radius of a cluster, and its degree\nis the largest number of clusters any one vertex belongs to. A cover\nis useful when its radius is not much larger than *r* and its degree\nis small: local computations can then be done inside single clusters,\nand the degree bounds how often each vertex pays for them.\n\nThis is the notion of Grohe–Kreutzer–Siebertz §6 (radius 2*r* there,\nas here). It is the load distributor of the model-checking algorithm:\nthe truth of a local formula at a vertex is decided inside a cluster\ncontaining the vertex's ball, and a degree of *n*^ε caps the total\nsize of all clusters at *n*^(1+ε).\n\n# Formalization notes\n\nClusters are indexed by vertices — `X : Fin n → Set (Fin n)`, cluster\n`X u` centered at `u` — rather than given as a bare family of sets.\nThe ordering-based construction that discharges the existence theorem\nproduces exactly this shape (one cluster per vertex, some possibly\nempty, `X u` inside the 2`r`-ball of `u`), the algorithm's\ncover-assignment map \"read the truth of a formula at `v` inside the\ncluster of `f(v)`\" needs the index to point at a center, and a bare\nfamily is recovered as the image of the indexing if ever needed.\nCentering also makes the radius condition self-witnessing: `X u` lies\nin the ball *of its own index*, no existential center.\n\nThe three fields quantify over all of `Fin n`, including vertices\noutside every cluster of interest; an empty cluster satisfies both the\nradius and the degree conditions vacuously, so this costs nothing.\nDegree is stated with `Set.ncard`, the cardinality idiom of the Lax12\nconcepts this submission composes with.\n-/\n\nnamespace Lax3.NeighborhoodCovers\n\nopen Lax3.ColoredGraphs\n\n/-- `X` is an `r`-neighborhood cover of `G` of radius `2r` and degree\n`d`: every `r`-ball is inside some cluster, the cluster of `u` lies in\nthe `2r`-ball of `u`, and no vertex is in more than `d` clusters. -/\nstructure IsNeighborhoodCover {n : ℕ} (G : SimpleGraph (Fin n)) (r : ℕ)\n    (X : Fin n → Set (Fin n)) (d : ℕ) : Prop where\n  /-- Every `r`-ball is contained in some cluster. -/\n  ball_subset : ∀ v : Fin n, ∃ u : Fin n, ball G r v ⊆ X u\n  /-- Each cluster lies in the `2r`-ball of its center. -/\n  subset_ball : ∀ u : Fin n, X u ⊆ ball G (2 * r) u\n  /-- No vertex belongs to more than `d` clusters. -/\n  degree_le : ∀ v : Fin n, {u : Fin n | v ∈ X u}.ncard ≤ d\n\nend Lax3.NeighborhoodCovers\n",
+      "statements": []
+    },
+    {
+      "id": "Lax3.NormalForm",
+      "path": "concepts/Lax3/NormalForm.lean",
+      "title": "Normal form for distance logic",
+      "type": "theorem",
+      "description": "For *q* ≥ 1, every formula of distance logic of distance rank\n(*k*, *q*) is equivalent to a boolean combination of *local* formulas\nof distance rank (*k*, *q*) and explicit sentences \"there are *t*\nvertices, pairwise at distance more than *r*, all satisfying β\", where\n*t* ≤ *k* + *q*, the formula β is local of distance rank\n(*k*+1, *q*−1), the radius satisfies *r* ≤ ρ⁻(*k*, *q*), and β is\nsemantically (*r*/4)-local. This is Corollary 7 of the source note\n(arXiv:2606.23180), the analogue for distance logic of Gaifman's\nnormal form: it is the locality theorem of `Lax3.Locality` with the\nscatter sentences written out in the logic itself.\n\nThe step from the theorem to the corollary is the maximum-size scatter\nchoice: with it, \"the distinguished maximal scattered set has at least\n*t* elements\" says no more and no less than \"some *r*-scattered set of\n*t* vertices satisfies β\", and the latter is a sentence of distance\nlogic. No choice appears in the statement below, because after that\nreplacement there is nothing left for one to be attached to.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "`scatterFml` is the source's sentence (3) written out. Its distance\ncondition is \"larger than *r*\", the negation of the binary distance\natom \"at most *r*\" — the strict inequality of the source has no atom\nof its own and needs none. The empty conjunction is `verum`, a formula\nthat holds in every colored graph, so `scatterFml` is defined at every\n`t` including `0`, where it is vacuously true, as the source's\nsentence is. `verum` costs one unrestricted quantifier, which no\nstatement here notices: nothing constrains the distance rank of\n`scatterFml` itself, and the rank conditions of the normal form are\nconditions on the parameters `r`, `t`, β. Placing β at each bound\nvariable is what `DistFO.rename` is for.\n\nThe locality radius of β is `σ.r / 4` in ℕ, which rounds down. That\nmakes the claim slightly stronger than the source's real-valued *r*/4\nand it is still sound: the radius window of a scatter sentence of\ndistance rank (*k*, *q*) guarantees 4ρ⁻(*k*+*i*, *q*−*i*) ≤ *r*, so\nρ⁻(*k*+*i*, *q*−*i*) ≤ ⌊*r*/4⌋, and β is semantically\nρ⁻(*k*+*i*, *q*−*i*)-local.\n\nThe boolean combination reuses the `BC` reification and the\n`ScatterSentence` record of the locality concept as the carrier of the\nparameter triple (*r*, *t*, β); here the record is only data — its\nsatisfaction is *not* used, each atom being evaluated through\n`scatterFml` instead. Effectiveness is deliberately absent, for the\nreasons recorded in `Lax3.Locality`."
+        }
+      ],
+      "imports": [
+        "Lax3.Locality"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.List.FinRange"
+      ],
+      "sourceText": "import Lax3.Locality\nimport Mathlib.Data.List.FinRange\n\n/-!\n---\ntitle: Normal form for distance logic\ntype: theorem\n---\nFor *q* ≥ 1, every formula of distance logic of distance rank\n(*k*, *q*) is equivalent to a boolean combination of *local* formulas\nof distance rank (*k*, *q*) and explicit sentences \"there are *t*\nvertices, pairwise at distance more than *r*, all satisfying β\", where\n*t* ≤ *k* + *q*, the formula β is local of distance rank\n(*k*+1, *q*−1), the radius satisfies *r* ≤ ρ⁻(*k*, *q*), and β is\nsemantically (*r*/4)-local. This is Corollary 7 of the source note\n(arXiv:2606.23180), the analogue for distance logic of Gaifman's\nnormal form: it is the locality theorem of `Lax3.Locality` with the\nscatter sentences written out in the logic itself.\n\nThe step from the theorem to the corollary is the maximum-size scatter\nchoice: with it, \"the distinguished maximal scattered set has at least\n*t* elements\" says no more and no less than \"some *r*-scattered set of\n*t* vertices satisfies β\", and the latter is a sentence of distance\nlogic. No choice appears in the statement below, because after that\nreplacement there is nothing left for one to be attached to.\n\n# Formalization notes\n\n`scatterFml` is the source's sentence (3) written out. Its distance\ncondition is \"larger than *r*\", the negation of the binary distance\natom \"at most *r*\" — the strict inequality of the source has no atom\nof its own and needs none. The empty conjunction is `verum`, a formula\nthat holds in every colored graph, so `scatterFml` is defined at every\n`t` including `0`, where it is vacuously true, as the source's\nsentence is. `verum` costs one unrestricted quantifier, which no\nstatement here notices: nothing constrains the distance rank of\n`scatterFml` itself, and the rank conditions of the normal form are\nconditions on the parameters `r`, `t`, β. Placing β at each bound\nvariable is what `DistFO.rename` is for.\n\nThe locality radius of β is `σ.r / 4` in ℕ, which rounds down. That\nmakes the claim slightly stronger than the source's real-valued *r*/4\nand it is still sound: the radius window of a scatter sentence of\ndistance rank (*k*, *q*) guarantees 4ρ⁻(*k*+*i*, *q*−*i*) ≤ *r*, so\nρ⁻(*k*+*i*, *q*−*i*) ≤ ⌊*r*/4⌋, and β is semantically\nρ⁻(*k*+*i*, *q*−*i*)-local.\n\nThe boolean combination reuses the `BC` reification and the\n`ScatterSentence` record of the locality concept as the carrier of the\nparameter triple (*r*, *t*, β); here the record is only data — its\nsatisfaction is *not* used, each atom being evaluated through\n`scatterFml` instead. Effectiveness is deliberately absent, for the\nreasons recorded in `Lax3.Locality`.\n-/\n\nnamespace Lax3.NormalForm\n\nopen Lax3.ColoredGraphs Lax3.DistFO Lax3.ScatterSentences Lax3.Locality\n\nvariable {L : ℕ}\n\n/-- A formula that holds in every colored graph under every\nenvironment: no vertex differs from itself. -/\ndef verum {k : ℕ} : DistFO L k :=\n  .not (.exU (.not (.eq (Fin.last k) (Fin.last k))))\n\n/-- The conjunction of a list of formulas; the empty conjunction is\n`verum`. -/\ndef conj {k : ℕ} : List (DistFO L k) → DistFO L k\n  | [] => verum\n  | φ :: φs => .and φ (conj φs)\n\n/-- `k` unrestricted quantifiers in front of a formula with `k` free\nvariables, leaving a sentence. -/\ndef exUs : {k : ℕ} → DistFO L k → DistFO L 0\n  | 0, φ => φ\n  | _ + 1, φ => exUs (.exU φ)\n\n/-- The source's scatter sentence written out in distance logic: there\nare `t` vertices, pairwise at distance larger than `r`, each satisfying\n`β`. Distance larger than `r` is the negation of the binary distance\natom of radius `r`, and `β` is placed at each bound variable by\nrenaming. -/\ndef scatterFml (r t : ℕ) (β : DistFO L 1) : DistFO L 0 :=\n  exUs (conj\n    (((List.finRange t).flatMap fun i =>\n        (List.finRange t).filterMap fun j =>\n          if i = j then none else some (DistFO.not (DistFO.distLe r i j))) ++\n      (List.finRange t).map fun i => rename (fun _ : Fin 1 => i) β))\n\n/-- **Normal form for distance logic** (Corollary 7 of\narXiv:2606.23180). For `q ≥ 1`, every formula of distance rank `(k, q)`\nis equivalent to a boolean combination of local formulas of distance\nrank `(k, q)` and sentences `scatterFml r t β` — there are `t` vertices,\npairwise at distance larger than `r`, all satisfying `β` — where\n`t ≤ k + q`, the formula `β` is local of distance rank `(k + 1, q - 1)`,\nthe radius satisfies `r ≤ ρ⁻(k, q)`, and `β` is semantically\n`r / 4`-local. -/\naxiom normalForm {k q : ℕ} (hq : 1 ≤ q) (φ : DistFO L k) (hφ : DistFO.DRank k q φ) :\n    ∃ b : BC (DistFO L k ⊕ ScatterSentence L),\n      (∀ ψ : DistFO L k, Sum.inl ψ ∈ b.atoms → DistFO.IsLocal ψ ∧ DistFO.DRank k q ψ) ∧\n      (∀ σ : ScatterSentence L, Sum.inr σ ∈ b.atoms →\n        σ.t ≤ k + q ∧ DistFO.IsLocal σ.β ∧ DistFO.DRank (k + 1) (q - 1) σ.β ∧\n          σ.r ≤ rhoMinus k q ∧ DistFO.SemanticallyLocal (σ.r / 4) σ.β) ∧\n      ∀ (n : ℕ) (G : SimpleGraph (Fin n)) (col : Coloring n L) (m : Fin k → Fin n),\n        DistFO.Sat G col m φ ↔\n          b.eval (Sum.elim (DistFO.Sat G col m)\n            (fun σ => DistFO.Sat G col Fin.elim0 (scatterFml σ.r σ.t σ.β)))\n\nend Lax3.NormalForm\n",
+      "statements": [
+        {
+          "id": "Lax3.NormalForm.normalForm",
+          "signature": "normalForm : ∀ {L k q : Nat},\n  instLENat.le 1 q →\n    ∀ (φ : Lax3.DistFO.DistFO L k),\n      Lax3.DistFO.DRank k q φ →\n        Exists fun b =>\n          And\n            (∀ (ψ : Lax3.DistFO.DistFO L k),\n              List.instMembership.mem b.atoms (Sum.inl ψ) → And (Lax3.DistFO.IsLocal ψ) (Lax3.DistFO.DRank k q ψ))\n            (And\n              (∀ (σ : Lax3.ScatterSentences.ScatterSentence L),\n                List.instMembership.mem b.atoms (Sum.inr σ) →\n                  And (instLENat.le σ.t (instHAdd.hAdd k q))\n                    (And (Lax3.DistFO.IsLocal σ.β)\n                      (And (Lax3.DistFO.DRank (instHAdd.hAdd k 1) (instHSub.hSub q 1) σ.β)\n                        (And (instLENat.le σ.r (Lax3.DistFO.rhoMinus k q))\n                          (Lax3.DistFO.SemanticallyLocal (instHDiv.hDiv σ.r 4) σ.β)))))\n              (∀ (n : Nat) (G : SimpleGraph (Fin n)) (col : Lax3.ColoredGraphs.Coloring n L) (m : Fin k → Fin n),\n                Iff (Lax3.DistFO.Sat G col m φ)\n                  (Lax3.Locality.BC.eval\n                    (Sum.elim (Lax3.DistFO.Sat G col m) fun σ =>\n                      Lax3.DistFO.Sat G col Fin.elim0 (Lax3.NormalForm.scatterFml σ.r σ.t σ.β))\n                    b)))",
+          "startLine": 91,
+          "endLine": 108,
+          "doc": "**Normal form for distance logic** (Corollary 7 of\narXiv:2606.23180). For `q ≥ 1`, every formula of distance rank `(k, q)`\nis equivalent to a boolean combination of local formulas of distance\nrank `(k, q)` and sentences `scatterFml r t β` — there are `t` vertices,\npairwise at distance larger than `r`, all satisfying `β` — where\n`t ≤ k + q`, the formula `β` is local of distance rank `(k + 1, q - 1)`,\nthe radius satisfies `r ≤ ρ⁻(k, q)`, and `β` is semantically\n`r / 4`-local."
+        }
+      ]
+    },
+    {
+      "id": "Lax3.NowhereDenseSplitter",
+      "path": "concepts/Lax3/NowhereDenseSplitter.lean",
+      "title": "Splitter wins on nowhere dense classes",
+      "type": "theorem",
+      "description": "On a nowhere dense class, Splitter wins the isolation splitter game:\nfor every radius *r* there are a round bound *ℓ* and a batch bound *m*,\ndepending only on the class and *r*, such that Splitter wins the\n(*ℓ*, *m*, *r*)-game on every member.\n\nThis is Lemma 4.2 of Chapter 4 of the source lecture notes (2019/20\nedition) — Theorem 4.2 of Grohe–Kreutzer–Siebertz in the batch form —\ntransposed to the isolation variant of the game. The bound is the\nqualitative heart of the model-checking algorithm: the game tree has\nbounded depth, so the recursion that descends it does bounded work per\nvertex.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The hypothesis is `Lax12.NowhereDense` verbatim, and the proof to come\nderives the strategy from Lax12's `uniformlyQuasiWide_of_nowhereDense`,\nfollowing the notes' path-maintenance strategy: Splitter maintains\nBFS paths to the connector vertices of earlier rounds and isolates the\nstill-active vertices of those paths, with `ℓ = N_r(2·s_r + 2)` and\n`m = ℓ · (r + 1)` for the quasi-wideness margins `N_r, s_r`. Two\nremarks recorded for the discharge. First, the notes state\n`ℓ = N_r(2·s_r + 1)`, but their proof extracts `s_r + 1` pairwise\ndisjoint paths so that one avoids the deleted separator, which needs\nthe `+ 2` form; the formalization takes the `+ 2` form and fixes the\nslip silently. Second, the isolation variant needs no new argument\nover the notes' deletion variant: arenas only lose edges, so a vertex\nisolated in some round has no incident edge in any later arena — the\npaths the strategy cuts stay cut, and the distance-independent set the\ncontradiction extracts is independent in exactly Lax12's\n`deleteVerts` sense, which is the conclusion shape of the endorsed\nquasi-wideness theorem.\n\nThe statement quantifies the strategy away: it asserts winning\npositions, not a strategy function. The explicit strategy — the object\nthe model-checking program executes — is constructed proofs-side with\nthis axiom's discharge and consumed there by the program-correctness\nproofs; surfacing it would freeze implementation detail into the\nconcept."
+        }
+      ],
+      "imports": [
+        "Lax12.NowhereDenseClasses",
+        "Lax3.SplitterGame"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax3.SplitterGame\nimport Lax12.NowhereDenseClasses\n\n/-!\n---\ntitle: Splitter wins on nowhere dense classes\ntype: theorem\n---\nOn a nowhere dense class, Splitter wins the isolation splitter game:\nfor every radius *r* there are a round bound *ℓ* and a batch bound *m*,\ndepending only on the class and *r*, such that Splitter wins the\n(*ℓ*, *m*, *r*)-game on every member.\n\nThis is Lemma 4.2 of Chapter 4 of the source lecture notes (2019/20\nedition) — Theorem 4.2 of Grohe–Kreutzer–Siebertz in the batch form —\ntransposed to the isolation variant of the game. The bound is the\nqualitative heart of the model-checking algorithm: the game tree has\nbounded depth, so the recursion that descends it does bounded work per\nvertex.\n\n# Formalization notes\n\nThe hypothesis is `Lax12.NowhereDense` verbatim, and the proof to come\nderives the strategy from Lax12's `uniformlyQuasiWide_of_nowhereDense`,\nfollowing the notes' path-maintenance strategy: Splitter maintains\nBFS paths to the connector vertices of earlier rounds and isolates the\nstill-active vertices of those paths, with `ℓ = N_r(2·s_r + 2)` and\n`m = ℓ · (r + 1)` for the quasi-wideness margins `N_r, s_r`. Two\nremarks recorded for the discharge. First, the notes state\n`ℓ = N_r(2·s_r + 1)`, but their proof extracts `s_r + 1` pairwise\ndisjoint paths so that one avoids the deleted separator, which needs\nthe `+ 2` form; the formalization takes the `+ 2` form and fixes the\nslip silently. Second, the isolation variant needs no new argument\nover the notes' deletion variant: arenas only lose edges, so a vertex\nisolated in some round has no incident edge in any later arena — the\npaths the strategy cuts stay cut, and the distance-independent set the\ncontradiction extracts is independent in exactly Lax12's\n`deleteVerts` sense, which is the conclusion shape of the endorsed\nquasi-wideness theorem.\n\nThe statement quantifies the strategy away: it asserts winning\npositions, not a strategy function. The explicit strategy — the object\nthe model-checking program executes — is constructed proofs-side with\nthis axiom's discharge and consumed there by the program-correctness\nproofs; surfacing it would freeze implementation detail into the\nconcept.\n-/\n\nnamespace Lax3.NowhereDenseSplitter\n\nopen Lax3.SplitterGame\nopen Lax12.GraphClasses Lax12.NowhereDenseClasses\n\n/-- On a nowhere dense class, for every radius there are round and\nbatch bounds with which Splitter wins the isolation splitter game on\nevery member. -/\naxiom splitterWins_of_nowhereDense (C : GraphClass) (h : NowhereDense C)\n    (r : ℕ) :\n    ∃ ℓ m : ℕ, ∀ (n : ℕ) (G : SimpleGraph (Fin n)), C n G →\n      SplitterWins m r ℓ G\n\nend Lax3.NowhereDenseSplitter\n",
+      "statements": [
+        {
+          "id": "Lax3.NowhereDenseSplitter.splitterWins_of_nowhereDense",
+          "signature": "splitterWins_of_nowhereDense : ∀ (C : Lax12.GraphClasses.GraphClass),\n  Lax12.NowhereDenseClasses.NowhereDense C →\n    ∀ (r : Nat),\n      Exists fun ℓ =>\n        Exists fun m => ∀ (n : Nat) (G : SimpleGraph (Fin n)), C n G → Lax3.SplitterGame.SplitterWins m r ℓ G",
+          "startLine": 54,
+          "endLine": 60,
+          "doc": "On a nowhere dense class, for every radius there are round and\nbatch bounds with which Splitter wins the isolation splitter game on\nevery member."
+        }
+      ]
+    },
+    {
+      "id": "Lax3.ScatterSentences",
+      "path": "concepts/Lax3/ScatterSentences.lean",
+      "title": "Scatter sentences",
+      "type": "definition",
+      "description": "A set of vertices is *r*-scattered if its members have pairwise\ndistance larger than *r*. A *scatter sentence* asserts that a\ndistinguished *r*-scattered set of the vertices satisfying a\none-variable formula β has at least *t* elements. Which scattered set\nis distinguished is the content of a *scatter choice*: for each graph,\nradius and vertex set it names a number that is the size of *some*\ninclusion-wise maximal *r*-scattered subset of that set. Two choices\nare given — the maximum size of a scattered subset, and the size of the\nset the greedy process produces when it runs through the vertices in\norder and takes every vertex it can.\n\nThe locality theorem of `Lax3.Locality` rewrites a formula into a\nboolean combination of local formulas and scatter sentences. Scatter\nsentences of distance rank (*k*, *q*) are those whose parameters obey\nthe source's schedule: at most *k* + *q* witnesses, a local β of\ndistance rank (*k*+*i*, *q*−*i*) for some 1 ≤ *i* ≤ *q*, and a radius\nbetween 4ρ⁻(*k*+*i*, *q*−*i*) and 9^(*k*+*i*)ρ⁻(*k*+*i*, *q*−*i*). The\nlower bound makes β semantically (*r*/4)-local, which is what the proof\nof the theorem consumes; the upper bound keeps the radius below\nρ⁻(*k*, *q*), which is what keeps the rank from growing.\n\nThis is §2.1 of the source note (arXiv:2606.23180), specialized to the\nfinite colored graphs of `Lax3.ColoredGraphs`.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The scatter choice is per graph, radius and vertex set; the source's is\nper structure, radius and formula β. The two agree wherever a scatter\nsentence is evaluated, since the vertex set involved is always\n{*a* : β(*a*) holds}, and the coarser form is strictly stronger: it\nforces the same value for two formulas defining the same set, and it is\nuniform in the coloring, so a scatter value cannot change when colors\nare added that β does not mention. Both are properties the algorithm\nneeds and neither is available from the source's form. The dependence\non the graph is genuine and stays.\n\n\"*r*-scattered\" is Lax12's `DistIndependent`: a set is distance-*r*\nindependent in `G` when every walk between two distinct members is\nlonger than *r*, which is the source's \"pairwise distance larger than\n*r*\" in the Gaifman graph, since the Gaifman graph of a colored graph\nis the graph. It is used as it stands and not restated here.\nInclusion-wise maximality is mathlib's `Maximal`, over the property of\nbeing a scattered subset of the given set.\n\nOver `Fin n` every vertex set is finite, so the source's value ∞ — for\nstructures with arbitrarily large scattered subsets — cannot arise and\nis not carried; `ScatterChoice.size` is ℕ-valued.\n\n`greedyChoice` is the source's greedy process in the canonical order on\n`Fin n`, phrased as the recursion it is: a vertex is selected exactly\nwhen it belongs to the set and no *earlier selected* vertex is within\ndistance *r* of it. Running the process along a list and reading off\nits result gives the same set, one step of the recursion at a time; the\nrecursion is what the proofs use and what the machine implements.\nBoth choices are `noncomputable` in the Lean sense, because both take\nthe cardinality of a set. \"Computable\" in the source's sense — and the\nsense the algorithm needs — means computed by the RAM program of the\nheadline theorem, which runs exactly this `Fin`-order greedy over the\ntabulated truth values of β; it has nothing to do with code extraction\nfrom these definitions.\n\nThe distance rank of a scatter sentence is the source's condition\n(2)/(eq:scatter-radius) verbatim, with the bound *t* ≤ *k* + *q* stated\nalongside the radius window rather than in the surrounding prose.\nNothing here requires *q* ≥ 1: for *q* = 0 the condition 1 ≤ *i* ≤ *q*\nis unsatisfiable, so no scatter sentence has distance rank (*k*, 0),\nwhich is the source's convention made into a fact."
+        }
+      ],
+      "imports": [
+        "Lax12.UniformQuasiWideness",
+        "Lax3.DistFO"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Walk.Operations",
+        "Mathlib.Data.Nat.Lattice",
+        "Mathlib.Data.Set.Card",
+        "Mathlib.Order.Minimal"
+      ],
+      "sourceText": "import Lax3.DistFO\nimport Lax12.UniformQuasiWideness\nimport Mathlib.Combinatorics.SimpleGraph.Walk.Operations\nimport Mathlib.Data.Nat.Lattice\nimport Mathlib.Data.Set.Card\nimport Mathlib.Order.Minimal\n\n/-!\n---\ntitle: Scatter sentences\ntype: definition\n---\nA set of vertices is *r*-scattered if its members have pairwise\ndistance larger than *r*. A *scatter sentence* asserts that a\ndistinguished *r*-scattered set of the vertices satisfying a\none-variable formula β has at least *t* elements. Which scattered set\nis distinguished is the content of a *scatter choice*: for each graph,\nradius and vertex set it names a number that is the size of *some*\ninclusion-wise maximal *r*-scattered subset of that set. Two choices\nare given — the maximum size of a scattered subset, and the size of the\nset the greedy process produces when it runs through the vertices in\norder and takes every vertex it can.\n\nThe locality theorem of `Lax3.Locality` rewrites a formula into a\nboolean combination of local formulas and scatter sentences. Scatter\nsentences of distance rank (*k*, *q*) are those whose parameters obey\nthe source's schedule: at most *k* + *q* witnesses, a local β of\ndistance rank (*k*+*i*, *q*−*i*) for some 1 ≤ *i* ≤ *q*, and a radius\nbetween 4ρ⁻(*k*+*i*, *q*−*i*) and 9^(*k*+*i*)ρ⁻(*k*+*i*, *q*−*i*). The\nlower bound makes β semantically (*r*/4)-local, which is what the proof\nof the theorem consumes; the upper bound keeps the radius below\nρ⁻(*k*, *q*), which is what keeps the rank from growing.\n\nThis is §2.1 of the source note (arXiv:2606.23180), specialized to the\nfinite colored graphs of `Lax3.ColoredGraphs`.\n\n# Formalization notes\n\nThe scatter choice is per graph, radius and vertex set; the source's is\nper structure, radius and formula β. The two agree wherever a scatter\nsentence is evaluated, since the vertex set involved is always\n{*a* : β(*a*) holds}, and the coarser form is strictly stronger: it\nforces the same value for two formulas defining the same set, and it is\nuniform in the coloring, so a scatter value cannot change when colors\nare added that β does not mention. Both are properties the algorithm\nneeds and neither is available from the source's form. The dependence\non the graph is genuine and stays.\n\n\"*r*-scattered\" is Lax12's `DistIndependent`: a set is distance-*r*\nindependent in `G` when every walk between two distinct members is\nlonger than *r*, which is the source's \"pairwise distance larger than\n*r*\" in the Gaifman graph, since the Gaifman graph of a colored graph\nis the graph. It is used as it stands and not restated here.\nInclusion-wise maximality is mathlib's `Maximal`, over the property of\nbeing a scattered subset of the given set.\n\nOver `Fin n` every vertex set is finite, so the source's value ∞ — for\nstructures with arbitrarily large scattered subsets — cannot arise and\nis not carried; `ScatterChoice.size` is ℕ-valued.\n\n`greedyChoice` is the source's greedy process in the canonical order on\n`Fin n`, phrased as the recursion it is: a vertex is selected exactly\nwhen it belongs to the set and no *earlier selected* vertex is within\ndistance *r* of it. Running the process along a list and reading off\nits result gives the same set, one step of the recursion at a time; the\nrecursion is what the proofs use and what the machine implements.\nBoth choices are `noncomputable` in the Lean sense, because both take\nthe cardinality of a set. \"Computable\" in the source's sense — and the\nsense the algorithm needs — means computed by the RAM program of the\nheadline theorem, which runs exactly this `Fin`-order greedy over the\ntabulated truth values of β; it has nothing to do with code extraction\nfrom these definitions.\n\nThe distance rank of a scatter sentence is the source's condition\n(2)/(eq:scatter-radius) verbatim, with the bound *t* ≤ *k* + *q* stated\nalongside the radius window rather than in the surrounding prose.\nNothing here requires *q* ≥ 1: for *q* = 0 the condition 1 ≤ *i* ≤ *q*\nis unsatisfiable, so no scatter sentence has distance rank (*k*, 0),\nwhich is the source's convention made into a fact.\n-/\n\nnamespace Lax3.ScatterSentences\n\nopen Lax3.ColoredGraphs Lax3.DistFO Lax12.UniformQuasiWideness\n\n/-- A choice of scatter values: for every graph `G`, radius `r` and\nvertex set `X`, a number `size G r X` which is the cardinality of some\ninclusion-wise maximal `r`-scattered subset of `X`. This is the\nsource's \"fix arbitrarily and once and for all a value `s`\", made a\nparameter: every statement about scatter sentences holds for every\nchoice. -/\nstructure ScatterChoice where\n  /-- The chosen scatter value of a graph, radius and vertex set. -/\n  size : ∀ {n : ℕ}, SimpleGraph (Fin n) → ℕ → Set (Fin n) → ℕ\n  /-- The chosen value is realized by an inclusion-wise maximal\n  `r`-scattered subset of `X`. -/\n  spec : ∀ {n : ℕ} (G : SimpleGraph (Fin n)) (r : ℕ) (X : Set (Fin n)),\n    ∃ S : Set (Fin n), S ⊆ X ∧\n      Maximal (fun T => T ⊆ X ∧ DistIndependent G r T) S ∧ S.ncard = size G r X\n\n/-- The source's \"maximum size\" choice: the largest cardinality of an\n`r`-scattered subset of `X`. A subset of that size is inclusion-wise\nmaximal, since no scattered set can properly contain it. -/\nnoncomputable def maxChoice : ScatterChoice where\n  size := fun {n} G r X =>\n    sSup {c | ∃ S : Set (Fin n), S ⊆ X ∧ DistIndependent G r S ∧ S.ncard = c}\n  spec := by\n    intro n G r X\n    set C : Set ℕ := {c | ∃ S : Set (Fin n), S ⊆ X ∧ DistIndependent G r S ∧ S.ncard = c}\n    have hne : C.Nonempty :=\n      ⟨0, ∅, Set.empty_subset _, Set.pairwise_empty _, Set.ncard_empty _⟩\n    have hbdd : BddAbove C := by\n      refine ⟨n, ?_⟩\n      rintro c ⟨S, -, -, rfl⟩\n      calc S.ncard ≤ (Set.univ : Set (Fin n)).ncard :=\n            Set.ncard_le_ncard (Set.subset_univ S) Set.finite_univ\n        _ = n := by simp\n    obtain ⟨S, hSX, hSind, hScard⟩ := Nat.sSup_mem hne hbdd\n    refine ⟨S, hSX, ⟨⟨hSX, hSind⟩, ?_⟩, hScard⟩\n    rintro T ⟨hTX, hTind⟩ hST\n    have hT : T.ncard ∈ C := ⟨T, hTX, hTind, rfl⟩\n    have hle : T.ncard ≤ S.ncard := hScard ▸ le_csSup hbdd hT\n    exact (Set.eq_of_subset_of_ncard_le hST hle).symm.subset\n\n/-- The greedy process of the source, in the canonical order on\n`Fin n`: the vertex `v` is selected exactly when it lies in `X` and no\nearlier selected vertex is within distance `r` of it. -/\ndef GreedyMem {n : ℕ} (G : SimpleGraph (Fin n)) (r : ℕ) (X : Set (Fin n)) (v : Fin n) : Prop :=\n  v ∈ X ∧ ∀ u : Fin n, u < v → GreedyMem G r X u → ¬ WithinDist G r u v\ntermination_by v.val\n\n/-- The set the greedy process selects. -/\ndef greedySet {n : ℕ} (G : SimpleGraph (Fin n)) (r : ℕ) (X : Set (Fin n)) : Set (Fin n) :=\n  {v | GreedyMem G r X v}\n\n/-- The source's \"greedy choice\": the size of the set produced by the\ngreedy process on `X` in the canonical order on `Fin n`. That set is\nscattered because a selected vertex is far from every earlier selected\none, and inclusion-wise maximal because a vertex of `X` it passed over\nis within distance `r` of a selected one. -/\nnoncomputable def greedyChoice : ScatterChoice where\n  size := fun {_n} G r X => (greedySet G r X).ncard\n  spec := by\n    intro n G r X\n    have hmem : ∀ v : Fin n, v ∈ greedySet G r X ↔\n        v ∈ X ∧ ∀ u : Fin n, u < v → u ∈ greedySet G r X → ¬ WithinDist G r u v := by\n      intro v\n      rw [greedySet, Set.mem_setOf_eq, GreedyMem]\n      rfl\n    have hsub : greedySet G r X ⊆ X := fun v hv => ((hmem v).1 hv).1\n    have hind : DistIndependent G r (greedySet G r X) := by\n      intro a ha b hb hab p\n      rcases lt_or_gt_of_ne hab with h | h\n      · by_contra hlen\n        exact ((hmem b).1 hb).2 a h ha ⟨p, by omega⟩\n      · by_contra hlen\n        refine ((hmem a).1 ha).2 b h hb ⟨p.reverse, ?_⟩\n        rw [SimpleGraph.Walk.length_reverse]\n        omega\n    refine ⟨greedySet G r X, hsub, ⟨⟨hsub, hind⟩, ?_⟩, rfl⟩\n    rintro T ⟨hTX, hTind⟩ hST v hvT\n    by_contra hvS\n    rw [hmem] at hvS\n    push Not at hvS\n    obtain ⟨u, hlt, huS, w, hw⟩ := hvS (hTX hvT)\n    exact absurd (hTind (hST huS) hvT (ne_of_lt hlt) w) (by omega)\n\n/-- A scatter sentence: there is an `r`-scattered set of `t` vertices\nsatisfying the one-variable formula `β`, in the sense fixed by a\nscatter choice. -/\nstructure ScatterSentence (L : ℕ) where\n  /-- The radius at which the witnesses are scattered. -/\n  r : ℕ\n  /-- The one-variable formula the witnesses satisfy. -/\n  β : DistFO L 1\n  /-- The number of witnesses demanded. -/\n  t : ℕ\n\nvariable {L n : ℕ}\n\n/-- The scatter sentence holds in the colored graph `(G, col)` when the\nchosen scatter value of the set defined by `β`, at radius `r`, is at\nleast `t`. -/\ndef ScatterSentence.Sat (choice : ScatterChoice) (G : SimpleGraph (Fin n))\n    (col : Coloring n L) (σ : ScatterSentence L) : Prop :=\n  σ.t ≤ choice.size G σ.r {a | DistFO.Sat G col (fun _ => a) σ.β}\n\n/-- The scatter sentence has distance rank `(k, q)`: it demands at most\n`k + q` witnesses, and for some `1 ≤ i ≤ q` its formula `β` is local of\ndistance rank `(k + i, q - i)` and its radius lies in the source's\nwindow `4ρ⁻(k + i, q - i) ≤ r ≤ 9 ^ (k + i) · ρ⁻(k + i, q - i)`. -/\ndef ScatterSentence.DRank (k q : ℕ) (σ : ScatterSentence L) : Prop :=\n  σ.t ≤ k + q ∧ ∃ i, 1 ≤ i ∧ i ≤ q ∧ DistFO.IsLocal σ.β ∧\n    DistFO.DRank (k + i) (q - i) σ.β ∧\n    4 * rhoMinus (k + i) (q - i) ≤ σ.r ∧ σ.r ≤ 9 ^ (k + i) * rhoMinus (k + i) (q - i)\n\nend Lax3.ScatterSentences\n",
+      "statements": []
+    },
+    {
+      "id": "Lax3.SplitterGame",
+      "path": "concepts/Lax3/SplitterGame.lean",
+      "title": "The isolation splitter game",
+      "type": "definition",
+      "description": "The (*ℓ*, *m*, *r*)-splitter game is played on a graph by two players,\nConnector and Splitter. In each round, Connector picks a vertex *v* of\nthe current arena; the arena is restricted to the ball of radius *r*\naround *v*; then Splitter picks a batch *W* of at most *m* vertices\ninside that ball and isolates it — every edge incident to *W* is\ndeleted. Splitter wins when the arena becomes edgeless; if that has not\nhappened after *ℓ* rounds, Connector wins.\n\nThe game is Definition 4.1 of Chapter 4 of the source lecture notes\n(2019/20 edition), in an *isolation* variant: where the notes delete\nSplitter's vertices from the arena, here the batch keeps its vertices\nand loses its incident edges, and the winning condition \"the arena is\nempty\" becomes \"the arena is edgeless\". Vertices never disappear, so\nevery arena of a play lives on the vertex set of the original graph.\nThe model-checking algorithm of this submission descends the game tree\nof this variant: keeping the vertices is what lets its rewriting step\ntranslate formulas through an isolation uniformly, with no case split\non whether a variable lands on the batch.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Both moves of a round are the same operation: restricting to the ball\naround Connector's vertex is `deleteVerts` of the ball's complement,\nand isolating Splitter's batch is `deleteVerts` of the batch —\nLax12's `deleteVerts`, which removes the edges incident to a set and\nkeeps the vertex type, is used for both, and is not restated here.\nArenas therefore only ever lose edges, which is the invariant the win\nproof and the evaluator downstream both ride on (a vertex isolated\nonce is isolated in every later arena).\n\n`SplitterWins m r ℓ G` is defined by recursion on the remaining round\nbudget: with budget `0` Splitter has won exactly if the arena is\nedgeless; with positive budget, if the arena is edgeless or for every\nConnector move there is a batch after which he wins with the rest of\nthe budget. This says exactly \"Splitter has a winning strategy within\n`ℓ` rounds\" without carrying strategy functions on the surface; the\nexplicit strategy — the object the algorithm executes — appears\nproofs-side with the win theorem's discharge. (An inductive\nwinning-position predicate would say the same thing, but its step\nconstructor nests the ∀/∃ alternation of a round through `Exists`,\nwhich Lean's kernel rejects as a nested inductive; the recursion on\nthe budget is the same mathematics and unfolds one round at a time.)\nAllowing the edgeless win at any budget, rather than only after a\nmove, only enlarges Splitter's winning positions by games he has\nalready won and matches the algorithm's base case, which stops at an\nedgeless arena before playing a round.\n\nThe batch is a `Set` with an `ncard` bound, the idiom of Lax12's\nquasi-wideness statements. The edgeless condition is `G = ⊥`,\nmathlib's empty graph."
+        }
+      ],
+      "imports": [
+        "Lax12.UniformQuasiWideness",
+        "Lax3.ColoredGraphs"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax3.ColoredGraphs\nimport Lax12.UniformQuasiWideness\n\n/-!\n---\ntitle: The isolation splitter game\ntype: definition\n---\nThe (*ℓ*, *m*, *r*)-splitter game is played on a graph by two players,\nConnector and Splitter. In each round, Connector picks a vertex *v* of\nthe current arena; the arena is restricted to the ball of radius *r*\naround *v*; then Splitter picks a batch *W* of at most *m* vertices\ninside that ball and isolates it — every edge incident to *W* is\ndeleted. Splitter wins when the arena becomes edgeless; if that has not\nhappened after *ℓ* rounds, Connector wins.\n\nThe game is Definition 4.1 of Chapter 4 of the source lecture notes\n(2019/20 edition), in an *isolation* variant: where the notes delete\nSplitter's vertices from the arena, here the batch keeps its vertices\nand loses its incident edges, and the winning condition \"the arena is\nempty\" becomes \"the arena is edgeless\". Vertices never disappear, so\nevery arena of a play lives on the vertex set of the original graph.\nThe model-checking algorithm of this submission descends the game tree\nof this variant: keeping the vertices is what lets its rewriting step\ntranslate formulas through an isolation uniformly, with no case split\non whether a variable lands on the batch.\n\n# Formalization notes\n\nBoth moves of a round are the same operation: restricting to the ball\naround Connector's vertex is `deleteVerts` of the ball's complement,\nand isolating Splitter's batch is `deleteVerts` of the batch —\nLax12's `deleteVerts`, which removes the edges incident to a set and\nkeeps the vertex type, is used for both, and is not restated here.\nArenas therefore only ever lose edges, which is the invariant the win\nproof and the evaluator downstream both ride on (a vertex isolated\nonce is isolated in every later arena).\n\n`SplitterWins m r ℓ G` is defined by recursion on the remaining round\nbudget: with budget `0` Splitter has won exactly if the arena is\nedgeless; with positive budget, if the arena is edgeless or for every\nConnector move there is a batch after which he wins with the rest of\nthe budget. This says exactly \"Splitter has a winning strategy within\n`ℓ` rounds\" without carrying strategy functions on the surface; the\nexplicit strategy — the object the algorithm executes — appears\nproofs-side with the win theorem's discharge. (An inductive\nwinning-position predicate would say the same thing, but its step\nconstructor nests the ∀/∃ alternation of a round through `Exists`,\nwhich Lean's kernel rejects as a nested inductive; the recursion on\nthe budget is the same mathematics and unfolds one round at a time.)\nAllowing the edgeless win at any budget, rather than only after a\nmove, only enlarges Splitter's winning positions by games he has\nalready won and matches the algorithm's base case, which stops at an\nedgeless arena before playing a round.\n\nThe batch is a `Set` with an `ncard` bound, the idiom of Lax12's\nquasi-wideness statements. The edgeless condition is `G = ⊥`,\nmathlib's empty graph.\n-/\n\nnamespace Lax3.SplitterGame\n\nopen Lax3.ColoredGraphs\nopen Lax12.UniformQuasiWideness\n\n/-- Winning positions of Splitter in the (`ℓ`, `m`, `r`)-isolation\nsplitter game, by recursion on the remaining budget `ℓ`: the arena `G`\nis already edgeless, or a round is left and for every vertex Connector\nplays there is a batch of at most `m` vertices of its `r`-ball whose\nisolation, after restricting the arena to that ball, is a winning\nposition with one round fewer. -/\ndef SplitterWins {n : ℕ} (m r : ℕ) : ℕ → SimpleGraph (Fin n) → Prop\n  | 0, G => G = ⊥\n  | ℓ + 1, G => G = ⊥ ∨\n      ∀ v : Fin n, ∃ W : Set (Fin n), W ⊆ ball G r v ∧ W.ncard ≤ m ∧\n        SplitterWins m r ℓ (deleteVerts (deleteVerts G (ball G r v)ᶜ) W)\n\nend Lax3.SplitterGame\n",
+      "statements": []
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax3Proofs.Assembly.locality",
+      "path": "proofs/Lax3Proofs/Assembly.lean",
+      "conclusion": "Lax3.Locality.locality",
+      "assumptions": [],
+      "description": "**The locality theorem** (Theorem 1 of arXiv:2606.23180): every formula\nof distance rank `(k, q)` is equivalent to a boolean combination of local\nformulas and scatter sentences, all of distance rank `(k, q)`.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Structural induction on the formula, the rank read off by inverting the\n`DRank` derivation at each step. Atoms are their own combinations,\nboolean connectives compose the combinations of their parts, and both\nquantifiers first apply the induction hypothesis to the body and then\npull the scatter sentences — being sentences, they do not see the bound\nvariable — outside the quantifier, leaving one local formula per truth\npattern of them. A local quantifier is then simply put back in front of\nthat formula. An unrestricted quantifier is the source's real case: over\nan empty context it becomes a scatter sentence with a single witness,\nand otherwise the witness is split into a near one, which is a local\nquantification guarded over the whole tuple, and a far one, which the\nseparation lemma and the far-quantification lemma turn into local\nformulas and scatter sentences. See the module docstring for the map of\nthe imported pieces."
+        }
+      ]
+    },
+    {
+      "id": "Lax3Proofs.Assembly.normalForm",
+      "path": "proofs/Lax3Proofs/Assembly.lean",
+      "conclusion": "Lax3.NormalForm.normalForm",
+      "assumptions": [],
+      "description": "**The normal form for distance logic** (Corollary 7 of\narXiv:2606.23180): for `q ≥ 1`, every formula of distance rank `(k, q)`\nis equivalent to a boolean combination of local formulas of distance rank\n`(k, q)` and the written-out sentences \"there are `t` vertices, pairwise\nat distance larger than `r`, all satisfying `β`\".",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "The locality theorem at the maximum-size scatter choice, with the same\nboolean combination. With that choice a scatter sentence is definable in\nthe logic — `Lax3Proofs.ScatterFml.sat_scatterFml` — so replacing each\nscatter atom's evaluation by satisfaction of `scatterFml` changes no\ntruth value, and `Lax3Proofs.BCAlgebra.eval_congr` carries the\nreplacement through the combination. The five conditions the corollary\nstates about a scatter atom are the five bridges of\n`Lax3Proofs.ScatterFml` applied to the distance rank the locality theorem\nalready provides; `q ≥ 1` is used by exactly one of them, the one that\nclimbs the rank witness back to `(k + 1, q − 1)`."
+        }
+      ]
+    },
+    {
+      "id": "Lax3Proofs.CoverConstruction.exists_neighborhoodCover_degree_wcol",
+      "path": "proofs/Lax3Proofs/CoverConstruction.lean",
+      "conclusion": "Lax3.NeighborhoodCoverBound.exists_neighborhoodCover_degree_wcol",
+      "assumptions": [],
+      "description": "**Neighborhood covers of weak coloring degree** (Theorem 6.2 of\nGrohe–Kreutzer–Siebertz, via their Lemma 6.9): every graph has, for every\nradius `r`, an `r`-neighborhood cover of radius `2r` whose degree is at\nmost its weak `2r`-coloring number.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Take an ordering `π` attaining `wcol G (2r)` — the defining infimum is\nover a nonempty set of bounds, so it is attained — and let the cluster of\n`u` be `{w | u ∈ wreach G π (2r) w}`, the set of vertices from which `u`\nis weakly `2r`-reachable.\n\nThe degree bound is the definition read backwards: the set of clusters\ncontaining `v` is indexed by `{u | u ∈ wreach G π (2r) v}`, which is\n`wreach G π (2r) v` itself, of size at most `wcol G (2r)` by the choice of\n`π`. The radius bound drops the minimality clause: a vertex in the cluster\nof `u` reaches `u` by a walk of length at most `2r`, which reversed puts\nit in the `2r`-ball of `u`.\n\nCovering is the only real argument. Given `v`, let `u` be a `π`-minimal\nvertex of the `r`-ball of `v`, which is nonempty and finite. For `w` in\nthat ball, concatenate the reversed ball walk `w → v` with the ball walk\n`v → u`: a walk of length at most `2r` from `w` to `u`. Every vertex on it\nlies on one of the two halves, and cutting a walk of length at most `r` at\nany of its vertices shows that vertex to be within distance `r` of both\nendpoints — so the whole support stays inside the `r`-ball of `v`, where\n`u` is `π`-minimal. Hence `u` is weakly `2r`-reachable from `w`, i.e. `w`\nlies in the cluster of `u`."
+        }
+      ]
+    },
+    {
+      "id": "Lax3Proofs.SplitterWin.splitterWins_of_nowhereDense",
+      "path": "proofs/Lax3Proofs/SplitterWin.lean",
+      "conclusion": "Lax3.NowhereDenseSplitter.splitterWins_of_nowhereDense",
+      "assumptions": [
+        "Lax12.NowhereDenseUQW.uniformlyQuasiWide_of_nowhereDense"
+      ],
+      "description": "**Splitter wins on nowhere dense classes** (Lemma 4.2 of Chapter 4 of the\nsource lecture notes, Theorem 4.2 of Grohe–Kreutzer–Siebertz, in the\nisolation variant): on a nowhere dense class, for every radius `r` there\nare a round bound `ℓ` and a batch bound `m`, depending only on the class\nand `r`, with which Splitter wins the `(ℓ, m, r)`-game on every member.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Take the quasi-wideness margins `N, s` of the class at radius `r` from\nthe endorsed `Lax12.NowhereDenseUQW.uniformlyQuasiWide_of_nowhereDense`\nand put `ℓ := N (2·s + 2)` and `m := ℓ · (r + 1)`. Splitter's strategy\nisolates, in each round, Connector's new vertex `v` together with the\nstill-active vertices of a chosen walk of length at most `r` from every\nearlier Connector vertex to `v`, taken in the arena that earlier round\nwas played in — one vertex plus one path of at most `r + 1` vertices per\nround played, which is the bound `m`. A play in which every Connector\nmove still had an incident edge is recorded by `Reached`; moves on\nisolated vertices end the play at once, since the ball around such a\nvertex is the vertex alone.\n\nThe whole content is that no play lasts `ℓ` rounds. Connector's vertices\nare then `ℓ` distinct vertices, so quasi-wideness returns a separator `S`\nof at most `s` vertices and a distance-`r` independent set `B` of at\nleast `2·s + 2` of them. Pairing the rounds that selected a vertex of `B`\noff chronologically gives `s + 1` pairs, and for each the strategy's\nmaintained walk between the pair's two vertices, in the older round's\narena. Two ingredients replace the notes' \"removed vertices are gone\".\n*Isolation is permanent*: arenas only lose edges, so a vertex the\nstrategy isolated in some round has no incident edge in any later arena.\n*Distinct pairs' walks are disjoint*: a vertex of an older pair's walk\nwas isolated when that pair's newer round was played, while every vertex\nof a newer pair's walk carries an edge in an arena from strictly after\nthat round. So the `s + 1` walks are pairwise disjoint and one of them\navoids `S`; rebuilding it inside `deleteVerts G S` gives a walk of length\nat most `r` between two distinct members of `B`, contradicting the\nindependence.\n\nThe round bound is `N (2·s + 2)`, not the notes' `N (2·s + 1)`: their own\nproof needs `s + 1` pairwise disjoint paths so that one avoids the\nseparator, which is `2·s + 2` selected rounds. See the module docstring."
+        }
+      ]
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "be72c81d749dd832f585faa3251ba407331c840f859529df061e98e2e132c2af",
+    "sourceCommit": "311ae7cf15e1bde644721958e05203bb6791d04b",
+    "leanToolchain": "leanprover/lean4:v4.30.0",
+    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "files": [
+      {
+        "path": "concepts/lib/Lax3/ColoredGraphs.olean",
+        "bytes": 15168,
+        "sha256": "855430f17583351093d9c802c46bb2b0b17444d759ea78bec9adf7e63bda772a"
+      },
+      {
+        "path": "concepts/lib/Lax3/DistFO.olean",
+        "bytes": 669440,
+        "sha256": "fe0e78bd1f37e2b97db36cd68415b6d4ccad4fc26d5ec58a4bc0398300ec1f69"
+      },
+      {
+        "path": "concepts/lib/Lax3/FirstOrder.olean",
+        "bytes": 215336,
+        "sha256": "2ee30283140b60877ca98539350a0c62a895cf5f36df33cf1aa5e9a0423b16db"
+      },
+      {
+        "path": "concepts/lib/Lax3/Locality.olean",
+        "bytes": 144520,
+        "sha256": "2586f84b324a9da3186c08ecef52e4f4a76ad6f751ae19d319efac4421b6cc98"
+      },
+      {
+        "path": "concepts/lib/Lax3/ModelChecking.olean",
+        "bytes": 23400,
+        "sha256": "1c626c5c9449d7222f3d72392305486f403fa813896a3446a3025377e993039a"
+      },
+      {
+        "path": "concepts/lib/Lax3/NeighborhoodCoverBound.olean",
+        "bytes": 10000,
+        "sha256": "1139e144a0e1c65ddef04c1dedffc8638e0ac2523e585abd92b341195e3753ad"
+      },
+      {
+        "path": "concepts/lib/Lax3/NeighborhoodCovers.olean",
+        "bytes": 30312,
+        "sha256": "10c0503c683d8c8854cbab3e3a94d6968182e781899f27bb3eaad5d305191eb3"
+      },
+      {
+        "path": "concepts/lib/Lax3/NormalForm.olean",
+        "bytes": 102072,
+        "sha256": "bd967b40ab3f8595bea8e56edddacfe8136c2fca8da73969a0f41d914950c468"
+      },
+      {
+        "path": "concepts/lib/Lax3/NowhereDenseSplitter.olean",
+        "bytes": 9704,
+        "sha256": "86e8cb4a370d77556b664ea6faca5a4d3085e5569e8141f6b6e47b1be672bcfb"
+      },
+      {
+        "path": "concepts/lib/Lax3/ScatterSentences.olean",
+        "bytes": 203360,
+        "sha256": "624d00e5721732d945355c602d78d8e7b4989dcf794b7765914dab70a9b66821"
+      },
+      {
+        "path": "concepts/lib/Lax3/SplitterGame.olean",
+        "bytes": 28688,
+        "sha256": "853513ebefd9b055e1801d1969d544ca10e0da22aa37534ac03f99be1ec311c4"
+      },
+      {
+        "path": "concepts/lib/Lax3.olean",
+        "bytes": 2480,
+        "sha256": "997a4d6d539d959fa229746cefd8e42c9210ecdff7c537628ee3e981b2dbaf2b"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 4388,
+        "sha256": "6473d9d52f0ab3e73f601e9e384f98b92a54bf2b15eb645b61fe199f8470bb80"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 697,
+        "sha256": "65d8e6020ff86be1873d03b956e78c6899a56cdbc0fe56af0171eb3a1310ad4f"
+      },
+      {
+        "path": "concepts/package/Lax3/ColoredGraphs.lean",
+        "bytes": 4678,
+        "sha256": "c8ee280b2d42450cc95b9c7ebcd5d594ea971043355267814f4a7e7f31b164c8"
+      },
+      {
+        "path": "concepts/package/Lax3/DistFO.lean",
+        "bytes": 16306,
+        "sha256": "7308b56685bbcf78f1a759c35a96acaf1a8bf4044e0d6ac4272427c3c934ad8a"
+      },
+      {
+        "path": "concepts/package/Lax3/FirstOrder.lean",
+        "bytes": 4255,
+        "sha256": "cbc10f58c70387ac086046bf04696476f975a2cee131653f9381fb256101bad9"
+      },
+      {
+        "path": "concepts/package/Lax3/Locality.lean",
+        "bytes": 5032,
+        "sha256": "6397b9483c15edfd26bb4ba0a7db9768d46241b987ecdf3487685098738b2b1d"
+      },
+      {
+        "path": "concepts/package/Lax3/ModelChecking.lean",
+        "bytes": 4402,
+        "sha256": "e8f213d38929877db64c0e51eb0f1098e884c71c9dbaa376d7dfbd475d873bad"
+      },
+      {
+        "path": "concepts/package/Lax3/NeighborhoodCoverBound.lean",
+        "bytes": 2280,
+        "sha256": "9755c7f163d76360cf53dcd3cf7141503abcc1ce2fd4963bd2b66c0c37986a72"
+      },
+      {
+        "path": "concepts/package/Lax3/NeighborhoodCovers.lean",
+        "bytes": 2706,
+        "sha256": "f8470bcba3c2dda2541fda870c7431f9adf7974d34be11b49e3d99d3160a2322"
+      },
+      {
+        "path": "concepts/package/Lax3/NormalForm.lean",
+        "bytes": 5252,
+        "sha256": "e288362e30e1fe2c43c950c8ef20beb77d4f1277a47ac76c2e1feb16c869ce02"
+      },
+      {
+        "path": "concepts/package/Lax3/NowhereDenseSplitter.lean",
+        "bytes": 2718,
+        "sha256": "db9f1992375468caefe37493cb98f714cc26e99326d5d1fa9c2c4ae69a92c173"
+      },
+      {
+        "path": "concepts/package/Lax3/ScatterSentences.lean",
+        "bytes": 9589,
+        "sha256": "9d3a3c6f893ed4b9ee9796f26808ec5bfa02876cc34fbdf6f0e778c06e9438bd"
+      },
+      {
+        "path": "concepts/package/Lax3/SplitterGame.lean",
+        "bytes": 3792,
+        "sha256": "9eef902d11c6db73c6ee228b670dd84e2b1b5c3a51bf68c6294212283335af6a"
+      },
+      {
+        "path": "concepts/package/Lax3.lean",
+        "bytes": 291,
+        "sha256": "e1acbfac3492ce3f4528d1cd59bb9f1bad0d8fb2f236fb05f202e039edf2d5fd"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Assembly.olean",
+        "bytes": 971456,
+        "sha256": "32a26c9b86310e6f4db78f428dc9e184978eee2abfd9c7ea1765d86b13160095"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Augmentation.olean",
+        "bytes": 1379568,
+        "sha256": "49eb023e148eb3015da972cca347507bf605bd664e95b15f94b1279a16adad54"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/AugmentedDensity.olean",
+        "bytes": 1854792,
+        "sha256": "d28d80296452d979c8079d9f05a5d03b6268a8b59b9d8acdf1ab22130ece1554"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/BCAlgebra.olean",
+        "bytes": 606080,
+        "sha256": "e96642fab3b279ccd6d41a7f2949fd1e215b4c6b0626e5c01e2ba601b38776c3"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/BotEval.olean",
+        "bytes": 271176,
+        "sha256": "bd8c84c71f49182d79c8ca07c0340c49aeaa828758e281472d737d57d255736f"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/C0Probe.olean",
+        "bytes": 339808,
+        "sha256": "b55ee4dda2dd98561f9b2d62f466e22f592928517af9c256a874312ef79dd0cd"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Clusters.olean",
+        "bytes": 423560,
+        "sha256": "3b823c71dd8e59beead122083bebb670a65152090287ef30640e214dc0b0dc82"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/CostRecurrence.olean",
+        "bytes": 830000,
+        "sha256": "4e90e9c67a0d24d0de4fdab99d7baaba9e2c175a251687203a6f0842ebb28548"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/CoverConstruction.olean",
+        "bytes": 129544,
+        "sha256": "6d2fb2319888baa954259edec60559d622110cdb7e992de29d1b97a6663250e9"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/CoverDegree.olean",
+        "bytes": 1007216,
+        "sha256": "716c867c2834bb4cda703e044e570d76b5b7b64298c8180740c181d4293be769"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/CsrWide.olean",
+        "bytes": 361384,
+        "sha256": "7bb86cf6b432b2101f03bb770794077deed65d8884711cafd5f25690d8b1c9cb"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Evaluator.olean",
+        "bytes": 1545848,
+        "sha256": "c1b9a37f61fce676baa213a1a67c377c90cc1ae15cebdd6ee2454283c040ca53"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/FarQuant.olean",
+        "bytes": 1127408,
+        "sha256": "3ed676a4b9446003d47d036b26c3007284b47e70e38b3b9a814a9e1de3014b9e"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/FormulaTables.olean",
+        "bytes": 437792,
+        "sha256": "27eb2cd6298cb0987f1cd964bd63d25be9afca4a03ca2102b95510ed2ff20901"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Horizon.olean",
+        "bytes": 239256,
+        "sha256": "796e686e9d34bd44797bf27ed48dfc019849d87f949d48c449aaa1b6d97bbb5a"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Isolate.olean",
+        "bytes": 1072216,
+        "sha256": "18d1b6ebfebbdd2ae1bd2d222c5c9b767520b8416e18f6c6a37582bccb26817b"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/OrderedCovers.olean",
+        "bytes": 597680,
+        "sha256": "3a01e1eb504b3864f051693ce643382f15fdd4bc5a946e23d7632b07fee1c78b"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamAugment.olean",
+        "bytes": 2770296,
+        "sha256": "6bf988e3089a45cde4fa6e1e7f8a6354128561057956a42d14d5862e6226b0fc"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamBfs.olean",
+        "bytes": 4528696,
+        "sha256": "16641c76b4f5aadda44359ac7be78a431e7b0be910cd69d2ac0feb17aef77d1c"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamBfsPaths.olean",
+        "bytes": 5133968,
+        "sha256": "8ea64398ce44386aaed491068fc2e88e80f25ee7bbe1a1d67d5b09a73cfa1f59"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamCover.olean",
+        "bytes": 2885376,
+        "sha256": "a5ec9ad49bbbb3617985c34b0f8082495104e8b43d5e5ca8da2d7365dddfad99"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamDriver.olean",
+        "bytes": 2455976,
+        "sha256": "0c545816b9507a06450e4c349ae93f1e7be5546637839f349e8131e31b0c2a2c"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamDriverAugment.olean",
+        "bytes": 16707392,
+        "sha256": "ad9b849caa8f77e91222053dc009ffe5adc2c2766ff656eb6d8e1f058681b23e"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamDriverBase.olean",
+        "bytes": 2399880,
+        "sha256": "58074bf0f3a362acf31d4efd23ca800509048917f879f942439425581c8cc15c"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamDriverBot.olean",
+        "bytes": 4573848,
+        "sha256": "d6b3546f04606870078fac269b966b9265de3a16445663dfe63a9c425d1b8ea6"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamDriverCluster.olean",
+        "bytes": 2838416,
+        "sha256": "2270a18e27a30f979172e0323272a56f8f7a741628677ce809de1cb7baf9a14e"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamDriverCompose.olean",
+        "bytes": 14451408,
+        "sha256": "2c9dc73558bc74c57773fc532046ed177ecc837c74bfa07e0c980306755da9bf"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamDriverDescend.olean",
+        "bytes": 10907904,
+        "sha256": "69857f2705633fea40af1ff25891ad38942446a6cc56479bd2e6d45cf1bd8ea2"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamDriverFrames.olean",
+        "bytes": 3077776,
+        "sha256": "4442031759de300477b8a69c67ebc6388d13c25dfb14e97d0f8acc891df585cb"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamDriverIO.olean",
+        "bytes": 2683376,
+        "sha256": "c02a2e84cfd90ab167aa8fe9620d7f05623e2faec6f2643ef176db2c4156bd56"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamDriverOrder.olean",
+        "bytes": 2657576,
+        "sha256": "2d6b95d3e34365fb230906eaaa1a19b29968d8e86234eab4e77cb2686647ea03"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamDriverRoot.olean",
+        "bytes": 595832,
+        "sha256": "a63e3a36d70117a346d50963e222d27623108fd9386c45e284161d2c6bea0db2"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamDriverWrites.olean",
+        "bytes": 2300184,
+        "sha256": "949408fad52a1e817411d4641b5d15830f2cd547a533a6c5acd535a442c7bcbb"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamElim.olean",
+        "bytes": 16095056,
+        "sha256": "f8091fe57fa0401a5e124a5f0afbdfc50b30138ca8abfad50346fb9e6d3979c3"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/RamScatter.olean",
+        "bytes": 3054288,
+        "sha256": "4b228c48d18d8faded53dfe605f90a7d6a6d309d7ec78e256b73a1236e6179ef"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Reduction.olean",
+        "bytes": 225048,
+        "sha256": "28d7dcc6b534fd9754c138e982600451b06fecf04b99cc4ce4eab4f76e447fde"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/ArenaBlock.olean",
+        "bytes": 198816,
+        "sha256": "c91eefd73828a140a9459120a2da4e4b9627342f4e390165c42fba7dfa10d3c4"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/AugmentSynth.olean",
+        "bytes": 2380304,
+        "sha256": "a345dd1afa8fc0c4048d7d3694e5df8275b65d069662cef24fb1d067235d0321"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/AugmentSynth2.olean",
+        "bytes": 1643800,
+        "sha256": "456b471ee8a375775afed6499ea50af715222d2fd5a6e85bf66c6644d66218dd"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/AugmentTwins.olean",
+        "bytes": 222248,
+        "sha256": "b72e7ff9f132b09072f2e45754b77e002184508ec7a054bd0eb3fde41b05b051"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/BfsBridge.olean",
+        "bytes": 692528,
+        "sha256": "5541408ea3d89498f1455bf397ce608c56884dc0fbf5676b0503dee4589c9c0d"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/BlockLeaves.olean",
+        "bytes": 2786048,
+        "sha256": "406ba6d9ed87361a543abb86c6a12829e38852696694e4dd735c31bc30ada29a"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/ClusterSynth.olean",
+        "bytes": 1711736,
+        "sha256": "2d5dca0b22ed6366eda72883db3602e7ac8acff3a79bf6c7f53d15eec970d30d"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/CostShapeProbe.olean",
+        "bytes": 416536,
+        "sha256": "a2b98a0d8f202348d03ea57b380eebbb6f5d9dc98332f13b3df7988920075201"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/CoverSynth.olean",
+        "bytes": 3296600,
+        "sha256": "cc36b5548059607355281e640188dc3b753e300c37d1ffc8421be805701abc34"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/DeadRow.olean",
+        "bytes": 169920,
+        "sha256": "8db0c649559b2dea52ab77aac256aa3d4aa13a7852e4e9a13785335b9cefb1a1"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/DeadSweep.olean",
+        "bytes": 412424,
+        "sha256": "9629666dbc54012653feb1bfc3867ab3936821d36251bf7c3662a1c83b87b9ae"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/ElimSynth.olean",
+        "bytes": 1934728,
+        "sha256": "6f4d8340156f9681d2efd5d6ceb58dc63a7dd3af070e8d4a1b2d52a95fa8ff9b"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/ElimSynth2.olean",
+        "bytes": 2480080,
+        "sha256": "eeee7a0e5a850f66690d327f0ef3df8b87ca9a4a8bf8bd303e5a314373d377c6"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/ElimSynth3.olean",
+        "bytes": 3224736,
+        "sha256": "f2dde40dcd68eb55cedfd11894b32f6649ecc1c3ef93443dd47e3948cb051759"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/ElimSynth4.olean",
+        "bytes": 2786176,
+        "sha256": "57062b04f88cf875cea6fbcd53119b2328eb9a0abcb00a0d36689a9a3f7eda65"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/ElimSynth5.olean",
+        "bytes": 2785568,
+        "sha256": "258ce9bfd41948ccea3bb209a4cd6981064cc427d694b66f93259dc8732c6e83"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/ElimSynth6.olean",
+        "bytes": 1282600,
+        "sha256": "9aa925684112a2cf9a893982f3fcb2510006cd95899736305db2e64ef3f2ca0b"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/ExpandSynth.olean",
+        "bytes": 2211816,
+        "sha256": "02fc139eaac04635665269756d3a07b4ae7a2248ccec28caa00a065d6fd02b49"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/MassAlive.olean",
+        "bytes": 379360,
+        "sha256": "79890d21ba1145a33aca1bc06f5a6e342dd82f113d0b6601f3e59533e904edcb"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/MassMath.olean",
+        "bytes": 314656,
+        "sha256": "ad7464cf079d09a8a33d771f2b3416e27ec096a8d296aafdce834b7c492cda6c"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/OrderBridge.olean",
+        "bytes": 292800,
+        "sha256": "a5db332168146405a499834567c8cf04ea8b1e03d27eca02a36538c0afd124c7"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/OrderSynth.olean",
+        "bytes": 1707096,
+        "sha256": "6af92f029ab9580313623f2d845c82860a3a775d9dd2363d6aea0df129a3cc2d"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/ReachedBridge.olean",
+        "bytes": 118848,
+        "sha256": "c2793d4788a8e43e1dd9596a6c34e9e86a6f8f213a1f4daad8239f709d3e1335"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/ScatterSynth.olean",
+        "bytes": 6182872,
+        "sha256": "4599be751df69cfac40f7f189967b900c13734ef265e89430d23498084dc49c4"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/SigmaLoop.olean",
+        "bytes": 148448,
+        "sha256": "c6254d60b75a6ccd323e472ad09c37ac17c4e7f8ac91da36096d7c8ce94a396f"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Refine/T1FriProbe.olean",
+        "bytes": 1062936,
+        "sha256": "17b3d517e66e12b3510abaa24e42ab68b6e04eee5f16ed5a8bed431f8d50291b"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Relativize.olean",
+        "bytes": 420064,
+        "sha256": "7035a26e5d06ead41fe2cb969c706422052501202df5e17d1f40383dbcf3212f"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/ScatterCore.olean",
+        "bytes": 248248,
+        "sha256": "f6308b9d842b89a7c2573887e3fa9554986ef40513a2918fdcb8975a234565d1"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/ScatterFml.olean",
+        "bytes": 560944,
+        "sha256": "72bfa9c3647a1890c8bb5bab94a086b8a8836fd6247134b0ceecc4a813bde3c2"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/SemLocal.olean",
+        "bytes": 490312,
+        "sha256": "566922cc123cbe2eca7f9b7716be25a1a1e816c7ba10e8d9370d1eb470dc9f21"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/Separation.olean",
+        "bytes": 918008,
+        "sha256": "2a987a0f30d2c6219d2e595f55873ed9ab0a9cf5aa1f2bd1d54f81cc038687a2"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/SplitterBasics.olean",
+        "bytes": 27288,
+        "sha256": "06410014cead0daeb2e39bde773ddf2034d831d4fc68fcc4b4d1557d0018c03c"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/SplitterMono.olean",
+        "bytes": 95880,
+        "sha256": "4ea248dd954c7834882b1bd82684ec354e064d966114341629a7b2c9cd929d78"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/SplitterWin.olean",
+        "bytes": 857424,
+        "sha256": "85abc4c441b2e12ced27a7db96d7a961f263ded9b959c284f8e53f399b0f7316"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/SplitterWinRec.olean",
+        "bytes": 827728,
+        "sha256": "1b1e809d90292f7478dd3641aa3c981fe3c11789785717bdeb6e944801be43de"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/SyntaxLemmas.olean",
+        "bytes": 862336,
+        "sha256": "89ca0601db7a90b9e49f30cb6e7232ef8c1ab5fd5687e0ded0a11973e38554a6"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/TgtCoupling.olean",
+        "bytes": 402744,
+        "sha256": "32572dac0260eb4ca740a2287c5c952b20fc17f14ade66cbb147cc2d63894b9b"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/TgtWidenProbe.olean",
+        "bytes": 644144,
+        "sha256": "86d9a961de48164b75b41b21b40c6a40a16e50899f43428bc00def2c698289f8"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/UqwInstantiation.olean",
+        "bytes": 136168,
+        "sha256": "b97e4f62246c57d8a6f774a9de76ee4093dcbaec03ac8ec1c725125301439932"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs/WalkDistance.olean",
+        "bytes": 156656,
+        "sha256": "020ec6f05768136a29ed932c8bfe9062a4a73908e6b05e5cb79138433650ff61"
+      },
+      {
+        "path": "proofs/lib/Lax3Proofs.olean",
+        "bytes": 9808,
+        "sha256": "05b6414829fc6d2b0cebd0777819df924b0d04ab33ea72adcf6d9d7e0530c513"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 4573,
+        "sha256": "07f77f6b0700527451489e78ec057b46e67ae13bd3ffd6405d9e46263dcdeed5"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 1085,
+        "sha256": "a6d2fbfb861e198ef2d8e62b4acf13b258d5db4a8491d4c1795320b5f0c71f0b"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Assembly.lean",
+        "bytes": 34365,
+        "sha256": "efc7839d887b327a03043c769d1b27eab7e14d76cb106283695b96211e655d0e"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Augmentation.lean",
+        "bytes": 58158,
+        "sha256": "0fb201c5befadc1c26dda25760f2b1aa07052f7f49dd938366ccfe6bffdea711"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/AugmentedDensity.lean",
+        "bytes": 56842,
+        "sha256": "326f4ff1855662065fb7020eeca2f6d45f37edc698abe27d585c74adf87e603b"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/BCAlgebra.lean",
+        "bytes": 20251,
+        "sha256": "ef8488d58f35f512567f9b568be0a8c05789e413b5c537d69e55e39147ec1d18"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/BotEval.lean",
+        "bytes": 16098,
+        "sha256": "161a4f453ece18eafb2c03fcb99f30fe1a9e3f589e8d9e47afc885aff4b34779"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/C0Probe.lean",
+        "bytes": 12310,
+        "sha256": "b9fbda59408b8cc7ef121638f57d6a7dc314796615b0ae22065be68fe552bcf5"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Clusters.lean",
+        "bytes": 12346,
+        "sha256": "30c47732007703c924f1a9a064ed92c318d01a12e2850119dd2545b01c6481d5"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/CostRecurrence.lean",
+        "bytes": 31665,
+        "sha256": "6ba7d89e7fefaf713b195394b2063f8b9d1fb947950c4c98d8b06d278436c8de"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/CoverConstruction.lean",
+        "bytes": 5991,
+        "sha256": "86f13be3f29eaa801d4415a94ff52b9c84528231b634ac45a0b816b0976fa4ff"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/CoverDegree.lean",
+        "bytes": 37541,
+        "sha256": "43c31c2fc4611584497cc4d2cb9bc77281dd5d674867fe011af7be7fb8cc1b33"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/CsrWide.lean",
+        "bytes": 14755,
+        "sha256": "8fbf2f520c2c4936fd76466a937ffffc01b6eda0c3d0e2d1d09b5508e62e7ef8"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Evaluator.lean",
+        "bytes": 34894,
+        "sha256": "37473811ae45eea0dcd0a9a5a35ba621080be12b0ec6fdf72e1f09098bec82fe"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/FarQuant.lean",
+        "bytes": 34887,
+        "sha256": "2b406c846ed1540b67b898ea8fc19c797aa0abcb9cc9a33bec0c9db99a6a0a4d"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/FormulaTables.lean",
+        "bytes": 31619,
+        "sha256": "2a555c96362747bd508f11e1f4ff62ffc0624cde18e1a8340c005d81b20355da"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Horizon.lean",
+        "bytes": 4105,
+        "sha256": "a74deec52db72b0862d556872eac0f34838c531d1c9e0c7daec1a572186cd33f"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Isolate.lean",
+        "bytes": 39043,
+        "sha256": "89fb7af5a4fecbc9b1be69e31f3cc74ec05c8ee0bb99ed56e437fe22ecc8a2ee"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/OrderedCovers.lean",
+        "bytes": 22382,
+        "sha256": "0cc727169210e4c2f853c30e09edf17c2da3e146e02e96d15a3bba8a1a819f09"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamAugment.lean",
+        "bytes": 50411,
+        "sha256": "b5fa7d6d695a5fd705e3e1a32fdcf6975678fc06a94bd3bb49fcb200f77bcd5c"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamBfs.lean",
+        "bytes": 63877,
+        "sha256": "f93b00ff06aeec64a7e7420848095becf65b8ad19c90c1f1eb6ed4aacbe818a6"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamBfsPaths.lean",
+        "bytes": 60267,
+        "sha256": "2469181f272f4393af9cb43be2a2b6cd162380cc516b8e8f8ba22c55beae2505"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamCover.lean",
+        "bytes": 71532,
+        "sha256": "01f4adc5d6fb739803931896117c93297f86e0c06b4b67b212d267e39437178b"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamDriver.lean",
+        "bytes": 161608,
+        "sha256": "b168b4f698474d10aadfb31b1e2512c57dcf18c0f3bbfaa2d59124f607b6311d"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamDriverAugment.lean",
+        "bytes": 342830,
+        "sha256": "654d4de7978b7e934a9010d41d33a6171c230efede9d1694aede96c99d8b030e"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamDriverBase.lean",
+        "bytes": 53354,
+        "sha256": "262fd9684efac504efb7b80c80684cf641649318b07fbafa888757213a60e29f"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamDriverBot.lean",
+        "bytes": 98925,
+        "sha256": "0bcab7a6b6933a33905cdff76988712ceee867efc7601a74d8e9f767270e6284"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamDriverCluster.lean",
+        "bytes": 83952,
+        "sha256": "946134daa5a5016b802da6f5498dc042d62c0fe5af97749e0dfb4107f1dd3a53"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamDriverCompose.lean",
+        "bytes": 170673,
+        "sha256": "be3d721b374f6143da161fb8d1f6229db2198b4d9a5ad7825ac3e9239edf8ad0"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamDriverDescend.lean",
+        "bytes": 207945,
+        "sha256": "bd2ff56a71d61a4419dcdb77b8c5093b17427bec78235cbce79b681f5d5df986"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamDriverFrames.lean",
+        "bytes": 56050,
+        "sha256": "73a277d51f67462d0038add4566b21251291c1183d14a0333dafa50d8f1a5de3"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamDriverIO.lean",
+        "bytes": 55577,
+        "sha256": "1b77a1c47dba2ac00b020ca270d5b438953fcff647edce5b54a3f73670c4c731"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamDriverOrder.lean",
+        "bytes": 62752,
+        "sha256": "7084731f34f677d9bbedb0cd9b5ef9a3c9365914357b9e2e8cccab1c307772de"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamDriverRoot.lean",
+        "bytes": 39772,
+        "sha256": "20b127534682056522e85af0a4dd21de205d6d15376700d5b706415a2095d3be"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamDriverWrites.lean",
+        "bytes": 51035,
+        "sha256": "dab721d74b4eea84a0941d3b113b3675468ab79e616516202c2c18f895b9801d"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamElim.lean",
+        "bytes": 208045,
+        "sha256": "e3a113f2bf6bd174f857fe9dde80c715f20b593a64a6bce8e39bfd39c89f8ae2"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/RamScatter.lean",
+        "bytes": 51794,
+        "sha256": "5e4017f12b2461f96ca8dba3aa377d9f5c27dabc60a66115b9cd8345aebde309"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Reduction.lean",
+        "bytes": 6314,
+        "sha256": "8f582f47a0f507cd7da289fb574bb3411c3df002cc64b400a7e6d7a2df583d77"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/ArenaBlock.lean",
+        "bytes": 12929,
+        "sha256": "499177b229f5627452eac7cb7c7ca1297585930eb8e31621e8a0d0ac96eb7906"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/AugmentSynth.lean",
+        "bytes": 78137,
+        "sha256": "d936d47c9c8d0055419143b723fc47654cfcb72c18b4c162844df14152679d6e"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/AugmentSynth2.lean",
+        "bytes": 40607,
+        "sha256": "f20e2f9fe73c4827e5fcf252679f998bbe53954b77b5751ada4fb386c14743a0"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/AugmentTwins.lean",
+        "bytes": 10337,
+        "sha256": "98ce61132a76de4aefcd844f266ce5f018d15a22e921ad236def7bb16edaa9b6"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/BfsBridge.lean",
+        "bytes": 19017,
+        "sha256": "26a2f4bf9e19109fb8b81d2c7430fbd8d018575e7808a680ce06081475fbe298"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/BlockLeaves.lean",
+        "bytes": 91342,
+        "sha256": "70c376a4d9ad2e430be6080ed542c061efe238f027ff4ae3d18a1460592e95ec"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/ClusterSynth.lean",
+        "bytes": 72481,
+        "sha256": "56702496157dffbdca4d1fc00f19c522d45182bef2ebf891b34c13874b028f46"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/CostShapeProbe.lean",
+        "bytes": 14702,
+        "sha256": "ac69eb63f4e24d31fb2ee8fb8778594220037bf6cddbd32582ca4dc1c73b257d"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/CoverSynth.lean",
+        "bytes": 57853,
+        "sha256": "f0a80d5097a649b36f3e681f22061cf3c0354d6d8f0e2eadfcc9cdd519d8a138"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/DeadRow.lean",
+        "bytes": 12947,
+        "sha256": "416ba8d069c093837c9f44655c81a69e8e3292891304130bf2951c256fbfaba7"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/DeadSweep.lean",
+        "bytes": 16992,
+        "sha256": "8d8beaaa4381fe1e2cf0b0ea0a0bf723d7e6d216ceafdd3f1f498a5c63839fe9"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/ElimSynth.lean",
+        "bytes": 57129,
+        "sha256": "d022a926824a2c6d1fc7e3e2cfb74313f73c1df3c79c3387ccb093e86b5e7ca6"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/ElimSynth2.lean",
+        "bytes": 51132,
+        "sha256": "c2cda3439b92ca0e0be9147be94d56ac331f7c3637b21c623acff425a548a496"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/ElimSynth3.lean",
+        "bytes": 26941,
+        "sha256": "05def52133911f5f3edf869ada0a67306c6de4ab7604eb48137042d6a6097be3"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/ElimSynth4.lean",
+        "bytes": 48779,
+        "sha256": "d7e674a550d9026e534b6def2d8ae5136198013e65cc9d15c093649cfad11a09"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/ElimSynth5.lean",
+        "bytes": 53339,
+        "sha256": "2e555e3f61f98bdb1fe999fcaf1a3b5c5d4ab7f1e589cbcf29ee136365c582fd"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/ElimSynth6.lean",
+        "bytes": 37345,
+        "sha256": "d1d83436ac8d1f0ba5ad501f244949ec830109c306df0cea90ab148c57b4f9d0"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/ExpandSynth.lean",
+        "bytes": 60690,
+        "sha256": "af0c3efc20236f55596cfc5181a09a204a8e5061bb901b9acd4b445a2fe1f328"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/MassAlive.lean",
+        "bytes": 25328,
+        "sha256": "edc5ef4f37c0037b2ad91b4f6514dbec7e66202e4498850c1f8470b6a469ab74"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/MassMath.lean",
+        "bytes": 19004,
+        "sha256": "95e9020de19c0c1c708608b40a5d9192d4ee5c1254573e6beac62ab89cff5901"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/OrderBridge.lean",
+        "bytes": 25074,
+        "sha256": "81a4be4a7a7d04ba78270de32facef7c5d23fb3e893b531d2b2406816d8ea361"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/OrderSynth.lean",
+        "bytes": 71579,
+        "sha256": "30b3ee6722cf6196b6aaab87f44385be83a708b71014b25fa447067a9b20b8b2"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/ReachedBridge.lean",
+        "bytes": 8559,
+        "sha256": "a1ad86d201237205127805f6b02f88e5f8b171a940002055d5fa340cc76f5c63"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/ScatterSynth.lean",
+        "bytes": 144135,
+        "sha256": "98702b4f9e41aff4c82ad6658964cacf2627d6164048c0492a875063825ce586"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/SigmaLoop.lean",
+        "bytes": 5103,
+        "sha256": "cd5bcbdea409fe2927a1326e4d335064a2d00d9b5e536b50646e765c28f92eb0"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Refine/T1FriProbe.lean",
+        "bytes": 3884,
+        "sha256": "395f5bccada00015e9b0394157141fada4c80ceb287f0e96f43c041aaa9df3b2"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Relativize.lean",
+        "bytes": 15394,
+        "sha256": "8a94c3d617b9b8a46219a0ba70f090967f2488b327c8e0161bf0db07f3a711c7"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/ScatterCore.lean",
+        "bytes": 10321,
+        "sha256": "bd57ea2dcdbf03cc18a4cc261b5a7fbbb5c04623761e5428c42f2431fbbac54f"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/ScatterFml.lean",
+        "bytes": 18805,
+        "sha256": "ff599fbf93bf53d14cabd00339eca50cd51a9aa9b9a3192b940ff0f810beb2d8"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/SemLocal.lean",
+        "bytes": 13583,
+        "sha256": "b0cd16510dd260706bd3806cbcc62307d028bb9239c68a187c775ee94fb50e84"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/Separation.lean",
+        "bytes": 33894,
+        "sha256": "b66a0edebdf47c070bdd9986f196c58c07268e16c2e113a6fd9aade2674b53ea"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/SplitterBasics.lean",
+        "bytes": 1591,
+        "sha256": "b166b25e9c6ad480c6b942d7cb9e45e8bb1e6f7356af5725b292289b400edaa1"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/SplitterMono.lean",
+        "bytes": 5743,
+        "sha256": "e534f20e602e3a0413219b6ff3b6a3d8abbedbaddb5398bf08e76f32fc1d7513"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/SplitterWin.lean",
+        "bytes": 32729,
+        "sha256": "e8c2bbdd805c3a585624d05a900caf03eebc64fe7b2ca47ec8ef88e547a28603"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/SplitterWinRec.lean",
+        "bytes": 32989,
+        "sha256": "18bacdd2e12973d2d1e6460046f9c9adbd4b2a3ea97bc62f869ee5b020e649e2"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/SyntaxLemmas.lean",
+        "bytes": 25658,
+        "sha256": "e3dbcd0c8ac4bff41fc4938d7d906fc2ede451803264d05d14d4ebbbbdda657f"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/TgtCoupling.lean",
+        "bytes": 16293,
+        "sha256": "a806821caf93e1062f5c558f799bc21fdd4536a452efeb50ca836b3facd487a9"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/TgtWidenProbe.lean",
+        "bytes": 30113,
+        "sha256": "a2692fbbd2058a8076febbb9a7b6c7cfab82fe3b07ec9ba77885e1479ebd2a20"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/UqwInstantiation.lean",
+        "bytes": 9464,
+        "sha256": "143b749341871e86fbb180798290dcc7d0a339f811a3b04a711983716d948131"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs/WalkDistance.lean",
+        "bytes": 6107,
+        "sha256": "ac3817ee8a4cd1f01c7b8fb38a747fad76fc1ddb6e9281cad63f14c5b3d402e2"
+      },
+      {
+        "path": "proofs/package/Lax3Proofs.lean",
+        "bytes": 2461,
+        "sha256": "789eb61deec065fa72e361ea5acdc69529ca05cf361e403710f6fd2c0fe7c6e4"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      }
+    ],
+    "downloadUrl": "https://github.com/lax-archive/lax-database/releases/download/lax-capture-lax-3-be72c81d749dd832f585faa3251ba407331c840f859529df061e98e2e132c2af/capture.tar"
   }
 }
