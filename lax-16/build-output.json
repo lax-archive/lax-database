@@ -4,5 +4,1280 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 16
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-16",
+      "leanVersion": "v4.30.0",
+      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "title": "A Batch Approach to the Positive NCTD of Planar Graphs",
+      "authors": [],
+      "bibEntries": []
+    },
+    "abstract": "This submission formalizes the positive no-clash teaching dimension of\nclosed graph neighborhoods.  The teaching definitions are parameterized by a\nradius `k`: the concept represented by a vertex is its closed ball of radius\n`k`.  The results of the accompanying draft concern `k = 1`.\n\nThe main claims are that every finite planar graph has positive no-clash\nteaching dimension at most four at radius one, and every finite outerplanar\ngraph has positive no-clash teaching dimension at most two.  Explicit graphs\nshow that both constants are optimal.  The planar upper bound is organized\nthrough admissible local batches: a vertex may be assigned several teaching\nsets, and its last assignment is retained.\n\nPlanarity and outerplanarity are encoded through the finite forbidden-\nsubdivision characterizations of Kuratowski and Chartrand-Harary.  This keeps\nthe concept surface combinatorial and makes the graph-theoretic obstructions\nused by the draft explicit.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax16.AnchorLabels",
+      "path": "concepts/Lax16/AnchorLabels.lean",
+      "title": "Certification by an anchor label",
+      "type": "theorem",
+      "description": "If a radius-one teaching set contains an anchor label `v`, it certifies its\nconcept against every closed neighborhood that omits `v`.  This is the\nanchor-label observation used for every local batch in the draft.",
+      "imports": [
+        "Lax16.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax16.TeachingMaps\n\n/-!\n---\ntitle: Certification by an anchor label\ntype: theorem\n---\nIf a radius-one teaching set contains an anchor label `v`, it certifies its\nconcept against every closed neighborhood that omits `v`.  This is the\nanchor-label observation used for every local batch in the draft.\n-/\n\nnamespace Lax16.AnchorLabels\n\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- An anchor certifies against every concept omitting that label. -/\naxiom anchor_certifies {V : Type u} {G : SimpleGraph V}\n    {T : TeachingMap V 1} {v w : V} (hv : v ∈ T w) :\n    ∀ x : V, v ∉ closedBall G 1 x →\n      ∃ y ∈ T w, y ∉ closedBall G 1 x\n\nend Lax16.AnchorLabels\n",
+      "statements": [
+        {
+          "id": "Lax16.AnchorLabels.anchor_certifies",
+          "signature": "anchor_certifies : ∀ {V : Type u} {G : SimpleGraph V} {T : Lax16.TeachingMaps.TeachingMap V 1} {v w : V},\n  SetLike.instMembership.mem (T w) v →\n    ∀ (x : V),\n      Not (Set.instMembership.mem (Lax16.TeachingMaps.closedBall G 1 x) v) →\n        Exists fun y =>\n          And (SetLike.instMembership.mem (T w) y)\n            (Not (Set.instMembership.mem (Lax16.TeachingMaps.closedBall G 1 x) y))",
+          "startLine": 19,
+          "endLine": 23,
+          "doc": "An anchor certifies against every concept omitting that label."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.BatchFramework",
+      "path": "concepts/Lax16/BatchFramework.lean",
+      "title": "Admissible batches and last reassignment",
+      "type": "theorem",
+      "description": "A batch consists of a finite set of vertices and a proposed teaching set for\neach vertex.  It is admissible at radius one when the teaching sets are\npositive and uniformly bounded, separate every pair inside the batch, and\neach batch vertex certifies itself against every distinct concept outside the\nbatch.\n\nA finite schedule records, for each vertex, the last batch containing it.\nThe reassignment principle states that retaining exactly those last teaching\nsets produces a global positive no-clash teaching map of the same width.",
+      "imports": [
+        "Lax16.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax16.TeachingMaps\n\n/-!\n---\ntitle: Admissible batches and last reassignment\ntype: theorem\n---\nA batch consists of a finite set of vertices and a proposed teaching set for\neach vertex.  It is admissible at radius one when the teaching sets are\npositive and uniformly bounded, separate every pair inside the batch, and\neach batch vertex certifies itself against every distinct concept outside the\nbatch.\n\nA finite schedule records, for each vertex, the last batch containing it.\nThe reassignment principle states that retaining exactly those last teaching\nsets produces a global positive no-clash teaching map of the same width.\n-/\n\nnamespace Lax16.BatchFramework\n\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- A finite batch of vertices together with proposed teaching sets. -/\nstructure BatchAssignment {V : Type u} (G : SimpleGraph V) where\n  /-- The vertices assigned in this batch. -/\n  vertices : Finset V\n  /-- A total map whose values on `vertices` are the batch assignments. -/\n  teaching : TeachingMap V 1\n\n/-- The three admissibility conditions from the batch construction. -/\ndef IsAdmissible {V : Type u} (G : SimpleGraph V) (d : ℕ)\n    (B : BatchAssignment G) : Prop :=\n  (∀ ⦃v x : V⦄, v ∈ B.vertices → x ∈ B.teaching v →\n    x ∈ closedBall G 1 v) ∧\n  (∀ v : V, v ∈ B.vertices → (B.teaching v).card ≤ d) ∧\n  (∀ ⦃v w : V⦄, v ∈ B.vertices → w ∈ B.vertices →\n    DistinctConcepts G 1 v w → Separates G 1 B.teaching v w) ∧\n  (∀ ⦃v x : V⦄, v ∈ B.vertices → x ∉ B.vertices →\n    DistinctConcepts G 1 v x →\n      ∃ y ∈ B.teaching v, y ∉ closedBall G 1 x)\n\n/--\nA finite batch schedule with an explicit, verified last batch for each\nvertex.  Carrying the last index as data keeps the final assignment readable.\n-/\nstructure BatchSchedule {V : Type u} (G : SimpleGraph V) where\n  /-- Number of batches in the schedule. -/\n  batchCount : ℕ\n  /-- The batches, in chronological order. -/\n  batch : Fin batchCount → BatchAssignment G\n  /-- The last batch containing each vertex. -/\n  last : V → Fin batchCount\n  /-- Every vertex belongs to its selected last batch. -/\n  mem_last : ∀ v : V, v ∈ (batch (last v)).vertices\n  /-- No later batch contains the vertex. -/\n  last_is_last :\n    ∀ (v : V) (i : Fin batchCount), v ∈ (batch i).vertices → i ≤ last v\n\n/-- The final map obtained by retaining each vertex's last assignment. -/\ndef BatchSchedule.finalTeaching {V : Type u} {G : SimpleGraph V}\n    (S : BatchSchedule G) : TeachingMap V 1 :=\n  fun v => (S.batch (S.last v)).teaching v\n\n/--\nIf every batch in a covering schedule is admissible with width `d`, the\nlast-assignment map is a positive radius-one no-clash map of width `d`.\n-/\naxiom reassignment {V : Type u} {G : SimpleGraph V} {d : ℕ}\n    (S : BatchSchedule G)\n    (hadmissible : ∀ i : Fin S.batchCount, IsAdmissible G d (S.batch i)) :\n    IsPositive G 1 S.finalTeaching ∧\n    IsNoClash G 1 S.finalTeaching ∧\n    HasWidthAtMost S.finalTeaching d\n\nend Lax16.BatchFramework\n",
+      "statements": [
+        {
+          "id": "Lax16.BatchFramework.reassignment",
+          "signature": "reassignment : ∀ {V : Type u} {G : SimpleGraph V} {d : Nat} (S : Lax16.BatchFramework.BatchSchedule G),\n  (∀ (i : Fin S.batchCount), Lax16.BatchFramework.IsAdmissible G d (S.batch i)) →\n    And (Lax16.TeachingMaps.IsPositive G 1 S.finalTeaching)\n      (And (Lax16.TeachingMaps.IsNoClash G 1 S.finalTeaching) (Lax16.TeachingMaps.HasWidthAtMost S.finalTeaching d))",
+          "startLine": 66,
+          "endLine": 75,
+          "doc": "If every batch in a covering schedule is admissible with width `d`, the\nlast-assignment map is a positive radius-one no-clash map of width `d`."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.CenterSet",
+      "path": "concepts/Lax16/CenterSet.lean",
+      "title": "A four-label center set in a planar neighborhood",
+      "type": "theorem",
+      "description": "Let `v` be a planar-graph vertex with at least four neighbors.  There is a\nfour-element set `W` of neighbors such that every neighbor which does not\ndominate `v` misses some element of `W`.  Thus `W`, used as the teaching set\nof `v`, separates the center from every non-dominating neighbor.",
+      "imports": [
+        "Lax16.PlanarGraphs",
+        "Lax16.TeachingMaps"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Finite\nimport Lax16.PlanarGraphs\nimport Lax16.TeachingMaps\n\n/-!\n---\ntitle: A four-label center set in a planar neighborhood\ntype: theorem\n---\nLet `v` be a planar-graph vertex with at least four neighbors.  There is a\nfour-element set `W` of neighbors such that every neighbor which does not\ndominate `v` misses some element of `W`.  Thus `W`, used as the teaching set\nof `v`, separates the center from every non-dominating neighbor.\n-/\n\nnamespace Lax16.CenterSet\n\nopen Lax16.PlanarGraphs\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- Four neighbor labels separate the center from every non-dominator. -/\naxiom exists_center_set {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (hplanar : IsPlanar G)\n    (v : V) (hdegree : 4 ≤ (G.neighborSet v).ncard) :\n    ∃ W : Finset V,\n      W.card = 4 ∧\n      (∀ w ∈ W, G.Adj v w) ∧\n      ∀ w : V, G.Adj v w → ¬ Dominates G 1 v w →\n        ∃ x ∈ W, x ∉ closedBall G 1 w\n\nend Lax16.CenterSet\n",
+      "statements": [
+        {
+          "id": "Lax16.CenterSet.exists_center_set",
+          "signature": "exists_center_set : ∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n  Lax16.PlanarGraphs.IsPlanar G →\n    ∀ (v : V),\n      instLENat.le 4 (G.neighborSet v).ncard →\n        Exists fun W =>\n          And (Eq W.card 4)\n            (And (∀ (w : V), SetLike.instMembership.mem W w → G.Adj v w)\n              (∀ (w : V),\n                G.Adj v w →\n                  Not (Lax16.TeachingMaps.Dominates G 1 v w) →\n                    Exists fun x =>\n                      And (SetLike.instMembership.mem W x)\n                        (Not (Set.instMembership.mem (Lax16.TeachingMaps.closedBall G 1 w) x))))",
+          "startLine": 23,
+          "endLine": 31,
+          "doc": "Four neighbor labels separate the center from every non-dominator."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.ComponentReduction",
+      "path": "concepts/Lax16/ComponentReduction.lean",
+      "title": "Componentwise gluing of nonempty teaching maps",
+      "type": "theorem",
+      "description": "Suppose every connected component of a finite graph has a positive\nradius-one no-clash teaching map of width at most `d`, and every teaching set\nis nonempty.  Combining these component maps gives such a map on the whole\ngraph: any nonempty label assigned in one component is absent from every ball\nin another component.",
+      "imports": [
+        "Lax16.TeachingMaps"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected\nimport Lax16.TeachingMaps\n\n/-!\n---\ntitle: Componentwise gluing of nonempty teaching maps\ntype: theorem\n---\nSuppose every connected component of a finite graph has a positive\nradius-one no-clash teaching map of width at most `d`, and every teaching set\nis nonempty.  Combining these component maps gives such a map on the whole\ngraph: any nonempty label assigned in one component is absent from every ball\nin another component.\n-/\n\nnamespace Lax16.ComponentReduction\n\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- Nonempty component maps of uniform width glue to a global positive map. -/\naxiom combine_components {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (d : ℕ)\n    (hcomponents :\n      ∀ C : G.ConnectedComponent,\n        ∃ T : TeachingMap C 1,\n          IsPositive C.toSimpleGraph 1 T ∧\n          IsNoClash C.toSimpleGraph 1 T ∧\n          HasWidthAtMost T d ∧\n          HasNonemptySets T) :\n    HasPositiveNCTDAtMost G 1 d\n\nend Lax16.ComponentReduction\n",
+      "statements": [
+        {
+          "id": "Lax16.ComponentReduction.combine_components",
+          "signature": "combine_components : ∀ {V : Type u} [Fintype V] (G : SimpleGraph V) (d : Nat),\n  (∀ (C : G.ConnectedComponent),\n      Exists fun T =>\n        And (Lax16.TeachingMaps.IsPositive C.toSimpleGraph 1 T)\n          (And (Lax16.TeachingMaps.IsNoClash C.toSimpleGraph 1 T)\n            (And (Lax16.TeachingMaps.HasWidthAtMost T d) (Lax16.TeachingMaps.HasNonemptySets T)))) →\n    Lax16.TeachingMaps.HasPositiveNCTDAtMost G 1 d",
+          "startLine": 22,
+          "endLine": 32,
+          "doc": "Nonempty component maps of uniform width glue to a global positive map."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.DominatorCompletion",
+      "path": "concepts/Lax16/DominatorCompletion.lean",
+      "title": "Completion of all active dominators",
+      "type": "theorem",
+      "description": "At a planar center with at least four neighbors, all active dominating\nneighbors can be assigned valid anchored teaching sets of size at most four.\nThe result combines the unique-dominator case with the exceptional pair that\ncan occur only in degree four.",
+      "imports": [
+        "Lax16.DominatorDefinitions",
+        "Lax16.PlanarGraphs"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Finite\nimport Lax16.DominatorDefinitions\nimport Lax16.PlanarGraphs\n\n/-!\n---\ntitle: Completion of all active dominators\ntype: theorem\n---\nAt a planar center with at least four neighbors, all active dominating\nneighbors can be assigned valid anchored teaching sets of size at most four.\nThe result combines the unique-dominator case with the exceptional pair that\ncan occur only in degree four.\n-/\n\nnamespace Lax16.DominatorCompletion\n\nopen Lax16.DominatorDefinitions\nopen Lax16.PlanarGraphs\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- Every active dominator of a high-degree planar center can be completed. -/\naxiom exists_dominator_completion {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (hplanar : IsPlanar G)\n    (v : V) (hdegree : 4 ≤ (G.neighborSet v).ncard) :\n    ∃ T : TeachingMap V 1, CompletesActiveDominators G v T\n\nend Lax16.DominatorCompletion\n",
+      "statements": [
+        {
+          "id": "Lax16.DominatorCompletion.exists_dominator_completion",
+          "signature": "exists_dominator_completion : ∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n  Lax16.PlanarGraphs.IsPlanar G →\n    ∀ (v : V),\n      instLENat.le 4 (G.neighborSet v).ncard →\n        Exists fun T => Lax16.DominatorDefinitions.CompletesActiveDominators G v T",
+          "startLine": 24,
+          "endLine": 28,
+          "doc": "Every active dominator of a high-degree planar center can be completed."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.DominatorCount",
+      "path": "concepts/Lax16/DominatorCount.lean",
+      "title": "The number of dominating neighbors in a planar graph",
+      "type": "theorem",
+      "description": "A planar vertex with at least five neighbors has at most one dominating\nneighbor.  A planar vertex of degree four has at most two.  Three suitable\nneighbors together with the center and two dominators would form a\n`K₃,₃`; in the degree-four exception, three dominators would form a `K₅`.",
+      "imports": [
+        "Lax16.DominatorDefinitions",
+        "Lax16.PlanarGraphs"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite",
+        "Mathlib.Data.Set.Card"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Finite\nimport Mathlib.Data.Set.Card\nimport Lax16.DominatorDefinitions\nimport Lax16.PlanarGraphs\n\n/-!\n---\ntitle: The number of dominating neighbors in a planar graph\ntype: theorem\n---\nA planar vertex with at least five neighbors has at most one dominating\nneighbor.  A planar vertex of degree four has at most two.  Three suitable\nneighbors together with the center and two dominators would form a\n`K₃,₃`; in the degree-four exception, three dominators would form a `K₅`.\n-/\n\nnamespace Lax16.DominatorCount\n\nopen Lax16.DominatorDefinitions\nopen Lax16.PlanarGraphs\n\nuniverse u\n\n/-- The high-degree and degree-four bounds on the number of dominators. -/\naxiom dominator_count_bounds {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (hplanar : IsPlanar G) (v : V) :\n    (5 ≤ (G.neighborSet v).ncard → (dominatorSet G v).ncard ≤ 1) ∧\n    ((G.neighborSet v).ncard = 4 → (dominatorSet G v).ncard ≤ 2)\n\nend Lax16.DominatorCount\n",
+      "statements": [
+        {
+          "id": "Lax16.DominatorCount.dominator_count_bounds",
+          "signature": "dominator_count_bounds : ∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n  Lax16.PlanarGraphs.IsPlanar G →\n    ∀ (v : V),\n      And (instLENat.le 5 (G.neighborSet v).ncard → instLENat.le (Lax16.DominatorDefinitions.dominatorSet G v).ncard 1)\n        (Eq (G.neighborSet v).ncard 4 → instLENat.le (Lax16.DominatorDefinitions.dominatorSet G v).ncard 2)",
+          "startLine": 24,
+          "endLine": 28,
+          "doc": "The high-degree and degree-four bounds on the number of dominators."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.DominatorDefinitions",
+      "path": "concepts/Lax16/DominatorDefinitions.lean",
+      "title": "Active dominators and their local teaching assignments",
+      "type": "definition",
+      "description": "A neighbor `w` dominates a center `v` when the closed neighborhood of `v` is\ncontained in that of `w`.  It is active when the two closed neighborhoods are\ndifferent.  A valid dominator teaching set has at most four labels, contains\nthe center anchor, is positive for the dominator, and separates the dominator\nfrom every distinct non-active concept in the center's closed neighborhood.\nThe family condition handles pairs of active dominators using labels from\neither teaching set, as required by no-clash.",
+      "imports": [
+        "Lax16.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax16.TeachingMaps\n\n/-!\n---\ntitle: Active dominators and their local teaching assignments\ntype: definition\n---\nA neighbor `w` dominates a center `v` when the closed neighborhood of `v` is\ncontained in that of `w`.  It is active when the two closed neighborhoods are\ndifferent.  A valid dominator teaching set has at most four labels, contains\nthe center anchor, is positive for the dominator, and separates the dominator\nfrom every distinct non-active concept in the center's closed neighborhood.\nThe family condition handles pairs of active dominators using labels from\neither teaching set, as required by no-clash.\n-/\n\nnamespace Lax16.DominatorDefinitions\n\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- The neighboring dominators of a center vertex. -/\ndef dominatorSet {V : Type u} (G : SimpleGraph V) (v : V) : Set V :=\n  {w | G.Adj v w ∧ Dominates G 1 v w}\n\n/-- A dominator whose closed neighborhood is genuinely different from the center's. -/\ndef IsActiveDominator {V : Type u} (G : SimpleGraph V)\n    (v w : V) : Prop :=\n  w ∈ dominatorSet G v ∧ DistinctConcepts G 1 v w\n\n/--\nA width-four anchored teaching set that handles every non-active concept in\nthe center ball.  Active dominator pairs are handled symmetrically by\n`CompletesActiveDominators`.\n-/\ndef IsDominatorTeachingSet {V : Type u} (G : SimpleGraph V)\n    (v w : V) (S : Finset V) : Prop :=\n  S.card ≤ 4 ∧\n  v ∈ S ∧\n  (∀ x ∈ S, x ∈ closedBall G 1 w) ∧\n  ∀ z : V, z ∈ closedBall G 1 v →\n    DistinctConcepts G 1 w z →\n    ¬ IsActiveDominator G v z →\n      ∃ x ∈ S, x ∉ closedBall G 1 z\n\n/--\nA family valid for every active dominator, with every active pair separated\nby the union of its two teaching sets.\n-/\ndef CompletesActiveDominators {V : Type u} (G : SimpleGraph V)\n    (v : V) (T : TeachingMap V 1) : Prop :=\n  (∀ w : V, IsActiveDominator G v w →\n    IsDominatorTeachingSet G v w (T w)) ∧\n  ∀ w z : V, IsActiveDominator G v w →\n    IsActiveDominator G v z →\n    DistinctConcepts G 1 w z →\n      Separates G 1 T w z\n\nend Lax16.DominatorDefinitions\n",
+      "statements": []
+    },
+    {
+      "id": "Lax16.OptimalConstants",
+      "path": "concepts/Lax16/OptimalConstants.lean",
+      "title": "Optimal positive NCTD constants for planar and outerplanar graphs",
+      "type": "theorem",
+      "description": "At radius one, four is the optimal uniform positive no-clash teaching bound\nfor finite planar graphs, and two is the optimal uniform bound for finite\nouterplanar graphs.",
+      "imports": [
+        "Lax16.PlanarGraphs",
+        "Lax16.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax16.PlanarGraphs\nimport Lax16.TeachingMaps\n\n/-!\n---\ntitle: Optimal positive NCTD constants for planar and outerplanar graphs\ntype: theorem\n---\nAt radius one, four is the optimal uniform positive no-clash teaching bound\nfor finite planar graphs, and two is the optimal uniform bound for finite\nouterplanar graphs.\n-/\n\nnamespace Lax16.OptimalConstants\n\nopen Lax16.PlanarGraphs\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- The planar and outerplanar radius-one constants are respectively four and two. -/\naxiom optimal_radius_one_constants :\n    (∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n      IsPlanar G → positiveNCTD G 1 ≤ 4) ∧\n    (∃ G : SimpleGraph (Fin 5),\n      IsPlanar G ∧ positiveNCTD G 1 = 4) ∧\n    (∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n      IsOuterplanar G → positiveNCTD G 1 ≤ 2) ∧\n    ∃ G : SimpleGraph (Fin 6),\n      IsOuterplanar G ∧ positiveNCTD G 1 = 2\n\nend Lax16.OptimalConstants\n",
+      "statements": [
+        {
+          "id": "Lax16.OptimalConstants.optimal_radius_one_constants",
+          "signature": "optimal_radius_one_constants : And\n  (∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n    Lax16.PlanarGraphs.IsPlanar G → instLENat.le (Lax16.TeachingMaps.positiveNCTD G 1) 4)\n  (And (Exists fun G => And (Lax16.PlanarGraphs.IsPlanar G) (Eq (Lax16.TeachingMaps.positiveNCTD G 1) 4))\n    (And\n      (∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n        Lax16.PlanarGraphs.IsOuterplanar G → instLENat.le (Lax16.TeachingMaps.positiveNCTD G 1) 2)\n      (Exists fun G => And (Lax16.PlanarGraphs.IsOuterplanar G) (Eq (Lax16.TeachingMaps.positiveNCTD G 1) 2))))",
+          "startLine": 21,
+          "endLine": 30,
+          "doc": "The planar and outerplanar radius-one constants are respectively four and two."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.OuterplanarBlockAssignment",
+      "path": "concepts/Lax16/OuterplanarBlockAssignment.lean",
+      "title": "Two-label assignments on two-connected outerplanar graphs",
+      "type": "theorem",
+      "description": "Every finite two-connected outerplanar graph admits a positive radius-one\nno-clash teaching map in which every vertex receives exactly two distinct\nlabels.  This is the block lemma used to assemble the sharp outerplanar\nbound.",
+      "imports": [
+        "Lax16.PlanarGraphs",
+        "Lax16.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax16.PlanarGraphs\nimport Lax16.TeachingMaps\n\n/-!\n---\ntitle: Two-label assignments on two-connected outerplanar graphs\ntype: theorem\n---\nEvery finite two-connected outerplanar graph admits a positive radius-one\nno-clash teaching map in which every vertex receives exactly two distinct\nlabels.  This is the block lemma used to assemble the sharp outerplanar\nbound.\n-/\n\nnamespace Lax16.OuterplanarBlockAssignment\n\nopen Lax16.PlanarGraphs\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- A two-connected outerplanar graph has an exact two-label positive map. -/\naxiom exists_two_label_assignment {V : Type u} [Fintype V]\n    (G : SimpleGraph V)\n    (houter : IsOuterplanar G)\n    (htwo : IsTwoConnected G) :\n    ∃ T : TeachingMap V 1,\n      IsPositive G 1 T ∧\n      IsNoClash G 1 T ∧\n      ∀ v : V, (T v).card = 2\n\nend Lax16.OuterplanarBlockAssignment\n",
+      "statements": [
+        {
+          "id": "Lax16.OuterplanarBlockAssignment.exists_two_label_assignment",
+          "signature": "exists_two_label_assignment : ∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n  Lax16.PlanarGraphs.IsOuterplanar G →\n    Lax16.PlanarGraphs.IsTwoConnected G →\n      Exists fun T =>\n        And (Lax16.TeachingMaps.IsPositive G 1 T)\n          (And (Lax16.TeachingMaps.IsNoClash G 1 T) (∀ (v : V), Eq (T v).card 2))",
+          "startLine": 22,
+          "endLine": 30,
+          "doc": "A two-connected outerplanar graph has an exact two-label positive map."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.OuterplanarBound",
+      "path": "concepts/Lax16/OuterplanarBound.lean",
+      "title": "Outerplanar graphs have positive NCTD at most two",
+      "type": "theorem",
+      "description": "Every finite outerplanar graph has positive no-clash teaching dimension at\nmost two for closed neighborhoods, equivalently for closed balls of radius\none.",
+      "imports": [
+        "Lax16.PlanarGraphs",
+        "Lax16.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax16.PlanarGraphs\nimport Lax16.TeachingMaps\n\n/-!\n---\ntitle: Outerplanar graphs have positive NCTD at most two\ntype: theorem\n---\nEvery finite outerplanar graph has positive no-clash teaching dimension at\nmost two for closed neighborhoods, equivalently for closed balls of radius\none.\n-/\n\nnamespace Lax16.OuterplanarBound\n\nopen Lax16.PlanarGraphs\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- The sharp radius-one positive upper bound for outerplanar graphs. -/\naxiom positiveNCTD_le_two {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (houter : IsOuterplanar G) :\n    positiveNCTD G 1 ≤ 2\n\nend Lax16.OuterplanarBound\n",
+      "statements": [
+        {
+          "id": "Lax16.OuterplanarBound.positiveNCTD_le_two",
+          "signature": "positiveNCTD_le_two : ∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n  Lax16.PlanarGraphs.IsOuterplanar G → instLENat.le (Lax16.TeachingMaps.positiveNCTD G 1) 2",
+          "startLine": 21,
+          "endLine": 24,
+          "doc": "The sharp radius-one positive upper bound for outerplanar graphs."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.OuterplanarLayer",
+      "path": "concepts/Lax16/OuterplanarLayer.lean",
+      "title": "An outerplanar neighbor layer with ambient twin witnesses",
+      "type": "theorem",
+      "description": "Let `U` be a set of neighbors of a vertex `v₀`, and suppose the graph induced\nby `U` is outerplanar.  The vertices of `U` have positive ambient teaching\nsets of size at most three which separate every pair whose closed\nneighborhoods differ in the ambient graph.  Witnesses repairing closed twins\nof the induced graph may lie outside `U`.\n\nAdding the common anchor `v₀` gives sets of size at most four and certifies\nevery layer vertex against all vertices outside the closed neighborhood of\n`v₀`.",
+      "imports": [
+        "Lax16.PlanarGraphs",
+        "Lax16.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax16.PlanarGraphs\nimport Lax16.TeachingMaps\n\n/-!\n---\ntitle: An outerplanar neighbor layer with ambient twin witnesses\ntype: theorem\n---\nLet `U` be a set of neighbors of a vertex `v₀`, and suppose the graph induced\nby `U` is outerplanar.  The vertices of `U` have positive ambient teaching\nsets of size at most three which separate every pair whose closed\nneighborhoods differ in the ambient graph.  Witnesses repairing closed twins\nof the induced graph may lie outside `U`.\n\nAdding the common anchor `v₀` gives sets of size at most four and certifies\nevery layer vertex against all vertices outside the closed neighborhood of\n`v₀`.\n-/\n\nnamespace Lax16.OuterplanarLayer\n\nopen Lax16.PlanarGraphs\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- A width-three positive assignment separating all ambient concepts in `U`. -/\ndef IsLayerAssignment {V : Type u} (G : SimpleGraph V)\n    (U : Finset V) (S : TeachingMap V 1) : Prop :=\n  (∀ w : V, w ∈ U →\n    (S w).card ≤ 3 ∧\n    ∀ x ∈ S w, x ∈ closedBall G 1 w) ∧\n  ∀ w₁ w₂ : V, w₁ ∈ U → w₂ ∈ U →\n    DistinctConcepts G 1 w₁ w₂ →\n      Separates G 1 S w₁ w₂\n\n/-- Add a common anchor to every teaching set. -/\nnoncomputable def anchoredTeaching {V : Type u} (v₀ : V)\n    (S : TeachingMap V 1) : TeachingMap V 1 := by\n  classical\n  exact fun w => insert v₀ (S w)\n\n/-- The outerplanar layer assignment exists and gains external certification when anchored. -/\naxiom exists_outerplanar_layer_assignment {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (v₀ : V) (U : Finset V)\n    (hneighbors : ∀ w ∈ U, G.Adj v₀ w)\n    (houter : IsOuterplanar (G.induce (↑U : Set V))) :\n    ∃ S : TeachingMap V 1,\n      IsLayerAssignment G U S ∧\n      (∀ w : V, w ∈ U →\n        (anchoredTeaching v₀ S w).card ≤ 4 ∧\n        ∀ y ∈ anchoredTeaching v₀ S w, y ∈ closedBall G 1 w) ∧\n      ∀ w : V, w ∈ U → ∀ x : V, x ∉ closedBall G 1 v₀ →\n        ∃ y ∈ anchoredTeaching v₀ S w, y ∉ closedBall G 1 x\n\nend Lax16.OuterplanarLayer\n",
+      "statements": [
+        {
+          "id": "Lax16.OuterplanarLayer.exists_outerplanar_layer_assignment",
+          "signature": "exists_outerplanar_layer_assignment : ∀ {V : Type u} [Fintype V] (G : SimpleGraph V) (v₀ : V) (U : Finset V),\n  (∀ (w : V), SetLike.instMembership.mem U w → G.Adj v₀ w) →\n    Lax16.PlanarGraphs.IsOuterplanar (SimpleGraph.induce (Finset.instSetLike.coe U) G) →\n      Exists fun S =>\n        And (Lax16.OuterplanarLayer.IsLayerAssignment G U S)\n          (And\n            (∀ (w : V),\n              SetLike.instMembership.mem U w →\n                And (instLENat.le (Lax16.OuterplanarLayer.anchoredTeaching v₀ S w).card 4)\n                  (∀ (y : V),\n                    SetLike.instMembership.mem (Lax16.OuterplanarLayer.anchoredTeaching v₀ S w) y →\n                      Set.instMembership.mem (Lax16.TeachingMaps.closedBall G 1 w) y))\n            (∀ (w : V),\n              SetLike.instMembership.mem U w →\n                ∀ (x : V),\n                  Not (Set.instMembership.mem (Lax16.TeachingMaps.closedBall G 1 v₀) x) →\n                    Exists fun y =>\n                      And (SetLike.instMembership.mem (Lax16.OuterplanarLayer.anchoredTeaching v₀ S w) y)\n                        (Not (Set.instMembership.mem (Lax16.TeachingMaps.closedBall G 1 x) y))))",
+          "startLine": 43,
+          "endLine": 54,
+          "doc": "The outerplanar layer assignment exists and gains external certification when anchored."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.OuterplanarSharpness",
+      "path": "concepts/Lax16/OuterplanarSharpness.lean",
+      "title": "Sharpness of the outerplanar bound",
+      "type": "theorem",
+      "description": "Let `H` be the six-vertex graph formed from two triangles\n`0-1-2-0` and `3-4-5-3` together with the edges `0-3` and `1-4`.\nThis graph is outerplanar, and both its ordinary and positive radius-one\nno-clash teaching dimensions are exactly two.",
+      "imports": [
+        "Lax16.PlanarGraphs",
+        "Lax16.TeachingMaps"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Operations"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Operations\nimport Lax16.PlanarGraphs\nimport Lax16.TeachingMaps\n\n/-!\n---\ntitle: Sharpness of the outerplanar bound\ntype: theorem\n---\nLet `H` be the six-vertex graph formed from two triangles\n`0-1-2-0` and `3-4-5-3` together with the edges `0-3` and `1-4`.\nThis graph is outerplanar, and both its ordinary and positive radius-one\nno-clash teaching dimensions are exactly two.\n-/\n\nnamespace Lax16.OuterplanarSharpness\n\nopen Lax16.PlanarGraphs\nopen Lax16.TeachingMaps\n\n/-- Two triangles joined by two matching edges, with the third matching edge absent. -/\ndef sharpOuterplanarGraph : SimpleGraph (Fin 6) :=\n  SimpleGraph.edge 0 1 ⊔\n  SimpleGraph.edge 1 2 ⊔\n  SimpleGraph.edge 2 0 ⊔\n  SimpleGraph.edge 3 4 ⊔\n  SimpleGraph.edge 4 5 ⊔\n  SimpleGraph.edge 5 3 ⊔\n  SimpleGraph.edge 0 3 ⊔\n  SimpleGraph.edge 1 4\n\n/-- The six-vertex example is outerplanar and has both dimensions exactly two. -/\naxiom outerplanar_bound_is_sharp :\n    IsOuterplanar sharpOuterplanarGraph ∧\n    nctd sharpOuterplanarGraph 1 = 2 ∧\n    positiveNCTD sharpOuterplanarGraph 1 = 2\n\nend Lax16.OuterplanarSharpness\n",
+      "statements": [
+        {
+          "id": "Lax16.OuterplanarSharpness.outerplanar_bound_is_sharp",
+          "signature": "outerplanar_bound_is_sharp : And (Lax16.PlanarGraphs.IsOuterplanar Lax16.OuterplanarSharpness.sharpOuterplanarGraph)\n  (And (Eq (Lax16.TeachingMaps.nctd Lax16.OuterplanarSharpness.sharpOuterplanarGraph 1) 2)\n    (Eq (Lax16.TeachingMaps.positiveNCTD Lax16.OuterplanarSharpness.sharpOuterplanarGraph 1) 2))",
+          "startLine": 32,
+          "endLine": 36,
+          "doc": "The six-vertex example is outerplanar and has both dimensions exactly two."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.OutsideThreeSetGadget",
+      "path": "concepts/Lax16/OutsideThreeSetGadget.lean",
+      "title": "The outside three-set gadget",
+      "type": "theorem",
+      "description": "Let `Y` be three neighbors of a vertex `v` in a planar graph.  At most one\nvertex outside the closed neighborhood of `v` is adjacent to every member of\n`Y`.  If such a vertex `x` is included in the batch and receives\n`{x} ∪ Y`, this teaching set is positive, has size at most four, and certifies\n`x` against every vertex outside the enlarged batch.",
+      "imports": [
+        "Lax16.PlanarGraphs",
+        "Lax16.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax16.PlanarGraphs\nimport Lax16.TeachingMaps\n\n/-!\n---\ntitle: The outside three-set gadget\ntype: theorem\n---\nLet `Y` be three neighbors of a vertex `v` in a planar graph.  At most one\nvertex outside the closed neighborhood of `v` is adjacent to every member of\n`Y`.  If such a vertex `x` is included in the batch and receives\n`{x} ∪ Y`, this teaching set is positive, has size at most four, and certifies\n`x` against every vertex outside the enlarged batch.\n-/\n\nnamespace Lax16.OutsideThreeSetGadget\n\nopen Lax16.PlanarGraphs\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- An outside vertex adjacent to all three selected neighbors. -/\ndef OutsideSees {V : Type u} (G : SimpleGraph V)\n    (v : V) (Y : Finset V) (x : V) : Prop :=\n  x ∉ closedBall G 1 v ∧ ∀ y ∈ Y, G.Adj x y\n\n/-- Uniqueness and external certification of the possible outside obstruction. -/\naxiom outside_three_set_gadget {V : Type u} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (hplanar : IsPlanar G)\n    (v : V) (Y : Finset V)\n    (hcard : Y.card = 3)\n    (hneighbors : ∀ y ∈ Y, G.Adj v y) :\n    Set.Subsingleton {x : V | OutsideSees G v Y x} ∧\n    ∀ x : V, OutsideSees G v Y x →\n      (∀ y ∈ insert x Y, y ∈ closedBall G 1 x) ∧\n      (insert x Y).card ≤ 4 ∧\n      ∀ z : V, z ∉ insert x (closedBallFinset G 1 v) →\n        ∃ y ∈ insert x Y, y ∉ closedBall G 1 z\n\nend Lax16.OutsideThreeSetGadget\n",
+      "statements": [
+        {
+          "id": "Lax16.OutsideThreeSetGadget.outside_three_set_gadget",
+          "signature": "outside_three_set_gadget : ∀ {V : Type u} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V),\n  Lax16.PlanarGraphs.IsPlanar G →\n    ∀ (v : V) (Y : Finset V),\n      Eq Y.card 3 →\n        (∀ (y : V), SetLike.instMembership.mem Y y → G.Adj v y) →\n          And (setOf fun x => Lax16.OutsideThreeSetGadget.OutsideSees G v Y x).Subsingleton\n            (∀ (x : V),\n              Lax16.OutsideThreeSetGadget.OutsideSees G v Y x →\n                And\n                  (∀ (y : V),\n                    SetLike.instMembership.mem (Finset.instInsert.insert x Y) y →\n                      Set.instMembership.mem (Lax16.TeachingMaps.closedBall G 1 x) y)\n                  (And (instLENat.le (Finset.instInsert.insert x Y).card 4)\n                    (∀ (z : V),\n                      Not\n                          (SetLike.instMembership.mem\n                            (Finset.instInsert.insert x (Lax16.TeachingMaps.closedBallFinset G 1 v)) z) →\n                        Exists fun y =>\n                          And (SetLike.instMembership.mem (Finset.instInsert.insert x Y) y)\n                            (Not (Set.instMembership.mem (Lax16.TeachingMaps.closedBall G 1 z) y)))))",
+          "startLine": 28,
+          "endLine": 39,
+          "doc": "Uniqueness and external certification of the possible outside obstruction."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.PlanarBound",
+      "path": "concepts/Lax16/PlanarBound.lean",
+      "title": "Planar graphs have positive NCTD at most four",
+      "type": "theorem",
+      "description": "Every finite planar graph has positive no-clash teaching dimension at most\nfour for closed neighborhoods, equivalently for closed balls of radius one.",
+      "imports": [
+        "Lax16.PlanarGraphs",
+        "Lax16.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax16.PlanarGraphs\nimport Lax16.TeachingMaps\n\n/-!\n---\ntitle: Planar graphs have positive NCTD at most four\ntype: theorem\n---\nEvery finite planar graph has positive no-clash teaching dimension at most\nfour for closed neighborhoods, equivalently for closed balls of radius one.\n-/\n\nnamespace Lax16.PlanarBound\n\nopen Lax16.PlanarGraphs\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- The radius-one positive upper bound for planar graphs. -/\naxiom positiveNCTD_le_four {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (hplanar : IsPlanar G) :\n    positiveNCTD G 1 ≤ 4\n\nend Lax16.PlanarBound\n",
+      "statements": [
+        {
+          "id": "Lax16.PlanarBound.positiveNCTD_le_four",
+          "signature": "positiveNCTD_le_four : ∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n  Lax16.PlanarGraphs.IsPlanar G → instLENat.le (Lax16.TeachingMaps.positiveNCTD G 1) 4",
+          "startLine": 20,
+          "endLine": 23,
+          "doc": "The radius-one positive upper bound for planar graphs."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.PlanarGraphs",
+      "path": "concepts/Lax16/PlanarGraphs.lean",
+      "title": "Planar and outerplanar finite simple graphs",
+      "type": "definition",
+      "description": "A topological model of a graph `H` in a graph `G` maps the vertices of `H`\ninjectively to branch vertices of `G` and maps every edge of `H` to a path in\n`G`.  Path interiors contain no branch vertices and interiors belonging to\ndistinct edges are disjoint.\n\nFor finite simple graphs, planarity is encoded by Kuratowski's\ncharacterization: neither `K₅` nor `K₃,₃` has a topological model.\nOuterplanarity is encoded by the analogous characterization excluding\ntopological models of `K₄` and `K₂,₃`.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.CompleteMultipartite",
+        "Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected",
+        "Mathlib.Combinatorics.SimpleGraph.Paths"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.CompleteMultipartite\nimport Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected\nimport Mathlib.Combinatorics.SimpleGraph.Paths\n\n/-!\n---\ntitle: Planar and outerplanar finite simple graphs\ntype: definition\n---\nA topological model of a graph `H` in a graph `G` maps the vertices of `H`\ninjectively to branch vertices of `G` and maps every edge of `H` to a path in\n`G`.  Path interiors contain no branch vertices and interiors belonging to\ndistinct edges are disjoint.\n\nFor finite simple graphs, planarity is encoded by Kuratowski's\ncharacterization: neither `K₅` nor `K₃,₃` has a topological model.\nOuterplanarity is encoded by the analogous characterization excluding\ntopological models of `K₄` and `K₂,₃`.\n-/\n\nnamespace Lax16.PlanarGraphs\n\nuniverse u v\n\n/-- The internal vertices of a walk, with both endpoints removed. -/\ndef walkInterior {V : Type u} {G : SimpleGraph V} {a b : V}\n    (p : G.Walk a b) : Set V :=\n  {x | x ∈ p.support ∧ x ≠ a ∧ x ≠ b}\n\n/--\nA subdivision model of `H` in `G`: distinct branch vertices joined by\ninternally vertex-disjoint paths corresponding to the edges of `H`.\n-/\nstructure TopologicalModel {W : Type u} {V : Type v}\n    (H : SimpleGraph W) (G : SimpleGraph V) where\n  /-- The injective map from vertices of `H` to branch vertices of `G`. -/\n  branch : W ↪ V\n  /-- The path representing each oriented edge of `H`. -/\n  route : ∀ {a b : W}, H.Adj a b → G.Walk (branch a) (branch b)\n  /-- Every route is a graph-theoretic path. -/\n  route_isPath : ∀ {a b : W} (h : H.Adj a b), (route h).IsPath\n  /-- No branch vertex occurs internally on an edge route. -/\n  branch_avoids_interiors :\n    ∀ {a b : W} (h : H.Adj a b) (w : W),\n      branch w ∉ walkInterior (route h)\n  /-- Routes representing distinct undirected edges have disjoint interiors. -/\n  route_interiors_disjoint :\n    ∀ {a b c d : W} (hab : H.Adj a b) (hcd : H.Adj c d),\n      ¬ ((a = c ∧ b = d) ∨ (a = d ∧ b = c)) →\n        Disjoint (walkInterior (route hab)) (walkInterior (route hcd))\n\n/-- `H` occurs as a subdivision in `G`. -/\ndef HasTopologicalModel {W : Type u} {V : Type v}\n    (H : SimpleGraph W) (G : SimpleGraph V) : Prop :=\n  Nonempty (TopologicalModel H G)\n\n/-- Planarity via exclusion of subdivisions of `K₅` and `K₃,₃`. -/\ndef IsPlanar {V : Type v} (G : SimpleGraph V) : Prop :=\n  ¬ HasTopologicalModel (⊤ : SimpleGraph (Fin 5)) G ∧\n  ¬ HasTopologicalModel\n    (completeBipartiteGraph (Fin 3) (Fin 3)) G\n\n/-- Outerplanarity via exclusion of subdivisions of `K₄` and `K₂,₃`. -/\ndef IsOuterplanar {V : Type v} (G : SimpleGraph V) : Prop :=\n  ¬ HasTopologicalModel (⊤ : SimpleGraph (Fin 4)) G ∧\n  ¬ HasTopologicalModel\n    (completeBipartiteGraph (Fin 2) (Fin 3)) G\n\n/--\nA graph is two-connected when it has at least three vertices and remains\nconnected after deletion of any single vertex.\n-/\ndef IsTwoConnected {V : Type v} (G : SimpleGraph V) : Prop :=\n  3 ≤ Nat.card V ∧\n  ∀ v : V, (G.induce {w : V | w ≠ v}).Connected\n\nend Lax16.PlanarGraphs\n",
+      "statements": []
+    },
+    {
+      "id": "Lax16.PlanarSharpness",
+      "path": "concepts/Lax16/PlanarSharpness.lean",
+      "title": "Sharpness of the planar bound",
+      "type": "theorem",
+      "description": "Let `W` be the five-vertex wheel whose center is `0` and whose rim is the\nfour-cycle `1-2-3-4-1`.  The graph is planar and its positive radius-one\nno-clash teaching dimension is exactly four: the center must use all four rim\nvertices to distinguish itself from the four dominated rim concepts.",
+      "imports": [
+        "Lax16.PlanarGraphs",
+        "Lax16.TeachingMaps"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Operations"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Operations\nimport Lax16.PlanarGraphs\nimport Lax16.TeachingMaps\n\n/-!\n---\ntitle: Sharpness of the planar bound\ntype: theorem\n---\nLet `W` be the five-vertex wheel whose center is `0` and whose rim is the\nfour-cycle `1-2-3-4-1`.  The graph is planar and its positive radius-one\nno-clash teaching dimension is exactly four: the center must use all four rim\nvertices to distinguish itself from the four dominated rim concepts.\n-/\n\nnamespace Lax16.PlanarSharpness\n\nopen Lax16.PlanarGraphs\nopen Lax16.TeachingMaps\n\n/-- The five-vertex wheel with a four-cycle rim. -/\ndef sharpPlanarGraph : SimpleGraph (Fin 5) :=\n  SimpleGraph.edge 0 1 ⊔\n  SimpleGraph.edge 0 2 ⊔\n  SimpleGraph.edge 0 3 ⊔\n  SimpleGraph.edge 0 4 ⊔\n  SimpleGraph.edge 1 2 ⊔\n  SimpleGraph.edge 2 3 ⊔\n  SimpleGraph.edge 3 4 ⊔\n  SimpleGraph.edge 4 1\n\n/-- The five-vertex wheel is planar and attains positive NCTD four. -/\naxiom planar_bound_is_sharp :\n    IsPlanar sharpPlanarGraph ∧\n    positiveNCTD sharpPlanarGraph 1 = 4\n\nend Lax16.PlanarSharpness\n",
+      "statements": [
+        {
+          "id": "Lax16.PlanarSharpness.planar_bound_is_sharp",
+          "signature": "planar_bound_is_sharp : And (Lax16.PlanarGraphs.IsPlanar Lax16.PlanarSharpness.sharpPlanarGraph)\n  (Eq (Lax16.TeachingMaps.positiveNCTD Lax16.PlanarSharpness.sharpPlanarGraph 1) 4)",
+          "startLine": 32,
+          "endLine": 35,
+          "doc": "The five-vertex wheel is planar and attains positive NCTD four."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.PlanarToolbox",
+      "path": "concepts/Lax16/PlanarToolbox.lean",
+      "title": "Neighbor layers of planar graphs are outerplanar",
+      "type": "theorem",
+      "description": "For a vertex `v` in a planar graph, delete `v` from a plane drawing and use\nthe face formerly incident with `v` as the outer face.  Every neighbor of\n`v` lies on that face, so the graph induced by the open neighborhood of `v`\nis outerplanar.\n\nUnder the forbidden-subdivision definitions of this submission, the same\nfact says that a topological `K₄` or `K₂,₃` in the neighbor layer would,\ntogether with `v`, produce a topological `K₅` or `K₃,₃` in the original\ngraph.",
+      "imports": [
+        "Lax16.PlanarGraphs"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax16.PlanarGraphs\n\n/-!\n---\ntitle: Neighbor layers of planar graphs are outerplanar\ntype: theorem\n---\nFor a vertex `v` in a planar graph, delete `v` from a plane drawing and use\nthe face formerly incident with `v` as the outer face.  Every neighbor of\n`v` lies on that face, so the graph induced by the open neighborhood of `v`\nis outerplanar.\n\nUnder the forbidden-subdivision definitions of this submission, the same\nfact says that a topological `K₄` or `K₂,₃` in the neighbor layer would,\ntogether with `v`, produce a topological `K₅` or `K₃,₃` in the original\ngraph.\n-/\n\nnamespace Lax16.PlanarToolbox\n\nopen Lax16.PlanarGraphs\n\nuniverse u\n\n/-- The graph induced by the open neighborhood of a planar vertex is outerplanar. -/\naxiom neighbor_layer_outerplanar {V : Type u} {G : SimpleGraph V}\n    (hplanar : IsPlanar G) (v : V) :\n    IsOuterplanar (G.induce (G.neighborSet v))\n\nend Lax16.PlanarToolbox\n",
+      "statements": [
+        {
+          "id": "Lax16.PlanarToolbox.neighbor_layer_outerplanar",
+          "signature": "neighbor_layer_outerplanar : ∀ {V : Type u} {G : SimpleGraph V},\n  Lax16.PlanarGraphs.IsPlanar G → ∀ (v : V), Lax16.PlanarGraphs.IsOuterplanar (SimpleGraph.induce (G.neighborSet v) G)",
+          "startLine": 25,
+          "endLine": 28,
+          "doc": "The graph induced by the open neighborhood of a planar vertex is outerplanar."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.PlanarVertexBatch",
+      "path": "concepts/Lax16/PlanarVertexBatch.lean",
+      "title": "An admissible batch around a high-degree planar vertex",
+      "type": "theorem",
+      "description": "Let `v` be a vertex of degree at least four in a finite planar graph.  There\nis an admissible radius-one batch of width four which contains the whole\nclosed neighborhood of `v` and at most one additional outside vertex.",
+      "imports": [
+        "Lax16.BatchFramework",
+        "Lax16.PlanarGraphs"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Finite\nimport Lax16.BatchFramework\nimport Lax16.PlanarGraphs\n\n/-!\n---\ntitle: An admissible batch around a high-degree planar vertex\ntype: theorem\n---\nLet `v` be a vertex of degree at least four in a finite planar graph.  There\nis an admissible radius-one batch of width four which contains the whole\nclosed neighborhood of `v` and at most one additional outside vertex.\n-/\n\nnamespace Lax16.PlanarVertexBatch\n\nopen Lax16.BatchFramework\nopen Lax16.PlanarGraphs\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- Every high-degree planar center has the required width-four batch. -/\naxiom exists_planar_vertex_batch {V : Type u} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (hplanar : IsPlanar G)\n    (v : V) (hdegree : 4 ≤ (G.neighborSet v).ncard) :\n    ∃ B : BatchAssignment G,\n      closedBallFinset G 1 v ⊆ B.vertices ∧\n      (B.vertices \\ closedBallFinset G 1 v).card ≤ 1 ∧\n      IsAdmissible G 4 B\n\nend Lax16.PlanarVertexBatch\n",
+      "statements": [
+        {
+          "id": "Lax16.PlanarVertexBatch.exists_planar_vertex_batch",
+          "signature": "exists_planar_vertex_batch : ∀ {V : Type u} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V),\n  Lax16.PlanarGraphs.IsPlanar G →\n    ∀ (v : V),\n      instLENat.le 4 (G.neighborSet v).ncard →\n        Exists fun B =>\n          And (Finset.instHasSubset.Subset (Lax16.TeachingMaps.closedBallFinset G 1 v) B.vertices)\n            (And (instLENat.le (Finset.instSDiff.sdiff B.vertices (Lax16.TeachingMaps.closedBallFinset G 1 v)).card 1)\n              (Lax16.BatchFramework.IsAdmissible G 4 B))",
+          "startLine": 23,
+          "endLine": 30,
+          "doc": "Every high-degree planar center has the required width-four batch."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.PositiveSeparation",
+      "path": "concepts/Lax16/PositiveSeparation.lean",
+      "title": "Positive separation as cross-containment failure",
+      "type": "theorem",
+      "description": "For a positive radius-one teaching map, two vertices are separated exactly\nwhen the teaching set of one contains a label outside the closed radius-one\nball of the other.  This is the containment reformulation used throughout\nthe draft.",
+      "imports": [
+        "Lax16.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax16.TeachingMaps\n\n/-!\n---\ntitle: Positive separation as cross-containment failure\ntype: theorem\n---\nFor a positive radius-one teaching map, two vertices are separated exactly\nwhen the teaching set of one contains a label outside the closed radius-one\nball of the other.  This is the containment reformulation used throughout\nthe draft.\n-/\n\nnamespace Lax16.PositiveSeparation\n\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- Positive separation is equivalent to one of the two cross-containment failures. -/\naxiom positive_separation_iff {V : Type u} {G : SimpleGraph V}\n    {T : TeachingMap V 1} (hT : IsPositive G 1 T) {v w : V} :\n    Separates G 1 T v w ↔\n      (∃ x ∈ T v, x ∉ closedBall G 1 w) ∨\n      (∃ x ∈ T w, x ∉ closedBall G 1 v)\n\nend Lax16.PositiveSeparation\n",
+      "statements": [
+        {
+          "id": "Lax16.PositiveSeparation.positive_separation_iff",
+          "signature": "positive_separation_iff : ∀ {V : Type u} {G : SimpleGraph V} {T : Lax16.TeachingMaps.TeachingMap V 1},\n  Lax16.TeachingMaps.IsPositive G 1 T →\n    ∀ {v w : V},\n      Iff (Lax16.TeachingMaps.Separates G 1 T v w)\n        (Or\n          (Exists fun x =>\n            And (SetLike.instMembership.mem (T v) x)\n              (Not (Set.instMembership.mem (Lax16.TeachingMaps.closedBall G 1 w) x)))\n          (Exists fun x =>\n            And (SetLike.instMembership.mem (T w) x)\n              (Not (Set.instMembership.mem (Lax16.TeachingMaps.closedBall G 1 v) x))))",
+          "startLine": 20,
+          "endLine": 25,
+          "doc": "Positive separation is equivalent to one of the two cross-containment failures."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.SmallDegreeBatch",
+      "path": "concepts/Lax16/SmallDegreeBatch.lean",
+      "title": "An admissible batch around a vertex of degree at most three",
+      "type": "theorem",
+      "description": "For a vertex `v` of degree at most three, its closed neighborhood is a batch\nof at most four vertices.  Give every batch vertex the anchor label `v`, then\nadd at most one positive witness for each of its at most three internal pairs.\nThis produces an admissible radius-one batch of width four without using\nplanarity.",
+      "imports": [
+        "Lax16.BatchFramework"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite",
+        "Mathlib.Data.Set.Card"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Finite\nimport Mathlib.Data.Set.Card\nimport Lax16.BatchFramework\n\n/-!\n---\ntitle: An admissible batch around a vertex of degree at most three\ntype: theorem\n---\nFor a vertex `v` of degree at most three, its closed neighborhood is a batch\nof at most four vertices.  Give every batch vertex the anchor label `v`, then\nadd at most one positive witness for each of its at most three internal pairs.\nThis produces an admissible radius-one batch of width four without using\nplanarity.\n-/\n\nnamespace Lax16.SmallDegreeBatch\n\nopen Lax16.BatchFramework\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- A degree-at-most-three vertex has a complete width-four neighborhood batch. -/\naxiom exists_small_degree_batch {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (v : V)\n    (hdegree : (G.neighborSet v).ncard ≤ 3) :\n    ∃ B : BatchAssignment G,\n      B.vertices = closedBallFinset G 1 v ∧\n      IsAdmissible G 4 B\n\nend Lax16.SmallDegreeBatch\n",
+      "statements": [
+        {
+          "id": "Lax16.SmallDegreeBatch.exists_small_degree_batch",
+          "signature": "exists_small_degree_batch : ∀ {V : Type u} [inst : Fintype V] (G : SimpleGraph V) (v : V),\n  instLENat.le (G.neighborSet v).ncard 3 →\n    Exists fun B =>\n      And (Eq B.vertices (Lax16.TeachingMaps.closedBallFinset G 1 v)) (Lax16.BatchFramework.IsAdmissible G 4 B)",
+          "startLine": 24,
+          "endLine": 30,
+          "doc": "A degree-at-most-three vertex has a complete width-four neighborhood batch."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.TeachingMaps",
+      "path": "concepts/Lax16/TeachingMaps.lean",
+      "title": "No-clash teaching for closed graph balls",
+      "type": "definition",
+      "description": "A vertex `v` of a finite simple graph represents its closed ball of radius\n`k`: the vertices reachable from `v` by a walk of length at most `k`.\n\nA teaching map assigns a finite set of labels to every vertex.  It is\nno-clash when every two distinct radius-`k` balls are distinguished by a\nlabel used by at least one of their teaching sets.  It is positive when every\nlabel assigned to `v` lies in the ball represented by `v`.\n\nThe ordinary and positive no-clash teaching dimensions are the least uniform\nwidths of such maps.  All subsequent results in this submission specialize\nthese definitions to `k = 1`, where the represented balls are precisely the\nclosed neighborhoods of the draft.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Paths",
+        "Mathlib.Data.Nat.Lattice"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Paths\nimport Mathlib.Data.Nat.Lattice\n\n/-!\n---\ntitle: No-clash teaching for closed graph balls\ntype: definition\n---\nA vertex `v` of a finite simple graph represents its closed ball of radius\n`k`: the vertices reachable from `v` by a walk of length at most `k`.\n\nA teaching map assigns a finite set of labels to every vertex.  It is\nno-clash when every two distinct radius-`k` balls are distinguished by a\nlabel used by at least one of their teaching sets.  It is positive when every\nlabel assigned to `v` lies in the ball represented by `v`.\n\nThe ordinary and positive no-clash teaching dimensions are the least uniform\nwidths of such maps.  All subsequent results in this submission specialize\nthese definitions to `k = 1`, where the represented balls are precisely the\nclosed neighborhoods of the draft.\n-/\n\nnamespace Lax16.TeachingMaps\n\nuniverse u\n\n/-- The closed radius-`k` ball around `v`, expressed by bounded walk length. -/\ndef closedBall {V : Type u} (G : SimpleGraph V) (k : ℕ) (v : V) : Set V :=\n  {w | ∃ p : G.Walk v w, p.length ≤ k}\n\n/-- The closed radius-`k` ball as a finset when the vertex type is finite. -/\nnoncomputable def closedBallFinset {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (k : ℕ) (v : V) : Finset V := by\n  classical\n  exact Finset.univ.filter fun w => w ∈ closedBall G k v\n\n/--\nA radius-`k` teaching map assigns a finite set of vertex labels to each\nradius-`k` concept.  The index makes the represented neighborhood size\nexplicit in every later interface.\n-/\nabbrev TeachingMap (V : Type u) (_k : ℕ) := V → Finset V\n\n/-- Two vertices represent distinct concepts at radius `k`. -/\ndef DistinctConcepts {V : Type u} (G : SimpleGraph V) (k : ℕ)\n    (v w : V) : Prop :=\n  closedBall G k v ≠ closedBall G k w\n\n/-- A label witnesses one of the two sides of the symmetric difference. -/\ndef IsWitness {V : Type u} (G : SimpleGraph V) (k : ℕ)\n    (x v w : V) : Prop :=\n  x ∈ closedBall G k v ∧ x ∉ closedBall G k w\n\n/-- The teaching sets of `v` and `w` contain a label on which their concepts differ. -/\ndef Separates {V : Type u} (G : SimpleGraph V) (k : ℕ)\n    (T : TeachingMap V k) (v w : V) : Prop :=\n  ∃ x : V, (x ∈ T v ∨ x ∈ T w) ∧\n    (IsWitness G k x v w ∨ IsWitness G k x w v)\n\n/-- Every pair of distinct concepts is separated. -/\ndef IsNoClash {V : Type u} (G : SimpleGraph V) (k : ℕ)\n    (T : TeachingMap V k) : Prop :=\n  ∀ ⦃v w : V⦄, DistinctConcepts G k v w → Separates G k T v w\n\n/-- Every teaching label is positive for the concept receiving it. -/\ndef IsPositive {V : Type u} (G : SimpleGraph V) (k : ℕ)\n    (T : TeachingMap V k) : Prop :=\n  ∀ ⦃v x : V⦄, x ∈ T v → x ∈ closedBall G k v\n\n/-- Every teaching set has cardinality at most `d`. -/\ndef HasWidthAtMost {V : Type u} {k : ℕ}\n    (T : TeachingMap V k) (d : ℕ) : Prop :=\n  ∀ v : V, (T v).card ≤ d\n\n/-- Every teaching set is nonempty. -/\ndef HasNonemptySets {V : Type u} {k : ℕ} (T : TeachingMap V k) : Prop :=\n  ∀ v : V, (T v).Nonempty\n\n/-- There is a radius-`k` no-clash teaching map of width at most `d`. -/\ndef HasNCTDAtMost {V : Type u} (G : SimpleGraph V) (k d : ℕ) : Prop :=\n  ∃ T : TeachingMap V k, IsNoClash G k T ∧ HasWidthAtMost T d\n\n/-- There is a positive radius-`k` no-clash teaching map of width at most `d`. -/\ndef HasPositiveNCTDAtMost {V : Type u} (G : SimpleGraph V)\n    (k d : ℕ) : Prop :=\n  ∃ T : TeachingMap V k,\n    IsPositive G k T ∧ IsNoClash G k T ∧ HasWidthAtMost T d\n\n/-- The no-clash teaching dimension for closed balls of radius `k`. -/\nnoncomputable def nctd {V : Type u} (G : SimpleGraph V) (k : ℕ) : ℕ :=\n  sInf {d : ℕ | HasNCTDAtMost G k d}\n\n/-- The positive no-clash teaching dimension for closed balls of radius `k`. -/\nnoncomputable def positiveNCTD {V : Type u}\n    (G : SimpleGraph V) (k : ℕ) : ℕ :=\n  sInf {d : ℕ | HasPositiveNCTDAtMost G k d}\n\n/-- The radius-`k` ball of `v` is contained in that of `w`. -/\ndef Dominates {V : Type u} (G : SimpleGraph V) (k : ℕ)\n    (v w : V) : Prop :=\n  closedBall G k v ⊆ closedBall G k w\n\nend Lax16.TeachingMaps\n",
+      "statements": []
+    },
+    {
+      "id": "Lax16.TwinReduction",
+      "path": "concepts/Lax16/TwinReduction.lean",
+      "title": "Copying a teaching set across closed-ball twins",
+      "type": "theorem",
+      "description": "If two vertices have the same closed neighborhood, they represent the same\nradius-one concept and have interchangeable label behavior across all such\nconcepts.  Replacing the teaching set of one twin by a copy of the other's\npreserves positivity, the no-clash property, the width bound, and nonemptiness.",
+      "imports": [
+        "Lax16.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax16.TeachingMaps\n\n/-!\n---\ntitle: Copying a teaching set across closed-ball twins\ntype: theorem\n---\nIf two vertices have the same closed neighborhood, they represent the same\nradius-one concept and have interchangeable label behavior across all such\nconcepts.  Replacing the teaching set of one twin by a copy of the other's\npreserves positivity, the no-clash property, the width bound, and nonemptiness.\n-/\n\nnamespace Lax16.TwinReduction\n\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- Replace the teaching set at `target` by the set at `source`. -/\nnoncomputable def copyTeachingSet {V : Type u} {k : ℕ} (T : TeachingMap V k)\n    (source target : V) : TeachingMap V k := by\n  classical\n  exact fun v => if v = target then T source else T v\n\n/-- Copying a teaching set between radius-one twins preserves validity. -/\naxiom copy_twin_preserves {V : Type u} {G : SimpleGraph V} {d : ℕ}\n    {T : TeachingMap V 1} {source target : V}\n    (htwins : closedBall G 1 source = closedBall G 1 target)\n    (hpositive : IsPositive G 1 T)\n    (hnoclash : IsNoClash G 1 T)\n    (hwidth : HasWidthAtMost T d)\n    (hnonempty : HasNonemptySets T) :\n    IsPositive G 1 (copyTeachingSet T source target) ∧\n    IsNoClash G 1 (copyTeachingSet T source target) ∧\n    HasWidthAtMost (copyTeachingSet T source target) d ∧\n    HasNonemptySets (copyTeachingSet T source target)\n\nend Lax16.TwinReduction\n",
+      "statements": [
+        {
+          "id": "Lax16.TwinReduction.copy_twin_preserves",
+          "signature": "copy_twin_preserves : ∀ {V : Type u} {G : SimpleGraph V} {d : Nat} {T : Lax16.TeachingMaps.TeachingMap V 1} {source target : V},\n  Eq (Lax16.TeachingMaps.closedBall G 1 source) (Lax16.TeachingMaps.closedBall G 1 target) →\n    Lax16.TeachingMaps.IsPositive G 1 T →\n      Lax16.TeachingMaps.IsNoClash G 1 T →\n        Lax16.TeachingMaps.HasWidthAtMost T d →\n          Lax16.TeachingMaps.HasNonemptySets T →\n            And (Lax16.TeachingMaps.IsPositive G 1 (Lax16.TwinReduction.copyTeachingSet T source target))\n              (And (Lax16.TeachingMaps.IsNoClash G 1 (Lax16.TwinReduction.copyTeachingSet T source target))\n                (And (Lax16.TeachingMaps.HasWidthAtMost (Lax16.TwinReduction.copyTeachingSet T source target) d)\n                  (Lax16.TeachingMaps.HasNonemptySets (Lax16.TwinReduction.copyTeachingSet T source target))))",
+          "startLine": 26,
+          "endLine": 37,
+          "doc": "Copying a teaching set between radius-one twins preserves validity."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.TwoDominators",
+      "path": "concepts/Lax16/TwoDominators.lean",
+      "title": "Two dominators at a degree-four center",
+      "type": "theorem",
+      "description": "Suppose a planar center `v` has exactly four neighbors and exactly two of\nthem, `w₁` and `w₂`, dominate it.  The active members of this pair can be\nassigned valid anchored teaching sets of size at most four simultaneously.\nEach set handles non-active concepts in the center ball; the pair itself may\nbe separated by a label from either set.  The two remaining neighbors are\nnonadjacent and supply the spare internal witnesses.",
+      "imports": [
+        "Lax16.DominatorDefinitions",
+        "Lax16.PlanarGraphs"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Finite\nimport Lax16.DominatorDefinitions\nimport Lax16.PlanarGraphs\n\n/-!\n---\ntitle: Two dominators at a degree-four center\ntype: theorem\n---\nSuppose a planar center `v` has exactly four neighbors and exactly two of\nthem, `w₁` and `w₂`, dominate it.  The active members of this pair can be\nassigned valid anchored teaching sets of size at most four simultaneously.\nEach set handles non-active concepts in the center ball; the pair itself may\nbe separated by a label from either set.  The two remaining neighbors are\nnonadjacent and supply the spare internal witnesses.\n-/\n\nnamespace Lax16.TwoDominators\n\nopen Lax16.DominatorDefinitions\nopen Lax16.PlanarGraphs\nopen Lax16.TeachingMaps\n\nuniverse u\n\n/-- The exceptional pair of degree-four dominators can be completed together. -/\naxiom exists_two_dominator_assignment {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (hplanar : IsPlanar G)\n    (v w₁ w₂ : V)\n    (hdegree : (G.neighborSet v).ncard = 4)\n    (hne : w₁ ≠ w₂)\n    (hdom : dominatorSet G v = {w₁, w₂}) :\n    ∃ T : TeachingMap V 1, CompletesActiveDominators G v T\n\nend Lax16.TwoDominators\n",
+      "statements": [
+        {
+          "id": "Lax16.TwoDominators.exists_two_dominator_assignment",
+          "signature": "exists_two_dominator_assignment : ∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n  Lax16.PlanarGraphs.IsPlanar G →\n    ∀ (v w₁ w₂ : V),\n      Eq (G.neighborSet v).ncard 4 →\n        Ne w₁ w₂ →\n          Eq (Lax16.DominatorDefinitions.dominatorSet G v)\n              (Set.instInsert.insert w₁ (Set.instSingletonSet.singleton w₂)) →\n            Exists fun T => Lax16.DominatorDefinitions.CompletesActiveDominators G v T",
+          "startLine": 26,
+          "endLine": 33,
+          "doc": "The exceptional pair of degree-four dominators can be completed together."
+        }
+      ]
+    },
+    {
+      "id": "Lax16.UniqueDominator",
+      "path": "concepts/Lax16/UniqueDominator.lean",
+      "title": "Teaching a unique active dominator",
+      "type": "theorem",
+      "description": "If `w` is the unique dominating neighbor of a planar center `v` and is\nactive, then `w` has a valid anchored teaching set of size at most four.\nAn outside witness separates `w` from `v`; planarity leaves at most two\nneighbors needing additional internal witnesses.",
+      "imports": [
+        "Lax16.DominatorDefinitions",
+        "Lax16.PlanarGraphs"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax16.DominatorDefinitions\nimport Lax16.PlanarGraphs\n\n/-!\n---\ntitle: Teaching a unique active dominator\ntype: theorem\n---\nIf `w` is the unique dominating neighbor of a planar center `v` and is\nactive, then `w` has a valid anchored teaching set of size at most four.\nAn outside witness separates `w` from `v`; planarity leaves at most two\nneighbors needing additional internal witnesses.\n-/\n\nnamespace Lax16.UniqueDominator\n\nopen Lax16.DominatorDefinitions\nopen Lax16.PlanarGraphs\n\nuniverse u\n\n/-- A unique active dominator admits a valid width-four teaching set. -/\naxiom exists_unique_dominator_set {V : Type u}\n    (G : SimpleGraph V) (hplanar : IsPlanar G)\n    (v w : V)\n    (hunique : dominatorSet G v = {w})\n    (hactive : IsActiveDominator G v w) :\n    ∃ S : Finset V, IsDominatorTeachingSet G v w S\n\nend Lax16.UniqueDominator\n",
+      "statements": [
+        {
+          "id": "Lax16.UniqueDominator.exists_unique_dominator_set",
+          "signature": "exists_unique_dominator_set : ∀ {V : Type u} (G : SimpleGraph V),\n  Lax16.PlanarGraphs.IsPlanar G →\n    ∀ (v w : V),\n      Eq (Lax16.DominatorDefinitions.dominatorSet G v) (Set.instSingletonSet.singleton w) →\n        Lax16.DominatorDefinitions.IsActiveDominator G v w →\n          Exists fun S => Lax16.DominatorDefinitions.IsDominatorTeachingSet G v w S",
+          "startLine": 22,
+          "endLine": 28,
+          "doc": "A unique active dominator admits a valid width-four teaching set."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax16Proofs.AnchorLabels.anchor_certifies",
+      "path": "proofs/Lax16Proofs/AnchorLabels.lean",
+      "conclusion": "Lax16.AnchorLabels.anchor_certifies",
+      "assumptions": [],
+      "description": "The anchor itself is the required label: it belongs to the teaching set by\nhypothesis and is absent from the competing closed ball."
+    },
+    {
+      "id": "Lax16Proofs.BatchFramework.reassignment",
+      "path": "proofs/Lax16Proofs/BatchFramework.lean",
+      "conclusion": "Lax16.BatchFramework.reassignment",
+      "assumptions": [],
+      "description": "Positivity and width pass directly from each vertex's last batch.  For a\npair of vertices, their last batches either agree, when within-batch\nseparation applies, or one is later.  In the latter case the earlier vertex\ncannot occur in the later batch, so the later vertex's outside-batch\ncertificate separates the final assignments."
+    },
+    {
+      "id": "Lax16Proofs.CenterSet.exists_center_set",
+      "path": "proofs/Lax16Proofs/CenterSet.lean",
+      "conclusion": "Lax16.CenterSet.exists_center_set",
+      "assumptions": [],
+      "description": "Choose two nonadjacent neighbors of the center.  At most two\nnon-dominating neighbors contain both labels, since three would form a\ndirect `K₃,₃`; add one missing neighbor label for each exception and pad the\nresult inside the neighborhood to cardinality four."
+    },
+    {
+      "id": "Lax16Proofs.ComponentReduction.combine_components",
+      "path": "proofs/Lax16Proofs/ComponentReduction.lean",
+      "conclusion": "Lax16.ComponentReduction.combine_components",
+      "assumptions": [],
+      "description": "Choose a teaching map on each component and map all of its labels into the\nambient vertex type.  Labels and radius-one balls transport across the\ncomponent inclusion.  Vertices in different components are separated by any\nlabel in the nonempty teaching set on the first component."
+    },
+    {
+      "id": "Lax16Proofs.DominatorCompletion.exists_dominator_completion",
+      "path": "proofs/Lax16Proofs/DominatorCompletion.lean",
+      "conclusion": "Lax16.DominatorCompletion.exists_dominator_completion",
+      "assumptions": [
+        "Lax16.DominatorCount.dominator_count_bounds",
+        "Lax16.TwoDominators.exists_two_dominator_assignment",
+        "Lax16.UniqueDominator.exists_unique_dominator_set"
+      ],
+      "description": "The planar counting bound leaves no dominators, one dominator, or (only at\ndegree four) two dominators.  The empty case is vacuous, the singleton case\nuses the unique-dominator construction when that vertex is active, and the\ntwo-element case uses the simultaneous degree-four construction."
+    },
+    {
+      "id": "Lax16Proofs.DominatorCount.dominator_count_bounds",
+      "path": "proofs/Lax16Proofs/DominatorCount.lean",
+      "conclusion": "Lax16.DominatorCount.dominator_count_bounds",
+      "assumptions": [],
+      "description": "Two dominators and three further neighbors give a direct `K₃,₃`.  When the\ncenter has exactly four neighbors, three dominators and the remaining\nneighbor give a direct `K₅`."
+    },
+    {
+      "id": "Lax16Proofs.OptimalConstants.optimal_radius_one_constants",
+      "path": "proofs/Lax16Proofs/OptimalConstants.lean",
+      "conclusion": "Lax16.OptimalConstants.optimal_radius_one_constants",
+      "assumptions": [
+        "Lax16.OuterplanarBound.positiveNCTD_le_two",
+        "Lax16.OuterplanarSharpness.outerplanar_bound_is_sharp",
+        "Lax16.PlanarBound.positiveNCTD_le_four",
+        "Lax16.PlanarSharpness.planar_bound_is_sharp"
+      ],
+      "description": "The universal bounds are the planar and outerplanar upper-bound theorems.\nTheir respective sharp examples supply the two existential conjuncts."
+    },
+    {
+      "id": "Lax16Proofs.OuterplanarBlockAssignment.exists_two_label_assignment",
+      "path": "proofs/Lax16Proofs/OuterplanarBlockAssignment.lean",
+      "conclusion": "Lax16.OuterplanarBlockAssignment.exists_two_label_assignment",
+      "assumptions": [],
+      "description": "Every finite two-connected outerplanar graph has an exact two-label\npositive no-clash teaching map."
+    },
+    {
+      "id": "Lax16Proofs.OuterplanarBound.positiveNCTD_le_two",
+      "path": "proofs/Lax16Proofs/OuterplanarBound.lean",
+      "conclusion": "Lax16.OuterplanarBound.positiveNCTD_le_two",
+      "assumptions": [
+        "Lax16.ComponentReduction.combine_components"
+      ],
+      "description": "Decompose into connected components.  On each nontrivial component, recurse\nat cut vertices; the two-connected leaves use the exact block assignment.\nAll recursive branch maps retain exact cardinality two, which separates\nvertices belonging to different branches."
+    },
+    {
+      "id": "Lax16Proofs.OuterplanarLayer.exists_outerplanar_layer_assignment",
+      "path": "proofs/Lax16Proofs/OuterplanarLayer.lean",
+      "conclusion": "Lax16.OuterplanarLayer.exists_outerplanar_layer_assignment",
+      "assumptions": [
+        "Lax16.OuterplanarBound.positiveNCTD_le_two"
+      ],
+      "description": "Transport a width-two positive map from the induced outerplanar layer.\nClasses of induced closed twins have size at most three.  A two-element\nclass needs at most one ambient repair label per vertex; on a three-element\nclass, use the self-label and at most two repair labels.  Such a triple is an\nisolated component by the forbidden-`K₄` condition."
+    },
+    {
+      "id": "Lax16Proofs.OuterplanarSharpness.outerplanar_bound_is_sharp",
+      "path": "proofs/Lax16Proofs/OuterplanarSharpness.lean",
+      "conclusion": "Lax16.OuterplanarSharpness.outerplanar_bound_is_sharp",
+      "assumptions": [],
+      "description": "The two forbidden topological models are excluded directly using the\ndegree-three branch vertices and explicit vertex separators of the graph.\nAn explicit positive width-two map proves both upper bounds, while four\nsingleton symmetric differences and four cross-pair constraints rule out\nevery ordinary width-one no-clash map."
+    },
+    {
+      "id": "Lax16Proofs.OutsideThreeSetGadget.outside_three_set_gadget",
+      "path": "proofs/Lax16Proofs/OutsideThreeSetGadget.lean",
+      "conclusion": "Lax16.OutsideThreeSetGadget.outside_three_set_gadget",
+      "assumptions": [],
+      "description": "Two distinct outside vertices seeing all three selected neighbors, together\nwith the center and those neighbors, form a direct `K₃,₃`.  Uniqueness then\nturns failure of an external certificate into the contradiction that the\noutside vertex belongs to the enlarged batch."
+    },
+    {
+      "id": "Lax16Proofs.PlanarBound.positiveNCTD_le_four",
+      "path": "proofs/Lax16Proofs/PlanarBound.lean",
+      "conclusion": "Lax16.PlanarBound.positiveNCTD_le_four",
+      "assumptions": [
+        "Lax16.BatchFramework.reassignment",
+        "Lax16.PlanarVertexBatch.exists_planar_vertex_batch",
+        "Lax16.SmallDegreeBatch.exists_small_degree_batch"
+      ],
+      "description": "Choose an admissible batch centered at each vertex.  The schedule is indexed\nby all vertices, and the last batch of a vertex is the largest index of a\nbatch containing it.  This construction also handles an empty vertex type:\nall vertex-indexed obligations are then vacuous."
+    },
+    {
+      "id": "Lax16Proofs.PlanarSharpness.planar_bound_is_sharp",
+      "path": "proofs/Lax16Proofs/PlanarSharpness.lean",
+      "conclusion": "Lax16.PlanarSharpness.planar_bound_is_sharp",
+      "assumptions": [],
+      "description": "The five-vertex wheel is planar directly from the topological-model\ndefinition.  An explicit map omitting one label at every vertex gives the\nupper bound.  Conversely, distinguishing the universal center ball from the\nfour rim balls forces all four rim labels into the center's positive teaching\nset."
+    },
+    {
+      "id": "Lax16Proofs.PlanarToolbox.neighbor_layer_outerplanar",
+      "path": "proofs/Lax16Proofs/PlanarToolbox.lean",
+      "conclusion": "Lax16.PlanarToolbox.neighbor_layer_outerplanar",
+      "assumptions": [],
+      "description": "Cone a forbidden subdivision in the neighbor layer from the center.  A\ntopological `K₄` becomes a topological `K₅`; a topological `K₂,₃` becomes a\ntopological `K₃,₃`.  Lifted old routes retain their disjoint interiors, and\nall newly added routes are single edges with empty interior."
+    },
+    {
+      "id": "Lax16Proofs.PlanarVertexBatch.exists_planar_vertex_batch",
+      "path": "proofs/Lax16Proofs/PlanarVertexBatch.lean",
+      "conclusion": "Lax16.PlanarVertexBatch.exists_planar_vertex_batch",
+      "assumptions": [
+        "Lax16.CenterSet.exists_center_set",
+        "Lax16.DominatorCompletion.exists_dominator_completion",
+        "Lax16.OuterplanarLayer.exists_outerplanar_layer_assignment",
+        "Lax16.OutsideThreeSetGadget.outside_three_set_gadget",
+        "Lax16.PlanarToolbox.neighbor_layer_outerplanar"
+      ],
+      "description": "Use the four-label center set, the completed active-dominator assignments,\nand the anchored outerplanar-layer assignments on the remaining neighbors.\nThe unique possible outside vertex seeing the center set is added to the\nbatch and receives the outside-gadget assignment."
+    },
+    {
+      "id": "Lax16Proofs.PositiveSeparation.positive_separation_iff",
+      "path": "proofs/Lax16Proofs/PositiveSeparation.lean",
+      "conclusion": "Lax16.PositiveSeparation.positive_separation_iff",
+      "assumptions": [],
+      "description": "A separating label must belong to the teaching set whose ball contains it:\nthe other two cases contradict positivity.  Conversely, either\ncross-containment failure supplies a separating witness."
+    },
+    {
+      "id": "Lax16Proofs.SmallDegreeBatch.exists_small_degree_batch",
+      "path": "proofs/Lax16Proofs/SmallDegreeBatch.lean",
+      "conclusion": "Lax16.SmallDegreeBatch.exists_small_degree_batch",
+      "assumptions": [],
+      "description": "Use the center as an anchor label for every vertex in its closed\nneighborhood.  For each ordered pair of batch vertices whose balls have a\nforward difference, choose one such witness.  A vertex has at most three\nother batch vertices, so its anchor plus these witnesses has width at most\nfour."
+    },
+    {
+      "id": "Lax16Proofs.TwinReduction.copy_twin_preserves",
+      "path": "proofs/Lax16Proofs/TwinReduction.lean",
+      "conclusion": "Lax16.TwinReduction.copy_twin_preserves",
+      "assumptions": [],
+      "description": "For a pair involving the target twin, apply the original no-clash condition\nto the corresponding pair involving the source twin.  Equality of their\nclosed balls transfers both the distinctness hypothesis and the witness."
+    },
+    {
+      "id": "Lax16Proofs.TwoDominators.exists_two_dominator_assignment",
+      "path": "proofs/Lax16Proofs/TwoDominators.lean",
+      "conclusion": "Lax16.TwoDominators.exists_two_dominator_assignment",
+      "assumptions": [],
+      "description": "The two neighbors outside the dominating pair are nonadjacent, so they\nwitness the two remaining internal comparisons.  Each active dominator also\nreceives an outside witness.  When both dominators are active and distinct,\none outside witness is chosen from their symmetric difference, allowing the\npair to be separated from whichever side supplies that witness."
+    },
+    {
+      "id": "Lax16Proofs.UniqueDominator.exists_unique_dominator_set",
+      "path": "proofs/Lax16Proofs/UniqueDominator.lean",
+      "conclusion": "Lax16.UniqueDominator.exists_unique_dominator_set",
+      "assumptions": [],
+      "description": "Choose a label of the dominator outside the center ball.  Only two concepts\nin the center ball can also contain that label, since three would form a\ndirect `K₃,₃` together with the center, the outside label, and the\ndominator.  One further positive label handles each of those exceptions."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "beb43f41553bb6f4030af64d8481226188eb824ca30e8bbbeefba13976dc051d",
+    "sourceCommit": "cc8273824c505a73d0f99c3fdbf62e42ab04c1bb",
+    "leanToolchain": "leanprover/lean4:v4.30.0",
+    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "files": [
+      {
+        "path": "concepts/lib/Lax16/AnchorLabels.olean",
+        "bytes": 9960,
+        "sha256": "2e100b99c7ad636554e5ee5e21aa1a0b7a8948f83875a7243fd3f43b4c6efab3"
+      },
+      {
+        "path": "concepts/lib/Lax16/BatchFramework.olean",
+        "bytes": 127024,
+        "sha256": "3522a610d8abc5a8903864d2b2e24bfa0a376fe359ccf80c323f8ee4575b4c89"
+      },
+      {
+        "path": "concepts/lib/Lax16/CenterSet.olean",
+        "bytes": 13120,
+        "sha256": "d21e1a88dec1ee11c71e0f52095008dc544a3bccdafa88823d5ed080ceb41bf3"
+      },
+      {
+        "path": "concepts/lib/Lax16/ComponentReduction.olean",
+        "bytes": 11656,
+        "sha256": "e33ff989feb40fad9e0fdf424eee4f8242472f62e1c6aa093c06e2e7a5064e9c"
+      },
+      {
+        "path": "concepts/lib/Lax16/DominatorCompletion.olean",
+        "bytes": 9336,
+        "sha256": "4582d4aef7ccc4acf58f40c489e5d99d2f96e1cb96f5e9759651a45b0cecebc9"
+      },
+      {
+        "path": "concepts/lib/Lax16/DominatorCount.olean",
+        "bytes": 9896,
+        "sha256": "58741cdc510c707d6b8bcef5d1e4deeb76f78a9a750b1ee4c1f5b825d0839c6d"
+      },
+      {
+        "path": "concepts/lib/Lax16/DominatorDefinitions.olean",
+        "bytes": 19232,
+        "sha256": "46f9c1852b7f8c04f1a8d4de96a46da610ba4ceb1f4b975ec1cb831728246eda"
+      },
+      {
+        "path": "concepts/lib/Lax16/OptimalConstants.olean",
+        "bytes": 10368,
+        "sha256": "36aebac2c499d633005c410c9b280a5ad307d78988de06600d211cd131e646dd"
+      },
+      {
+        "path": "concepts/lib/Lax16/OuterplanarBlockAssignment.olean",
+        "bytes": 9240,
+        "sha256": "31373d0452478ad2d611a91d556e22f135c8bd6946630ccc2af3dddec4fd7e2b"
+      },
+      {
+        "path": "concepts/lib/Lax16/OuterplanarBound.olean",
+        "bytes": 7448,
+        "sha256": "f34181fad5cc498f437b9230af35b6ea778fe187c5793085f72e9c788b799a49"
+      },
+      {
+        "path": "concepts/lib/Lax16/OuterplanarLayer.olean",
+        "bytes": 22000,
+        "sha256": "78282b6c33c3e203bf38cccd143f76e9a729b23802915840b92a198329a126b2"
+      },
+      {
+        "path": "concepts/lib/Lax16/OuterplanarSharpness.olean",
+        "bytes": 14512,
+        "sha256": "a9df6c0f4fa3fcc3c6715f25259b3681f676d3f792322fbc3562f4f8eac292ed"
+      },
+      {
+        "path": "concepts/lib/Lax16/OutsideThreeSetGadget.olean",
+        "bytes": 18280,
+        "sha256": "18bc539397df33caa10f9f1246aaad1654e0c0086b240c0266b10e961f5043e6"
+      },
+      {
+        "path": "concepts/lib/Lax16/PlanarBound.olean",
+        "bytes": 7416,
+        "sha256": "4cfb7b0d7cdc42405e8780f36882beff030b66932e0565d020208af1016732d6"
+      },
+      {
+        "path": "concepts/lib/Lax16/PlanarGraphs.olean",
+        "bytes": 146648,
+        "sha256": "a4e66d2beda794cd2ad213da3c457f1935315a83c8e93ca0cfb839dc0e8a442d"
+      },
+      {
+        "path": "concepts/lib/Lax16/PlanarSharpness.olean",
+        "bytes": 13904,
+        "sha256": "82c206abb229639da4172e076144bba4e63888e7737b8cb8c8d8ca6861d8a6e9"
+      },
+      {
+        "path": "concepts/lib/Lax16/PlanarToolbox.olean",
+        "bytes": 6424,
+        "sha256": "1d389b85369d002634142bb665b80646bc529ed6395433038176772c418f97a0"
+      },
+      {
+        "path": "concepts/lib/Lax16/PlanarVertexBatch.olean",
+        "bytes": 11664,
+        "sha256": "a797e773b2712f148b7ed82564c69d2a05ac8061243cccc413a241b010a2b4d2"
+      },
+      {
+        "path": "concepts/lib/Lax16/PositiveSeparation.olean",
+        "bytes": 10104,
+        "sha256": "dfaec6a78d4d2369a7a5903c6b7d951fe78540587e2800b593144dfa2bac3b00"
+      },
+      {
+        "path": "concepts/lib/Lax16/SmallDegreeBatch.olean",
+        "bytes": 10304,
+        "sha256": "765ad1001996bce319c80b509791e90665a8c693b37bdf6b9042675d2843e907"
+      },
+      {
+        "path": "concepts/lib/Lax16/TeachingMaps.olean",
+        "bytes": 32448,
+        "sha256": "38096e6622d1987d23e7bd1d3ad166eaad9206be08e1bffe1c3b26e2b4c0ff7b"
+      },
+      {
+        "path": "concepts/lib/Lax16/TwinReduction.olean",
+        "bytes": 12472,
+        "sha256": "465bb85ac5ab6106b3ca8e9dfe71ef52613060b98aec6cfd0081f1927f1e775a"
+      },
+      {
+        "path": "concepts/lib/Lax16/TwoDominators.olean",
+        "bytes": 11592,
+        "sha256": "1c499842eeab7311c5b9a3f3f2cd2aba0ec68befb30af8eca465046676166299"
+      },
+      {
+        "path": "concepts/lib/Lax16/UniqueDominator.olean",
+        "bytes": 8312,
+        "sha256": "3f8db4c257709ed23f474159acafeb84e004c5c27119267f8730b1e78654e089"
+      },
+      {
+        "path": "concepts/lib/Lax16.olean",
+        "bytes": 4016,
+        "sha256": "70b8154fa9d969e519ee3a2c5d1f1002f9d469dabaab7a7cac7daac098540ed5"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3162,
+        "sha256": "a0cdc406f106d3b403d989288de4bf470ae19da1d1da7c4c53478757d0b9403f"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 314,
+        "sha256": "74cf1d1ee52827bea1c0dbf299bf09b77e620d199842a344ee41c63db928caee"
+      },
+      {
+        "path": "concepts/package/Lax16/AnchorLabels.lean",
+        "bytes": 668,
+        "sha256": "d0586264560f17cabf2240ad40a1350f7933875315eebad250f7e320e2db6eb7"
+      },
+      {
+        "path": "concepts/package/Lax16/BatchFramework.lean",
+        "bytes": 3029,
+        "sha256": "7e38f33240f9438a73d83a4ef388b00d401abd3ed6de95840b9818cd1f95d57d"
+      },
+      {
+        "path": "concepts/package/Lax16/CenterSet.lean",
+        "bytes": 991,
+        "sha256": "e544c7f66afd3a64b0e3e95be7e890811eac21aee084bf9678eeb013972ee3e1"
+      },
+      {
+        "path": "concepts/package/Lax16/ComponentReduction.lean",
+        "bytes": 1034,
+        "sha256": "c1f51f5afbe255936a039820bdc73522372223217d166c05a440d541a2effde7"
+      },
+      {
+        "path": "concepts/package/Lax16/DominatorCompletion.lean",
+        "bytes": 901,
+        "sha256": "998895f8ed4c035591e4b434d57306582ab213b5ef501ca786c934c8a23aa863"
+      },
+      {
+        "path": "concepts/package/Lax16/DominatorCount.lean",
+        "bytes": 979,
+        "sha256": "f542c926815145e4dea1d79dfdce4460e97f30cedeaf3316205dbc15d4d992e9"
+      },
+      {
+        "path": "concepts/package/Lax16/DominatorDefinitions.lean",
+        "bytes": 2078,
+        "sha256": "3933b4de6c873d422cc07372fa472dae34855475169093ec534113a127ac79fc"
+      },
+      {
+        "path": "concepts/package/Lax16/OptimalConstants.lean",
+        "bytes": 946,
+        "sha256": "d8ea68d4c6db1b881658eba569b14a90474f0225bed4e7e939397922d125a923"
+      },
+      {
+        "path": "concepts/package/Lax16/OuterplanarBlockAssignment.lean",
+        "bytes": 856,
+        "sha256": "4e1a1de847911a9ea1e6ea78f20dc47154ea26ea603aba2cf9774196278843a3"
+      },
+      {
+        "path": "concepts/package/Lax16/OuterplanarBound.lean",
+        "bytes": 622,
+        "sha256": "709299d25f8b5789c69deaa4cadb011b6d5f813063bc10b85a6cf5ee1085c1cf"
+      },
+      {
+        "path": "concepts/package/Lax16/OuterplanarLayer.lean",
+        "bytes": 2057,
+        "sha256": "11756e8ae110a7248e64b5e7c5df279d0b3ddfbfe437cdc58365b3f894e31707"
+      },
+      {
+        "path": "concepts/package/Lax16/OuterplanarSharpness.lean",
+        "bytes": 1137,
+        "sha256": "82a71c9c3a71c7fc92c0383af4f3280f0d5f757cb6b1aca69f55827f9d200bca"
+      },
+      {
+        "path": "concepts/package/Lax16/OutsideThreeSetGadget.lean",
+        "bytes": 1413,
+        "sha256": "6ebaadb66641e7e9c1ec06305f59d3c4857fa8a7754e72ea9e6f75bda77f4eff"
+      },
+      {
+        "path": "concepts/package/Lax16/PlanarBound.lean",
+        "bytes": 590,
+        "sha256": "c718a7fbaa6b714b548d1726ec7010e252d161bfe14c4fe922efa9a357b8c771"
+      },
+      {
+        "path": "concepts/package/Lax16/PlanarGraphs.lean",
+        "bytes": 3074,
+        "sha256": "6eff3441b70dde6bb04efb9ebce36ca25ba5ff3c5ee90b62f767d998c660a698"
+      },
+      {
+        "path": "concepts/package/Lax16/PlanarSharpness.lean",
+        "bytes": 1061,
+        "sha256": "49d08f12b169f3bfbfa0cfc0fcb6420cf1bb632062d9465fcd5cb189d5fdc0ca"
+      },
+      {
+        "path": "concepts/package/Lax16/PlanarToolbox.lean",
+        "bytes": 921,
+        "sha256": "9f8e4814ed51f2d84fd1d021a6782fd7c6e8a0d0711ba71a8dda83c9ecec9df8"
+      },
+      {
+        "path": "concepts/package/Lax16/PlanarVertexBatch.lean",
+        "bytes": 980,
+        "sha256": "d8216fe008c7a39f17f539459d7fb9282c68ad4a65b7c1a03929dfa4503ddf16"
+      },
+      {
+        "path": "concepts/package/Lax16/PositiveSeparation.lean",
+        "bytes": 788,
+        "sha256": "28b596e9d4c02441172d885b374c34db8811f9f5d4475a0301b9973ae43246db"
+      },
+      {
+        "path": "concepts/package/Lax16/SmallDegreeBatch.lean",
+        "bytes": 968,
+        "sha256": "8de3e3b8944f7967d336cdc2f3853818ac951a36ee327882b10aa09c204d5d64"
+      },
+      {
+        "path": "concepts/package/Lax16/TeachingMaps.lean",
+        "bytes": 4136,
+        "sha256": "066f6319bc74f0cfa8ff8420ec884a62761d03ed232c1f425fe9ec32d2c3b7f7"
+      },
+      {
+        "path": "concepts/package/Lax16/TwinReduction.lean",
+        "bytes": 1389,
+        "sha256": "6d08452fb5c60bcec6f976336093006e88e5f8c70753cd8de30834e34605b0ca"
+      },
+      {
+        "path": "concepts/package/Lax16/TwoDominators.lean",
+        "bytes": 1156,
+        "sha256": "4291c8ac6388216efbb207e87315cb1e2b84d7ba4b25923d349cc90058badad1"
+      },
+      {
+        "path": "concepts/package/Lax16/UniqueDominator.lean",
+        "bytes": 842,
+        "sha256": "6b6c4859b98bc69d67e12e310baa3580cddf01719b16703b4eba579fc45d5a50"
+      },
+      {
+        "path": "concepts/package/Lax16.lean",
+        "bytes": 712,
+        "sha256": "d657b5e6cdb2c13aca4ba43e052955ff1ef83b59eeffe782366d321f2d207daa"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/AnchorLabels.olean",
+        "bytes": 11848,
+        "sha256": "17ce731e6a7ac2377a3cf43d5f3b8f8249974ccd02ae16d04018a964030af6c2"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/BatchFramework.olean",
+        "bytes": 70176,
+        "sha256": "542ee6f48dbdf5ef17b5b0c659154c65881934815107bb57c4e91d897755ab9e"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/CenterSet.olean",
+        "bytes": 1107816,
+        "sha256": "c5b777606ad56708b76a1902ac69ae3e9c77fef56fb4a3af2b3b0584aeedd62d"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/ComponentReduction.olean",
+        "bytes": 164320,
+        "sha256": "4dfd915c360e450ec282c1bc8882002a5251ef38ae21220abc9f7e0596f0ffff"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/DominatorCompletion.olean",
+        "bytes": 132776,
+        "sha256": "67a66c98c48a7a15bcd816db421f629537e850445ea861156d0fdda5f7176080"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/DominatorCount.olean",
+        "bytes": 1060008,
+        "sha256": "52afb950be447a1854d6ba06c64be6d98e92d772f8307b347bbb69e8910d0129"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/OptimalConstants.olean",
+        "bytes": 15336,
+        "sha256": "4fecd863b08463fffd7e8001ddf99be1a66d9bb102036d7aabdc6aaae2f35c7c"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/OuterplanarBlockAssignment.olean",
+        "bytes": 2854128,
+        "sha256": "f6f3d988838d8346a1e8dffacb86bb2f09468d67d3e29417d4383361d1957b75"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/OuterplanarBound.olean",
+        "bytes": 554544,
+        "sha256": "1a5e1096f0c28d63370367ef7886b23a0f3c5ab7e846cd1b555eb94fc319f233"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/OuterplanarLayer.olean",
+        "bytes": 922696,
+        "sha256": "f61afb4b14c90f66f52a977c317f48e10e2899935e93b2a41da648a8d6036203"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/OuterplanarSharpness.olean",
+        "bytes": 2192208,
+        "sha256": "5c8430e607a7ac5170a944eaf8623ce76da025b3e64b19f6f45d925f14b05276"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/OuterplanarThetaBase.olean",
+        "bytes": 1106552,
+        "sha256": "b317aa6c4bc7fab990a1a6b94a8e87ca17ae02962dbf4ab2ce67be0ee24d3174"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/OuterplanarThetaDirect.olean",
+        "bytes": 1119192,
+        "sha256": "504b7cf7b790399d8cb1e59d31f520c09713d3267938944c2cd6d62563ad69ed"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/OuterplanarThetaFinal.olean",
+        "bytes": 1455400,
+        "sha256": "3083c05b36bc88453de7ec21151e6c44f646df51730329f73c8d064739072cfa"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/OuterplanarThetaK4.olean",
+        "bytes": 1600528,
+        "sha256": "0040ea0a6d9f6f33259cd23b7edc9732223d2ffbab6fe690593617ef4e484bcb"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/OuterplanarThetaLeftReturn.olean",
+        "bytes": 529392,
+        "sha256": "ecc19e5dab8542e58267aabcbf75000d739e45d56c96df63b849d8d2beea1ccb"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/OuterplanarThetaSameArm.olean",
+        "bytes": 951464,
+        "sha256": "3788654f38296f6aefdd6a6b428455751deffae92b4e2e92c3bc98bf64e96b34"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/OutsideThreeSetGadget.olean",
+        "bytes": 560048,
+        "sha256": "685cdfa9b4a68293a7f4a37628ca4e3c639259716324fa569ca673824cef9a9e"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/PlanarBound.olean",
+        "bytes": 99800,
+        "sha256": "b8cfcb1a4f29dbc2cadfdc410624555f10d62882108f2d9ef2bf2af02245b134"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/PlanarSharpness.olean",
+        "bytes": 1031176,
+        "sha256": "b51207cc07b05d72c9c679a8e8c2c89530ed1eb6678a963d1b0ebd6c6e21ae74"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/PlanarToolbox.olean",
+        "bytes": 698936,
+        "sha256": "332f0a121ddbc958dbed8ccfe1c12a8cfd708e4d43fb5bdfe0ba9e40b6ed31af"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/PlanarVertexBatch.olean",
+        "bytes": 364664,
+        "sha256": "342734f424de7cbfce32966c7ba218a592d7fadaf8fe398221ab10e5e365bbff"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/PositiveSeparation.olean",
+        "bytes": 33616,
+        "sha256": "6ad0c22d0bd3211bd9f18c163cac186d2d10f8ce9ae3446447abc2d9bc6b3a9d"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/SmallDegreeBatch.olean",
+        "bytes": 171752,
+        "sha256": "d1ea4380de59c41fff09c6c8f12270f9c9fe123d7c248d59e8dc3551b69898e9"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/TwinReduction.olean",
+        "bytes": 64632,
+        "sha256": "c0e66dbed512c64f07daae0a8fa18f96e032591e68b706e46a4aedea93f37ad4"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/TwoDominators.olean",
+        "bytes": 378072,
+        "sha256": "55afd017cdf0ac4e96bdc0135b97a613678d34ee1a8db5be46ad1a3b7117576d"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs/UniqueDominator.olean",
+        "bytes": 683136,
+        "sha256": "53c28a65a0e2e40a86eabb4f9201df511b79aae22882a57370163033378a5ecd"
+      },
+      {
+        "path": "proofs/lib/Lax16Proofs.olean",
+        "bytes": 4408,
+        "sha256": "1e822610330eabda7dc9e15e2674d2b4c58bc3b8a73aa57d6e95c65d140d0c8b"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3348,
+        "sha256": "ea2c53d21821b48eb4d4cf3d5aa534705a1e2ba3153ebda96d25624392602a92"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 381,
+        "sha256": "2f9af9ce3323af08aa5c3ff81b24c95cf585cba26b641128ca877060107e4d85"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/AnchorLabels.lean",
+        "bytes": 567,
+        "sha256": "83bafcb08a6932be021dd72767f4dae988986542cc10948d3e05e798bcf38ef7"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/BatchFramework.lean",
+        "bytes": 2833,
+        "sha256": "686b39ba9409014ec99aae7a07407679a820a3dbdc6534a81a1e0504ef90ec31"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/CenterSet.lean",
+        "bytes": 13077,
+        "sha256": "d73f9aeb8c7a117ae91da660c4b7ea56b5ad0975b99724fde5e0ae2bfb9a534f"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/ComponentReduction.lean",
+        "bytes": 5480,
+        "sha256": "1ab4f58f1e87c54bc89b949a1c0dc82fe60b3f2c45ac649de61fd2bee7c6ae72"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/DominatorCompletion.lean",
+        "bytes": 4338,
+        "sha256": "a9a181ecea24495b927cbd7f04a193ef4b0d043b4a8701d28f3205438110d9da"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/DominatorCount.lean",
+        "bytes": 9336,
+        "sha256": "1eb2e09db83cfd455034fa7df23a08cc1cffb5ea6c3fb110d3b78d54db71902c"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/OptimalConstants.lean",
+        "bytes": 1650,
+        "sha256": "812eb008a7c7834cbc24a83d8d46c8513e4d75f83c2009f0139d6a28976bb430"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/OuterplanarBlockAssignment.lean",
+        "bytes": 79698,
+        "sha256": "09422f349d8b1178fb670d2cd98bfda734c270b7dc1fb04f3a9b0b0fd26c9df6"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/OuterplanarBound.lean",
+        "bytes": 23983,
+        "sha256": "2f189d429912af4df45e9b079f9e4f2ec486d9c3b7db138a51fd0f6ab6721170"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/OuterplanarLayer.lean",
+        "bytes": 21599,
+        "sha256": "75420747bc17bc8e683666d7c3b760dcc1453094c33ca0afc8fad561f1e67bd6"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/OuterplanarSharpness.lean",
+        "bytes": 35002,
+        "sha256": "51aa9ea54d1bd0d9215a3fc0a233b5f148a951f64aa82a1486c7d80da37eccfc"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/OuterplanarThetaBase.lean",
+        "bytes": 19122,
+        "sha256": "f623d1162950dc631c62e6d98e5c0085eb60ccf911ec957411aae709ee2b315a"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/OuterplanarThetaDirect.lean",
+        "bytes": 35098,
+        "sha256": "db8985277bc2a83381d5576c42ed6a7210d6fc050791830247a8a4474dcf793b"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/OuterplanarThetaFinal.lean",
+        "bytes": 25939,
+        "sha256": "7c5feefec6d0e02d9470685f840cf112e9cbd354b01435659667c1e54677256c"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/OuterplanarThetaK4.lean",
+        "bytes": 19237,
+        "sha256": "2e390ae1816c2556acf6d47918b7d720ba5be0cf71c3266e6167ec8f4e299afa"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/OuterplanarThetaLeftReturn.lean",
+        "bytes": 8442,
+        "sha256": "6488ed14c386702e1bab72b7a18dae7ef04d473010848baf2c47436b61bdd406"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/OuterplanarThetaSameArm.lean",
+        "bytes": 15347,
+        "sha256": "17b2812885a885d49041d2cf12d5b6bc2f2ce82c4477900cc1caaa27b306e992"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/OutsideThreeSetGadget.lean",
+        "bytes": 7187,
+        "sha256": "e1a949883dca8d8866a05d064d3c5431e4843d306a39adf455265ad6054115da"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/PlanarBound.lean",
+        "bytes": 3502,
+        "sha256": "2a470c656976fece585e139008e8aa8967c22a54ab329ad274ab5e0166d62d93"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/PlanarSharpness.lean",
+        "bytes": 7896,
+        "sha256": "84dda544f8bd237b7ca87a94f67e89b12089c91217c706f667a37548ac403c80"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/PlanarToolbox.lean",
+        "bytes": 17192,
+        "sha256": "88ceb0b2d5f3a9d31d826a14d5bf7769fcc67aac9b7f5d4e870b7584402c8f13"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/PlanarVertexBatch.lean",
+        "bytes": 17279,
+        "sha256": "ea91e7fd3b64bde0613cbc1dc0222e4ac00a1cd720c9385968f52aac9b756f17"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/PositiveSeparation.lean",
+        "bytes": 1113,
+        "sha256": "23b6d20d159c7cb3e811527c58df8e7b573ce487f2d41c5a45e73b437e58fca8"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/SmallDegreeBatch.lean",
+        "bytes": 5485,
+        "sha256": "1bdc6cda144ce0c0c7019e83552a2db578ad4605d776daef6e5b84f4db0c20f8"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/TwinReduction.lean",
+        "bytes": 2760,
+        "sha256": "5c340ecc387e700d61fe694df3dad2b7dd2e0ee555755e035fa87f51bb1b53dc"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/TwoDominators.lean",
+        "bytes": 13938,
+        "sha256": "c1ce0a8c28e3bd1f8c1c6fa1586bc7e29cab439c96491d435cf87f1a09f58e3d"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs/UniqueDominator.lean",
+        "bytes": 9325,
+        "sha256": "4318d6402f8197a560a5598ee23ad4fda4c498fe5053a2ae0ab99ad25068413d"
+      },
+      {
+        "path": "proofs/package/Lax16Proofs.lean",
+        "bytes": 1002,
+        "sha256": "338b36c5f1de29b13251195e32476d27f7ca9668313532d4eead7bed410bdd10"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      }
+    ],
+    "downloadUrl": "https://github.com/lax-archive/lax-database/releases/download/lax-capture-lax-16-beb43f41553bb6f4030af64d8481226188eb824ca30e8bbbeefba13976dc051d/capture.tar"
   }
 }
