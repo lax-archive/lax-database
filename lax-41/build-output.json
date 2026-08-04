@@ -4,5 +4,138 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 41
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-41",
+      "leanVersion": "v4.30.0",
+      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "title": "A Constructive Proof of the General Lovász Local Lemma",
+      "authors": [
+        {
+          "name": "Édouard Bonnet",
+          "github": "EdouardBonnet"
+        }
+      ],
+      "bibEntries": [
+        "@article{MoserTardos2009,\n  title = {A Constructive Proof of the General Lovász Local Lemma},\n  author = {Moser, Robin A. and Tardos, Gábor},\n  journal = {arXiv preprint arXiv:0903.0544},\n  year = {2009},\n  url = {https://arxiv.org/abs/0903.0544}\n}\n"
+      ]
+    },
+    "abstract": "This submission formalizes Theorem 1.2 of Moser and Tardos, *A Constructive\nProof of the General Lovász Local Lemma*.  For finitely many measurable bad\nevents determined by mutually independent random variables, it proves the\nasymmetric local-lemma conclusion and formalizes the resampling algorithm's\nexpected per-event and total resampling bounds.  The proof uses resampling\ntables, proper witness trees, their branching-process weight estimate, and a\nfinite-termination argument.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax41.MoserTardos",
+      "path": "concepts/Lax41/MoserTardos.lean",
+      "title": "The Moser–Tardos theorem",
+      "type": "theorem",
+      "description": "Let finitely many mutually independent random variables determine finitely many\nmeasurable bad events.  If numbers $x(A)\\in(0,1)$ satisfy\n$$\n  \\Pr[A] \\le x(A)\\prod_{B\\in\\Gamma(A)}(1-x(B)),\n$$\nwhere $\\Gamma(A)$ consists of the other bad events sharing a variable with\n$A$, then an assignment avoiding every bad event exists.  Moreover, for any\nmeasurable deterministic rule that selects a currently true bad event, the\nsequential resampling algorithm has expected number of resamplings of $A$ at\nmost $x(A)/(1-x(A))$, and its expected total number of resamplings is at most\nthe sum of these bounds.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib"
+      ],
+      "sourceText": "import Mathlib\n\n/-!\n---\ntitle: The Moser–Tardos theorem\ntype: theorem\n---\nLet finitely many mutually independent random variables determine finitely many\nmeasurable bad events.  If numbers $x(A)\\in(0,1)$ satisfy\n$$\n  \\Pr[A] \\le x(A)\\prod_{B\\in\\Gamma(A)}(1-x(B)),\n$$\nwhere $\\Gamma(A)$ consists of the other bad events sharing a variable with\n$A$, then an assignment avoiding every bad event exists.  Moreover, for any\nmeasurable deterministic rule that selects a currently true bad event, the\nsequential resampling algorithm has expected number of resamplings of $A$ at\nmost $x(A)/(1-x(A))$, and its expected total number of resamplings is at most\nthe sum of these bounds.\n-/\n\nset_option autoImplicit false\n\nopen scoped ENNReal\n\nnamespace Lax41.MoserTardos\n\nvariable {E : Type} [Fintype E] [DecidableEq E]\nvariable {I : Type} [instFintypeI : Fintype I] [DecidableEq I]\n\n/-- Two events are related when they are equal or share a random variable. -/\ndef scopeRelated (scope : E → Finset I) (a b : E) : Prop :=\n  a = b ∨ ¬Disjoint (scope a) (scope b)\n\ninstance scopeRelated.instDecidable (scope : E → Finset I) :\n    DecidableRel (scopeRelated scope) := by\n  intro a b\n  unfold scopeRelated\n  infer_instance\n\nvariable (Value : I → Type) [∀ i, MeasurableSpace (Value i)]\n\n/-- A coordinate of the infinite resampling table. -/\nabbrev TableIndex := (i : I) × Nat\n\n/-- An infinite table of fresh samples, one row for each independent variable. -/\nabbrev ResamplingTable := (j : TableIndex (I := I)) → Value j.1\n\n/-- An assignment to the variables in a finite scope. -/\nabbrev LocalAssignment (s : Finset I) := (i : s) → Value i.1\n\n/-- The product law of an infinite resampling table. -/\nnoncomputable def tableMeasure (μ : ∀ i, MeasureTheory.Measure (Value i)) :\n    MeasureTheory.Measure (ResamplingTable Value) :=\n  MeasureTheory.Measure.infinitePi fun j : TableIndex (I := I) ↦ μ j.1\n\n/-- The product law restricted to a finite collection of variables. -/\nnoncomputable def localMeasure (μ : ∀ i, MeasureTheory.Measure (Value i))\n    (s : Finset I) : MeasureTheory.Measure (LocalAssignment Value s) :=\n  MeasureTheory.Measure.infinitePi fun i : s ↦ μ i.1\n\n/-- The probability of a bad event under the original product distribution. -/\nnoncomputable def eventProbability\n    (μ : ∀ i, MeasureTheory.Measure (Value i))\n    (scope : E → Finset I)\n    (bad : ∀ e, Set (LocalAssignment Value (scope e))) (e : E) : ℝ≥0∞ :=\n  localMeasure Value μ (scope e) (bad e)\n\n/-- A complete assignment to the finite family of independent variables. -/\nabbrev Assignment [Fintype I] := ∀ i, Value i\n\n/-- Restriction of a complete assignment to an event's scope. -/\ndef restrictAssignment (scope : E → Finset I) (a : Assignment Value) (e : E) :\n    LocalAssignment Value (scope e) :=\n  fun i ↦ a i.1\n\n/-- The bad event `e` is true in assignment `a`. -/\ndef violates (scope : E → Finset I)\n    (bad : ∀ e, Set (LocalAssignment Value (scope e)))\n    (a : Assignment Value) (e : E) : Prop :=\n  restrictAssignment Value scope a e ∈ bad e\n\n/-- A measurable deterministic strategy for choosing a currently true bad event. -/\nstructure SelectionRule (scope : E → Finset I)\n    (bad : ∀ e, Set (LocalAssignment Value (scope e))) where\n  choose : Assignment Value → Option E\n  measurable_fiber : ∀ o, MeasurableSet {a | choose a = o}\n  sound : ∀ ⦃a : Assignment Value⦄ ⦃e : E⦄,\n    choose a = some e → violates Value scope bad a e\n  complete : ∀ ⦃a : Assignment Value⦄,\n    choose a = none → ∀ e, ¬violates Value scope bad a e\n\n/-- The assignment exposed by a resampling table at the given row counters. -/\ndef currentAssignment (table : ResamplingTable Value) (counts : I → Nat) :\n    Assignment Value :=\n  fun i ↦ table ⟨i, counts i⟩\n\n/-- Increment precisely the counters in the scope of the selected event. -/\ndef advanceCounts (scope : E → Finset I) (counts : I → Nat)\n    (selected : Option E) : I → Nat :=\n  selected.elim counts fun e i ↦ if i ∈ scope e then counts i + 1 else counts i\n\n/-- The row counters after the first `n` iterations of the resampling algorithm. -/\ndef runCounts (scope : E → Finset I)\n    (bad : ∀ e, Set (LocalAssignment Value (scope e)))\n    (rule : SelectionRule Value scope bad) (table : ResamplingTable Value) :\n    Nat → I → Nat :=\n  Nat.rec (fun _ ↦ 0) fun _ counts ↦\n    advanceCounts scope counts (rule.choose (currentAssignment Value table counts))\n\n/-- The event resampled at time `n`, or `none` once no bad event remains. -/\ndef resamplingLog (scope : E → Finset I)\n    (bad : ∀ e, Set (LocalAssignment Value (scope e)))\n    (rule : SelectionRule Value scope bad) (table : ResamplingTable Value)\n    (n : Nat) : Option E :=\n  rule.choose (currentAssignment Value table\n    (runCounts Value scope bad rule table n))\n\n/-- The (possibly infinite) number of times event `root` is resampled. -/\nnoncomputable def resamplingCount (scope : E → Finset I)\n    (bad : ∀ e, Set (LocalAssignment Value (scope e)))\n    (rule : SelectionRule Value scope bad) (table : ResamplingTable Value)\n    (root : E) : ℝ≥0∞ :=\n  ∑' t : Nat, Set.indicator\n    {t | resamplingLog Value scope bad rule table t = some root}\n    (fun _ ↦ (1 : ℝ≥0∞)) t\n\n/-- The expected number of resamplings of one event. -/\nnoncomputable def expectedResamplings\n    (μ : ∀ i, MeasureTheory.Measure (Value i)) (scope : E → Finset I)\n    (bad : ∀ e, Set (LocalAssignment Value (scope e)))\n    (rule : SelectionRule Value scope bad) (root : E) : ℝ≥0∞ :=\n  ∫⁻ table, resamplingCount Value scope bad rule table root\n    ∂tableMeasure Value μ\n\n/-- The odds $x/(1-x)$. -/\nnoncomputable def odds (x : E → NNReal) (a : E) : NNReal :=\n  x a / (1 - x a)\n\n/-- A factor in the asymmetric local-lemma hypothesis. -/\ndef localLemmaFactor (scope : E → Finset I) (x : E → NNReal)\n    (a b : E) : NNReal :=\n  if b ≠ a ∧ ¬Disjoint (scope a) (scope b) then 1 - x b else 1\n\n/-- The right side $x(A)\\prod_{B\\in\\Gamma(A)}(1-x(B))$. -/\nnoncomputable def localLemmaBound (scope : E → Finset I)\n    (x : E → NNReal) (a : E) : NNReal :=\n  x a * ∏ b : E, localLemmaFactor scope x a b\n\n/-- The sum of the expected resampling counts of all bad events. -/\nnoncomputable def expectedTotalResamplings\n    (μ : ∀ i, MeasureTheory.Measure (Value i)) (scope : E → Finset I)\n    (bad : ∀ e, Set (LocalAssignment Value (scope e)))\n    (rule : SelectionRule Value scope bad) : ℝ≥0∞ :=\n  ∑ e : E, expectedResamplings Value μ scope bad rule e\n\n/-- The constructive asymmetric Lovász local lemma of Moser and Tardos. -/\naxiom moser_tardos\n    (μ : ∀ i, MeasureTheory.Measure (Value i))\n    [∀ i, MeasureTheory.IsProbabilityMeasure (μ i)]\n    (scope : E → Finset I)\n    (bad : ∀ e, Set (LocalAssignment Value (scope e)))\n    (hbad : ∀ e, MeasurableSet (bad e))\n    (rule : SelectionRule Value scope bad) (x : E → NNReal)\n    (hx_pos : ∀ a, 0 < x a) (hx_lt_one : ∀ a, x a < 1)\n    (hprob : ∀ a, eventProbability Value μ scope bad a ≤\n      (localLemmaBound scope x a : ℝ≥0∞)) :\n    (∃ a : Assignment Value, ∀ e, ¬violates Value scope bad a e) ∧\n      (∀ root, expectedResamplings Value μ scope bad rule root ≤\n        (odds x root : ℝ≥0∞)) ∧\n      expectedTotalResamplings Value μ scope bad rule ≤\n        ∑ e : E, (odds x e : ℝ≥0∞)\n\nend Lax41.MoserTardos\n",
+      "statements": [
+        {
+          "id": "Lax41.MoserTardos.moser_tardos",
+          "signature": "moser_tardos : ∀ {E : Type} [inst : Fintype E] [inst_1 : DecidableEq E] {I : Type} [instFintypeI : Fintype I] [inst_2 : DecidableEq I]\n  (Value : I → Type) [inst_3 : (i : I) → MeasurableSpace (Value i)] (μ : (i : I) → MeasureTheory.Measure (Value i))\n  [∀ (i : I), MeasureTheory.IsProbabilityMeasure (μ i)] (scope : E → Finset I)\n  (bad : (e : E) → Set (Lax41.MoserTardos.LocalAssignment Value (scope e))),\n  (∀ (e : E), MeasurableSet (bad e)) →\n    ∀ (rule : Lax41.MoserTardos.SelectionRule Value scope bad) (x : E → NNReal),\n      (∀ (a : E), NNReal.instPartialOrder.lt 0 (x a)) →\n        (∀ (a : E), NNReal.instPartialOrder.lt (x a) 1) →\n          (∀ (a : E),\n              ENNReal.instLE.le (Lax41.MoserTardos.eventProbability Value μ scope bad a)\n                (ENNReal.ofNNReal (Lax41.MoserTardos.localLemmaBound scope x a))) →\n            And (Exists fun a => ∀ (e : E), Not (Lax41.MoserTardos.violates Value scope bad a e))\n              (And\n                (∀ (root : E),\n                  ENNReal.instLE.le (Lax41.MoserTardos.expectedResamplings Value μ scope bad rule root)\n                    (ENNReal.ofNNReal (Lax41.MoserTardos.odds x root)))\n                (ENNReal.instLE.le (Lax41.MoserTardos.expectedTotalResamplings Value μ scope bad rule)\n                  (Finset.univ.sum fun e => ENNReal.ofNNReal (Lax41.MoserTardos.odds x e))))",
+          "startLine": 156,
+          "endLine": 171,
+          "doc": "The constructive asymmetric Lovász local lemma of Moser and Tardos."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax41Proofs.moser_tardos",
+      "path": "proofs/Lax41Proofs/MoserTardos.lean",
+      "conclusion": "Lax41.MoserTardos.moser_tardos",
+      "assumptions": [],
+      "description": "The Moser--Tardos witness-tree argument.  An infinite table supplies every\nfresh sample used by the algorithm.  Each resampling occurrence injects into\na proper witness tree, the probability that a fixed tree occurs is the\nproduct of its event probabilities, and the branching-process estimate sums\nthese products.  Finiteness of that sum also yields a terminating table and\nhence an assignment avoiding all bad events."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "6231fa6fb4ee8e96bfecf8159825387fdada5d628e3d44eefbead5894def3589",
+    "sourceCommit": "acfaa954dd8fc59147239c5df69775c43f34bcfd",
+    "leanToolchain": "leanprover/lean4:v4.30.0",
+    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "files": [
+      {
+        "path": "concepts/lib/Lax41/MoserTardos.olean",
+        "bytes": 244800,
+        "sha256": "60c9d2255e928ae986072d74cd13c5e9beccb9c46dcaad28f30d19ec4853ea7c"
+      },
+      {
+        "path": "concepts/lib/Lax41.olean",
+        "bytes": 1336,
+        "sha256": "63ccd0d629d8edd07991560ae9744658bac578bfc845d6eaa304a9607034f4ee"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3162,
+        "sha256": "a0cdc406f106d3b403d989288de4bf470ae19da1d1da7c4c53478757d0b9403f"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 243,
+        "sha256": "831291d8fbd78c3e3d08621f5d633bf272df1c6840143829de14f8dda211a171"
+      },
+      {
+        "path": "concepts/package/Lax41/MoserTardos.lean",
+        "bytes": 7430,
+        "sha256": "1d74d998ad7a94ae15dde96a1843b6879df3682d2f6287212d5e43ff5a5a07ce"
+      },
+      {
+        "path": "concepts/package/Lax41.lean",
+        "bytes": 25,
+        "sha256": "3611ed8cef473aac0242d300dcafa3ead292f13107ef44cc5c8f51417e79fd34"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      },
+      {
+        "path": "proofs/lib/Lax41Proofs/MoserTardos.olean",
+        "bytes": 2672400,
+        "sha256": "fa78bdb3c7a3d3802ea82c3d4766c7e2b6e7f72d3397f2971e15761daf0042a0"
+      },
+      {
+        "path": "proofs/lib/Lax41Proofs.olean",
+        "bytes": 1344,
+        "sha256": "2da7ab5d231fa2130ea41f6d883de80747933e34072e1945ac188329da93ca8e"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3348,
+        "sha256": "35ed63ece270f90b14226a9f3d9bb890e936c4835a59eb43cc19f4280fd64d7b"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 310,
+        "sha256": "de29bfc32a4d8d9572f0221696eb0c203b11dc997b4b24ce92c42a96f3c2ca62"
+      },
+      {
+        "path": "proofs/package/Lax41Proofs/MoserTardos.lean",
+        "bytes": 87859,
+        "sha256": "ea39953af768e8b3e9eae11d03a53771ca40c05097c7e4fc20bf993b2ca51518"
+      },
+      {
+        "path": "proofs/package/Lax41Proofs.lean",
+        "bytes": 31,
+        "sha256": "d710c6e9ef60337cbe079c4b001a2a13db5432860e7423fc79046432e14bc19d"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      }
+    ],
+    "downloadUrl": "https://github.com/lax-archive/lax-database/releases/download/lax-capture-lax-41-6231fa6fb4ee8e96bfecf8159825387fdada5d628e3d44eefbead5894def3589/capture.tar"
   }
 }
