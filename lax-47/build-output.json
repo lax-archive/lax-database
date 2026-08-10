@@ -23,7 +23,7 @@
         "@inproceedings{Hastad1996Clique,\n  title = {Clique is hard to approximate within $n^{1-\\varepsilon}$},\n  author = {Håstad, Johan},\n  booktitle = {37th Annual Symposium on Foundations of Computer Science},\n  pages = {627--636},\n  year = {1996},\n  doi = {10.1109/SFCS.1996.548522}\n}\n"
       ]
     },
-    "abstract": "This submission formalizes the main inapproximability theorem of *Tight\nInapproximability of Max Independent Set in Triangle-Free Graphs*.  Assuming\nHåstad's promise hardness of Max Independent Set, it proves that,\nfor every constant $\\varepsilon>0$, a polynomial-time\n$N^{1/2-\\varepsilon}$-approximation algorithm on $N$-vertex triangle-free\ngraphs implies $NP\\subseteq BPP$.\n\nThe reduction blows each vertex of an $n$-vertex graph up into $n$\nvertices, samples the blow-up edges independently, and resamples the edges of\npresent triangles.  Its termination and output-distribution estimates use the\nkernel-checked Moser--Tardos and Haeupler--Saha--Srinivasan proofs from\nsubmission Lax41.  The formalization proves triangle-freeness, completeness,\nthe fixed-set soundness estimate, and the final gap arithmetic.  Computations\ncarry an explicit number of elementary steps; polynomial time, $NP$, and\n$BPP$ are defined directly through polynomial bounds on those step counts,\nwithout choosing a machine model.\n"
+    "abstract": "This submission formalizes the main inapproximability theorem of *Tight\nInapproximability of Max Independent Set in Triangle-Free Graphs*.  Assuming\nHåstad's promise hardness of Max Independent Set, it proves that,\nfor every constant $\\varepsilon>0$, a polynomial-time\n$N^{1/2-\\varepsilon}$-approximation algorithm on $N$-vertex triangle-free\ngraphs implies $NP\\subseteq BPP$.\n\nThe reduction blows each vertex of an $n$-vertex graph up into $n$\nvertices, samples the blow-up edges independently, and resamples the edges of\npresent triangles.  The formalization proves triangle-freeness, completeness,\nthe fixed-set soundness estimate, the finite-seed probability bound, and the\nfinal gap arithmetic.  The infinite product table occurs only in the\nprobabilistic analysis; the program itself reads a polynomially bounded finite\nfamily of uniform bits.\n\nPolynomial time, $NP$, and $BPP$ use a bounded interpreter for fixed finite\nbinary multi-stack Turing machines.  Every semantic answer is the output of\nthat interpreter.  The composed triangle-removal program has a fixed recursive\nevaluator whose state and operation count are produced by the same execution,\nand the proof derives explicit polynomial bounds for the reduction, the\napproximation-machine call, decoding, threshold arithmetic, and random bits.\n"
   },
   "requiredByConcepts": [
     "Lax41"
@@ -35,17 +35,31 @@
     {
       "id": "Lax47.Complexity",
       "path": "concepts/Lax47/Complexity.lean",
-      "title": "Complexity and approximation definitions for Max Independent Set",
+      "title": "Executable graph encodings and triangle-free approximation",
       "type": "definition",
-      "description": "This concept fixes the computational meaning of the inapproximability\nstatement without choosing a machine model. A computation is accompanied by\nthe number of elementary steps that it takes, and polynomial time means that\nthis number is bounded by a fixed polynomial in the input length. The class\n$NP$ uses polynomially long certificates checked in polynomially many steps.\nThe class $BPP$ uses polynomially many uniformly random bits, polynomially\nmany steps, and two-sided error at most one third.\n\nA Max Independent Set approximation algorithm similarly supplies its output\nand step count. On every triangle-free graph with $N$ vertices it takes\npolynomially many steps, returns an independent set, and has size at least the\noptimum divided by $N^{1/2-\\varepsilon}$.\n\nThe general-graph promise-gap solver used to state Håstad's premise may use a\nbundled probability space. It must run in polynomially many steps and, for all\nsufficiently large $n$, distinguish\n$\\alpha(H)\\ge n^{1-\\delta}$ from $\\alpha(H)\\le n^\\delta$ with error at most\none third.",
-      "imports": [],
+      "description": "Graphs are finite Boolean adjacency matrices with symmetry and looplessness\ncertificates.  Their machine encoding is the unary vertex count followed by\nthe complete row-major matrix.  An approximation is a binary Turing program;\nits returned independent set is decoded from the program's actual output\nbits.  No Lean function supplies a separate semantic answer or a detached\nrunning-time annotation.",
+      "imports": [
+        "Lax47.Machine"
+      ],
       "mathlibImports": [
         "Mathlib.Analysis.SpecialFunctions.Pow.Real",
         "Mathlib.Combinatorics.SimpleGraph.Clique",
-        "Mathlib.Data.Finset.Card",
-        "Mathlib.MeasureTheory.Measure.Typeclasses.Probability"
+        "Mathlib.Data.Finset.Card"
       ],
-      "sourceText": "import Mathlib.Analysis.SpecialFunctions.Pow.Real\nimport Mathlib.Combinatorics.SimpleGraph.Clique\nimport Mathlib.Data.Finset.Card\nimport Mathlib.MeasureTheory.Measure.Typeclasses.Probability\n\n/-!\n---\ntitle: Complexity and approximation definitions for Max Independent Set\ntype: definition\n---\nThis concept fixes the computational meaning of the inapproximability\nstatement without choosing a machine model. A computation is accompanied by\nthe number of elementary steps that it takes, and polynomial time means that\nthis number is bounded by a fixed polynomial in the input length. The class\n$NP$ uses polynomially long certificates checked in polynomially many steps.\nThe class $BPP$ uses polynomially many uniformly random bits, polynomially\nmany steps, and two-sided error at most one third.\n\nA Max Independent Set approximation algorithm similarly supplies its output\nand step count. On every triangle-free graph with $N$ vertices it takes\npolynomially many steps, returns an independent set, and has size at least the\noptimum divided by $N^{1/2-\\varepsilon}$.\n\nThe general-graph promise-gap solver used to state Håstad's premise may use a\nbundled probability space. It must run in polynomially many steps and, for all\nsufficiently large $n$, distinguish\n$\\alpha(H)\\ge n^{1-\\delta}$ from $\\alpha(H)\\le n^\\delta$ with error at most\none third.\n-/\n\nset_option autoImplicit false\n\nopen scoped ENNReal\n\nnamespace Lax47.Complexity\n\n/-- A finite binary input or certificate. -/\nabbrev BitString := List Bool\n\n/-- A decision problem over finite binary inputs. -/\nabbrev Language := Set BitString\n\n/-- The polynomial $c(n+1)^k$, including a harmless offset at size zero. -/\ndef polynomialBound (c k n : ℕ) : ℕ :=\n  c * (n + 1) ^ k\n\n/-- A family of step counts is bounded by a polynomial in the chosen size. -/\ndef HasPolynomialStepBound {Input : Type} (size steps : Input → ℕ) : Prop :=\n  ∃ c k : ℕ, 0 < c ∧ ∀ x, steps x ≤ polynomialBound c k (size x)\n\n/-- A deterministic verifier with explicit certificate and step bounds. -/\nstructure NPVerifier (L : Language) where\n  accepts : BitString → BitString → Bool\n  steps : BitString → BitString → ℕ\n  certificateConstant : ℕ\n  certificateExponent : ℕ\n  certificateConstant_pos : 0 < certificateConstant\n  stepConstant : ℕ\n  stepExponent : ℕ\n  stepConstant_pos : 0 < stepConstant\n  stepBound : ∀ x certificate,\n    certificate.length ≤ polynomialBound certificateConstant certificateExponent x.length →\n    steps x certificate ≤ polynomialBound stepConstant stepExponent x.length\n  correctness : ∀ x : BitString,\n    x ∈ L ↔ ∃ certificate : BitString,\n      certificate.length ≤ polynomialBound certificateConstant certificateExponent x.length ∧\n      accepts x certificate = true\n\n/-- A language belongs to $NP$ in the abstract step-count model. -/\ndef InNP (L : Language) : Prop :=\n  Nonempty (NPVerifier L)\n\n/-- A seed of $r$ independent uniformly random bits. -/\nabbrev RandomSeed (r : ℕ) := Fin r → Bool\n\n/-- A bounded-error randomized decision algorithm with explicit step count. -/\nstructure BPPAlgorithm (L : Language) where\n  randomnessConstant : ℕ\n  randomnessExponent : ℕ\n  randomnessConstant_pos : 0 < randomnessConstant\n  stepConstant : ℕ\n  stepExponent : ℕ\n  stepConstant_pos : 0 < stepConstant\n  accepts : (x : BitString) →\n    RandomSeed (polynomialBound randomnessConstant randomnessExponent x.length) → Bool\n  steps : (x : BitString) →\n    RandomSeed (polynomialBound randomnessConstant randomnessExponent x.length) → ℕ\n  stepBound : ∀ x seed,\n    steps x seed ≤ polynomialBound stepConstant stepExponent x.length\n  correctness : ∀ x : BitString,\n    let seeds : Finset\n        (RandomSeed (polynomialBound randomnessConstant randomnessExponent x.length)) :=\n      Finset.univ\n    let accepting := seeds.filter fun seed ↦ accepts x seed = true\n    (x ∈ L → 2 * seeds.card ≤ 3 * accepting.card) ∧\n      (x ∉ L → 3 * accepting.card ≤ seeds.card)\n\n/-- A language belongs to $BPP$ in the abstract step-count model. -/\ndef InBPP (L : Language) : Prop :=\n  Nonempty (BPPAlgorithm L)\n\n/-- The complexity-class inclusion appearing in the theorem. -/\ndef NPSubsetBPP : Prop :=\n  ∀ L : Language, InNP L → InBPP L\n\n/-- A probability space bundled so that a randomized graph algorithm may choose its sample type. -/\nstructure ProbabilitySpace where\n  Sample : Type\n  measurableSpace : MeasurableSpace Sample\n  measure : @MeasureTheory.Measure Sample measurableSpace\n  probability : @MeasureTheory.IsProbabilityMeasure Sample measurableSpace measure\n\ninstance (P : ProbabilitySpace) : MeasurableSpace P.Sample :=\n  P.measurableSpace\n\ninstance (P : ProbabilitySpace) : MeasureTheory.IsProbabilityMeasure P.measure :=\n  P.probability\n\n/-- A polynomial-step approximation algorithm for triangle-free Max Independent Set. -/\nstructure TriangleFreeMISApproximation (ε : ℝ) where\n  output : ∀ (V : Type) [Fintype V] [DecidableEq V], SimpleGraph V → Finset V\n  steps : ∀ (V : Type) [Fintype V] [DecidableEq V], SimpleGraph V → ℕ\n  stepConstant : ℕ\n  stepExponent : ℕ\n  stepConstant_pos : 0 < stepConstant\n  stepBound : ∀ (V : Type) [Fintype V] [DecidableEq V] (G : SimpleGraph V),\n    steps V G ≤ polynomialBound stepConstant stepExponent (Fintype.card V)\n  independent : ∀ (V : Type) [Fintype V] [DecidableEq V] (G : SimpleGraph V),\n    G.CliqueFree 3 → G.IsIndepSet (output V G)\n  approximation : ∀ (V : Type) [Fintype V] [DecidableEq V] (G : SimpleGraph V),\n    G.CliqueFree 3 →\n    (G.indepNum : ℝ) ≤\n      Real.rpow (Fintype.card V) ((1 : ℝ) / 2 - ε) * (output V G).card\n\n/--\nA bounded-error polynomial-step solver for Håstad's promise gap.\nCorrectness is required only beyond a fixed cutoff, which is equivalent for\nhardness purposes because the finitely many smaller graphs can be handled\nexactly.\n-/\nstructure MISGapSolver (δ : ℝ) where\n  sampleSpace : ℕ → ProbabilitySpace\n  accepts : (n : ℕ) → SimpleGraph (Fin n) → (sampleSpace n).Sample → Prop\n  steps : (n : ℕ) → SimpleGraph (Fin n) → (sampleSpace n).Sample → ℕ\n  stepConstant : ℕ\n  stepExponent : ℕ\n  stepConstant_pos : 0 < stepConstant\n  stepBound : ∀ (n : ℕ) (H : SimpleGraph (Fin n)) (sample : (sampleSpace n).Sample),\n    steps n H sample ≤ polynomialBound stepConstant stepExponent n\n  cutoff : ℕ\n  completeness : ∀ (n : ℕ), cutoff ≤ n → ∀ H : SimpleGraph (Fin n),\n    Real.rpow n (1 - δ) ≤ H.indepNum →\n      (2 : ℝ≥0∞) / 3 ≤ (sampleSpace n).measure {sample | accepts n H sample}\n  soundness : ∀ (n : ℕ), cutoff ≤ n → ∀ H : SimpleGraph (Fin n),\n    (H.indepNum : ℝ) ≤ Real.rpow n δ →\n      (sampleSpace n).measure {sample | accepts n H sample} ≤ (1 : ℝ≥0∞) / 3\n\nend Lax47.Complexity\n",
+      "sourceText": "import Lax47.Machine\nimport Mathlib.Analysis.SpecialFunctions.Pow.Real\nimport Mathlib.Combinatorics.SimpleGraph.Clique\nimport Mathlib.Data.Finset.Card\n\n/-!\n---\ntitle: Executable graph encodings and triangle-free approximation\ntype: definition\n---\nGraphs are finite Boolean adjacency matrices with symmetry and looplessness\ncertificates.  Their machine encoding is the unary vertex count followed by\nthe complete row-major matrix.  An approximation is a binary Turing program;\nits returned independent set is decoded from the program's actual output\nbits.  No Lean function supplies a separate semantic answer or a detached\nrunning-time annotation.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax47.Complexity\n\nopen Lax47.Machine\n\nexport Lax47.Machine\n  (BitString Language RandomSeed PolytimeProgram NPVerifier BPPAlgorithm\n    InNP InBPP NPSubsetBPP polynomialBound pairBits)\n\n/-- An executable simple graph on the labeled vertex set $\\operatorname{Fin}(n)$. -/\nstructure GraphCode (n : ℕ) where\n  adjacent : Fin n → Fin n → Bool\n  loopless : ∀ vertex, adjacent vertex vertex = false\n  symmetric : ∀ left right, adjacent left right = adjacent right left\n\n/-- The mathematical simple graph represented by a Boolean adjacency matrix. -/\ndef GraphCode.graph {n : ℕ} (code : GraphCode n) : SimpleGraph (Fin n) where\n  Adj left right := code.adjacent left right = true\n  symm left right h := by\n    change code.adjacent right left = true\n    rw [← code.symmetric]\n    exact h\n  loopless := ⟨fun vertex ↦ by\n    simp [code.loopless]⟩\n\n@[simp] lemma GraphCode.graph_adj {n : ℕ} (code : GraphCode n)\n    (left right : Fin n) :\n    code.graph.Adj left right ↔ code.adjacent left right = true :=\n  Iff.rfl\n\n/-- Unary length followed by the row-major adjacency matrix. -/\ndef GraphCode.bits {n : ℕ} (code : GraphCode n) : BitString :=\n  List.replicate n true ++ false ::\n    (List.ofFn fun left : Fin n ↦\n      List.ofFn fun right : Fin n ↦ code.adjacent left right).flatten\n\nlemma GraphCode.bits_length {n : ℕ} (code : GraphCode n) :\n    code.bits.length = n + 1 + n * n := by\n  have hrows :\n      List.map List.length\n          (List.ofFn fun left : Fin n ↦\n            List.ofFn fun right : Fin n ↦ code.adjacent left right) =\n        List.replicate n n := by\n    rw [List.map_ofFn]\n    rw [← List.ofFn_const]\n    congr 1\n    funext left\n    simp\n  unfold GraphCode.bits\n  rw [List.length_append, List.length_replicate, List.length_cons,\n    List.length_flatten, hrows, List.sum_replicate]\n  simp [Nat.add_comm, Nat.add_left_comm]\n\n/-- The edgeless executable graph. -/\ndef GraphCode.empty (n : ℕ) : GraphCode n where\n  adjacent := fun _ _ ↦ false\n  loopless := by simp\n  symmetric := by simp\n\n/-- Decode the first $n$ output bits as a vertex set. -/\ndef decodeVertexSet (n : ℕ) (bits : BitString) : Finset (Fin n) :=\n  Finset.univ.filter fun vertex ↦ bits[vertex.1]? = some true\n\n/-- A polynomial-time executable approximation for triangle-free Max Independent Set. -/\nstructure TriangleFreeMISApproximation (ε : ℝ) where\n  program : PolytimeProgram\n  correctness : ∀ (n : ℕ) (code : GraphCode n),\n    code.graph.CliqueFree 3 →\n    let set := decodeVertexSet n (program.output code.bits)\n    code.graph.IsIndepSet set ∧\n      (code.graph.indepNum : ℝ) ≤\n        Real.rpow n ((1 : ℝ) / 2 - ε) * set.card\n\n/-- The vertex set decoded from the certified machine's output. -/\ndef TriangleFreeMISApproximation.output\n    {ε : ℝ} (algorithm : TriangleFreeMISApproximation ε)\n    {n : ℕ} (code : GraphCode n) : Finset (Fin n) :=\n  decodeVertexSet n (algorithm.program.output code.bits)\n\n/-- The decoded output is independent on every triangle-free input. -/\ntheorem TriangleFreeMISApproximation.independent\n    {ε : ℝ} (algorithm : TriangleFreeMISApproximation ε)\n    {n : ℕ} (code : GraphCode n) (triangleFree : code.graph.CliqueFree 3) :\n    code.graph.IsIndepSet (algorithm.output code) :=\n  (algorithm.correctness n code triangleFree).1\n\n/-- The decoded output has the claimed approximation ratio. -/\ntheorem TriangleFreeMISApproximation.approximation\n    {ε : ℝ} (algorithm : TriangleFreeMISApproximation ε)\n    {n : ℕ} (code : GraphCode n) (triangleFree : code.graph.CliqueFree 3) :\n    (code.graph.indepNum : ℝ) ≤\n      Real.rpow n ((1 : ℝ) / 2 - ε) * (algorithm.output code).card :=\n  (algorithm.correctness n code triangleFree).2\n\nend Lax47.Complexity\n",
+      "statements": []
+    },
+    {
+      "id": "Lax47.Gap",
+      "path": "concepts/Lax47/Gap.lean",
+      "title": "Operational promise-gap algorithms for Max Independent Set",
+      "type": "definition",
+      "description": "The Håstad premise is stated for executable promise-gap programs.  A program\nis either a binary Turing program or the fixed triangle-removal pipeline used\nin this submission.  The latter constructor is transparent: it runs the\nfinite-bit reduction, invokes the supplied Turing approximation program on\nthe encoded output graph, and compares two natural powers using the counted\nunary arithmetic below.\n\nThus acceptance, random-bit use, and running time are functions of the same\nexecution.  There is no semantic answer function and no unrelated step\nannotation.  For an integer $q>2$, the high promise is\n$n^{1-1/q}\\leq\\alpha(H)$, the low promise is\n$\\alpha(H)\\leq n^{1/q}$, and the acceptance threshold is\n$n^{q+3}\\leq |S|^q$.",
+      "imports": [
+        "Lax47.Reduction"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax47.Reduction\n\n/-!\n---\ntitle: Operational promise-gap algorithms for Max Independent Set\ntype: definition\n---\nThe Håstad premise is stated for executable promise-gap programs.  A program\nis either a binary Turing program or the fixed triangle-removal pipeline used\nin this submission.  The latter constructor is transparent: it runs the\nfinite-bit reduction, invokes the supplied Turing approximation program on\nthe encoded output graph, and compares two natural powers using the counted\nunary arithmetic below.\n\nThus acceptance, random-bit use, and running time are functions of the same\nexecution.  There is no semantic answer function and no unrelated step\nannotation.  For an integer $q>2$, the high promise is\n$n^{1-1/q}\\leq\\alpha(H)$, the low promise is\n$\\alpha(H)\\leq n^{1/q}$, and the acceptance threshold is\n$n^{q+3}\\leq |S|^q$.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax47.Gap\n\nopen Lax47.Machine Lax47.Complexity Lax47.Reduction\n\n/-- Length of the fixed unary-size adjacency-matrix graph encoding. -/\ndef graphEncodingLength (n : ℕ) : ℕ :=\n  n + 1 + n * n\n\n/- ### Counted unary arithmetic used by the acceptance test -/\n\n/-- Unary multiplication paired with the work performed by its recursion. -/\ndef countedMul (left : ℕ) : ℕ → ℕ × ℕ\n  | 0 => (0, 1)\n  | right + 1 =>\n      let prior := countedMul left right\n      (prior.1 + left, prior.2 + left + 1)\n\n/-- Unary exponentiation paired with the work performed by its recursion. -/\ndef countedPow (base : ℕ) : ℕ → ℕ × ℕ\n  | 0 => (1, 1)\n  | exponent + 1 =>\n      let prior := countedPow base exponent\n      let product := countedMul prior.1 base\n      (product.1, prior.2 + product.2 + 1)\n\n/-- The concrete threshold comparison and its unary-operation count. -/\ndef gapDecision (q n outputCard : ℕ) : Bool × ℕ :=\n  let left := countedPow n (q + 3)\n  let right := countedPow outputCard q\n  (decide (left.1 ≤ right.1),\n    left.2 + right.2 + left.1 + right.1 + 1)\n\n/- ### Closed operational programs -/\n\n/--\nCodes accepted by the promise-gap model.  The second constructor is a fixed\ncomposition primitive whose evaluator is defined below.\n-/\ninductive GapProgram (q : ℕ) where\n  | machine (program : PolytimeProgram)\n      (randomnessConstant randomnessExponent : ℕ)\n  | triangleReduction (ε : ℝ) (algorithm : TriangleFreeMISApproximation ε)\n\n/-- Finite uniform seed type read by a gap program on an $n$-vertex graph. -/\ndef GapProgram.Seed {q : ℕ} : GapProgram q → ℕ → Type\n  | .machine _ constant exponent, n =>\n      RandomSeed (polynomialBound constant exponent (graphEncodingLength n))\n  | .triangleReduction _ _, n => ExecutionSeed n\n\ninstance {q : ℕ} (program : GapProgram q) (n : ℕ) :\n    Fintype (program.Seed n) := by\n  cases program <;> simp only [GapProgram.Seed] <;> infer_instance\n\ninstance {q : ℕ} (program : GapProgram q) (n : ℕ) :\n    DecidableEq (program.Seed n) := by\n  cases program <;> simp only [GapProgram.Seed] <;> infer_instance\n\ninstance {q : ℕ} (program : GapProgram q) (n : ℕ) :\n    Nonempty (program.Seed n) := by\n  cases program <;> simp only [GapProgram.Seed] <;> infer_instance\n\n/-- Number of independent fair bits in the structured seed. -/\ndef GapProgram.randomBitCount {q : ℕ} : GapProgram q → ℕ → ℕ\n  | .machine _ constant exponent, n =>\n      polynomialBound constant exponent (graphEncodingLength n)\n  | .triangleReduction _ _, n =>\n      Fintype.card (EdgeVariable n) * (executionBudget n + 1) *\n        executionSampleBits n\n\n/-- List representation of a machine-constructor seed. -/\ndef machineSeedBits {r : ℕ} (seed : RandomSeed r) : BitString :=\n  List.ofFn seed\n\n/-- Boolean answer returned by the operational program. -/\ndef GapProgram.accepts {q : ℕ} :\n    (program : GapProgram q) → (n : ℕ) → GraphCode n →\n      program.Seed n → Bool\n  | .machine program _ _, _, input, seed =>\n      decide (program.output\n        (pairBits input.bits (machineSeedBits seed)) = [true])\n  | .triangleReduction _ algorithm, n, input, seed =>\n      (gapDecision q n\n        (algorithm.output (executionOutput input seed)).card).1\n\n/-- Work charged to the same evaluation that returns $GapProgram.accepts$. -/\ndef GapProgram.steps {q : ℕ} :\n    (program : GapProgram q) → (n : ℕ) → GraphCode n →\n      program.Seed n → ℕ\n  | .machine program _ _, _, input, seed =>\n      polynomialBound program.timeConstant program.timeExponent\n        (pairBits input.bits (machineSeedBits seed)).length\n  | .triangleReduction _ algorithm, n, input, seed =>\n      let reduced := executionOutput input seed\n      let output := algorithm.output reduced\n      executionSteps input seed +\n        polynomialBound algorithm.program.timeConstant\n          algorithm.program.timeExponent reduced.bits.length +\n        (n * n + 1) ^ 2 +\n        (gapDecision q n output.card).2\n\n/-- Uniform seed enumeration for an operational program. -/\ndef GapProgram.seeds {q : ℕ} (program : GapProgram q) (n : ℕ) :\n    Finset (program.Seed n) :=\n  Finset.univ\n\n/-- Seeds on which the operational program returns true. -/\ndef GapProgram.acceptingSeeds {q : ℕ} (program : GapProgram q)\n    (n : ℕ) (input : GraphCode n) : Finset (program.Seed n) :=\n  (program.seeds n).filter fun seed ↦ program.accepts n input seed\n\n/- ### Certified polynomial gap solvers -/\n\n/--\nA bounded-error polynomial-time solver for Håstad's rational promise gap.\nAll resource functions are fixed by $GapProgram$; this structure supplies only\ntheir polynomial bounds and the two correctness proofs.\n-/\nstructure MISGapSolver (q : ℕ) where\n  program : GapProgram q\n  timeConstant : ℕ\n  timeExponent : ℕ\n  timeConstant_pos : 0 < timeConstant\n  timeBound : ∀ (n : ℕ) (input : GraphCode n) (seed : program.Seed n),\n    program.steps n input seed ≤ polynomialBound timeConstant timeExponent n\n  randomnessConstant : ℕ\n  randomnessExponent : ℕ\n  randomnessConstant_pos : 0 < randomnessConstant\n  randomnessBound : ∀ n : ℕ, program.randomBitCount n ≤\n    polynomialBound randomnessConstant randomnessExponent n\n  cutoff : ℕ\n  completeness : ∀ (n : ℕ), cutoff ≤ n → ∀ input : GraphCode n,\n    Real.rpow n (1 - (q : ℝ)⁻¹) ≤ (input.graph.indepNum : ℝ) →\n      2 * (program.seeds n).card ≤\n        3 * (program.acceptingSeeds n input).card\n  soundness : ∀ (n : ℕ), cutoff ≤ n → ∀ input : GraphCode n,\n    (input.graph.indepNum : ℝ) ≤ Real.rpow n ((q : ℝ)⁻¹) →\n      3 * (program.acceptingSeeds n input).card ≤\n        (program.seeds n).card\n\nend Lax47.Gap\n",
       "statements": []
     },
     {
@@ -53,20 +67,33 @@
       "path": "concepts/Lax47/Hastad.lean",
       "title": "Håstad's inapproximability of Max Independent Set",
       "type": "definition",
-      "description": "Håstad's general-graph inapproximability result supplies the hardness premise\nused by the reduction. In promise-gap form, for every constant\n$\\delta\\in(0,1/2)$, a bounded-error polynomial-step algorithm distinguishing\n$n$-vertex graphs $H$ with $\\alpha(H)\\leq n^\\delta$ from those with\n$\\alpha(H)\\geq n^{1-\\delta}$ would imply $NP\\subseteq BPP$.\n\nThis concept only defines that premise. It does not assert Håstad's result as\nan archive axiom; the main theorem of this submission is the implication from\nthis premise to the triangle-free inapproximability conclusion.",
+      "description": "Håstad's general-graph inapproximability result supplies the hardness premise\nused by the reduction.  We use its equivalent rational promise-gap form.  For\nevery integer $q>2$, a bounded-error polynomial-step algorithm distinguishing\n$n$-vertex graphs $H$ with $\\alpha(H)\\leq n^{1/q}$ from those with\n$n^{1-1/q}\\leq\\alpha(H)$ would imply $NP\\subseteq BPP$.\n\nThis concept only defines that premise. It does not assert Håstad's result as\nan archive axiom; the main theorem of this submission is the implication from\nthis premise to the triangle-free inapproximability conclusion.",
       "imports": [
-        "Lax47.Complexity"
+        "Lax47.Gap"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax47.Complexity\n\n/-!\n---\ntitle: Håstad's inapproximability of Max Independent Set\ntype: definition\n---\nHåstad's general-graph inapproximability result supplies the hardness premise\nused by the reduction. In promise-gap form, for every constant\n$\\delta\\in(0,1/2)$, a bounded-error polynomial-step algorithm distinguishing\n$n$-vertex graphs $H$ with $\\alpha(H)\\leq n^\\delta$ from those with\n$\\alpha(H)\\geq n^{1-\\delta}$ would imply $NP\\subseteq BPP$.\n\nThis concept only defines that premise. It does not assert Håstad's result as\nan archive axiom; the main theorem of this submission is the implication from\nthis premise to the triangle-free inapproximability conclusion.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax47.Hastad\n\nopen Lax47.Complexity\n\n/-- Håstad's general-graph promise-gap inapproximability premise. -/\ndef Inapproximability : Prop :=\n  ∀ (δ : ℝ), 0 < δ → δ < (1 : ℝ) / 2 →\n    MISGapSolver δ → NPSubsetBPP\n\nend Lax47.Hastad\n",
+      "sourceText": "import Lax47.Gap\n\n/-!\n---\ntitle: Håstad's inapproximability of Max Independent Set\ntype: definition\n---\nHåstad's general-graph inapproximability result supplies the hardness premise\nused by the reduction.  We use its equivalent rational promise-gap form.  For\nevery integer $q>2$, a bounded-error polynomial-step algorithm distinguishing\n$n$-vertex graphs $H$ with $\\alpha(H)\\leq n^{1/q}$ from those with\n$n^{1-1/q}\\leq\\alpha(H)$ would imply $NP\\subseteq BPP$.\n\nThis concept only defines that premise. It does not assert Håstad's result as\nan archive axiom; the main theorem of this submission is the implication from\nthis premise to the triangle-free inapproximability conclusion.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax47.Hastad\n\nopen Lax47.Machine Lax47.Gap\n\n/-- Håstad's general-graph promise-gap inapproximability premise. -/\ndef Inapproximability : Prop :=\n  ∀ q : ℕ, 3 ≤ q → MISGapSolver q → NPSubsetBPP\n\nend Lax47.Hastad\n",
+      "statements": []
+    },
+    {
+      "id": "Lax47.Machine",
+      "path": "concepts/Lax47/Machine.lean",
+      "title": "An operational machine model for polynomial-time computation",
+      "type": "definition",
+      "description": "Computations are finite multi-stack Turing machines over binary input and\noutput alphabets. A run is evaluated by the recursive bounded interpreter\nbelow. One unit of time is one transition of the fixed finite machine, and a\npolynomial-time program must prove that this interpreter reaches a halted\nconfiguration within $c(n+1)^k$ transitions on every input of length $n$.\n\nIn particular, programs do not contain arbitrary Lean functions describing\ntheir answers, and time bounds are not annotations detached from evaluation.\nThe semantic output function used below extracts the result returned by that\nbounded interpreter. Randomized algorithms receive a finite list of uniformly\nrandom input bits.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Computability.TuringMachine.Computable"
+      ],
+      "sourceText": "import Mathlib.Computability.TuringMachine.Computable\n\n/-!\n---\ntitle: An operational machine model for polynomial-time computation\ntype: definition\n---\nComputations are finite multi-stack Turing machines over binary input and\noutput alphabets. A run is evaluated by the recursive bounded interpreter\nbelow. One unit of time is one transition of the fixed finite machine, and a\npolynomial-time program must prove that this interpreter reaches a halted\nconfiguration within $c(n+1)^k$ transitions on every input of length $n$.\n\nIn particular, programs do not contain arbitrary Lean functions describing\ntheir answers, and time bounds are not annotations detached from evaluation.\nThe semantic output function used below extracts the result returned by that\nbounded interpreter. Randomized algorithms receive a finite list of uniformly\nrandom input bits.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax47.Machine\n\n/-- A finite binary input, output, certificate, or random seed. -/\nabbrev BitString := List Bool\n\n/-- A finite machine whose designated input and output alphabets are binary. -/\nabbrev BitMachine := Turing.TM2ComputableAux Bool Bool\n\n/--\nRun at most the supplied number of transitions, returning the first halted\nconfiguration and returning no result if the fuel is exhausted first.\n-/\ndef runConfigWithin (tm : Turing.FinTM2) :\n    (fuel : ℕ) → tm.Cfg → Option tm.Cfg\n  | 0, cfg =>\n      match cfg.l with\n      | none => some cfg\n      | some _ => none\n  | fuel + 1, cfg =>\n      match cfg.l with\n      | none => some cfg\n      | some _ =>\n          match tm.step cfg with\n          | none => none\n          | some next => runConfigWithin tm fuel next\n\n/-- The binary output produced by a machine within the supplied fuel. -/\ndef evalWithin (machine : BitMachine) (fuel : ℕ)\n    (input : BitString) : Option BitString :=\n  match runConfigWithin machine.tm fuel\n      (Turing.initList machine.tm\n        (input.map machine.inputAlphabet.invFun)) with\n  | none => none\n  | some cfg => some ((cfg.stk machine.tm.k₁).map machine.outputAlphabet)\n\n/-- The convenient monomial polynomial bound $c(n+1)^k$. -/\ndef polynomialBound (c k n : ℕ) : ℕ :=\n  c * (n + 1) ^ k\n\n/-- A binary Turing program whose actual bounded evaluation always halts. -/\nstructure PolytimeProgram where\n  machine : BitMachine\n  timeConstant : ℕ\n  timeExponent : ℕ\n  timeConstant_pos : 0 < timeConstant\n  terminates : ∀ input : BitString,\n    ∃ output, evalWithin machine\n      (polynomialBound timeConstant timeExponent input.length) input = some output\n\n/-- The certified bounded evaluation returns a result. -/\ntheorem PolytimeProgram.output_isSome (program : PolytimeProgram)\n    (input : BitString) :\n    (evalWithin program.machine\n      (polynomialBound program.timeConstant program.timeExponent input.length)\n      input).isSome :=\n  Option.isSome_iff_exists.2 (program.terminates input)\n\n/-- The executable output obtained from the certified bounded machine run. -/\ndef PolytimeProgram.output (program : PolytimeProgram)\n    (input : BitString) : BitString :=\n  (evalWithin program.machine\n    (polynomialBound program.timeConstant program.timeExponent input.length)\n    input).get (program.output_isSome input)\n\n/-- The extracted output is produced by the operational evaluator. -/\ntheorem PolytimeProgram.output_spec (program : PolytimeProgram)\n    (input : BitString) :\n    evalWithin program.machine\n      (polynomialBound program.timeConstant program.timeExponent input.length) input =\n        some (program.output input) := by\n  simpa only [PolytimeProgram.output] using\n    Option.eq_some_of_isSome (program.output_isSome input)\n\n/-- A self-delimiting pairing of two binary strings. -/\ndef pairBits (left right : BitString) : BitString :=\n  List.replicate left.length true ++ false :: left ++ right\n\n/-- A uniformly random string of exactly $r$ bits. -/\nabbrev RandomSeed (r : ℕ) := Fin r → Bool\n\n/-- The list representation of a fixed-length random seed. -/\ndef RandomSeed.bits {r : ℕ} (seed : RandomSeed r) : BitString :=\n  List.ofFn seed\n\n/-- A decision problem over finite binary inputs. -/\nabbrev Language := Set BitString\n\n/-- A polynomial-time verifier with polynomially bounded certificates. -/\nstructure NPVerifier (language : Language) where\n  program : PolytimeProgram\n  certificateConstant : ℕ\n  certificateExponent : ℕ\n  certificateConstant_pos : 0 < certificateConstant\n  correctness : ∀ input : BitString,\n    input ∈ language ↔ ∃ certificate : BitString,\n      certificate.length ≤ polynomialBound\n        certificateConstant certificateExponent input.length ∧\n      program.output (pairBits input certificate) = [true]\n\n/-- Membership in $NP$ in the operational binary-machine model. -/\ndef InNP (language : Language) : Prop :=\n  Nonempty (NPVerifier language)\n\n/-- A polynomial-time randomized decision program using finitely many bits. -/\nstructure BPPAlgorithm (language : Language) where\n  program : PolytimeProgram\n  randomnessConstant : ℕ\n  randomnessExponent : ℕ\n  randomnessConstant_pos : 0 < randomnessConstant\n  correctness : ∀ input : BitString,\n    let randomBitCount := polynomialBound\n      randomnessConstant randomnessExponent input.length\n    let seeds : Finset (RandomSeed randomBitCount) := Finset.univ\n    let accepting := seeds.filter fun seed ↦\n      program.output (pairBits input seed.bits) = [true]\n    (input ∈ language → 2 * seeds.card ≤ 3 * accepting.card) ∧\n      (input ∉ language → 3 * accepting.card ≤ seeds.card)\n\n/-- Membership in $BPP$ in the same operational binary-machine model. -/\ndef InBPP (language : Language) : Prop :=\n  Nonempty (BPPAlgorithm language)\n\n/-- The complexity-class inclusion appearing in the inapproximability theorem. -/\ndef NPSubsetBPP : Prop :=\n  ∀ language : Language, InNP language → InBPP language\n\nend Lax47.Machine\n",
       "statements": []
     },
     {
       "id": "Lax47.Reduction",
       "path": "concepts/Lax47/Reduction.lean",
-      "title": "Reduction certificate for triangle-free Max Independent Set",
+      "title": "Finite-bit reduction to triangle-free Max Independent Set",
       "type": "definition",
-      "description": "This concept isolates the mathematical and running-time facts supplied by the\npaper's randomized reduction. An $n$-vertex graph is sent, using a lazily read\ntable of independent Boolean samples, to a graph on the $n\\times n$ blow-up of\nits vertices. The Moser--Tardos run is stopped after a polynomial cutoff; on a\ncutoff failure the output is the edgeless graph. A certificate requires that\nevery output is triangle-free, its independence number is always at least $n$\ntimes that of the input, with probability at least two thirds it is at most a\nconstant times $\\alpha(H)n\\log n$, and its number of computation steps has a\nuniform polynomial bound.\n\nThe formulation deliberately exposes exactly what the final promise-gap\nargument consumes. The proof package constructs this certificate using the\nMoser--Tardos and Haeupler--Saha--Srinivasan theorems.",
+      "description": "This concept defines the fixed randomized reduction used by the proof. An\n$n$-vertex graph is sent to a graph on the $n\\times n$ blow-up of its vertices.\nThe program receives one finite block of fair bits for every table cell that a\npolynomially truncated resampling loop can read. It scans the finite list of\nordered vertex triples, resamples the three edges of the first present\ntriangle, and stops after $12(n+1)^6$ rounds. If the final scan still finds a\ntriangle, it emits the edgeless graph.\n\nThe counter state and its operation count are returned by the same structural\nrecursion. The mathematical infinite table used in the probability proof is\nnot an input to this executable reduction.",
       "imports": [
         "Lax41.MoserTardosDefinitions",
         "Lax47.Complexity"
@@ -75,7 +102,7 @@
         "Mathlib.Combinatorics.SimpleGraph.Clique",
         "Mathlib.Probability.ProductMeasure"
       ],
-      "sourceText": "import Lax47.Complexity\nimport Lax41.MoserTardosDefinitions\nimport Mathlib.Combinatorics.SimpleGraph.Clique\nimport Mathlib.Probability.ProductMeasure\n\n/-!\n---\ntitle: Reduction certificate for triangle-free Max Independent Set\ntype: definition\n---\nThis concept isolates the mathematical and running-time facts supplied by the\npaper's randomized reduction. An $n$-vertex graph is sent, using a lazily read\ntable of independent Boolean samples, to a graph on the $n\\times n$ blow-up of\nits vertices. The Moser--Tardos run is stopped after a polynomial cutoff; on a\ncutoff failure the output is the edgeless graph. A certificate requires that\nevery output is triangle-free, its independence number is always at least $n$\ntimes that of the input, with probability at least two thirds it is at most a\nconstant times $\\alpha(H)n\\log n$, and its number of computation steps has a\nuniform polynomial bound.\n\nThe formulation deliberately exposes exactly what the final promise-gap\nargument consumes. The proof package constructs this certificate using the\nMoser--Tardos and Haeupler--Saha--Srinivasan theorems.\n-/\n\nset_option autoImplicit false\n\nopen scoped ENNReal\n\nnamespace Lax47.Reduction\n\nopen Lax41.MoserTardosDefinitions\n\n/-- Vertices of the complete $n$-fold blow-up. -/\nabbrev BlowupVertex (n : ℕ) := Fin n × Fin n\n\n/-- Edge variables used by the resampling construction. -/\nabbrev EdgeVariable (n : ℕ) := Sym2 (BlowupVertex n)\n\n/-- The infinite table of Boolean samples read lazily by Moser--Tardos. -/\nabbrev SampleTable (n : ℕ) :=\n  ResamplingTable (fun _ : EdgeVariable n ↦ Bool)\n\n/--\nThe probabilistic, combinatorial, and polynomial-step certificate delivered\nby the reduction in the paper.\n-/\nstructure TriangleFreeReduction where\n  measure : ∀ n : ℕ, MeasureTheory.Measure (SampleTable n)\n  output : ∀ (n : ℕ), SimpleGraph (Fin n) →\n    SampleTable n → SimpleGraph (BlowupVertex n)\n  steps : ∀ (n : ℕ), SimpleGraph (Fin n) → SampleTable n → ℕ\n  probability : ∀ n, MeasureTheory.IsProbabilityMeasure (measure n)\n  triangleFree : ∀ (n : ℕ) (H : SimpleGraph (Fin n)) (table : SampleTable n),\n    (output n H table).CliqueFree 3\n  completeness : ∀ (n : ℕ) (H : SimpleGraph (Fin n)) (table : SampleTable n),\n    H.indepNum * n ≤ (output n H table).indepNum\n  soundnessConstant : ℝ\n  soundnessCutoff : ℕ\n  soundnessConstant_pos : 0 < soundnessConstant\n  soundness : ∀ (n : ℕ), soundnessCutoff ≤ n → ∀ H : SimpleGraph (Fin n),\n    measure n\n      {table | soundnessConstant * H.indepNum * n * Real.log n <\n        ((output n H table).indepNum : ℝ)} ≤ (1 : ℝ≥0∞) / 3\n  stepConstant : ℕ\n  stepExponent : ℕ\n  stepConstant_pos : 0 < stepConstant\n  stepBound : ∀ (n : ℕ) (H : SimpleGraph (Fin n)) (table : SampleTable n),\n    steps n H table ≤ stepConstant * (n + 1) ^ stepExponent\n\n/-- Existence of a reduction certificate with the paper's parameters. -/\ndef HasTriangleFreeReduction : Prop :=\n  Nonempty TriangleFreeReduction\n\nend Lax47.Reduction\n",
+      "sourceText": "import Lax47.Complexity\nimport Lax41.MoserTardosDefinitions\nimport Mathlib.Combinatorics.SimpleGraph.Clique\nimport Mathlib.Probability.ProductMeasure\n\n/-!\n---\ntitle: Finite-bit reduction to triangle-free Max Independent Set\ntype: definition\n---\nThis concept defines the fixed randomized reduction used by the proof. An\n$n$-vertex graph is sent to a graph on the $n\\times n$ blow-up of its vertices.\nThe program receives one finite block of fair bits for every table cell that a\npolynomially truncated resampling loop can read. It scans the finite list of\nordered vertex triples, resamples the three edges of the first present\ntriangle, and stops after $12(n+1)^6$ rounds. If the final scan still finds a\ntriangle, it emits the edgeless graph.\n\nThe counter state and its operation count are returned by the same structural\nrecursion. The mathematical infinite table used in the probability proof is\nnot an input to this executable reduction.\n-/\n\nset_option autoImplicit false\n\nopen scoped ENNReal\n\nnamespace Lax47.Reduction\n\nopen Lax41.MoserTardosDefinitions\nopen Lax47.Complexity\n\n/-- Vertices of the complete $n$-fold blow-up. -/\nabbrev BlowupVertex (n : ℕ) := Fin n × Fin n\n\n/-- Edge variables used by the resampling construction. -/\nabbrev EdgeVariable (n : ℕ) := Sym2 (BlowupVertex n)\n\n/-- The infinite table of Boolean samples read lazily by Moser--Tardos. -/\nabbrev SampleTable (n : ℕ) :=\n  ResamplingTable (fun _ : EdgeVariable n ↦ Bool)\n\n/- ### Fixed finite-bit execution of the reduction -/\n\n/-- Ordered triples scanned by the executable triangle-removal loop. -/\nabbrev ExecutionTriple (n : ℕ) :=\n  BlowupVertex n × BlowupVertex n × BlowupVertex n\n\n/-- First vertex of an ordered execution triple. -/\ndef executionFirstVertex {n : ℕ} (triple : ExecutionTriple n) : BlowupVertex n :=\n  triple.1\n\n/-- Second vertex of an ordered execution triple. -/\ndef executionSecondVertex {n : ℕ} (triple : ExecutionTriple n) : BlowupVertex n :=\n  triple.2.1\n\n/-- Third vertex of an ordered execution triple. -/\ndef executionThirdVertex {n : ℕ} (triple : ExecutionTriple n) : BlowupVertex n :=\n  triple.2.2\n\n/-- The three unordered edge variables of an ordered triple. -/\ndef executionTriangleVariables {n : ℕ} (triple : ExecutionTriple n) :\n    Finset (EdgeVariable n) :=\n  {s(executionFirstVertex triple, executionSecondVertex triple),\n    s(executionFirstVertex triple, executionThirdVertex triple),\n    s(executionSecondVertex triple, executionThirdVertex triple)}\n\n/-- Number of fair bits used to realize one Bernoulli edge sample. -/\ndef executionSampleBits (n : ℕ) : ℕ :=\n  Nat.log2 (100 * (n + 1)) + 1\n\n/-- Maximum number of Moser--Tardos rounds executed. -/\ndef executionBudget (n : ℕ) : ℕ :=\n  12 * (n + 1) ^ 6\n\n/--\nThe actual random input: one finite fair-bit block for every edge and every\nrow that the bounded loop can read.\n-/\nabbrev ExecutionSeed (n : ℕ) :=\n  EdgeVariable n → Fin (executionBudget n + 1) →\n    Fin (executionSampleBits n) → Bool\n\n/-- Decode one block of fair bits as a Bernoulli sample. -/\ndef executionBlockValue {n : ℕ}\n    (block : Fin (executionSampleBits n) → Bool) : Bool :=\n  decide (∀ bit, block bit = true)\n\n/-- Read a sampled edge cell, returning false outside the finite prefix. -/\ndef executionCell {n : ℕ} (seed : ExecutionSeed n)\n    (edge : EdgeVariable n) (row : ℕ) : Bool :=\n  if h : row < executionBudget n + 1 then\n    executionBlockValue (seed edge ⟨row, h⟩)\n  else false\n\n/-- Boolean adjacency in the complete blow-up of an encoded input graph. -/\ndef executionBlowupAdjacent {n : ℕ} (input : GraphCode n)\n    (left right : BlowupVertex n) : Bool :=\n  input.adjacent left.1 right.1\n\n/-- Whether an ordered triple is a currently present blow-up triangle. -/\ndef executionViolates {n : ℕ} (input : GraphCode n)\n    (seed : ExecutionSeed n) (counts : EdgeVariable n → ℕ)\n    (triple : ExecutionTriple n) : Bool :=\n  executionBlowupAdjacent input (executionFirstVertex triple)\n      (executionSecondVertex triple) &&\n    executionBlowupAdjacent input (executionFirstVertex triple)\n      (executionThirdVertex triple) &&\n    executionBlowupAdjacent input (executionSecondVertex triple)\n      (executionThirdVertex triple) &&\n    executionCell seed s(executionFirstVertex triple, executionSecondVertex triple)\n      (counts s(executionFirstVertex triple, executionSecondVertex triple)) &&\n    executionCell seed s(executionFirstVertex triple, executionThirdVertex triple)\n      (counts s(executionFirstVertex triple, executionThirdVertex triple)) &&\n    executionCell seed s(executionSecondVertex triple, executionThirdVertex triple)\n      (counts s(executionSecondVertex triple, executionThirdVertex triple))\n\n/-- A conservative elementary-operation charge for testing one triple. -/\ndef executionTestSteps (n : ℕ) : ℕ :=\n  20 * (executionBudget n + 1) * (executionSampleBits n + 1)\n\n/--\nScan a concrete list of ordered triples.  The returned step count is produced\nby the same recursion as the selected triple.\n-/\ndef scanExecutionTriples {n : ℕ} (input : GraphCode n)\n    (seed : ExecutionSeed n) (counts : EdgeVariable n → ℕ) :\n    List (ExecutionTriple n) → Option (ExecutionTriple n) × ℕ\n  | [] => (none, 1)\n  | triple :: rest =>\n      if executionViolates input seed counts triple then\n        (some triple, executionTestSteps n)\n      else\n        let tail := scanExecutionTriples input seed counts rest\n        (tail.1, executionTestSteps n + tail.2)\n\n/-- Scan all $n^6$ ordered triples in the fixed finite enumeration. -/\ndef executionTriples (n : ℕ) : List (ExecutionTriple n) :=\n  (List.finRange n).flatMap fun a ↦\n    (List.finRange n).flatMap fun a' ↦\n      (List.finRange n).flatMap fun b ↦\n        (List.finRange n).flatMap fun b' ↦\n          (List.finRange n).flatMap fun c ↦\n            (List.finRange n).map fun c' ↦\n              ((a, a'), (b, b'), (c, c'))\n\n@[simp] lemma mem_executionTriples {n : ℕ} (triple : ExecutionTriple n) :\n    triple ∈ executionTriples n := by\n  rcases triple with ⟨⟨a, a'⟩, ⟨⟨b, b'⟩, ⟨c, c'⟩⟩⟩\n  simp [executionTriples]\n\n/-- Scan all $n^6$ ordered triples in the fixed finite enumeration. -/\ndef findExecutionViolation {n : ℕ} (input : GraphCode n)\n    (seed : ExecutionSeed n) (counts : EdgeVariable n → ℕ) :\n    Option (ExecutionTriple n) × ℕ :=\n  scanExecutionTriples input seed counts (executionTriples n)\n\n/-- Increment exactly the three counters of a selected triangle. -/\ndef advanceExecutionCounts {n : ℕ} (counts : EdgeVariable n → ℕ)\n    (selected : Option (ExecutionTriple n)) : EdgeVariable n → ℕ :=\n  selected.elim counts fun triple edge ↦\n    if edge ∈ executionTriangleVariables triple then counts edge + 1 else counts edge\n\n/--\nRun a fixed number of rounds.  Result and step count are paired by this\nstructural recursion; there is no independently supplied cost function.\n-/\ndef executeRounds {n : ℕ} (input : GraphCode n) (seed : ExecutionSeed n) :\n    (rounds : ℕ) → (EdgeVariable n → ℕ) → (EdgeVariable n → ℕ) × ℕ\n  | 0, counts => (counts, 1)\n  | rounds + 1, counts =>\n      let prior := executeRounds input seed rounds counts\n      let scan := findExecutionViolation input seed prior.1\n      (advanceExecutionCounts prior.1 scan.1, prior.2 + scan.2 + 1)\n\n/-- Counter state after the polynomially bounded resampling loop. -/\ndef executionCounts {n : ℕ} (input : GraphCode n) (seed : ExecutionSeed n) :\n    EdgeVariable n → ℕ :=\n  (executeRounds input seed (executionBudget n) (fun _ ↦ 0)).1\n\n/-- The loop has halted when its final deterministic scan finds no triangle. -/\ndef executionHalted {n : ℕ} (input : GraphCode n)\n    (seed : ExecutionSeed n) : Bool :=\n  (findExecutionViolation input seed (executionCounts input seed)).1.isNone\n\n/-- Pair encoding of the vertices of the $n\\times n$ blow-up. -/\ndef decodeBlowupVertex {n : ℕ} (vertex : Fin (n * n)) : BlowupVertex n :=\n  finProdFinEquiv.symm vertex\n\n@[simp] lemma decodeBlowupVertex_encode {n : ℕ} (vertex : BlowupVertex n) :\n    decodeBlowupVertex (finProdFinEquiv vertex) = vertex :=\n  finProdFinEquiv.symm_apply_apply vertex\n\n/-- The graph emitted by the fixed finite-bit reduction. -/\ndef executionOutput {n : ℕ} (input : GraphCode n)\n    (seed : ExecutionSeed n) : GraphCode (n * n) where\n  adjacent left right :=\n    if executionHalted input seed then\n      let u := decodeBlowupVertex left\n      let v := decodeBlowupVertex right\n      input.adjacent u.1 v.1 &&\n        executionCell seed s(u, v) (executionCounts input seed s(u, v))\n    else false\n  loopless := by\n    intro vertex\n    simp [decodeBlowupVertex, input.loopless]\n  symmetric := by\n    intro left right\n    by_cases h : executionHalted input seed\n    · simp only [h, if_true, decodeBlowupVertex]\n      rw [input.symmetric]\n      rw [Sym2.eq_swap]\n    · simp [h]\n\n/-- Actual counted work of the bounded reduction, including its final scan. -/\ndef executionSteps {n : ℕ} (input : GraphCode n)\n    (seed : ExecutionSeed n) : ℕ :=\n  (executeRounds input seed (executionBudget n) (fun _ ↦ 0)).2 +\n    (findExecutionViolation input seed (executionCounts input seed)).2 +\n    (n + 1) ^ 4\n\nend Lax47.Reduction\n",
       "statements": []
     },
     {
@@ -92,7 +119,7 @@
       "statements": [
         {
           "id": "Lax47.Theorem12.theorem_1_2",
-          "signature": "theorem_1_2 : Lax47.Hastad.Inapproximability →\n  ∀ (ε : Real),\n    Real.instLT.lt 0 ε → ∀ (a : Lax47.Complexity.TriangleFreeMISApproximation ε), Lax47.Complexity.NPSubsetBPP",
+          "signature": "theorem_1_2 : Lax47.Hastad.Inapproximability →\n  ∀ (ε : Real), Real.instLT.lt 0 ε → ∀ (a : Lax47.Complexity.TriangleFreeMISApproximation ε), Lax47.Machine.NPSubsetBPP",
           "startLine": 24,
           "endLine": 27,
           "doc": "Håstad hardness implies tight conditional inapproximability on triangle-free graphs."
@@ -111,40 +138,60 @@
   ],
   "capture": {
     "formatVersion": 1,
-    "digest": "5958115baf021a7cf784d53a0ec864b66e90cc3556907192ce189d90b4f7f194",
-    "sourceCommit": "019925b5bee135c513c0e1afa84c824cb86dad63",
+    "digest": "6482b6fb91e58312edd6c816b053c0d1e452af2beb70bcd32e29b6504de31332",
+    "sourceCommit": "e6d03755a82446b1633a240abf84a5a045abfaea",
     "leanToolchain": "leanprover/lean4:v4.30.0",
     "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
     "files": [
       {
         "path": "concepts/ir/Lax47/Complexity.c",
-        "bytes": 4137,
-        "sha256": "ed2d2ac6ab61ded05889eb5c9c3cf94531a103d6f144f81c41e0da3023376aa1"
+        "bytes": 15054,
+        "sha256": "690dc541b4ae1e6bbe667e2ac5ba0d4f2639849a2fb8582ab008c86d36b20d73"
       },
       {
         "path": "concepts/ir/Lax47/Complexity.c.hash",
         "bytes": 16,
-        "sha256": "3849681153db4203535cfa5aca9a62026d4280f1f9b8fdf74c50f2be2705476b"
+        "sha256": "838ddea7ea26f18c9de078a19e49e5e766b8964ce61461ed40d98c7b8946f746"
+      },
+      {
+        "path": "concepts/ir/Lax47/Gap.c",
+        "bytes": 59591,
+        "sha256": "6e67f911ec3056c2d1ad071a02369d0ef5bc78c20272e36c9d25bcd9bca6de5e"
+      },
+      {
+        "path": "concepts/ir/Lax47/Gap.c.hash",
+        "bytes": 16,
+        "sha256": "a464058d87fa2363e883df1d450bb3c4736b1d4a4a5acdaa6eba64aa952ee318"
       },
       {
         "path": "concepts/ir/Lax47/Hastad.c",
-        "bytes": 1290,
-        "sha256": "dcf489075067b3daf08e809dff81a91d6a53fe0a5ab7151649fe4423edf9e58c"
+        "bytes": 1269,
+        "sha256": "92e778e85062ba5eeb605c5a36e4e95a9ec5b7b7be9106ceb9c3a327b518816e"
       },
       {
         "path": "concepts/ir/Lax47/Hastad.c.hash",
         "bytes": 16,
-        "sha256": "4c4cbfbe0267b87710f82cea64dc0cad56ce1804abaa9471e399465c9c53069d"
+        "sha256": "47a802b8c9e8df3a42753fbc3f027b52e9a24a8178c75e2c2bfa05c7b0612be7"
+      },
+      {
+        "path": "concepts/ir/Lax47/Machine.c",
+        "bytes": 12931,
+        "sha256": "c78d2d72892758037214209177e656dff2d547cde0bb72e09d89a16211f3d7d6"
+      },
+      {
+        "path": "concepts/ir/Lax47/Machine.c.hash",
+        "bytes": 16,
+        "sha256": "2ec9b16bebe600042e73863c07aaed227b75176f6882e76d92ee930b2f17a0c7"
       },
       {
         "path": "concepts/ir/Lax47/Reduction.c",
-        "bytes": 2099,
-        "sha256": "ea1bfcbeeb5fecbe47994cd2d4a8f3ea42c813eddaa454781c4d2741a0666210"
+        "bytes": 66917,
+        "sha256": "d65ef75493da926f968d15e83a9227d8cee7bd640e931fd76c82de337ab2f3b8"
       },
       {
         "path": "concepts/ir/Lax47/Reduction.c.hash",
         "bytes": 16,
-        "sha256": "9623627e4845bda76507ae38a7cd27498648bd5f1760d5dd1e11baefcab0ab9f"
+        "sha256": "5ddfc322195feaf0062fd9f2e6c65da2714c36464a501ca3ff6ae6119fbb1543"
       },
       {
         "path": "concepts/ir/Lax47/Theorem12.c",
@@ -158,138 +205,188 @@
       },
       {
         "path": "concepts/ir/Lax47.c",
-        "bytes": 1891,
-        "sha256": "57d003a328eaf907af34cb126bdbe394a1dda8b2c1046e8a1a524dc316f32945"
+        "bytes": 2283,
+        "sha256": "121b33d593bb9f925c32f2d603b4a33ab12f791c05f760c7e0036a87d333f0e8"
       },
       {
         "path": "concepts/ir/Lax47.c.hash",
         "bytes": 16,
-        "sha256": "b4c5dc7be1a5ae19f4b6d0fdb7f7e29c4c3db1ae53c4f7d26d19ee166caf08ca"
+        "sha256": "9cead7572dc325adb9b6e708475a178d7b5d404a9c13c9dff10457a96f5df4ee"
       },
       {
         "path": "concepts/lib/Lax47/Complexity.ilean",
-        "bytes": 19198,
-        "sha256": "c7c7813bd23f206fa22c54d1e4bac631c2f3ca0f47d4c0a3eac71ff078851f9d"
+        "bytes": 15915,
+        "sha256": "00dc2e9f43624eff7fa3a0401f61a8e4def6422697f2fc0b23fbef71d9139a7d"
       },
       {
         "path": "concepts/lib/Lax47/Complexity.ilean.hash",
         "bytes": 16,
-        "sha256": "71e99b20591ca4bf70ea4ec8571fd62100093f7cc62ba8b1e8efd046f91b76b2"
+        "sha256": "b88cfecb5b4f565041fc925cd921b2152572636299a903579833e59f00a5a63c"
       },
       {
         "path": "concepts/lib/Lax47/Complexity.olean",
-        "bytes": 386000,
-        "sha256": "45751a037f2ead02f003e4bcef2beab578fb2e2e1b2c6e9256fba11582f0a1e9"
+        "bytes": 163688,
+        "sha256": "df71c5dfc511566ad5bd4e3cfc7b346cb71e8ca7b0128eb540dc82ee819b7d06"
       },
       {
         "path": "concepts/lib/Lax47/Complexity.olean.hash",
         "bytes": 16,
-        "sha256": "6d8c41c62b009efd6244b3fd37919aa9979758d29a829caaa7467d737d8397c0"
+        "sha256": "2dc10f6898c9b57aafe244f2b850803e86d56f555c070a44d5bfebce65aa5b86"
       },
       {
         "path": "concepts/lib/Lax47/Complexity.trace",
-        "bytes": 2823,
-        "sha256": "5d519441aad224db19590f7115edcc70e963d2b2d2496bdc95f678a5aa7ee0d3"
+        "bytes": 2725,
+        "sha256": "a88a019d9a39b5e898273be23ec437c7479a91cccdac455186af7d74126ca1d4"
+      },
+      {
+        "path": "concepts/lib/Lax47/Gap.ilean",
+        "bytes": 16364,
+        "sha256": "2c476cb4f3a043744e9d055f8578a07f008b140a600f7c70bd6c0991b8c69e00"
+      },
+      {
+        "path": "concepts/lib/Lax47/Gap.ilean.hash",
+        "bytes": 16,
+        "sha256": "281d7eb5f0821dcb5f0d7b5363308304541d7ceb5fb5a5624889266d3e63b4df"
+      },
+      {
+        "path": "concepts/lib/Lax47/Gap.olean",
+        "bytes": 389824,
+        "sha256": "79f804be6bbdcc9c7f78421579a06e20ab399f54b5eb201d54dad049b388e52b"
+      },
+      {
+        "path": "concepts/lib/Lax47/Gap.olean.hash",
+        "bytes": 16,
+        "sha256": "bde727377a8db5907885250dbdd5f66314afc3e3108e4ece738cfa324dd63832"
+      },
+      {
+        "path": "concepts/lib/Lax47/Gap.trace",
+        "bytes": 2086,
+        "sha256": "e222a02067f02fe01d887882957baef7f6f48f369263abf6d2ab4e11cc4c063f"
       },
       {
         "path": "concepts/lib/Lax47/Hastad.ilean",
-        "bytes": 909,
-        "sha256": "2e387f510c95c38d6840f1303055b3713bf23b40dccfbd390b21d137abfda9dd"
+        "bytes": 823,
+        "sha256": "4f4bcc37e330fd419e013422aab9244080de0779b6b102a3e7e64e4155be3f1a"
       },
       {
         "path": "concepts/lib/Lax47/Hastad.ilean.hash",
         "bytes": 16,
-        "sha256": "2cf13c98b24ba43836c0c5b543b4144f2ab3522a387f5aca35e07019bb23ca6b"
+        "sha256": "c6966f383e35852a19a19c65b74aa180fa8e1377889766126480fbc273d1a67f"
       },
       {
         "path": "concepts/lib/Lax47/Hastad.olean",
-        "bytes": 11120,
-        "sha256": "8d4f1e6ba033cea54319b1de7e52b539fd5b60d3068ebd1c5f4cc4cf90ba556c"
+        "bytes": 7064,
+        "sha256": "cafa863084071e6d74fd5fa8277c21e7739ec9ff18f7d34375e1e46530ab0eb6"
       },
       {
         "path": "concepts/lib/Lax47/Hastad.olean.hash",
         "bytes": 16,
-        "sha256": "d357b83d1fb5f7d4fbac59dcd0a06c98e018ef16bfc39807976336c544795968"
+        "sha256": "277cd9dbfc57d534d3bab0f97350b877068added27c97a8f8ca68859cd1783f1"
       },
       {
         "path": "concepts/lib/Lax47/Hastad.trace",
-        "bytes": 2112,
-        "sha256": "1a430cd2754be9d57a9a8e5ee4a576dc2b7880e0e9ef3901f185979e45f68e78"
+        "bytes": 2098,
+        "sha256": "eedb1c31d4c4364f1c048d5ca275e66db4307cf4415fe93355a9ebb60659102f"
+      },
+      {
+        "path": "concepts/lib/Lax47/Machine.ilean",
+        "bytes": 15925,
+        "sha256": "9fca4e07538d6c0d15f2ddf197719fdd46ff22e2379208c33c6e6be3eae58509"
+      },
+      {
+        "path": "concepts/lib/Lax47/Machine.ilean.hash",
+        "bytes": 16,
+        "sha256": "4a2cbb2d7a82e945d8eb4b32df95df9fc3227abab88b483acc81f5accb355aec"
+      },
+      {
+        "path": "concepts/lib/Lax47/Machine.olean",
+        "bytes": 227632,
+        "sha256": "dbb357f2ca864114f9094135670a3cdb9615b27c111cfa41fcc4d86d15c51e1d"
+      },
+      {
+        "path": "concepts/lib/Lax47/Machine.olean.hash",
+        "bytes": 16,
+        "sha256": "66a2082e6e5e5a80957661e2a801a3651a35621f1c1b046bc42b42a0af010193"
+      },
+      {
+        "path": "concepts/lib/Lax47/Machine.trace",
+        "bytes": 2198,
+        "sha256": "50c06bda55d6f8a30b1f09eab4c8fb6a6ed31e4218d98cc9c807e81ad3c107f0"
       },
       {
         "path": "concepts/lib/Lax47/Reduction.ilean",
-        "bytes": 7623,
-        "sha256": "afe23b5f011d595087d4b86fb6d189bfb065ba356bfa7a7613dc6cdb8dc05f7c"
+        "bytes": 20841,
+        "sha256": "cec62092b3be681560548165f47997d499f0911cb7a31624b5d57c15306d8972"
       },
       {
         "path": "concepts/lib/Lax47/Reduction.ilean.hash",
         "bytes": 16,
-        "sha256": "11c0bc205cf40f4c34643d66aa2062bc6d2d8a72b9071b379708c85dc7c9ca61"
+        "sha256": "be1b7f2a86af41ddde1c3ba79363359de47afb1bc0673b26164c6f051bb021c6"
       },
       {
         "path": "concepts/lib/Lax47/Reduction.olean",
-        "bytes": 116496,
-        "sha256": "40166ca2a53d4b404184be69a3cc0b64b70c8adb8bab11b1e31cd4d11a60b75e"
+        "bytes": 321672,
+        "sha256": "e2be30084afc3805055d537cfb62beca7a574735e5b9d81e9cfe34fb69ac6c48"
       },
       {
         "path": "concepts/lib/Lax47/Reduction.olean.hash",
         "bytes": 16,
-        "sha256": "65b15d62c40fcc458540880aa9bc3849f05ed7a74e79e42b0b1930ac1a799bf2"
+        "sha256": "dee649a76da1407d04ee4abb58a9de70c1c48f009b5a66a06efc6716b726c2f0"
       },
       {
         "path": "concepts/lib/Lax47/Reduction.trace",
         "bytes": 2715,
-        "sha256": "fec91a68160d796fb5713f614cff9dd2cbf0677d373b50d495da810cb0bd20c5"
+        "sha256": "946e5e1947337df9c891327172306cfe3dceaf8fa30ef3f5d2173583d8f56db4"
       },
       {
         "path": "concepts/lib/Lax47/Theorem12.ilean",
-        "bytes": 1047,
-        "sha256": "7bb93505be0bbca547a853d4ed618add6c2219a1792a437b6022880c7eb79ce4"
+        "bytes": 1041,
+        "sha256": "7f4cdaacb64a33e72b5895a3a254eea8170fc31c094c65af444c2bc54af19d3b"
       },
       {
         "path": "concepts/lib/Lax47/Theorem12.ilean.hash",
         "bytes": 16,
-        "sha256": "08e91d8ccd71bc22020e408d69a73815cb6907dc194dc6325e0b0f39ac467969"
+        "sha256": "e1f97b99b7ed369f302dda0302523e32e432b329275b3c2b3b8da0c2edcf8f27"
       },
       {
         "path": "concepts/lib/Lax47/Theorem12.olean",
-        "bytes": 7360,
-        "sha256": "bc36489cdf60dd8346236298481d9387e4606d07477b03c7fb75c87561739ba4"
+        "bytes": 7432,
+        "sha256": "4333688b00150eae3ebb03d273246e0f072e2847c9bd38ed2a008a75788a64e2"
       },
       {
         "path": "concepts/lib/Lax47/Theorem12.olean.hash",
         "bytes": 16,
-        "sha256": "dd5846bac8c046c233a32a8fd61344abb5ceb9eedd5aa365893805569d772c76"
+        "sha256": "b60b2a3cf4c8ae3b2e107b00b66b35ef39f24fca722dcdf1a93727e6e259e990"
       },
       {
         "path": "concepts/lib/Lax47/Theorem12.trace",
         "bytes": 2128,
-        "sha256": "5b26194b2b996e58bd11152ef40f311683d12e4d17334ad497ed28909fb51c36"
+        "sha256": "fc6f9fbec21cbd74b71e8a76d3da2c666142561dd8c7285eb60a620129675ed7"
       },
       {
         "path": "concepts/lib/Lax47.ilean",
-        "bytes": 225,
-        "sha256": "b0c3407c5207cd19c1eb83ef744d73599711ce69ebf0497cab8f19b6e6992225"
+        "bytes": 293,
+        "sha256": "60fb38e5b5ca86aef6573b166151fcc46273e9dcc7405c94379b2ff53b7db428"
       },
       {
         "path": "concepts/lib/Lax47.ilean.hash",
         "bytes": 16,
-        "sha256": "17f0cdb90cbf22a5e5238e4585739d85f7f1a08c3b3bbe5920fa73eeb9a7f1f8"
+        "sha256": "1e26fe971a66cd3ed663601a2aea906736623c59e939d200f2d936ae21861cb4"
       },
       {
         "path": "concepts/lib/Lax47.olean",
-        "bytes": 1664,
-        "sha256": "71581e35587765ea0e282dd7f5e7cf0157db45582987b35bdabe8e559ffa5189"
+        "bytes": 1872,
+        "sha256": "1a4ef82329638de428012221b8609718d0c95987e592871c1edc1169e1b4d134"
       },
       {
         "path": "concepts/lib/Lax47.olean.hash",
         "bytes": 16,
-        "sha256": "521d732f439236cbe9a4a6225fb045cb093e8821e77c4cb0befab903a2b1fe6f"
+        "sha256": "1f08fa34cf4cbf9aae98483a9eeaba8b2be96ddc645c97f75193fd4713f59590"
       },
       {
         "path": "concepts/lib/Lax47.trace",
-        "bytes": 2470,
-        "sha256": "895133d92d6ba662987d47d6f7fefe2c98826d9235d4af8ed9b0b296babd971e"
+        "bytes": 2734,
+        "sha256": "d21ce31b8135617bddf6a418f2c983c6520d454f5290a81fe3ba085f33a13aaf"
       },
       {
         "path": "concepts/package/lake-manifest.json",
@@ -303,18 +400,28 @@
       },
       {
         "path": "concepts/package/Lax47/Complexity.lean",
-        "bytes": 6820,
-        "sha256": "e88b972447f675338c0aeda2b11b9ebdcd10f4e4515b03317551457af095ce8a"
+        "bytes": 4437,
+        "sha256": "762868a0dd99514f1a0228d9b57f9c26b8a2e00882b4c9dfb73c536164efc2e4"
+      },
+      {
+        "path": "concepts/package/Lax47/Gap.lean",
+        "bytes": 6564,
+        "sha256": "7b15ef6005af4edc48a04e9a0fa284ea49b181af1e1ec48ec2a86878d83e3617"
       },
       {
         "path": "concepts/package/Lax47/Hastad.lean",
-        "bytes": 971,
-        "sha256": "7f2ccbedc970d527f2ce727db8273b631442734afbc66cf72fcd53a26480ff4c"
+        "bytes": 952,
+        "sha256": "95cf48d7e64e33f2798b42666d087e5ca4afbf3789ee6422aba80cf945196e00"
+      },
+      {
+        "path": "concepts/package/Lax47/Machine.lean",
+        "bytes": 5862,
+        "sha256": "5385dbd9c00d81d3fdcc56d23746b92aa59377138ee62311fad618c8538e5f8c"
       },
       {
         "path": "concepts/package/Lax47/Reduction.lean",
-        "bytes": 3020,
-        "sha256": "194a56eafd6e068cce883271811c83a72cd8a5afa12de2430d1825a17e38e68c"
+        "bytes": 9219,
+        "sha256": "3615bdff223de87ff724ce728f7135c93c3bcd8db77e11bfb4a393a481249204"
       },
       {
         "path": "concepts/package/Lax47/Theorem12.lean",
@@ -323,8 +430,8 @@
       },
       {
         "path": "concepts/package/Lax47.lean",
-        "bytes": 90,
-        "sha256": "3ae93c0e7dbd223c4d5e7c119de654c1ab520854b975380414b6bd916acec5ee"
+        "bytes": 128,
+        "sha256": "95edd3903ea1b025136bacf979b08a3332cfedbf58a8f00db15fbd7bee18535c"
       },
       {
         "path": "concepts/package/lean-toolchain",
@@ -333,23 +440,33 @@
       },
       {
         "path": "proofs/ir/Lax47Proofs/Construction.c",
-        "bytes": 33896,
-        "sha256": "ed10fcb3b0d8455181fe39bd85ba9a17cb87810c5afc1d4060f43c8d8cb1c0bd"
+        "bytes": 35748,
+        "sha256": "6bc9a9f9bde987727658d4bcb43f142c4322da38ab3e40e9854e2238dce82d37"
       },
       {
         "path": "proofs/ir/Lax47Proofs/Construction.c.hash",
         "bytes": 16,
-        "sha256": "ef5046f018ec64d9ea373ced21c1f559beb33c8cbe205a16a61969f4bf45f0af"
+        "sha256": "c65d4cb7aa305aeac1a7ae1ec2b68c763c02d050d23362b54a2df68750032168"
+      },
+      {
+        "path": "proofs/ir/Lax47Proofs/FiniteExecution.c",
+        "bytes": 15150,
+        "sha256": "5e9a119c2f874b4f49b11cee6d198a8dec8b45111252623e90dfdcb243f312b0"
+      },
+      {
+        "path": "proofs/ir/Lax47Proofs/FiniteExecution.c.hash",
+        "bytes": 16,
+        "sha256": "155d2038ad45e9491b9ddee9a6200ad00bae6a315a45064da735aee6ddd557de"
       },
       {
         "path": "proofs/ir/Lax47Proofs/GapTransfer.c",
-        "bytes": 1668,
-        "sha256": "1e922a15d2f25ab31400d2b520fb800280d71cc895a4855a13a2d4f03197aeb9"
+        "bytes": 18707,
+        "sha256": "8400f8aa9c2f014347d8d22f8192cb1e3f3abe513b39e2e685291379631cc786"
       },
       {
         "path": "proofs/ir/Lax47Proofs/GapTransfer.c.hash",
         "bytes": 16,
-        "sha256": "884c908b6dca7c04a4dc7509e5919848f0ec4cba580a4f74c3772345a6cf2e2c"
+        "sha256": "95f01c3d03230aaa127321450632b3edb16ba4ed8a631e6b704b8a8fcafa376d"
       },
       {
         "path": "proofs/ir/Lax47Proofs/Main.c",
@@ -362,114 +479,174 @@
         "sha256": "4b7a634564adf44f374ec0427aed1fe6da277edfdcf3866d5f16c930bc0189d5"
       },
       {
+        "path": "proofs/ir/Lax47Proofs/OperationalReduction.c",
+        "bytes": 14934,
+        "sha256": "5ee0fe32ea602087218239a9fa1a60478ae89fd202b4dafd296a775c0b87d606"
+      },
+      {
+        "path": "proofs/ir/Lax47Proofs/OperationalReduction.c.hash",
+        "bytes": 16,
+        "sha256": "5a055588b9132ef84788f3707f7d861efc2625ac638806fe312b06fbcf33a7d5"
+      },
+      {
         "path": "proofs/ir/Lax47Proofs.c",
-        "bytes": 1797,
-        "sha256": "010e624df448bb2dfe378f0fe6a4f68bda122056e39733ac380e3928456c70e0"
+        "bytes": 2324,
+        "sha256": "0638da44b191bcbdd32a53c62ecc76d033f40fbcfdffc401548e319742b22679"
       },
       {
         "path": "proofs/ir/Lax47Proofs.c.hash",
         "bytes": 16,
-        "sha256": "a75c934e474e15ed67398e0af2b4c190814a942e935d6068ec48cad83bf79871"
+        "sha256": "59f64d11c7fd25d86a3e1d65abda934e907036c50b5d160095dc6aef4b52a43e"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Construction.ilean",
-        "bytes": 288918,
-        "sha256": "9d0afb2e1c7e01c87d43055f55c8c7cd4651727b6c09dea4c1585a2f9b1182d8"
+        "bytes": 328162,
+        "sha256": "e956caf6f3107ebe947028cc851b17e8448edafc775624c3e460933029eb2896"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Construction.ilean.hash",
         "bytes": 16,
-        "sha256": "ffa0dd9f913541cce1443b8fb2d7b8af948f5db4391e27d06b3003f2d947dc76"
+        "sha256": "07e52dc8fc9de2044e0b459413a61c32981432596d009852bd230d7dd05ba0b7"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Construction.olean",
-        "bytes": 2846216,
-        "sha256": "fd0761d66c395656fc53efc421cadaacd1a92de637997b5516d8b7ea599eaafe"
+        "bytes": 3067928,
+        "sha256": "a5711689b878306e1efc05852b5c0f6b5ac22278e7a9e63be520c7c008a29504"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Construction.olean.hash",
         "bytes": 16,
-        "sha256": "e5db9a9683c3f8228daa039f4bdd4a04fc392168630bd62392c304d539df32b1"
+        "sha256": "671664615631b204ad52c72789551408e6f19fa78be06dd65d171ffd41651216"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Construction.trace",
-        "bytes": 5335,
-        "sha256": "fb10173e6c450f711f4e67578458e86a98a6d9e14977233ab5a662e7a6109663"
+        "bytes": 5224,
+        "sha256": "fb4ceb5fa87d71c5da324bfac17dad56793a5320e4789a37261329cd6a019271"
+      },
+      {
+        "path": "proofs/lib/Lax47Proofs/FiniteExecution.ilean",
+        "bytes": 66280,
+        "sha256": "0e7a561f90d523db6d3c9a07ff35edde06970bde1a0d5782616ac69b884b2076"
+      },
+      {
+        "path": "proofs/lib/Lax47Proofs/FiniteExecution.ilean.hash",
+        "bytes": 16,
+        "sha256": "c707e7d8005c0ff0fe0478abd363ecb8696309d816fb2f4c8898b7343913136f"
+      },
+      {
+        "path": "proofs/lib/Lax47Proofs/FiniteExecution.olean",
+        "bytes": 1496872,
+        "sha256": "8349fb6ba996a92d6b09e5c9fd128b69e0566bc3c40da1da5460a0f8501bddba"
+      },
+      {
+        "path": "proofs/lib/Lax47Proofs/FiniteExecution.olean.hash",
+        "bytes": 16,
+        "sha256": "bc5e39e758631cd8e0b138cf6f2faa7f0e5c1d8b1028ebfa6729bdf2a6b84189"
+      },
+      {
+        "path": "proofs/lib/Lax47Proofs/FiniteExecution.trace",
+        "bytes": 2571,
+        "sha256": "6130dcf50dc72983df0c94d26898826f9d7884ff3e43d87712225eb584218992"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapTransfer.ilean",
-        "bytes": 39325,
-        "sha256": "022e76dfd4d8bf6bf0f70d84ea07c9f780176189cec9937801d37dfd3ab2c02c"
+        "bytes": 83508,
+        "sha256": "eb78d538dafef08c483b937a07c5b257634e50b8437286d21c0b3bd8acf05030"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapTransfer.ilean.hash",
         "bytes": 16,
-        "sha256": "b45b8f15dc37da531133f5aa33065ee95d6858dc2915fff31e4a583378bd7f6f"
+        "sha256": "1ff8dc506240e0f26da91c54fc2c1c5664311c6d9c6b6f882821f7dd4406d2db"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapTransfer.olean",
-        "bytes": 414512,
-        "sha256": "5de705b0460670aae3cedf67d9b0340a688c285d33c1c96601fa1e1fac0cd537"
+        "bytes": 1492368,
+        "sha256": "178a5976a31bf369ff8d05c42e638f05a46928f37279d9b5fa75b7d4a4945688"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapTransfer.olean.hash",
         "bytes": 16,
-        "sha256": "6ecea4c90ea7e928e0176abf560af3099426097158491f9e22ad24c57e8b5a65"
+        "sha256": "7435d1eba76a46efd14c2b464b08ae71e75557ab3606f56c80987e9d76927f69"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapTransfer.trace",
-        "bytes": 3453,
-        "sha256": "ba4a36bcb03225d1ca8fb46e970069716239e1421ea250bd7f38764c655de829"
+        "bytes": 3605,
+        "sha256": "2ab8470c9e4d63f809e4eb5d19346830962fafb5e5889c64cc47c74ae0067e52"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Main.ilean",
-        "bytes": 2080,
-        "sha256": "b0e5324a1861c82b2c954dbbbc4dd930c2edb6f846367f1619ea0e49eaa36110"
+        "bytes": 1369,
+        "sha256": "ce8a336e1ce3240f76f51ae1076f0598972adbc2a45c917f8685f6d47da2bb8f"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Main.ilean.hash",
         "bytes": 16,
-        "sha256": "0c59cbe0217df156278617f68dfd144dab72570bd8a62d005ba7c9353677c4d6"
+        "sha256": "716603e4653c1048faf8334ebbe2c300e9d9e0bbad99e04d1491d9dcec803d0e"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Main.olean",
-        "bytes": 9272,
-        "sha256": "30b2cbd8f6d7a92b7d45a819678bb928a471030e40ebe9e97a571abca69e80af"
+        "bytes": 14192,
+        "sha256": "1cc3d27404216b067bf7237d3cbcc061957d61e2fecc87b9836527946c663dcd"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Main.olean.hash",
         "bytes": 16,
-        "sha256": "44b2540fdc4b28bfd4fdd74defa3793f4bf20897462aeb155a31e48c9d043aa5"
+        "sha256": "04441264cf629c41a2b07032ecc1b747b4054eaa52bf577499c713cb6ddbc5d4"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Main.trace",
         "bytes": 2411,
-        "sha256": "d897e59aeda4465d872a4749551779a636dad6ad0f5ca7b80bb1bb692eb0046f"
+        "sha256": "4cbe55158b71332e8c6bfba9d84be68333846c5ba16dec6d2d3c76495b576fc9"
+      },
+      {
+        "path": "proofs/lib/Lax47Proofs/OperationalReduction.ilean",
+        "bytes": 85818,
+        "sha256": "e56e501e145c4ad4c6aa4ca0aced1e43b073211d1545b3078698e44759d30b71"
+      },
+      {
+        "path": "proofs/lib/Lax47Proofs/OperationalReduction.ilean.hash",
+        "bytes": 16,
+        "sha256": "693ead4088b29ef5fc5719d35f3afc8673c0d8bf3cc5d0255b22bfca8b9995e5"
+      },
+      {
+        "path": "proofs/lib/Lax47Proofs/OperationalReduction.olean",
+        "bytes": 2079336,
+        "sha256": "2c1c3d2dff463baffe9d76d549864b81ecca78e352154dd1293033c8536a5105"
+      },
+      {
+        "path": "proofs/lib/Lax47Proofs/OperationalReduction.olean.hash",
+        "bytes": 16,
+        "sha256": "c40e4ed9ad07e91b7b3a8e3963986342b28865880ae384814cb41f99e43ae0a1"
+      },
+      {
+        "path": "proofs/lib/Lax47Proofs/OperationalReduction.trace",
+        "bytes": 3514,
+        "sha256": "d12b923b35415bf05b25579ac3dedb4d970abfc0860d7c69e0279ea4b061f85c"
       },
       {
         "path": "proofs/lib/Lax47Proofs.ilean",
-        "bytes": 213,
-        "sha256": "e7fe6bb69da7f973b8ebd2cb07483c007835efcb61cb944c15878b1773c12870"
+        "bytes": 318,
+        "sha256": "81ca099ac1f2e07625ccd5e0d120895e23eb9ecc38df15ea407ba2f2b0721035"
       },
       {
         "path": "proofs/lib/Lax47Proofs.ilean.hash",
         "bytes": 16,
-        "sha256": "d1e91df7d3e1a7a3c36fb23284c9ee6662fed830d2fec92b96c380aa7f6bd2a1"
+        "sha256": "6f27b78448b39a2ae2a1538506030599ca5b2b386aca289d01880cbafa4ca12d"
       },
       {
         "path": "proofs/lib/Lax47Proofs.olean",
-        "bytes": 1560,
-        "sha256": "1bf059951b9a6c9cf9a75fb6335e170eed8daf5dedb57331c52737849033b762"
+        "bytes": 1792,
+        "sha256": "15d7bdd9b0345add08ceda133a75b8687a308e225b3a37ed7d45c6ba95e6c005"
       },
       {
         "path": "proofs/lib/Lax47Proofs.olean.hash",
         "bytes": 16,
-        "sha256": "c3d173107ad740a0b4d42e72aafc0911a8538affdb94c0cfd00306ab87a3432d"
+        "sha256": "d500383e87b9636991cd7636c311918d6e69b7f5cf7ef18f20e2f733c4cd445b"
       },
       {
         "path": "proofs/lib/Lax47Proofs.trace",
-        "bytes": 2540,
-        "sha256": "076ca6e37b5535ddac4a77776183ddaf801084bda4e520df42386e12a895dccd"
+        "bytes": 2896,
+        "sha256": "bbec88e44ba33d98ba0c868594902e6ab93aa9920cd863dd63376d424b650cce"
       },
       {
         "path": "proofs/package/lake-manifest.json",
@@ -483,23 +660,33 @@
       },
       {
         "path": "proofs/package/Lax47Proofs/Construction.lean",
-        "bytes": 85418,
-        "sha256": "e25ffba43665ff6db8d5a99f625f828254ef6b634ef3c47c0504b421b773382c"
+        "bytes": 98363,
+        "sha256": "4cfaa496385f847e4b99f5ff0c49a98a2a4086dd0855c2974bed48e23b6a7ce7"
+      },
+      {
+        "path": "proofs/package/Lax47Proofs/FiniteExecution.lean",
+        "bytes": 18234,
+        "sha256": "6f42c264facc21ed4aec263e22927c421999fd7d2949ca0a7a219cbe13837878"
       },
       {
         "path": "proofs/package/Lax47Proofs/GapTransfer.lean",
-        "bytes": 12564,
-        "sha256": "bee862577c85bac83d17e6cab7ad53eba2ef952227f61895629142a89b4ac53e"
+        "bytes": 31166,
+        "sha256": "a919bfbd837e08e5ff528892c1570e57d691d82394e29e0f25dd94bc352a6e24"
       },
       {
         "path": "proofs/package/Lax47Proofs/Main.lean",
-        "bytes": 908,
-        "sha256": "0692fb57f40a5ebec15f004500813aab5dca3524278aee8fe46a2a5a95552054"
+        "bytes": 787,
+        "sha256": "33582ef19292615125b60a5b374becde3b662528f65db53ba7d1f4420bd3e0a9"
+      },
+      {
+        "path": "proofs/package/Lax47Proofs/OperationalReduction.lean",
+        "bytes": 25746,
+        "sha256": "229d9122c268b1d99882334b7794586a3d5cfd9c83cc719e6f55293128dcb0be"
       },
       {
         "path": "proofs/package/Lax47Proofs.lean",
-        "bytes": 87,
-        "sha256": "ada84cf488a0aeb0a1f1c31aa04d8f057d57677bdd0229d2c6e93ff78ad76b4f"
+        "bytes": 162,
+        "sha256": "e67511d4ee1bfa463dd98ccb156cc3765002ddc1e33b7601695afd7c8aaa9ca8"
       },
       {
         "path": "proofs/package/lean-toolchain",
@@ -507,6 +694,6 @@
         "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
       }
     ],
-    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:5958115baf021a7cf784d53a0ec864b66e90cc3556907192ce189d90b4f7f194"
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:6482b6fb91e58312edd6c816b053c0d1e452af2beb70bcd32e29b6504de31332"
   }
 }
