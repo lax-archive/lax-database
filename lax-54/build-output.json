@@ -4,5 +4,1044 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 54
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-54",
+      "leanVersion": "v4.30.0",
+      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "title": "Erdős–Hajnal for graphs with no 5-hole",
+      "authors": [
+        {
+          "name": "Édouard Bonnet",
+          "github": "EdouardBonnet"
+        }
+      ],
+      "bibEntries": [
+        "@article{ChudnovskyScottSeymourSpirkl2021,\n  title = {Erdős--Hajnal for graphs with no 5-hole},\n  author = {Chudnovsky, Maria and Scott, Alex and Seymour, Paul and Spirkl, Sophie},\n  journal = {Proceedings of the London Mathematical Society},\n  volume = {126},\n  number = {3},\n  pages = {997--1014},\n  year = {2023},\n  doi = {10.1112/plms.12502}\n}"
+      ]
+    },
+    "abstract": "This submission formalizes the proof of Chudnovsky, Scott, Seymour, and\nSpirkl that the five-cycle has the Erdős–Hajnal property. Its main theorem\nstates that there is a positive integer $q$ such that every finite graph $G$\nwith no induced $C_5$ satisfies\n\n$$|V(G)| \\leq \\max(\\alpha(G),\\omega(G))^q.$$\n\nEquivalently, every such graph contains a clique or stable set of order at\nleast $|V(G)|^{1/q}$.\n\nThe development formalizes every argument in the paper required for this\nconclusion. It also derives the form of Rödl's theorem used there from\nmathlib's formalization of Szemerédi's regularity lemma, a finite Ramsey\nargument, and an induced-embedding lemma. The formalized arguments include the\n$d=1/2$ case of the bipartite comb lemma (Theorem 2.1), the critical-graph comb\nlemma (Lemma 3.1), the averaging and maximum-degree reductions (Lemmas 4.2 and\n4.3), and the final minimal-counterexample argument (Theorem 4.4). The Lean\nstatements parameterize densities by reciprocals of positive integers and\nclear all denominators. Some absolute constants are enlarged to avoid\nrounding; neither modification affects the Erdős–Hajnal conclusion.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax54.AveragingLemma",
+      "path": "concepts/Lax54/AveragingLemma.lean",
+      "title": "Sparse graph thinning lemma",
+      "type": "theorem",
+      "description": "Lemma 4.2 of the paper, with denominators cleared. Let $Z$ induce a graph of\nedge density at most $1/E$, and suppose $2m \\leq |Z|+1$. Then $Z$ contains an\n$m$-element set $X$ such that\n$E\\deg_{G[X]}(x) \\leq 4(m-1)$ for every $x\\in X$. The factor $4$ results from\nfirst selecting $2m-1$ vertices by averaging and then retaining $m$ vertices\nof low degree.",
+      "imports": [
+        "Lax54.GraphDefinitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax54.GraphDefinitions\n\n/-!\n---\ntitle: Sparse graph thinning lemma\ntype: theorem\n---\nLemma 4.2 of the paper, with denominators cleared. Let $Z$ induce a graph of\nedge density at most $1/E$, and suppose $2m \\leq |Z|+1$. Then $Z$ contains an\n$m$-element set $X$ such that\n$E\\deg_{G[X]}(x) \\leq 4(m-1)$ for every $x\\in X$. The factor $4$ results from\nfirst selecting $2m-1$ vertices by averaging and then retaining $m$ vertices\nof low degree.\n-/\n\nnamespace Lax54.AveragingLemma\n\nopen Lax54.GraphDefinitions\n\nuniverse u\n\n/-- Lemma 4.2, with all inequalities written over the natural numbers. -/\naxiom sparse_graph_thinning :\n    ∀ {V : Type u} [Fintype V] [DecidableEq V] (G : SimpleGraph V)\n      [DecidableRel G.Adj] (Z : Finset V) (E m : ℕ),\n      0 < E → 2 * m ≤ Z.card + 1 →\n      E * 2 * (G.induce (Z : Set V)).edgeFinset.card ≤\n        Z.card * (Z.card - 1) →\n      ∃ X : Finset V, X ⊆ Z ∧ X.card = m ∧\n        ∀ x : {v : V // v ∈ X},\n          E * (G.induce (X : Set V)).degree x ≤ 4 * (m - 1)\n\nend Lax54.AveragingLemma\n",
+      "statements": [
+        {
+          "id": "Lax54.AveragingLemma.sparse_graph_thinning",
+          "signature": "sparse_graph_thinning : ∀ {V : Type u} [Fintype V] [DecidableEq V] (G : SimpleGraph V) [inst : DecidableRel G.Adj] (Z : Finset V) (E m : Nat),\n  instLTNat.lt 0 E →\n    instLENat.le (instHMul.hMul 2 m) (instHAdd.hAdd Z.card 1) →\n      instLENat.le (instHMul.hMul (instHMul.hMul E 2) (SimpleGraph.induce (Finset.instSetLike.coe Z) G).edgeFinset.card)\n          (instHMul.hMul Z.card (instHSub.hSub Z.card 1)) →\n        Exists fun X =>\n          And (Finset.instHasSubset.Subset X Z)\n            (And (Eq X.card m)\n              (∀ (x : Subtype fun v => SetLike.instMembership.mem X v),\n                instLENat.le (instHMul.hMul E ((SimpleGraph.induce (Finset.instSetLike.coe X) G).degree x))\n                  (instHMul.hMul 4 (instHSub.hSub m 1))))",
+          "startLine": 22,
+          "endLine": 31,
+          "doc": "Lemma 4.2, with all inequalities written over the natural numbers."
+        }
+      ]
+    },
+    {
+      "id": "Lax54.BipartiteCombLemma",
+      "path": "concepts/Lax54/BipartiteCombLemma.lean",
+      "title": "Bipartite comb lemma",
+      "type": "theorem",
+      "description": "The $d=1/2$ case of Theorem 2.1, with denominators cleared. Let $A$ and $B$ be\ndisjoint vertex sets. Suppose that every vertex of $B$ has a neighbor in $A$\nand that every vertex of $A$ has at most $\\Delta$ neighbors in $B$. For every\n$\\Gamma>0$, either there is a comb with $t\\geq 1$ teeth whose blocks satisfy\n$\\Gamma\\leq t^2|B_i|$, or\n$|B|^2\\leq 128^2\\Gamma\\Delta$.\n\nThe constant $128$ is an absolute constant obtained from an integral\nfour-adic form of the peeling argument. Its precise value is not used later.",
+      "imports": [
+        "Lax54.GraphDefinitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax54.GraphDefinitions\n\n/-!\n---\ntitle: Bipartite comb lemma\ntype: theorem\n---\nThe $d=1/2$ case of Theorem 2.1, with denominators cleared. Let $A$ and $B$ be\ndisjoint vertex sets. Suppose that every vertex of $B$ has a neighbor in $A$\nand that every vertex of $A$ has at most $\\Delta$ neighbors in $B$. For every\n$\\Gamma>0$, either there is a comb with $t\\geq 1$ teeth whose blocks satisfy\n$\\Gamma\\leq t^2|B_i|$, or\n$|B|^2\\leq 128^2\\Gamma\\Delta$.\n\nThe constant $128$ is an absolute constant obtained from an integral\nfour-adic form of the peeling argument. Its precise value is not used later.\n-/\n\nnamespace Lax54.BipartiteCombLemma\n\nuniverse u\n\n/--\nA comb with distinct teeth in `A` and pairwise disjoint blocks in `B`. Each\ntooth is adjacent to its own block and nonadjacent to every other block.\n-/\nstructure CombBetween {V : Type u} [DecidableEq V]\n    (G : SimpleGraph V) (A B : Finset V) (t : ℕ) where\n  tooth : Fin t → V\n  block : Fin t → Finset V\n  tooth_mem : ∀ i, tooth i ∈ A\n  tooth_injective : Function.Injective tooth\n  block_subset : ∀ i, block i ⊆ B\n  blocks_disjoint : ∀ {i j}, i ≠ j → Disjoint (block i) (block j)\n  tooth_adj_block : ∀ i, ∀ x ∈ block i, G.Adj (tooth i) x\n  tooth_nonadj_other : ∀ {i j}, i ≠ j →\n    ∀ x ∈ block j, ¬ G.Adj (tooth i) x\n\n/-- The sparse alternative in the `d = 1/2` case of Theorem 2.1. -/\ndef SmallSideBound (C Gamma Delta b : ℕ) : Prop :=\n  b ^ 2 ≤ C ^ 2 * Gamma * Delta\n\n/-- The `d = 1/2` case of Theorem 2.1, with denominators cleared. -/\naxiom bipartite_comb_lemma :\n    ∀ {V : Type u} [Fintype V] [DecidableEq V]\n      (G : SimpleGraph V) [DecidableRel G.Adj]\n      (A B : Finset V) (Gamma Delta : ℕ),\n      Disjoint A B → 0 < Gamma →\n      (∀ b ∈ B, ∃ a ∈ A, G.Adj a b) →\n      (∀ a ∈ A, (B.filter fun b ↦ G.Adj a b).card ≤ Delta) →\n      (∃ (t : ℕ) (Cmb : CombBetween G A B t),\n          0 < t ∧ ∀ i : Fin t, Gamma ≤ t ^ 2 * (Cmb.block i).card) ∨\n        SmallSideBound 128 Gamma Delta B.card\n\nend Lax54.BipartiteCombLemma\n",
+      "statements": [
+        {
+          "id": "Lax54.BipartiteCombLemma.bipartite_comb_lemma",
+          "signature": "bipartite_comb_lemma : ∀ {V : Type u} [Fintype V] [inst : DecidableEq V] (G : SimpleGraph V) [inst_1 : DecidableRel G.Adj] (A B : Finset V)\n  (Gamma Delta : Nat),\n  Disjoint A B →\n    instLTNat.lt 0 Gamma →\n      (∀ (b : V), SetLike.instMembership.mem B b → Exists fun a => And (SetLike.instMembership.mem A a) (G.Adj a b)) →\n        (∀ (a : V), SetLike.instMembership.mem A a → instLENat.le (Finset.filter (fun b => G.Adj a b) B).card Delta) →\n          Or\n            (Exists fun t =>\n              Exists fun Cmb =>\n                And (instLTNat.lt 0 t)\n                  (∀ (i : Fin t), instLENat.le Gamma (instHMul.hMul (instHPow.hPow t 2) (Cmb.block i).card)))\n            (Lax54.BipartiteCombLemma.SmallSideBound 128 Gamma Delta B.card)",
+          "startLine": 43,
+          "endLine": 53,
+          "doc": "The `d = 1/2` case of Theorem 2.1, with denominators cleared."
+        }
+      ]
+    },
+    {
+      "id": "Lax54.CriticalCombInput",
+      "path": "concepts/Lax54/CriticalCombInput.lean",
+      "title": "Quantitative critical-comb consequence",
+      "type": "theorem",
+      "description": "This statement combines Lemmas 3.1 and 4.3 with the choice of parameters in\nthe proof of Theorem 4.4. There are integers $q\\geq 3$ and\n$A\\leq 2^{q-2}$ such that every $q$-critical induced-$C_5$-free graph $G$\ncontains, either in $G$ or in its complement, a stable hubbed comb with\n$t\\geq 2$ teeth and\n$|V(G)|\\leq At^2|B_i|$ for every block $B_i$. The complementary alternative\nis required because Lemma 4.3 gives low maximum degree in either $G$ or its\ncomplement; both induced-$C_5$-freeness and $q$-criticality are invariant\nunder complementation.",
+      "imports": [
+        "Lax54.GraphDefinitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax54.GraphDefinitions\n\n/-!\n---\ntitle: Quantitative critical-comb consequence\ntype: theorem\n---\nThis statement combines Lemmas 3.1 and 4.3 with the choice of parameters in\nthe proof of Theorem 4.4. There are integers $q\\geq 3$ and\n$A\\leq 2^{q-2}$ such that every $q$-critical induced-$C_5$-free graph $G$\ncontains, either in $G$ or in its complement, a stable hubbed comb with\n$t\\geq 2$ teeth and\n$|V(G)|\\leq At^2|B_i|$ for every block $B_i$. The complementary alternative\nis required because Lemma 4.3 gives low maximum degree in either $G$ or its\ncomplement; both induced-$C_5$-freeness and $q$-criticality are invariant\nunder complementation.\n-/\n\nopen scoped SimpleGraph\n\nnamespace Lax54.CriticalCombInput\n\nopen Lax54.GraphDefinitions\n\nuniverse u\n\n/-- The quantitative critical-comb statement used in the proof of Theorem 4.4. -/\naxiom exists_critical_comb_parameters :\n    ∃ q A : ℕ, 3 ≤ q ∧ A ≤ 2 ^ (q - 2) ∧\n      ∀ {V : Type u} [Fintype V] [DecidableEq V] (G : SimpleGraph V),\n        IsC5Free G → IsQCritical q G →\n          (∃ (t : ℕ) (C : StableHubComb G t),\n              2 ≤ t ∧\n                ∀ i : Fin t, Fintype.card V ≤ A * t ^ 2 * (C.block i).card) ∨\n          (∃ (t : ℕ) (C : StableHubComb Gᶜ t),\n              2 ≤ t ∧\n                ∀ i : Fin t, Fintype.card V ≤ A * t ^ 2 * (C.block i).card)\n\nend Lax54.CriticalCombInput\n",
+      "statements": [
+        {
+          "id": "Lax54.CriticalCombInput.exists_critical_comb_parameters",
+          "signature": "exists_critical_comb_parameters : Exists fun q =>\n  Exists fun A =>\n    And (instLENat.le 3 q)\n      (And (instLENat.le A (instHPow.hPow 2 (instHSub.hSub q 2)))\n        (∀ {V : Type u} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V),\n          Lax54.GraphDefinitions.IsC5Free G →\n            Lax54.GraphDefinitions.IsQCritical q G →\n              Or\n                (Exists fun t =>\n                  Exists fun C =>\n                    And (instLENat.le 2 t)\n                      (∀ (i : Fin t),\n                        instLENat.le (Fintype.card V)\n                          (instHMul.hMul (instHMul.hMul A (instHPow.hPow t 2)) (C.block i).card)))\n                (Exists fun t =>\n                  Exists fun C =>\n                    And (instLENat.le 2 t)\n                      (∀ (i : Fin t),\n                        instLENat.le (Fintype.card V)\n                          (instHMul.hMul (instHMul.hMul A (instHPow.hPow t 2)) (C.block i).card)))))",
+          "startLine": 27,
+          "endLine": 37,
+          "doc": "The quantitative critical-comb statement used in the proof of Theorem 4.4."
+        }
+      ]
+    },
+    {
+      "id": "Lax54.ErdosHajnalC5",
+      "path": "concepts/Lax54/ErdosHajnalC5.lean",
+      "title": "Erdős–Hajnal theorem for the five-cycle",
+      "type": "theorem",
+      "description": "The five-cycle has the Erdős–Hajnal property. Equivalently, there is a\npositive integer $q$ such that every finite graph $G$ with no induced\nfive-cycle satisfies\n$|V(G)|\\leq \\max\\{\\alpha(G),\\omega(G)\\}^q$.",
+      "imports": [
+        "Lax54.GraphDefinitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax54.GraphDefinitions\n\n/-!\n---\ntitle: Erdős–Hajnal theorem for the five-cycle\ntype: theorem\n---\nThe five-cycle has the Erdős–Hajnal property. Equivalently, there is a\npositive integer $q$ such that every finite graph $G$ with no induced\nfive-cycle satisfies\n$|V(G)|\\leq \\max\\{\\alpha(G),\\omega(G)\\}^q$.\n-/\n\nnamespace Lax54.ErdosHajnalC5\n\nopen Lax54.GraphDefinitions\n\nuniverse u\n\n/-- The Erdős–Hajnal property for the five-cycle, in integer-exponent form. -/\naxiom erdos_hajnal_C5 :\n    ∃ q : ℕ, 0 < q ∧\n      ∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n        IsC5Free G → Fintype.card V ≤ homogeneousNumber G ^ q\n\nend Lax54.ErdosHajnalC5\n",
+      "statements": [
+        {
+          "id": "Lax54.ErdosHajnalC5.erdos_hajnal_C5",
+          "signature": "erdos_hajnal_C5 : Exists fun q =>\n  And (instLTNat.lt 0 q)\n    (∀ {V : Type u} [inst : Fintype V] (G : SimpleGraph V),\n      Lax54.GraphDefinitions.IsC5Free G →\n        instLENat.le (Fintype.card V) (instHPow.hPow (Lax54.GraphDefinitions.homogeneousNumber G) q))",
+          "startLine": 20,
+          "endLine": 24,
+          "doc": "The Erdős–Hajnal property for the five-cycle, in integer-exponent form."
+        }
+      ]
+    },
+    {
+      "id": "Lax54.GraphDefinitions",
+      "path": "concepts/Lax54/GraphDefinitions.lean",
+      "title": "Finite graph notions for the five-cycle Erdős–Hajnal theorem",
+      "type": "definition",
+      "description": "This module defines the graph-theoretic notions used in the formalization.\nThe graph $C_5$ is the cycle on five vertices, and induced-$C_5$-freeness is\nexpressed using mathlib's induced-containment relation. For a finite graph\n$G$, the homogeneous number is\n$h(G)=\\max\\{\\alpha(G),\\omega(G)\\}$ and\n$\\kappa(G)=\\alpha(G)\\omega(G)$. The module also defines $q$-critical graphs,\nthe stable hubbed comb of Lemma 3.1, and the sparse-side and low-degree-side\nconclusions used in Rödl's theorem and Lemma 4.3.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Circulant",
+        "Mathlib.Combinatorics.SimpleGraph.Clique",
+        "Mathlib.Combinatorics.SimpleGraph.Copy"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Circulant\nimport Mathlib.Combinatorics.SimpleGraph.Clique\nimport Mathlib.Combinatorics.SimpleGraph.Copy\n\n/-!\n---\ntitle: Finite graph notions for the five-cycle Erdős–Hajnal theorem\ntype: definition\n---\nThis module defines the graph-theoretic notions used in the formalization.\nThe graph $C_5$ is the cycle on five vertices, and induced-$C_5$-freeness is\nexpressed using mathlib's induced-containment relation. For a finite graph\n$G$, the homogeneous number is\n$h(G)=\\max\\{\\alpha(G),\\omega(G)\\}$ and\n$\\kappa(G)=\\alpha(G)\\omega(G)$. The module also defines $q$-critical graphs,\nthe stable hubbed comb of Lemma 3.1, and the sparse-side and low-degree-side\nconclusions used in Rödl's theorem and Lemma 4.3.\n-/\n\nopen Finset\nopen scoped SimpleGraph\n\nnamespace Lax54.GraphDefinitions\n\nuniverse u\n\n/-- The five-cycle. -/\nabbrev C5 : SimpleGraph (Fin 5) := SimpleGraph.cycleGraph 5\n\n/-- A graph has no induced copy of the five-cycle. -/\ndef IsC5Free {V : Type u} (G : SimpleGraph V) : Prop :=\n  ¬ C5 ⊴ G\n\n/-- The largest cardinality of a clique or stable set in a finite graph. -/\nnoncomputable def homogeneousNumber {V : Type u} (G : SimpleGraph V) : ℕ :=\n  max G.cliqueNum G.indepNum\n\n/-- The product `ω(G) · α(G)` used in the critical-graph argument. -/\nnoncomputable def kappa {V : Type u} (G : SimpleGraph V) : ℕ :=\n  G.cliqueNum * G.indepNum\n\n/--\nA graph is `q`-critical if `kappa G ^ q < |V(G)|`, while every proper\nvertex-induced subgraph `G[S]` satisfies `|S| ≤ kappa (G[S]) ^ q`.\n-/\ndef IsQCritical {V : Type u} [Fintype V] (q : ℕ) (G : SimpleGraph V) : Prop :=\n  kappa G ^ q < Fintype.card V ∧\n    ∀ S : Finset V, S.card < Fintype.card V →\n      S.card ≤ kappa (G.induce (S : Set V)) ^ q\n\n/--\nA comb whose teeth form a stable set, together with the hub vertex from\nLemma 3.1. The hub is adjacent to every tooth and nonadjacent to every block.\nThe tooth `a_i` is adjacent to its block `B_i` and nonadjacent to every other\nblock.\n-/\nstructure StableHubComb {V : Type u} [DecidableEq V]\n    (G : SimpleGraph V) (t : ℕ) where\n  tooth : Fin t → V\n  block : Fin t → Finset V\n  hub : V\n  tooth_injective : Function.Injective tooth\n  blocks_disjoint : ∀ {i j : Fin t}, i ≠ j → Disjoint (block i) (block j)\n  tooth_not_mem : ∀ i j : Fin t, tooth i ∉ block j\n  hub_not_mem : ∀ i : Fin t, hub ∉ block i\n  tooth_adj_block : ∀ i : Fin t, ∀ x ∈ block i, G.Adj (tooth i) x\n  tooth_nonadj_other : ∀ {i j : Fin t}, i ≠ j →\n    ∀ x ∈ block j, ¬ G.Adj (tooth i) x\n  teeth_stable : ∀ {i j : Fin t}, i ≠ j → ¬ G.Adj (tooth i) (tooth j)\n  hub_adj_tooth : ∀ i : Fin t, G.Adj hub (tooth i)\n  hub_nonadj_block : ∀ i : Fin t, ∀ x ∈ block i, ¬ G.Adj hub x\n\n/-- The vertices of `G` all have degree at most `d`. -/\ndef MaximumDegreeAtMost {V : Type u} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) [DecidableRel G.Adj] (d : ℕ) : Prop :=\n  ∀ v : V, G.degree v ≤ d\n\n/--\nThe low-density alternative in Rödl's theorem. Either the graph or its\ncomplement has edge density at most `1/E`; the definition clears the\ndenominator.\n-/\ndef HasSparseSide {V : Type u} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) [DecidableRel G.Adj] (E : ℕ) : Prop :=\n  E * 2 * G.edgeFinset.card ≤ Fintype.card V * (Fintype.card V - 1) ∨\n    E * 2 * Gᶜ.edgeFinset.card ≤ Fintype.card V * (Fintype.card V - 1)\n\n/--\nThe maximum-degree version of the sparse-side conclusion. The witness `X`\nsatisfies `|V(G)| ≤ D|X|`; in either `G[X]` or its complement, every degree\n`d(x)` satisfies `E d(x) < |X|`.\n-/\ndef HasLowDegreeSide {V : Type u} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) [DecidableRel G.Adj] (E D : ℕ) : Prop :=\n  ∃ X : Finset V,\n    Fintype.card V ≤ D * X.card ∧\n      ((∀ x : {v : V // v ∈ X},\n          E * (G.induce (X : Set V)).degree x < X.card) ∨\n       (∀ x : {v : V // v ∈ X},\n          E * (Gᶜ.induce (X : Set V)).degree x < X.card))\n\nend Lax54.GraphDefinitions\n",
+      "statements": []
+    },
+    {
+      "id": "Lax54.KeyCombLemma",
+      "path": "concepts/Lax54/KeyCombLemma.lean",
+      "title": "Stable hubbed comb in a critical graph",
+      "type": "theorem",
+      "description": "Lemma 3.1 of the paper, with reciprocal integer parameters. Let\n$K=2^{20}$. For every sufficiently large $E$, every $D>0$, and every lower\nbound $Q$, there is an exponent $q\\geq\\max\\{3,Q\\}$ with the following\nproperty. If $G$ is $q$-critical, $|V(G)|\\leq D|X|$, and\n$E\\deg_{G[X]}(x)<|X|$ for every $x\\in X$, then $G$ contains a stable hubbed\ncomb such that $E\\leq Kt$ and\n$E|X|\\leq Kt^2|B_i|$ for every block $B_i$.\n\nThe absolute constant $K$ replaces the constant $400$ in the paper to\naccommodate the integral form of Theorem 2.1. Its value does not affect the\nErdős–Hajnal conclusion.",
+      "imports": [
+        "Lax54.GraphDefinitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax54.GraphDefinitions\n\n/-!\n---\ntitle: Stable hubbed comb in a critical graph\ntype: theorem\n---\nLemma 3.1 of the paper, with reciprocal integer parameters. Let\n$K=2^{20}$. For every sufficiently large $E$, every $D>0$, and every lower\nbound $Q$, there is an exponent $q\\geq\\max\\{3,Q\\}$ with the following\nproperty. If $G$ is $q$-critical, $|V(G)|\\leq D|X|$, and\n$E\\deg_{G[X]}(x)<|X|$ for every $x\\in X$, then $G$ contains a stable hubbed\ncomb such that $E\\leq Kt$ and\n$E|X|\\leq Kt^2|B_i|$ for every block $B_i$.\n\nThe absolute constant $K$ replaces the constant $400$ in the paper to\naccommodate the integral form of Theorem 2.1. Its value does not affect the\nErdős–Hajnal conclusion.\n-/\n\nnamespace Lax54.KeyCombLemma\n\nopen Lax54.GraphDefinitions\n\nuniverse u\n\n/-- The absolute constant in the integral form of the key comb lemma. -/\ndef keyCombConstant : ℕ := 2 ^ 20\n\n/-- A sufficient lower bound on the sparsity parameter for obtaining at least two teeth. -/\ndef keySparsityThreshold : ℕ := 2 * keyCombConstant\n\n/-- Lemma 3.1, with reciprocal integer parameters and cleared denominators. -/\naxiom key_comb_lemma :\n    ∀ E D Q : ℕ, keySparsityThreshold ≤ E → 0 < D →\n      ∃ q : ℕ, 3 ≤ q ∧ Q ≤ q ∧\n        ∀ {V : Type u} [Fintype V] [DecidableEq V]\n          (G : SimpleGraph V) [DecidableRel G.Adj] (X : Finset V),\n          IsQCritical q G →\n          Fintype.card V ≤ D * X.card →\n          (∀ x : {v : V // v ∈ X},\n            E * (G.induce (X : Set V)).degree x < X.card) →\n          ∃ (t : ℕ) (C : StableHubComb G t),\n            E ≤ keyCombConstant * t ∧\n              ∀ i : Fin t,\n                E * X.card ≤ keyCombConstant * t ^ 2 * (C.block i).card\n\nend Lax54.KeyCombLemma\n",
+      "statements": [
+        {
+          "id": "Lax54.KeyCombLemma.key_comb_lemma",
+          "signature": "key_comb_lemma : ∀ (E D Q : Nat),\n  instLENat.le Lax54.KeyCombLemma.keySparsityThreshold E →\n    instLTNat.lt 0 D →\n      Exists fun q =>\n        And (instLENat.le 3 q)\n          (And (instLENat.le Q q)\n            (∀ {V : Type u} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V)\n              [inst_2 : DecidableRel G.Adj] (X : Finset V),\n              Lax54.GraphDefinitions.IsQCritical q G →\n                instLENat.le (Fintype.card V) (instHMul.hMul D X.card) →\n                  (∀ (x : Subtype fun v => SetLike.instMembership.mem X v),\n                      instLTNat.lt (instHMul.hMul E ((SimpleGraph.induce (Finset.instSetLike.coe X) G).degree x))\n                        X.card) →\n                    Exists fun t =>\n                      Exists fun C =>\n                        And (instLENat.le E (instHMul.hMul Lax54.KeyCombLemma.keyCombConstant t))\n                          (∀ (i : Fin t),\n                            instLENat.le (instHMul.hMul E X.card)\n                              (instHMul.hMul (instHMul.hMul Lax54.KeyCombLemma.keyCombConstant (instHPow.hPow t 2))\n                                (C.block i).card))))",
+          "startLine": 33,
+          "endLine": 46,
+          "doc": "Lemma 3.1, with reciprocal integer parameters and cleared denominators."
+        }
+      ]
+    },
+    {
+      "id": "Lax54.MaximumDegreeReduction",
+      "path": "concepts/Lax54/MaximumDegreeReduction.lean",
+      "title": "Maximum-degree form of Rödl's theorem",
+      "type": "theorem",
+      "description": "Lemma 4.3 of the paper, with denominators cleared. For every finite graph $H$\nand every $E>0$, there is a positive integer $D$ such that every finite\ninduced-$H$-free graph $G$ contains a set $X$ satisfying\n$|V(G)|\\leq D|X|$ and, either in $G[X]$ or in its complement,\n$E\\deg(x)<|X|$ for every $x\\in X$.",
+      "imports": [
+        "Lax54.GraphDefinitions",
+        "Lax54.RodlTheorem"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Copy"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Copy\nimport Lax54.GraphDefinitions\nimport Lax54.RodlTheorem\n\n/-!\n---\ntitle: Maximum-degree form of Rödl's theorem\ntype: theorem\n---\nLemma 4.3 of the paper, with denominators cleared. For every finite graph $H$\nand every $E>0$, there is a positive integer $D$ such that every finite\ninduced-$H$-free graph $G$ contains a set $X$ satisfying\n$|V(G)|\\leq D|X|$ and, either in $G[X]$ or in its complement,\n$E\\deg(x)<|X|$ for every $x\\in X$.\n-/\n\nnamespace Lax54.MaximumDegreeReduction\n\nopen Lax54.GraphDefinitions\nopen scoped SimpleGraph\n\nuniverse u v\n\n/-- The maximum-degree form of Rödl's theorem used in Section 4. -/\naxiom maximum_degree_reduction :\n    ∀ {W : Type u} [Fintype W] (H : SimpleGraph W) (E : ℕ),\n      0 < E → ∃ D : ℕ, 0 < D ∧\n        ∀ {V : Type v} [Fintype V] [DecidableEq V] (G : SimpleGraph V)\n          [DecidableRel G.Adj],\n          ¬ H ⊴ G → HasLowDegreeSide G E D\n\nend Lax54.MaximumDegreeReduction\n",
+      "statements": [
+        {
+          "id": "Lax54.MaximumDegreeReduction.maximum_degree_reduction",
+          "signature": "maximum_degree_reduction : ∀ {W : Type u} [Fintype W] (H : SimpleGraph W) (E : Nat),\n  instLTNat.lt 0 E →\n    Exists fun D =>\n      And (instLTNat.lt 0 D)\n        (∀ {V : Type v} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V) [inst_2 : DecidableRel G.Adj],\n          Not (H.IsIndContained G) → Lax54.GraphDefinitions.HasLowDegreeSide G E D)",
+          "startLine": 24,
+          "endLine": 30,
+          "doc": "The maximum-degree form of Rödl's theorem used in Section 4."
+        }
+      ]
+    },
+    {
+      "id": "Lax54.RodlTheorem",
+      "path": "concepts/Lax54/RodlTheorem.lean",
+      "title": "Rödl's theorem for induced-subgraph-free graphs",
+      "type": "theorem",
+      "description": "For every finite graph $H$ and every positive integer $E$, there is a positive\ninteger $D$ such that every finite induced-$H$-free graph $G$ contains a set\n$X$ satisfying $|V(G)|\\leq D|X|$ and such that either $G[X]$ or its complement\nhas edge density at most $1/E$. This is the cleared-denominator finite form of\nRödl's theorem cited as Theorem 4.1 in the paper.",
+      "imports": [
+        "Lax54.GraphDefinitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax54.GraphDefinitions\n\n/-!\n---\ntitle: Rödl's theorem for induced-subgraph-free graphs\ntype: theorem\n---\nFor every finite graph $H$ and every positive integer $E$, there is a positive\ninteger $D$ such that every finite induced-$H$-free graph $G$ contains a set\n$X$ satisfying $|V(G)|\\leq D|X|$ and such that either $G[X]$ or its complement\nhas edge density at most $1/E$. This is the cleared-denominator finite form of\nRödl's theorem cited as Theorem 4.1 in the paper.\n-/\n\nopen scoped SimpleGraph\n\nnamespace Lax54.RodlTheorem\n\nopen Lax54.GraphDefinitions\n\nuniverse u v\n\n/-- Rödl's theorem, with a reciprocal integer density parameter. -/\naxiom rodl_theorem :\n    ∀ {W : Type u} [Fintype W] (H : SimpleGraph W) (E : ℕ),\n      0 < E → ∃ D : ℕ, 0 < D ∧\n        ∀ {V : Type v} [Fintype V] [DecidableEq V] (G : SimpleGraph V)\n          [DecidableRel G.Adj],\n          ¬ H ⊴ G →\n            ∃ X : Finset V, Fintype.card V ≤ D * X.card ∧\n              HasSparseSide (G.induce (X : Set V)) E\n\nend Lax54.RodlTheorem\n",
+      "statements": [
+        {
+          "id": "Lax54.RodlTheorem.rodl_theorem",
+          "signature": "rodl_theorem : ∀ {W : Type u} [Fintype W] (H : SimpleGraph W) (E : Nat),\n  instLTNat.lt 0 E →\n    Exists fun D =>\n      And (instLTNat.lt 0 D)\n        (∀ {V : Type v} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V) [inst_2 : DecidableRel G.Adj],\n          Not (H.IsIndContained G) →\n            Exists fun X =>\n              And (instLENat.le (Fintype.card V) (instHMul.hMul D X.card))\n                (Lax54.GraphDefinitions.HasSparseSide (SimpleGraph.induce (Finset.instSetLike.coe X) G) E))",
+          "startLine": 23,
+          "endLine": 31,
+          "doc": "Rödl's theorem, with a reciprocal integer density parameter."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax54Proofs.bipartite_comb_lemma",
+      "path": "proofs/Lax54Proofs/BipartiteCombLemma.lean",
+      "conclusion": "Lax54.BipartiteCombLemma.bipartite_comb_lemma",
+      "assumptions": [],
+      "description": "Proof of the $d=1/2$ case of Theorem 2.1. At each four-adic degree scale, a\nmaximal peeling sequence is pruned in reverse order to form a comb. If no\nblock has the required size, strong induction on the degree bound, together\nwith $(a+b)^2\\leq 2a^2+2b^2$, yields the sparse alternative."
+    },
+    {
+      "id": "Lax54Proofs.CriticalCombInput.exists_critical_comb_parameters",
+      "path": "proofs/Lax54Proofs/CriticalCombInput.lean",
+      "conclusion": "Lax54.CriticalCombInput.exists_critical_comb_parameters",
+      "assumptions": [],
+      "description": "Choose the critical exponent large enough to absorb the linear-size constant\nfrom Lemma 4.3. Apply the maximum-degree reduction and then Lemma 3.1 in the\nsparse orientation. Complement invariance gives the second alternative."
+    },
+    {
+      "id": "Lax54Proofs.erdos_hajnal_C5",
+      "path": "proofs/Lax54Proofs/Main.lean",
+      "conclusion": "Lax54.ErdosHajnalC5.erdos_hajnal_C5",
+      "assumptions": [],
+      "description": "Proof of Theorem 4.4. Strong induction reduces the result to a critical\ncounterexample. The critical-comb statement and the induced-$C_5$ obstruction\nbetween distinct blocks exclude that case. Finally,\n$\\kappa(G)=\\alpha(G)\\omega(G)\\leq h(G)^2$ gives the asserted exponent."
+    },
+    {
+      "id": "Lax54Proofs.key_comb_lemma",
+      "path": "proofs/Lax54Proofs/KeyCombLemma.lean",
+      "conclusion": "Lax54.KeyCombLemma.key_comb_lemma",
+      "assumptions": [],
+      "description": "Proof of Lemma 3.1. Decompose the prescribed vertex set into the critical\nlayers used in the paper and apply the $d=1/2$ bipartite comb lemma to each\nlayer. If no layer yields a comb, normalized estimates for the hubs, their\nneighborhoods, and the covered residual sets contradict the partition\nidentity."
+    },
+    {
+      "id": "Lax54Proofs.maximum_degree_reduction",
+      "path": "proofs/Lax54Proofs/MaximumDegreeReduction.lean",
+      "conclusion": "Lax54.MaximumDegreeReduction.maximum_degree_reduction",
+      "assumptions": [],
+      "description": "Proof of Lemma 4.3. Apply Rödl's theorem with density parameter $4E$, then\napply Lemma 4.2 with $m=\\lceil |Z|/2\\rceil$. The resulting set loses at most\na factor of two in size and satisfies the required degree bound."
+    },
+    {
+      "id": "Lax54Proofs.RodlTheorem.rodl_theorem",
+      "path": "proofs/Lax54Proofs/RodlTheorem.lean",
+      "conclusion": "Lax54.RodlTheorem.rodl_theorem",
+      "assumptions": [],
+      "description": "Proof of Rödl's theorem. Regularity and Turán's theorem produce a large family\nof pairwise regular classes. A three-color Ramsey argument yields either a\nsparse union in the graph, a sparse union in its complement, or sufficiently\nmany intermediate-density pairs to embed an induced copy of the forbidden\ngraph."
+    },
+    {
+      "id": "Lax54Proofs.sparse_graph_thinning",
+      "path": "proofs/Lax54Proofs/AveragingLemma.lean",
+      "conclusion": "Lax54.AveragingLemma.sparse_graph_thinning",
+      "assumptions": [],
+      "description": "Proof of Lemma 4.2. Average the ordered edge count over all\n$(2m-1)$-element subsets, select a subset no denser than the ambient graph,\nand retain $m$ vertices whose degrees do not exceed the stated bound."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "bf7765338112f6300c30087877c3423d2d911defc2ff8ee8c6756d6d6880f421",
+    "sourceCommit": "0e638c228ca81898a9e426bd01d28fe205ec61a8",
+    "leanToolchain": "leanprover/lean4:v4.30.0",
+    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "files": [
+      {
+        "path": "concepts/ir/Lax54/AveragingLemma.c",
+        "bytes": 1324,
+        "sha256": "d602ba3c53c14535e12dfff5848f7efc0b8fb1f2a79a58349e22869e606d37d1"
+      },
+      {
+        "path": "concepts/ir/Lax54/AveragingLemma.c.hash",
+        "bytes": 16,
+        "sha256": "63a2a713ab7ef911be375c98f5615d07a2323dc85434a456ebc282d2d1a65866"
+      },
+      {
+        "path": "concepts/ir/Lax54/BipartiteCombLemma.c",
+        "bytes": 1332,
+        "sha256": "04250dc17bb22c97ed272f2944d6774a4524ec227ba69c9c1e563590b960624e"
+      },
+      {
+        "path": "concepts/ir/Lax54/BipartiteCombLemma.c.hash",
+        "bytes": 16,
+        "sha256": "e1f9b1e83c095eb81dadb0dbc2de5a8d76450203bac177c9a0f4a122e08e2662"
+      },
+      {
+        "path": "concepts/ir/Lax54/CriticalCombInput.c",
+        "bytes": 1330,
+        "sha256": "5b3f12799709e095e642e2456be495c5c5f4d75a76f5516596d071f945f33f6e"
+      },
+      {
+        "path": "concepts/ir/Lax54/CriticalCombInput.c.hash",
+        "bytes": 16,
+        "sha256": "c29ca04433288a35437437caa9bbee617b3b1e6fafb13c4187436379c17d11f5"
+      },
+      {
+        "path": "concepts/ir/Lax54/ErdosHajnalC5.c",
+        "bytes": 1322,
+        "sha256": "bc0cff9b11859fb8926a40470a10a53a49cb00c85d566ca5075216ad88841109"
+      },
+      {
+        "path": "concepts/ir/Lax54/ErdosHajnalC5.c.hash",
+        "bytes": 16,
+        "sha256": "0e0f7afbf388568ddb2475a1cdf5c0e7b59f77f58ef8cb45474d22a00d7d778b"
+      },
+      {
+        "path": "concepts/ir/Lax54/GraphDefinitions.c",
+        "bytes": 2310,
+        "sha256": "6b81741c869f83f69645af87c3e4d1eee9c40b0ef61650a06196b483ce1d0b94"
+      },
+      {
+        "path": "concepts/ir/Lax54/GraphDefinitions.c.hash",
+        "bytes": 16,
+        "sha256": "b4993a81e7b4488b2b7be034170e4426d573cccf6bdb6ecacf75981e1f7ae006"
+      },
+      {
+        "path": "concepts/ir/Lax54/KeyCombLemma.c",
+        "bytes": 2167,
+        "sha256": "4112ccd66445a50afc7179683bb6954f2dad27db808206be2b94a82fda030e3f"
+      },
+      {
+        "path": "concepts/ir/Lax54/KeyCombLemma.c.hash",
+        "bytes": 16,
+        "sha256": "ad69e6c9cd94adab0ef5806c8971b0ea3e957f4a4eefe80df61fa7adb327f865"
+      },
+      {
+        "path": "concepts/ir/Lax54/MaximumDegreeReduction.c",
+        "bytes": 1835,
+        "sha256": "7f5e917dd44da238345ed441210250840b3caf21fc6af5daebe639f3f0be94f3"
+      },
+      {
+        "path": "concepts/ir/Lax54/MaximumDegreeReduction.c.hash",
+        "bytes": 16,
+        "sha256": "7b20dd0d869bd968c3aa218ac78655458d0ee0cf8740b38ffd635ec39088de79"
+      },
+      {
+        "path": "concepts/ir/Lax54/RodlTheorem.c",
+        "bytes": 1318,
+        "sha256": "00ec18e58d4061a13a37e1b976fbf5990bb381515597d6f1765e96f2f66a34f5"
+      },
+      {
+        "path": "concepts/ir/Lax54/RodlTheorem.c.hash",
+        "bytes": 16,
+        "sha256": "20dc42016797b0506c0c494b5fc592e32d3a4c6b4433a475412e5e43391526b0"
+      },
+      {
+        "path": "concepts/ir/Lax54.c",
+        "bytes": 2882,
+        "sha256": "97bf2259b713d2cda74b24451edb90cca98ec2b1d8814849464befb597051bf2"
+      },
+      {
+        "path": "concepts/ir/Lax54.c.hash",
+        "bytes": 16,
+        "sha256": "518c3d2a4b8b81f21985047cec8d0217cf6c7cdcded3c4d0694c91011682ea67"
+      },
+      {
+        "path": "concepts/lib/Lax54/AveragingLemma.ilean",
+        "bytes": 2746,
+        "sha256": "fe4d517cb5a2a115bf10039566b2ec7823d72b86f2b72f85d0dc000edad322bd"
+      },
+      {
+        "path": "concepts/lib/Lax54/AveragingLemma.ilean.hash",
+        "bytes": 16,
+        "sha256": "073bcc2e584ee1d9e7044b8e208329b3f93bfc97b23d1cc1638397327159d7f7"
+      },
+      {
+        "path": "concepts/lib/Lax54/AveragingLemma.olean",
+        "bytes": 23280,
+        "sha256": "e530da17423ac5c20ecf9e8b84997fe09b6b5983cd709f31b5d057484dec71a4"
+      },
+      {
+        "path": "concepts/lib/Lax54/AveragingLemma.olean.hash",
+        "bytes": 16,
+        "sha256": "f74ab13f42e73007f1d51a6576f11c9febb97f3427faf8ab1475cd4072612936"
+      },
+      {
+        "path": "concepts/lib/Lax54/AveragingLemma.trace",
+        "bytes": 2146,
+        "sha256": "c26443ad84c0fc1e566c85c11b56f57a7ffd43a49e98ceef5b44db5dbae69120"
+      },
+      {
+        "path": "concepts/lib/Lax54/BipartiteCombLemma.ilean",
+        "bytes": 4987,
+        "sha256": "0b2ea9fbc6216d5eab2db716fc67c38d8739fcc426c5d6865494a14d588fa5f7"
+      },
+      {
+        "path": "concepts/lib/Lax54/BipartiteCombLemma.ilean.hash",
+        "bytes": 16,
+        "sha256": "088616e29ae621aae91532a8abc4a76f15bc842d9cbedcdf648319baf85b4bba"
+      },
+      {
+        "path": "concepts/lib/Lax54/BipartiteCombLemma.olean",
+        "bytes": 135768,
+        "sha256": "bff444644692739f464ffbe6be4d39fa685139d5db50e8d534517a51c5bab15f"
+      },
+      {
+        "path": "concepts/lib/Lax54/BipartiteCombLemma.olean.hash",
+        "bytes": 16,
+        "sha256": "6bdb50a32c96e685f63030bffe3ee1cbeb5f11d131b4273401de45eba02422de"
+      },
+      {
+        "path": "concepts/lib/Lax54/BipartiteCombLemma.trace",
+        "bytes": 2178,
+        "sha256": "9fb9c5af703b76c67aa5f84749f798b422fed85bddad5e38cd172ccc6af306bb"
+      },
+      {
+        "path": "concepts/lib/Lax54/CriticalCombInput.ilean",
+        "bytes": 2876,
+        "sha256": "744f556d0e3535b4c96e02ee5ca60a89f897ae0e47f1771b13b8d992d00c74f3"
+      },
+      {
+        "path": "concepts/lib/Lax54/CriticalCombInput.ilean.hash",
+        "bytes": 16,
+        "sha256": "b19937ebdae45e7e9b62d356076772194b7d65e2a9b313143e63cd907dcc07cc"
+      },
+      {
+        "path": "concepts/lib/Lax54/CriticalCombInput.olean",
+        "bytes": 15136,
+        "sha256": "434da9e2a19a16309fc4c74a5d80cab286b476e509108a239840de2cd3983463"
+      },
+      {
+        "path": "concepts/lib/Lax54/CriticalCombInput.olean.hash",
+        "bytes": 16,
+        "sha256": "38d1cc14bc69f0861684f0c35d8f67ab4a99177ec3ab46d09bc1a13827793bb2"
+      },
+      {
+        "path": "concepts/lib/Lax54/CriticalCombInput.trace",
+        "bytes": 2170,
+        "sha256": "229417d5f06ca66e4f1c86b0db6658972cc0ce03324d5f6c57ef2e9e608ddbe9"
+      },
+      {
+        "path": "concepts/lib/Lax54/ErdosHajnalC5.ilean",
+        "bytes": 1310,
+        "sha256": "b90cf156bcd4d2ad54291bb74061d7432a40da18635199900514cba48edac468"
+      },
+      {
+        "path": "concepts/lib/Lax54/ErdosHajnalC5.ilean.hash",
+        "bytes": 16,
+        "sha256": "cb08407363ce83f3026639a010b27ba77bf38f1ace60df403b27b375c5e78989"
+      },
+      {
+        "path": "concepts/lib/Lax54/ErdosHajnalC5.olean",
+        "bytes": 9840,
+        "sha256": "e9147cef33f735b47475c5f5b5466798783ee8c658835124a3c60f38c511680f"
+      },
+      {
+        "path": "concepts/lib/Lax54/ErdosHajnalC5.olean.hash",
+        "bytes": 16,
+        "sha256": "39f75676c2c4f5b3e4f4e801de1a97c693e0181cc7439e48c9d310271ada2299"
+      },
+      {
+        "path": "concepts/lib/Lax54/ErdosHajnalC5.trace",
+        "bytes": 2138,
+        "sha256": "303b410f7637ea9d19a79e649557b63a804845a895d9d8369d8845781e0138e6"
+      },
+      {
+        "path": "concepts/lib/Lax54/GraphDefinitions.ilean",
+        "bytes": 10374,
+        "sha256": "3b18a6ebc4a3478682253c943f2e615e4f19c8f9244fdba896be87912c591e75"
+      },
+      {
+        "path": "concepts/lib/Lax54/GraphDefinitions.ilean.hash",
+        "bytes": 16,
+        "sha256": "bfdaffe37fc9bb6d41969589c85cd466662290109a0f22669d065e0622ef1dc0"
+      },
+      {
+        "path": "concepts/lib/Lax54/GraphDefinitions.olean",
+        "bytes": 174312,
+        "sha256": "b4740b2917cab113c3de16a19a66ca273240ce2d5c664c8ad96d152467318804"
+      },
+      {
+        "path": "concepts/lib/Lax54/GraphDefinitions.olean.hash",
+        "bytes": 16,
+        "sha256": "bfbd2c25dfda4f53c4d0a64af4b930ec97e6399785bb640a05aa9baf01393b30"
+      },
+      {
+        "path": "concepts/lib/Lax54/GraphDefinitions.trace",
+        "bytes": 2625,
+        "sha256": "3cf623f8db7b4683533cbed17ec78b939ad0e6f8acd4c89e3378591b09cddbc9"
+      },
+      {
+        "path": "concepts/lib/Lax54/KeyCombLemma.ilean",
+        "bytes": 3768,
+        "sha256": "f44efd6e4cb926aaa9fde432ca250e9c3692dc3dc7bafe2942f30a687c0ebe7d"
+      },
+      {
+        "path": "concepts/lib/Lax54/KeyCombLemma.ilean.hash",
+        "bytes": 16,
+        "sha256": "32dab7f259b3e22718a385f8be0e208c504636f3ccea1b88c7355563553dfd55"
+      },
+      {
+        "path": "concepts/lib/Lax54/KeyCombLemma.olean",
+        "bytes": 25400,
+        "sha256": "890fc4ba2314df503637f8dd1998d1579ba9b8ab5db4725f482d71d58c2dc1fa"
+      },
+      {
+        "path": "concepts/lib/Lax54/KeyCombLemma.olean.hash",
+        "bytes": 16,
+        "sha256": "6cb69182248c59694efccc1db2b3bc85b4cf7a8e8de36f27f46bde757f07dad4"
+      },
+      {
+        "path": "concepts/lib/Lax54/KeyCombLemma.trace",
+        "bytes": 2130,
+        "sha256": "66cff20438b5972c9a4b17a0effa26c39a0da8005661ee5429cf596ef827ec19"
+      },
+      {
+        "path": "concepts/lib/Lax54/MaximumDegreeReduction.ilean",
+        "bytes": 1947,
+        "sha256": "4d06a965cb61a5197e39589615a0654e9e86673069c62e22545517c7ba8d6847"
+      },
+      {
+        "path": "concepts/lib/Lax54/MaximumDegreeReduction.ilean.hash",
+        "bytes": 16,
+        "sha256": "5b665ecb157cdfe05cdb4c7240c3af0f95d6131140003b7e80b66a2357789a96"
+      },
+      {
+        "path": "concepts/lib/Lax54/MaximumDegreeReduction.olean",
+        "bytes": 10760,
+        "sha256": "4cf2d9d903522878e5c856734ed379136bd8c27df06e303c264c555225c15761"
+      },
+      {
+        "path": "concepts/lib/Lax54/MaximumDegreeReduction.olean.hash",
+        "bytes": 16,
+        "sha256": "95c5790c82d6777c7641da356b538a9b30c0ee18daa8f0f9c8539a63323cadd6"
+      },
+      {
+        "path": "concepts/lib/Lax54/MaximumDegreeReduction.trace",
+        "bytes": 2558,
+        "sha256": "7a61481ba5be7a6a98c198eda45b6085884088ada9b067bfb1c50f7fda87cabe"
+      },
+      {
+        "path": "concepts/lib/Lax54/RodlTheorem.ilean",
+        "bytes": 2264,
+        "sha256": "149085f965dec903a5423b8af5a77201f937aff28f26f579e444bf2f4875c8c2"
+      },
+      {
+        "path": "concepts/lib/Lax54/RodlTheorem.ilean.hash",
+        "bytes": 16,
+        "sha256": "11573027b85600d9cb54833c4f1a33eee4ecfa3c51a42ae1ef1923ce0ec089e4"
+      },
+      {
+        "path": "concepts/lib/Lax54/RodlTheorem.olean",
+        "bytes": 17792,
+        "sha256": "e8d293d08e6690b31cec83618fa7f98dc4a651bea369a7084945dbf978bd89e7"
+      },
+      {
+        "path": "concepts/lib/Lax54/RodlTheorem.olean.hash",
+        "bytes": 16,
+        "sha256": "c37fd0006e492957ea2f4ca34e21a12f9662b065c017b3ed8ba7686bb9a6ac06"
+      },
+      {
+        "path": "concepts/lib/Lax54/RodlTheorem.trace",
+        "bytes": 2122,
+        "sha256": "d8857a66b2293dd7a986888ac0549b5203db4ed8e25172c590426be228fbd20d"
+      },
+      {
+        "path": "concepts/lib/Lax54.ilean",
+        "bytes": 430,
+        "sha256": "e75affd1a807adb29dba2fd68d332d28e146aac99d49d5a0e26ec031b74b801a"
+      },
+      {
+        "path": "concepts/lib/Lax54.ilean.hash",
+        "bytes": 16,
+        "sha256": "166b3433079c537f9457f31e43bc72425c42f72fdc6e19c6dfdf73a08dbebcb6"
+      },
+      {
+        "path": "concepts/lib/Lax54.olean",
+        "bytes": 2152,
+        "sha256": "ae26e32f58f15a47aa3fd9f423f8b71ffaeeb681d6e10e703ac9016100810789"
+      },
+      {
+        "path": "concepts/lib/Lax54.olean.hash",
+        "bytes": 16,
+        "sha256": "cff8253907c3ca9da4d405bdc451baca67b7d49dd77c3d92cc026c4a88d5e3e0"
+      },
+      {
+        "path": "concepts/lib/Lax54.trace",
+        "bytes": 3130,
+        "sha256": "fb7c19b85e6040de9d16d9d588ece5250e430236a7023b579d1771945b2c9e02"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3162,
+        "sha256": "a0cdc406f106d3b403d989288de4bf470ae19da1d1da7c4c53478757d0b9403f"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 243,
+        "sha256": "b0cceaf2b578a2f090d695a3a69f366401a416428548a8ec945754605e62a03b"
+      },
+      {
+        "path": "concepts/package/Lax54/AveragingLemma.lean",
+        "bytes": 1059,
+        "sha256": "d38fbf829e59f80062640db4ee10e91a8cb26f607139e50473d40ca7c9e85188"
+      },
+      {
+        "path": "concepts/package/Lax54/BipartiteCombLemma.lean",
+        "bytes": 2065,
+        "sha256": "5efa112f4f918fb0e91e7f4e3b13758280bf51201c32143ea381e003df54934b"
+      },
+      {
+        "path": "concepts/package/Lax54/CriticalCombInput.lean",
+        "bytes": 1396,
+        "sha256": "1b75cadd9729ec41cb78f0d9e8d8bcbe289f3642161d1ebf315835af90e91214"
+      },
+      {
+        "path": "concepts/package/Lax54/ErdosHajnalC5.lean",
+        "bytes": 672,
+        "sha256": "44a873a369ae55a4cb0dd0679e02dadbf8d9c4b7dcb7899516c2022f5a646607"
+      },
+      {
+        "path": "concepts/package/Lax54/GraphDefinitions.lean",
+        "bytes": 4003,
+        "sha256": "7f68f56d048e23e5ad173a982bbced9a46f85a49cb56d91ce656b005c2ecf468"
+      },
+      {
+        "path": "concepts/package/Lax54/KeyCombLemma.lean",
+        "bytes": 1746,
+        "sha256": "afc700a87997936d0681d3eea199c7fa665e2f2a2c7d3b870f23033f4262ba4e"
+      },
+      {
+        "path": "concepts/package/Lax54/MaximumDegreeReduction.lean",
+        "bytes": 981,
+        "sha256": "2a9aaedee3c94488f8a812ad2e3b4a07a5b65cab975448f24d1e79df09e7f139"
+      },
+      {
+        "path": "concepts/package/Lax54/RodlTheorem.lean",
+        "bytes": 1042,
+        "sha256": "9e3f79ec305d20de692d26e911e200b2bdeb36b3ac5c70c75edd957f2b3d8561"
+      },
+      {
+        "path": "concepts/package/Lax54.lean",
+        "bytes": 235,
+        "sha256": "ee4ac5f2971f2c1c10539b575e6dcb2359aa58e7ac99ea18265cdcc966316786"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/AveragingLemma.c",
+        "bytes": 2382,
+        "sha256": "aa8e3438f1c5afd621b2faf911806014b375a9d66c42394f5fb447ecef7a4b73"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/AveragingLemma.c.hash",
+        "bytes": 16,
+        "sha256": "7137f164c352fc8bb616505efc9ef681d26f0ecdaf942b1ddf31386cb8406284"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/BipartiteCombLemma.c",
+        "bytes": 25495,
+        "sha256": "59c9af505fe32995216c519c4135deaf28997f61f99d512d90c75a1e71775227"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/BipartiteCombLemma.c.hash",
+        "bytes": 16,
+        "sha256": "d90bb3b8d46a47c5472c962c9d5d180622ab48045c904d7828f38e3f95d15b63"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/CombC5.c",
+        "bytes": 1535,
+        "sha256": "5ecce350820b45a906eef49015eb06963e786f4f9951dff54fe84237f59be9a7"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/CombC5.c.hash",
+        "bytes": 16,
+        "sha256": "d0ac7c393cf960c9e080185755200de7f261923d6e24b8b0fa0f9f4d22724813"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/CriticalCombInput.c",
+        "bytes": 18638,
+        "sha256": "7c5548ea605624bcfee2d1a3b08b35aee569ec6057befdcb94908a0f46109ce7"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/CriticalCombInput.c.hash",
+        "bytes": 16,
+        "sha256": "339525f6ed72e0075281f26964ead49a9ca28020d956622799481616ba4ad51a"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/KappaBlocks.c",
+        "bytes": 1545,
+        "sha256": "b2967df41718c9afdd45a2f09822561c2857cac2c797a9cc334fef2ea7745b68"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/KappaBlocks.c.hash",
+        "bytes": 16,
+        "sha256": "5a92f078b0483adee0cbded32a35b945251571d56c959d66b26c83b88979e490"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/KeyCombLemma.c",
+        "bytes": 10717,
+        "sha256": "151e3f00b702b9615f7ea6b57223dc1142521d72d83ca59a0a833f74b51de893"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/KeyCombLemma.c.hash",
+        "bytes": 16,
+        "sha256": "6e9e201079b9c85f1c726817fe04526b8b0f03142edafb0a15d1ed3e753fca8b"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/Main.c",
+        "bytes": 2489,
+        "sha256": "8849998b1035fd28e09afb7446529e3bc70100998fad63e0db944a6c21f6d99c"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/Main.c.hash",
+        "bytes": 16,
+        "sha256": "45fb5e45ce29f13f3a2d78c99b533f576c86ea36c0d46303c7fd96e209ddbd16"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/MaximumDegreeReduction.c",
+        "bytes": 2305,
+        "sha256": "65085f710819de95eb7dcace8662cbca89eff35f75a359fd48907cfcaa5a3e77"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/MaximumDegreeReduction.c.hash",
+        "bytes": 16,
+        "sha256": "794cf66b2552301a4a8e45157f74417a4833af08da161cfd0f384ae0198d2088"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/RodlTheorem.c",
+        "bytes": 10794,
+        "sha256": "7f05aa38f77b7ba866365a575096887ffa3147c89e5b6f025563761218f61f69"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs/RodlTheorem.c.hash",
+        "bytes": 16,
+        "sha256": "2c7a04704a100230ec0aa42cbd6f651b8d062d19142a971857e18616fcf1892b"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs.c",
+        "bytes": 3327,
+        "sha256": "f7448d61d39cde84012c9cdcb2949007b9aa44a92b724e4c2afeef98b31d952a"
+      },
+      {
+        "path": "proofs/ir/Lax54Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "27d10b79de0c0f53ab35f53a5cb997dc14d5b898b8ccab5cde1e14068a553c52"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/AveragingLemma.ilean",
+        "bytes": 35773,
+        "sha256": "d23592239ef55c402200e16a80012d92e47fadd925383827e90c4931276b94da"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/AveragingLemma.ilean.hash",
+        "bytes": 16,
+        "sha256": "c0bd8219644dd3e1613c9aa9e8d965eac7b07f474e8240b03411d926fe75adc3"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/AveragingLemma.olean",
+        "bytes": 853488,
+        "sha256": "da04d89cdbb1401ace54275fac879ff8d063cdce7c32b0e2f1c7f6b65f499fc8"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/AveragingLemma.olean.hash",
+        "bytes": 16,
+        "sha256": "b5f63108e16b1e5dc6702f22ec46ef57e5dbf1640a63d4f74fac9ab4c3280baa"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/AveragingLemma.trace",
+        "bytes": 2982,
+        "sha256": "4cc3f2fce2d0beb985a24d6098b4e25fe25e110981c2637cfa540eaf1ed52483"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/BipartiteCombLemma.ilean",
+        "bytes": 90530,
+        "sha256": "e296884a58f41e1c4b2d7c33f765c785d2c9b09e1b644ffdea764464f9bf265f"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/BipartiteCombLemma.ilean.hash",
+        "bytes": 16,
+        "sha256": "06aa7046da3539a708c9300fdf27d37f2e3e22b681f77cfc820c5f946edd5360"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/BipartiteCombLemma.olean",
+        "bytes": 1365672,
+        "sha256": "8315445d710f56fe8ffdb80e590a30f675f915c1f4216374af56fe811790b1d8"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/BipartiteCombLemma.olean.hash",
+        "bytes": 16,
+        "sha256": "991e465c78f660e71e1cccc378ca0e28f0e433d426071a8476820e17f85b5ba1"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/BipartiteCombLemma.trace",
+        "bytes": 8077,
+        "sha256": "ee9961e708982c939cabcd8de3b69982f4a57f97423d20ddb348603c1938890b"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/CombC5.ilean",
+        "bytes": 10961,
+        "sha256": "a2fca29acc09dc0b95cbf0b4b7e18a7d96d8c738face31e1bacb03399fa13e05"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/CombC5.ilean.hash",
+        "bytes": 16,
+        "sha256": "b5ad8f042010e75b5e6d96f1d233e81d2b3250e076c308db6c4cdb573a0b40ef"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/CombC5.olean",
+        "bytes": 4844192,
+        "sha256": "58930c051752ce57224039947c5095342bceba6ef2c7c6d57193f068a387fe60"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/CombC5.olean.hash",
+        "bytes": 16,
+        "sha256": "83b5ead234049f799b38f26e8b53a27fc9c36a5d31920daf7e1c51c70ab14c6c"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/CombC5.trace",
+        "bytes": 2323,
+        "sha256": "241f2645d5bca6633410d2f70ba67fd49bd9c907834e4ba22a4590591b31c00e"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/CriticalCombInput.ilean",
+        "bytes": 14418,
+        "sha256": "50978e85f70952e96bc621b91a08e71d371fb3585310264060097f8cd32ad346"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/CriticalCombInput.ilean.hash",
+        "bytes": 16,
+        "sha256": "4bb5a090acd1f55b1f00bd6e51f60486fbed833085733fc4339987f1d0c51968"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/CriticalCombInput.olean",
+        "bytes": 540472,
+        "sha256": "540b75a47692978b81f1d363e95c621370b3de9d2793243d98c2358dfffc6da3"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/CriticalCombInput.olean.hash",
+        "bytes": 16,
+        "sha256": "1097a3396a45802e38e4223c34f7aa8b0c2dfd97b6231a3a4a9bc10fb0a98f32"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/CriticalCombInput.trace",
+        "bytes": 2776,
+        "sha256": "a5ada55e09a9168030aae43c801f2cb5e8901f7f47b316a20a79e6241a7f2582"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/KappaBlocks.ilean",
+        "bytes": 13883,
+        "sha256": "e9ba9fd7850fd5b7f0dd2ec237b33cb4dcce4aeddb24a0c6970538ab7bb8dfce"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/KappaBlocks.ilean.hash",
+        "bytes": 16,
+        "sha256": "a64f2dba1ab6e43be62df61880a1e5d904e2925abef0bd61a9e4f79c2771e157"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/KappaBlocks.olean",
+        "bytes": 118240,
+        "sha256": "34bb6311d8497975aa047ee05d3d35406b3e933be06b624bfa16f196e282a110"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/KappaBlocks.olean.hash",
+        "bytes": 16,
+        "sha256": "7f6d2cbb29d7d5def2661fdb9a6a28d0ea35e15935a6fb1f7311c9c7df7a8011"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/KappaBlocks.trace",
+        "bytes": 2363,
+        "sha256": "ed3eec6e109d47570ed01f039c2a0c621f5c6f1c214f60f2971da9e545bb0cff"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/KeyCombLemma.ilean",
+        "bytes": 122986,
+        "sha256": "99260d72d0d4030e74b236d64053be2a9fc79ecdd280f4b5d16f1c6d8d0c03e2"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/KeyCombLemma.ilean.hash",
+        "bytes": 16,
+        "sha256": "012d41f724fc3ae562f65e5a4508e966e1a8404cdf67b9eb8c3a71f3afbe7c6b"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/KeyCombLemma.olean",
+        "bytes": 1817392,
+        "sha256": "0a7ebe3e4740163c37740d74d76ee07b6defbcf9359cc2dfb29ce25dde423337"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/KeyCombLemma.olean.hash",
+        "bytes": 16,
+        "sha256": "d134e7015c85c6edc99c707b77751462c9bc2fb9f3aab6c545e901bf45c3cd80"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/KeyCombLemma.trace",
+        "bytes": 6575,
+        "sha256": "9d33b358d91120526769de5bc1ef813f02450a3f3dd860f67f488e8a51f91f6d"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/Main.ilean",
+        "bytes": 19219,
+        "sha256": "ac3408fb89f5d141e16e4d00362a2c0784e71631d8cc8ed9bd00436efd41f82f"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/Main.ilean.hash",
+        "bytes": 16,
+        "sha256": "e3801c5e0f755d64d2a481b15dfbd66919da2826fb3a0648936010e348f5f275"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/Main.olean",
+        "bytes": 153912,
+        "sha256": "69cd0f478c4ca2c5e0ccb8c5c38ea69011ac499eb4d3e00729b38ed4c13be52c"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/Main.olean.hash",
+        "bytes": 16,
+        "sha256": "51d28236893866182d6793499a6046980cd35512096556ebb703697f642eeda3"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/Main.trace",
+        "bytes": 2945,
+        "sha256": "eb606ae428150d8748a2910e3a11702717ea2c8df46d7d00ff22bb2be5370e2a"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/MaximumDegreeReduction.ilean",
+        "bytes": 7718,
+        "sha256": "7322738d5b345a87b857b4572121e6a9420d8e719d51d23d64e5c324e063a1dd"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/MaximumDegreeReduction.ilean.hash",
+        "bytes": 16,
+        "sha256": "40e69f1bd1b11203175a66e8df3e1f2ad55754d7d5addc26ba03f599fde74b6b"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/MaximumDegreeReduction.olean",
+        "bytes": 389200,
+        "sha256": "12073cff70da4efcdf60710476d0e137da9b532e1188c7999c70f834e88ae641"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/MaximumDegreeReduction.olean.hash",
+        "bytes": 16,
+        "sha256": "8ed242dd49aba17ffbd7862f1d0d2ac7c7acbe3b2ff6d21f4ffeef3fe13aed75"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/MaximumDegreeReduction.trace",
+        "bytes": 2961,
+        "sha256": "f57fcf71654808c7b929975f93d158c1b69dea23d141629c0c49f3cf35d3fd8e"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/RodlTheorem.ilean",
+        "bytes": 154927,
+        "sha256": "448844782cd33495e4e62b40689850c18f7cd7906ca63583752cffc70730b3fb"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/RodlTheorem.ilean.hash",
+        "bytes": 16,
+        "sha256": "30b9ad97a6da7beb404d0631c39b0e91c5ac82337c2264a8899ab6694e373d2d"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/RodlTheorem.olean",
+        "bytes": 2623600,
+        "sha256": "ebf1adf57f157cc2fe70ee9ded5f4fcb16f4fcaa048ac250c68dce8639aa0f3b"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/RodlTheorem.olean.hash",
+        "bytes": 16,
+        "sha256": "debfd5f07d5f4c52e3b9b77f3d05f74858da317cda35d0bddb3f2103be8394f1"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs/RodlTheorem.trace",
+        "bytes": 7332,
+        "sha256": "e9769f5e0ab37a6d78e1bf0662261a4296bb89b4bc86fbc1ea36231c7dd430c0"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs.ilean",
+        "bytes": 511,
+        "sha256": "f0c3f0bccea436808004b009fb41c1fabfe2ba24ab7207cd5d4b7b10aba37caa"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "b7221c75915e60196d0ee7a133dc6d4778515a29a4dd24b182cdb4c3288ce38c"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs.olean",
+        "bytes": 2248,
+        "sha256": "3ec87e0cff01d86325179b17def6c7b3a3a4535be3545164afc40bc1e1e9be9d"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "bbcf6a5cb4b4576c92b4ace740ae9f2258d51b1b0b29ed13cf9d95e0838d5a34"
+      },
+      {
+        "path": "proofs/lib/Lax54Proofs.trace",
+        "bytes": 3474,
+        "sha256": "4023c5381f6e3f8e8e4bf4b3ab64d1cb386ba926af8cc7fbf9eaf8c12ac9961d"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3348,
+        "sha256": "bf466eb778261408f208fb0e9ceb1ea099d01eb70cb999b1e18e2c51ef7415be"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 310,
+        "sha256": "797250096265fed8f9d0873145759f09b7b7f4d51d914ee376d3c9e00299384b"
+      },
+      {
+        "path": "proofs/package/Lax54Proofs/AveragingLemma.lean",
+        "bytes": 14903,
+        "sha256": "65ea4a0a5db6d6d27609888b39751f4e6f72df2b41487cb9e512b7fe0a253f10"
+      },
+      {
+        "path": "proofs/package/Lax54Proofs/BipartiteCombLemma.lean",
+        "bytes": 30245,
+        "sha256": "e9741b2d88dcced81e8ae0ce3ca2dd39f91c37609fb7982e5f31b152215fd235"
+      },
+      {
+        "path": "proofs/package/Lax54Proofs/CombC5.lean",
+        "bytes": 2737,
+        "sha256": "c586a11c9c9fba3f11fedcf91f29448acb5911fccee3478511000ea6b2a33466"
+      },
+      {
+        "path": "proofs/package/Lax54Proofs/CriticalCombInput.lean",
+        "bytes": 5167,
+        "sha256": "c3ee50bb48321bf7f2feb1c621fb42cd50896f35260791d13305abaa8b95673c"
+      },
+      {
+        "path": "proofs/package/Lax54Proofs/KappaBlocks.lean",
+        "bytes": 4591,
+        "sha256": "9fe376aa92cded82edb61fd20307b2cb7f921564286cfd4122a869ba28229ade"
+      },
+      {
+        "path": "proofs/package/Lax54Proofs/KeyCombLemma.lean",
+        "bytes": 43829,
+        "sha256": "96d762c7351c49416fb6f24284a23ec06cea2f3089675a9ecc903d9161afc9f3"
+      },
+      {
+        "path": "proofs/package/Lax54Proofs/Main.lean",
+        "bytes": 7146,
+        "sha256": "8fd6eee2957a9ffa813e4088c2f675c4b6167d81e7f7396a82c611a137b10394"
+      },
+      {
+        "path": "proofs/package/Lax54Proofs/MaximumDegreeReduction.lean",
+        "bytes": 3643,
+        "sha256": "5a7e46b3cabdc5f2ba46cb5031189754e59c7a31bef5069d64fed45ac0e63de8"
+      },
+      {
+        "path": "proofs/package/Lax54Proofs/RodlTheorem.lean",
+        "bytes": 56191,
+        "sha256": "28f65ce21c2aa1730e197a8673e517ab2ec8e4b31c574a42ba0a0ecb89e87978"
+      },
+      {
+        "path": "proofs/package/Lax54Proofs.lean",
+        "bytes": 295,
+        "sha256": "921b9567119261d513820a7b0674c9f33b1ac0f6abeb67659adc5d6ac6045ec4"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:bf7765338112f6300c30087877c3423d2d911defc2ff8ee8c6756d6d6880f421"
   }
 }
