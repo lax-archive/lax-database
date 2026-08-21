@@ -4,5 +4,2166 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 57
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-57",
+      "leanVersion": "v4.30.0",
+      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "title": "Erdős–Hajnal for the five-vertex path",
+      "authors": [
+        {
+          "name": "Édouard Bonnet",
+          "github": "EdouardBonnet"
+        }
+      ],
+      "bibEntries": [
+        "@article{NguyenScottSeymour2026,\n  title = {Induced subgraph density. VII. The five-vertex path},\n  author = {Nguyen, Tung and Scott, Alex and Seymour, Paul},\n  year = {2026},\n  eprint = {2312.15333},\n  archivePrefix = {arXiv},\n  primaryClass = {math.CO}\n}",
+        "@article{ChudnovskyScottSeymourSpirkl2023,\n  title = {Erdős--Hajnal for graphs with no 5-hole},\n  author = {Chudnovsky, Maria and Scott, Alex and Seymour, Paul and Spirkl, Sophie},\n  journal = {Proceedings of the London Mathematical Society},\n  volume = {126},\n  number = {3},\n  pages = {997--1014},\n  year = {2023},\n  doi = {10.1112/plms.12504}\n}"
+      ]
+    },
+    "abstract": "This submission formalizes Nguyen, Scott, and Seymour's proof that the\nfive-vertex path $P_5$ has the Erdős–Hajnal property. It proves that there is\na positive integer $q$ such that every finite graph $G$ with no induced copy\nof $P_5$ satisfies\n\n$$\n|V(G)| \\leq \\max\\{\\alpha(G),\\omega(G)\\}^{q}.\n$$\n\nThe formalization follows the paper's blockade argument through polynomial\nsemisparse blockades in house-free graphs, the sparse-house trichotomy and its\niteration, and a final critical-graph argument. Density inequalities are\nstated over the natural numbers with denominators cleared. The development\nuses Rödl's theorem, sparse thinning, maximum-degree reduction, and the\nbipartite comb lemma from Lax 54; every argument specific to $P_5$ and its\ncomplement is proved in this submission.\n"
+  },
+  "requiredByConcepts": [
+    "Lax54"
+  ],
+  "requiredByProofs": [
+    "Lax54",
+    "Lax54Proofs"
+  ],
+  "concepts": [
+    {
+      "id": "Lax57.AnticomponentBlockade",
+      "path": "concepts/Lax57/AnticomponentBlockade.lean",
+      "title": "Anticomponent or complete blockade",
+      "type": "theorem",
+      "description": "This denominator-cleared form of Lemma 4.1 groups the connected components\nof the complement. Either one anticonnected component has size at least\n$|T|/Q^2$, or there are $Q$ pairwise complete groups, each of size at least\n$|T|/(4Q^3)$.",
+      "imports": [
+        "Lax57.GraphDefinitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax57.GraphDefinitions\n\n/-!\n---\ntitle: Anticomponent or complete blockade\ntype: theorem\n---\nThis denominator-cleared form of Lemma 4.1 groups the connected components\nof the complement. Either one anticonnected component has size at least\n$|T|/Q^2$, or there are $Q$ pairwise complete groups, each of size at least\n$|T|/(4Q^3)$.\n-/\n\nnamespace Lax57.AnticomponentBlockade\n\nopen Lax57.GraphDefinitions\n\nuniverse u\n\n/-- A large anticonnected component or a long complete blockade. -/\naxiom anticomponent_or_complete_blockade :\n    ∀ {V : Type u} [Fintype V] [DecidableEq V]\n      (G : SimpleGraph V) [DecidableRel G.Adj] (T : Finset V) (Q : ℕ),\n      2 ≤ Q →\n        ( (∃ J : Finset V, J ⊆ T ∧\n              (Gᶜ.induce (J : Set V)).Connected ∧\n                T.card ≤ Q ^ 2 * J.card) ∨\n          (∃ C : Blockade (V := V) Q,\n              C.IsInside T ∧ C.IsComplete G ∧\n                ∀ i : Fin Q,\n                  T.card ≤ 4 * Q ^ 3 * (C.block i).card) )\n\nend Lax57.AnticomponentBlockade\n",
+      "statements": [
+        {
+          "id": "Lax57.AnticomponentBlockade.anticomponent_or_complete_blockade",
+          "signature": "anticomponent_or_complete_blockade : ∀ {V : Type u} [Fintype V] [inst : DecidableEq V] (G : SimpleGraph V) [DecidableRel G.Adj] (T : Finset V) (Q : Nat),\n  instLENat.le 2 Q →\n    Or\n      (Exists fun J =>\n        And (Finset.instHasSubset.Subset J T)\n          (And (SimpleGraph.induce (Finset.instSetLike.coe J) (SimpleGraph.instCompl.compl G)).Connected\n            (instLENat.le T.card (instHMul.hMul (instHPow.hPow Q 2) J.card))))\n      (Exists fun C =>\n        And (C.IsInside T)\n          (And (Lax57.GraphDefinitions.Blockade.IsComplete G C)\n            (∀ (i : Fin Q),\n              instLENat.le T.card (instHMul.hMul (instHMul.hMul 4 (instHPow.hPow Q 3)) (C.block i).card))))",
+          "startLine": 20,
+          "endLine": 31,
+          "doc": "A large anticonnected component or a long complete blockade."
+        }
+      ]
+    },
+    {
+      "id": "Lax57.BlockadeThinning",
+      "path": "concepts/Lax57/BlockadeThinning.lean",
+      "title": "Simultaneous thinning of a semisparse blockade",
+      "type": "theorem",
+      "description": "This finite greedy lemma is the sampling-and-cleaning step in Claim 7.1.1.\nSubblocks are selected in order so that every weakly sparse pair has a\ncontrolled edge count. Removing vertices of excessive cross-degree then\ngives vertexwise sparsity in both directions while retaining at least half\nof each sample.",
+      "imports": [
+        "Lax57.GraphDefinitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax57.GraphDefinitions\n\n/-!\n---\ntitle: Simultaneous thinning of a semisparse blockade\ntype: theorem\n---\nThis finite greedy lemma is the sampling-and-cleaning step in Claim 7.1.1.\nSubblocks are selected in order so that every weakly sparse pair has a\ncontrolled edge count. Removing vertices of excessive cross-degree then\ngives vertexwise sparsity in both directions while retaining at least half\nof each sample.\n-/\n\nnamespace Lax57.BlockadeThinning\n\nopen Lax57.GraphDefinitions\n\nuniverse u\n\n/-- Thin every block simultaneously and convert weak pair density to\nvertexwise sparsity. -/\naxiom semisparse_blockade_thinning :\n    ∀ {V : Type u} [Fintype V] [DecidableEq V]\n      (G : SimpleGraph V) [DecidableRel G.Adj]\n      (k P E t : ℕ) (B : Blockade (V := V) k),\n      2 ≤ k → 2 * k ≤ t → 128 * k ^ 3 * E ≤ P →\n      (∀ i, 2 * t ≤ (B.block i).card) → B.IsSemisparse G P →\n        ∃ C : Blockade (V := V) k,\n          (∀ i, C.block i ⊆ B.block i) ∧\n          (∀ i, t ≤ 2 * (C.block i).card ∧ (C.block i).card ≤ t) ∧\n          (∀ {i j}, i ≠ j →\n            ((∀ x ∈ C.block i, ∀ y ∈ C.block j, G.Adj x y) ∨\n              (ESparseTo G E (C.block i) (C.block j) ∧\n               ESparseTo G E (C.block j) (C.block i))))\n\nend Lax57.BlockadeThinning\n",
+      "statements": [
+        {
+          "id": "Lax57.BlockadeThinning.semisparse_blockade_thinning",
+          "signature": "semisparse_blockade_thinning : ∀ {V : Type u} [Fintype V] [inst : DecidableEq V] (G : SimpleGraph V) [inst_1 : DecidableRel G.Adj] (k P E t : Nat)\n  (B : Lax57.GraphDefinitions.Blockade k),\n  instLENat.le 2 k →\n    instLENat.le (instHMul.hMul 2 k) t →\n      instLENat.le (instHMul.hMul (instHMul.hMul 128 (instHPow.hPow k 3)) E) P →\n        (∀ (i : Fin k), instLENat.le (instHMul.hMul 2 t) (B.block i).card) →\n          Lax57.GraphDefinitions.Blockade.IsSemisparse G P B →\n            Exists fun C =>\n              And (∀ (i : Fin k), Finset.instHasSubset.Subset (C.block i) (B.block i))\n                (And\n                  (∀ (i : Fin k),\n                    And (instLENat.le t (instHMul.hMul 2 (C.block i).card)) (instLENat.le (C.block i).card t))\n                  (∀ {i j : Fin k},\n                    Ne i j →\n                      Or\n                        (∀ (x : V),\n                          SetLike.instMembership.mem (C.block i) x →\n                            ∀ (y : V), SetLike.instMembership.mem (C.block j) y → G.Adj x y)\n                        (And (Lax57.GraphDefinitions.ESparseTo G E (C.block i) (C.block j))\n                          (Lax57.GraphDefinitions.ESparseTo G E (C.block j) (C.block i)))))",
+          "startLine": 21,
+          "endLine": 35,
+          "doc": "Thin every block simultaneously and convert weak pair density to\nvertexwise sparsity."
+        }
+      ]
+    },
+    {
+      "id": "Lax57.ErdosHajnalP5",
+      "path": "concepts/Lax57/ErdosHajnalP5.lean",
+      "title": "Erdős–Hajnal theorem for the five-vertex path",
+      "type": "theorem",
+      "description": "The five-vertex path $P_5$ has the Erdős–Hajnal property: there is a positive\ninteger $q$ such that every finite graph $G$ with no induced copy of $P_5$\nsatisfies\n\n$$\n|V(G)| \\leq \\max\\{\\alpha(G),\\omega(G)\\}^{q}.\n$$",
+      "imports": [
+        "Lax57.GraphDefinitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax57.GraphDefinitions\n\n/-!\n---\ntitle: Erdős–Hajnal theorem for the five-vertex path\ntype: theorem\n---\nThe five-vertex path $P_5$ has the Erdős–Hajnal property: there is a positive\ninteger $q$ such that every finite graph $G$ with no induced copy of $P_5$\nsatisfies\n\n$$\n|V(G)| \\leq \\max\\{\\alpha(G),\\omega(G)\\}^{q}.\n$$\n-/\n\nnamespace Lax57.ErdosHajnalP5\n\nopen Lax57.GraphDefinitions\n\nuniverse u\n\n/-- The Erdős–Hajnal conjecture for the five-vertex path. -/\naxiom erdos_hajnal_P5 :\n    ∃ q : ℕ, 0 < q ∧\n      ∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n        IsP5Free G → Fintype.card V ≤ homogeneousNumber G ^ q\n\nend Lax57.ErdosHajnalP5\n",
+      "statements": [
+        {
+          "id": "Lax57.ErdosHajnalP5.erdos_hajnal_P5",
+          "signature": "erdos_hajnal_P5 : Exists fun q =>\n  And (instLTNat.lt 0 q)\n    (∀ {V : Type u} [inst : Fintype V] (G : SimpleGraph V),\n      Lax57.GraphDefinitions.IsP5Free G →\n        instLENat.le (Fintype.card V) (instHPow.hPow (Lax57.GraphDefinitions.homogeneousNumber G) q))",
+          "startLine": 23,
+          "endLine": 27,
+          "doc": "The Erdős–Hajnal conjecture for the five-vertex path."
+        }
+      ]
+    },
+    {
+      "id": "Lax57.GraphDefinitions",
+      "path": "concepts/Lax57/GraphDefinitions.lean",
+      "title": "Finite graph notions for the five-vertex path theorem",
+      "type": "definition",
+      "description": "This module defines the five-vertex path $P_5$, its complement (the house),\nand the notions of sparsity, restrictedness, and blockades used throughout\nthe formalization. For a positive integer $E$, `ESparse` means maximum degree\nat most $|G|/E$, while `WeaklyESparse` is the corresponding edge-density\ncondition with its denominator cleared.",
+      "imports": [
+        "Lax54.GraphDefinitions"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Density",
+        "Mathlib.Combinatorics.SimpleGraph.Hasse"
+      ],
+      "sourceText": "import Lax54.GraphDefinitions\nimport Mathlib.Combinatorics.SimpleGraph.Density\nimport Mathlib.Combinatorics.SimpleGraph.Hasse\n\n/-!\n---\ntitle: Finite graph notions for the five-vertex path theorem\ntype: definition\n---\nThis module defines the five-vertex path $P_5$, its complement (the house),\nand the notions of sparsity, restrictedness, and blockades used throughout\nthe formalization. For a positive integer $E$, `ESparse` means maximum degree\nat most $|G|/E$, while `WeaklyESparse` is the corresponding edge-density\ncondition with its denominator cleared.\n-/\n\nopen Finset\nopen scoped SimpleGraph\n\nnamespace Lax57.GraphDefinitions\n\nuniverse u\n\n/-- The path on five vertices. -/\nabbrev P5 : SimpleGraph (Fin 5) := SimpleGraph.pathGraph 5\n\n/-- The house graph, namely the complement of the five-vertex path. -/\nabbrev House : SimpleGraph (Fin 5) := P5ᶜ\n\n/-- A graph has no induced copy of the five-vertex path. -/\ndef IsP5Free {V : Type u} (G : SimpleGraph V) : Prop :=\n  ¬ P5 ⊴ G\n\n/-- A graph has no induced copy of the house. -/\ndef IsHouseFree {V : Type u} (G : SimpleGraph V) : Prop :=\n  ¬ House ⊴ G\n\n/-- The largest cardinality of a clique or stable set. -/\nnoncomputable abbrev homogeneousNumber {V : Type u} (G : SimpleGraph V) : ℕ :=\n  Lax54.GraphDefinitions.homogeneousNumber G\n\n/-- The product of the clique and independence numbers. -/\nnoncomputable abbrev kappa {V : Type u} (G : SimpleGraph V) : ℕ :=\n  Lax54.GraphDefinitions.kappa G\n\n/-- `q`-criticality for the product `ω(G)α(G)`. -/\nabbrev IsQCritical {V : Type u} [Fintype V] (q : ℕ) (G : SimpleGraph V) : Prop :=\n  Lax54.GraphDefinitions.IsQCritical q G\n\n/-- The neighbors of `v` lying in a prescribed finite set. -/\ndef neighborsIn {V : Type u} [DecidableEq V] (G : SimpleGraph V)\n    [DecidableRel G.Adj] (A : Finset V) (v : V) : Finset V :=\n  A.filter fun x ↦ G.Adj v x\n\n/-- `B` is `1/E`-sparse to `A`, with the denominator cleared. -/\ndef ESparseTo {V : Type u} [DecidableEq V] (G : SimpleGraph V)\n    [DecidableRel G.Adj] (E : ℕ) (B A : Finset V) : Prop :=\n  ∀ b ∈ B, E * (neighborsIn G A b).card ≤ A.card\n\n/-- The pair `(A,B)` has edge density at most `1/E`. -/\ndef WeaklyESparse {V : Type u} [DecidableEq V] (G : SimpleGraph V)\n    [DecidableRel G.Adj] (E : ℕ) (A B : Finset V) : Prop :=\n  E * (G.interedges A B).card ≤ A.card * B.card\n\n/-- The graph induced by `A` has maximum degree at most `|A|/E`. -/\ndef ESparse {V : Type u} [DecidableEq V] (G : SimpleGraph V)\n    [DecidableRel G.Adj] (E : ℕ) (A : Finset V) : Prop :=\n  ∀ v : {x : V // x ∈ A}, E * (G.induce (A : Set V)).degree v ≤ A.card\n\n/-- One of the two complementary graphs induced by `A` is `1/E`-sparse. -/\ndef ERestricted {V : Type u} [DecidableEq V] (G : SimpleGraph V)\n    [DecidableRel G.Adj] (E : ℕ) (A : Finset V) : Prop :=\n  ESparse G E A ∨ ESparse Gᶜ E A\n\n/-- A sequence of pairwise disjoint vertex blocks. -/\nstructure Blockade {V : Type u} [DecidableEq V] (k : ℕ) where\n  block : Fin k → Finset V\n  disjoint : ∀ {i j : Fin k}, i ≠ j → Disjoint (block i) (block j)\n\n/-- Every two different blocks are complete to one another. -/\ndef Blockade.IsComplete {V : Type u} [DecidableEq V] {k : ℕ}\n    (G : SimpleGraph V) (B : Blockade (V := V) k) : Prop :=\n  ∀ {i j : Fin k}, i ≠ j →\n    ∀ x ∈ B.block i, ∀ y ∈ B.block j, G.Adj x y\n\n/-- Every two different blocks are anticomplete to one another. -/\ndef Blockade.IsAnticomplete {V : Type u} [DecidableEq V] {k : ℕ}\n    (G : SimpleGraph V) (B : Blockade (V := V) k) : Prop :=\n  ∀ {i j : Fin k}, i ≠ j →\n    ∀ x ∈ B.block i, ∀ y ∈ B.block j, ¬ G.Adj x y\n\n/-- Each pair of blocks is either complete or anticomplete. -/\ndef Blockade.IsPure {V : Type u} [DecidableEq V] {k : ℕ}\n    (G : SimpleGraph V) (B : Blockade (V := V) k) : Prop :=\n  ∀ {i j : Fin k}, i ≠ j →\n    ((∀ x ∈ B.block i, ∀ y ∈ B.block j, G.Adj x y) ∨\n     (∀ x ∈ B.block i, ∀ y ∈ B.block j, ¬ G.Adj x y))\n\n/-- A complete or anticomplete blockade. -/\ndef Blockade.IsUniform {V : Type u} [DecidableEq V] {k : ℕ}\n    (G : SimpleGraph V) (B : Blockade (V := V) k) : Prop :=\n  B.IsComplete G ∨ B.IsAnticomplete G\n\n/-- The directed vertexwise sparsity condition of the paper. -/\ndef Blockade.IsESparse {V : Type u} [DecidableEq V] {k : ℕ}\n    (G : SimpleGraph V) [DecidableRel G.Adj] (E : ℕ)\n    (B : Blockade (V := V) k) : Prop :=\n  ∀ {i j : Fin k}, i < j → ESparseTo G E (B.block j) (B.block i)\n\n/-- Each pair is complete or weakly `1/E`-sparse. -/\ndef Blockade.IsSemisparse {V : Type u} [DecidableEq V] {k : ℕ}\n    (G : SimpleGraph V) [DecidableRel G.Adj] (E : ℕ)\n    (B : Blockade (V := V) k) : Prop :=\n  ∀ {i j : Fin k}, i ≠ j →\n    ((∀ x ∈ B.block i, ∀ y ∈ B.block j, G.Adj x y) ∨\n      WeaklyESparse G E (B.block i) (B.block j))\n\n/-- All blocks have size at least `|V(G)| / loss`. -/\ndef Blockade.HasWidthLoss {V : Type u} [Fintype V] [DecidableEq V]\n    {k : ℕ} (B : Blockade (V := V) k) (loss : ℕ) : Prop :=\n  ∀ i : Fin k, Fintype.card V ≤ loss * (B.block i).card\n\n/-- Every block lies in a prescribed ambient vertex set. -/\ndef Blockade.IsInside {V : Type u} [DecidableEq V] {k : ℕ}\n    (B : Blockade (V := V) k) (S : Finset V) : Prop :=\n  ∀ i : Fin k, B.block i ⊆ S\n\n/-- A uniform blockade with polynomial width and controlled length. -/\ndef HasUniformBlockade {V : Type u} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (E a : ℕ) : Prop :=\n  ∃ (k : ℕ) (B : Blockade (V := V) k),\n    2 ≤ k ∧ k ≤ E ∧ B.IsUniform G ∧ B.HasWidthLoss (k ^ a)\n\nend Lax57.GraphDefinitions\n",
+      "statements": []
+    },
+    {
+      "id": "Lax57.HouseDichotomy",
+      "path": "concepts/Lax57/HouseDichotomy.lean",
+      "title": "Restricted set or uniform blockade in a house-free graph",
+      "type": "theorem",
+      "description": "There is an integer $a\\geq 1$ such that, for every $E\\geq 3$, every finite\nhouse-free graph $G$ has one of two outcomes. Either an induced subgraph on\n$X$ is $1/E$-restricted and $|G|\\leq E^a|X|$, or $G$ has a complete or\nanticomplete blockade of length $k$, where $2\\leq k\\leq E$, whose blocks all\nhave size at least $|G|/k^a$.\n\nThis is the denominator-cleared form of Lemma 7.3 of Nguyen, Scott, and\nSeymour. The structural argument is stated for the house, the complement of\nthe five-vertex path.",
+      "imports": [
+        "Lax57.GraphDefinitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax57.GraphDefinitions\n\n/-!\n---\ntitle: Restricted set or uniform blockade in a house-free graph\ntype: theorem\n---\nThere is an integer $a\\geq 1$ such that, for every $E\\geq 3$, every finite\nhouse-free graph $G$ has one of two outcomes. Either an induced subgraph on\n$X$ is $1/E$-restricted and $|G|\\leq E^a|X|$, or $G$ has a complete or\nanticomplete blockade of length $k$, where $2\\leq k\\leq E$, whose blocks all\nhave size at least $|G|/k^a$.\n\nThis is the denominator-cleared form of Lemma 7.3 of Nguyen, Scott, and\nSeymour. The structural argument is stated for the house, the complement of\nthe five-vertex path.\n-/\n\nnamespace Lax57.HouseDichotomy\n\nopen Lax57.GraphDefinitions\n\nuniverse u\n\n/-- The structural dichotomy for finite house-free graphs. -/\naxiom house_dichotomy :\n    ∃ a : ℕ, 1 ≤ a ∧\n      ∀ E : ℕ, 3 ≤ E →\n        ∀ {V : Type u} [Fintype V] [DecidableEq V] (G : SimpleGraph V)\n          [DecidableRel G.Adj],\n          IsHouseFree G →\n            (∃ X : Finset V,\n                Fintype.card V ≤ E ^ a * X.card ∧ ERestricted G E X) ∨\n              HasUniformBlockade G E a\n\nend Lax57.HouseDichotomy\n",
+      "statements": [
+        {
+          "id": "Lax57.HouseDichotomy.house_dichotomy",
+          "signature": "house_dichotomy : Exists fun a =>\n  And (instLENat.le 1 a)\n    (∀ (E : Nat),\n      instLENat.le 3 E →\n        ∀ {V : Type u} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V) [inst_2 : DecidableRel G.Adj],\n          Lax57.GraphDefinitions.IsHouseFree G →\n            Or\n              (Exists fun X =>\n                And (instLENat.le (Fintype.card V) (instHMul.hMul (instHPow.hPow E a) X.card))\n                  (Lax57.GraphDefinitions.ERestricted G E X))\n              (Lax57.GraphDefinitions.HasUniformBlockade G E a))",
+          "startLine": 25,
+          "endLine": 34,
+          "doc": "The structural dichotomy for finite house-free graphs."
+        }
+      ]
+    },
+    {
+      "id": "Lax57.PreparedHouseBlockade",
+      "path": "concepts/Lax57/PreparedHouseBlockade.lean",
+      "title": "Prepared sparse-or-complete house blockades",
+      "type": "theorem",
+      "description": "This is the denominator-cleared preparation carried out in Claim 7.1.1 of\nNguyen, Scott, and Seymour. Starting from the semisparse blockade of Lemma 6.2,\none samples equal-sized subblocks, removes high cross-degree vertices, and\ntakes large anticonnected components. Failure to find such a component\nalready gives the complete-blockade alternative.",
+      "imports": [
+        "Lax57.GraphDefinitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax57.GraphDefinitions\n\n/-!\n---\ntitle: Prepared sparse-or-complete house blockades\ntype: theorem\n---\nThis is the denominator-cleared preparation carried out in Claim 7.1.1 of\nNguyen, Scott, and Seymour. Starting from the semisparse blockade of Lemma 6.2,\none samples equal-sized subblocks, removes high cross-degree vertices, and\ntakes large anticonnected components. Failure to find such a component\nalready gives the complete-blockade alternative.\n-/\n\nnamespace Lax57.PreparedHouseBlockade\n\nopen Finset\nopen scoped SimpleGraph\nopen Lax57.GraphDefinitions\n\nuniverse u\n\n/-- A very long equal-width blockade whose noncomplete pairs are sparse in\nboth vertexwise directions, or the desired complete blockade already. -/\naxiom prepared_house_blockade :\n    ∃ d : ℕ, 40 ≤ d ∧\n      ∀ Q : ℕ, 8 ≤ Q →\n        ∀ {V : Type u} [Fintype V] [DecidableEq V]\n          (G : SimpleGraph V) [DecidableRel G.Adj] (S : Finset V),\n          IsHouseFree G → Q ^ (30 * d ^ 3) ≤ S.card →\n            ( (∃ C : Blockade (V := V) Q,\n                  C.IsInside S ∧ C.IsComplete G ∧\n                    ∀ i : Fin Q,\n                      S.card ≤ Q ^ (33 * d ^ 3) * (C.block i).card) ∨\n              (∃ (m : ℕ) (B : Blockade (V := V) (Q ^ (4 * d))),\n                  0 < m ∧ B.IsInside S ∧\n                    (∀ i, m ≤ (B.block i).card ∧\n                      (B.block i).card ≤ 8 * Q ^ 2 * m) ∧\n                    (∀ i, (Gᶜ.induce (B.block i : Set V)).Connected) ∧\n                    (∀ {i j}, i ≠ j →\n                      ((∀ x ∈ B.block i, ∀ y ∈ B.block j, G.Adj x y) ∨\n                        (ESparseTo G (Q ^ (4 * d)) (B.block i) (B.block j) ∧\n                         ESparseTo G (Q ^ (4 * d)) (B.block j) (B.block i)))) ∧\n                    Q * (∑ i, (B.block i).card) ≤ S.card ∧\n                    S.card ≤ Q ^ (30 * d ^ 3) * m) )\n\nend Lax57.PreparedHouseBlockade\n",
+      "statements": [
+        {
+          "id": "Lax57.PreparedHouseBlockade.prepared_house_blockade",
+          "signature": "prepared_house_blockade : Exists fun d =>\n  And (instLENat.le 40 d)\n    (∀ (Q : Nat),\n      instLENat.le 8 Q →\n        ∀ {V : Type u} [Fintype V] [inst : DecidableEq V] (G : SimpleGraph V) [inst_1 : DecidableRel G.Adj]\n          (S : Finset V),\n          Lax57.GraphDefinitions.IsHouseFree G →\n            instLENat.le (instHPow.hPow Q (instHMul.hMul 30 (instHPow.hPow d 3))) S.card →\n              Or\n                (Exists fun C =>\n                  And (C.IsInside S)\n                    (And (Lax57.GraphDefinitions.Blockade.IsComplete G C)\n                      (∀ (i : Fin Q),\n                        instLENat.le S.card\n                          (instHMul.hMul (instHPow.hPow Q (instHMul.hMul 33 (instHPow.hPow d 3))) (C.block i).card))))\n                (Exists fun m =>\n                  Exists fun B =>\n                    And (instLTNat.lt 0 m)\n                      (And (B.IsInside S)\n                        (And\n                          (∀ (i : Fin (instHPow.hPow Q (instHMul.hMul 4 d))),\n                            And (instLENat.le m (B.block i).card)\n                              (instLENat.le (B.block i).card (instHMul.hMul (instHMul.hMul 8 (instHPow.hPow Q 2)) m)))\n                          (And\n                            (∀ (i : Fin (instHPow.hPow Q (instHMul.hMul 4 d))),\n                              (SimpleGraph.induce (Finset.instSetLike.coe (B.block i))\n                                  (SimpleGraph.instCompl.compl G)).Connected)\n                            (And\n                              (∀ {i j : Fin (instHPow.hPow Q (instHMul.hMul 4 d))},\n                                Ne i j →\n                                  Or\n                                    (∀ (x : V),\n                                      SetLike.instMembership.mem (B.block i) x →\n                                        ∀ (y : V), SetLike.instMembership.mem (B.block j) y → G.Adj x y)\n                                    (And\n                                      (Lax57.GraphDefinitions.ESparseTo G (instHPow.hPow Q (instHMul.hMul 4 d))\n                                        (B.block i) (B.block j))\n                                      (Lax57.GraphDefinitions.ESparseTo G (instHPow.hPow Q (instHMul.hMul 4 d))\n                                        (B.block j) (B.block i))))\n                              (And (instLENat.le (instHMul.hMul Q (Finset.univ.sum fun i => (B.block i).card)) S.card)\n                                (instLENat.le S.card\n                                  (instHMul.hMul (instHPow.hPow Q (instHMul.hMul 30 (instHPow.hPow d 3))) m)))))))))",
+          "startLine": 23,
+          "endLine": 45,
+          "doc": "A very long equal-width blockade whose noncomplete pairs are sparse in\nboth vertexwise directions, or the desired complete blockade already."
+        }
+      ]
+    },
+    {
+      "id": "Lax57.SemisparseBlockade",
+      "path": "concepts/Lax57/SemisparseBlockade.lean",
+      "title": "Polynomial semisparse blockades for the house",
+      "type": "theorem",
+      "description": "This is the denominator-cleared form of Lemma 6.2 of Nguyen, Scott, and\nSeymour. A sufficiently large house-free graph contains $E$ disjoint\npolynomially large blocks, and every pair of blocks is either complete or\nhas edge density at most $E^{-d}$.",
+      "imports": [
+        "Lax57.GraphDefinitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax57.GraphDefinitions\n\n/-!\n---\ntitle: Polynomial semisparse blockades for the house\ntype: theorem\n---\nThis is the denominator-cleared form of Lemma 6.2 of Nguyen, Scott, and\nSeymour. A sufficiently large house-free graph contains $E$ disjoint\npolynomially large blocks, and every pair of blocks is either complete or\nhas edge density at most $E^{-d}$.\n-/\n\nnamespace Lax57.SemisparseBlockade\n\nopen Lax57.GraphDefinitions\n\nuniverse u\n\n/-- Polynomial semisparse blockades in house-free graphs. -/\naxiom semisparse_house_blockade :\n    ∃ d : ℕ, 40 ≤ d ∧\n      ∀ E : ℕ, 2 ≤ E →\n        ∀ {V : Type u} [Fintype V] [DecidableEq V]\n          (G : SimpleGraph V) [DecidableRel G.Adj],\n          IsHouseFree G → E ^ (10 * d ^ 2) ≤ Fintype.card V →\n            ∃ B : Blockade (V := V) E,\n              B.IsSemisparse G (E ^ d) ∧\n                B.HasWidthLoss (E ^ (10 * d ^ 2))\n\nend Lax57.SemisparseBlockade\n",
+      "statements": [
+        {
+          "id": "Lax57.SemisparseBlockade.semisparse_house_blockade",
+          "signature": "semisparse_house_blockade : Exists fun d =>\n  And (instLENat.le 40 d)\n    (∀ (E : Nat),\n      instLENat.le 2 E →\n        ∀ {V : Type u} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V) [inst_2 : DecidableRel G.Adj],\n          Lax57.GraphDefinitions.IsHouseFree G →\n            instLENat.le (instHPow.hPow E (instHMul.hMul 10 (instHPow.hPow d 2))) (Fintype.card V) →\n              Exists fun B =>\n                And (Lax57.GraphDefinitions.Blockade.IsSemisparse G (instHPow.hPow E d) B)\n                  (B.HasWidthLoss (instHPow.hPow E (instHMul.hMul 10 (instHPow.hPow d 2)))))",
+          "startLine": 20,
+          "endLine": 29,
+          "doc": "Polynomial semisparse blockades in house-free graphs."
+        }
+      ]
+    },
+    {
+      "id": "Lax57.SparseHouseAcceleration",
+      "path": "concepts/Lax57/SparseHouseAcceleration.lean",
+      "title": "Sparse-house acceleration",
+      "type": "theorem",
+      "description": "For some integer $d\\geq 2$, a house-free graph that is $1/R^2$-sparse on a\nset $S$, where $R\\geq 64$, either becomes $1/R^{2d}$-sparse on a subset of\nsize at least $|S|/R^{32d^3}$, or has a complete or anticomplete $R$-blockade\nwhose blocks have size at least $|S|/R^{36d^3}$. This is a reciprocal-square\nform of Lemma 7.2 of Nguyen, Scott, and Seymour.",
+      "imports": [
+        "Lax57.GraphDefinitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax57.GraphDefinitions\n\n/-!\n---\ntitle: Sparse-house acceleration\ntype: theorem\n---\nFor some integer $d\\geq 2$, a house-free graph that is $1/R^2$-sparse on a\nset $S$, where $R\\geq 64$, either becomes $1/R^{2d}$-sparse on a subset of\nsize at least $|S|/R^{32d^3}$, or has a complete or anticomplete $R$-blockade\nwhose blocks have size at least $|S|/R^{36d^3}$. This is a reciprocal-square\nform of Lemma 7.2 of Nguyen, Scott, and Seymour.\n-/\n\nnamespace Lax57.SparseHouseAcceleration\n\nopen Lax57.GraphDefinitions\n\nuniverse u\n\n/-- The sparse-house acceleration step, in reciprocal-square form. -/\naxiom sparse_house_acceleration :\n    ∃ d : ℕ, 2 ≤ d ∧\n      ∀ R : ℕ, 64 ≤ R →\n        ∀ {V : Type u} [Fintype V] [DecidableEq V]\n          (G : SimpleGraph V) [DecidableRel G.Adj] (S : Finset V),\n          IsHouseFree G → ESparse G (R ^ 2) S →\n            (∃ T : Finset V, T ⊆ S ∧\n                S.card ≤ R ^ (32 * d ^ 3) * T.card ∧\n                  ESparse G (R ^ (2 * d)) T) ∨\n              (∃ B : Blockade (V := V) R,\n                B.IsInside S ∧ B.IsUniform G ∧\n                  ∀ i : Fin R,\n                    S.card ≤ R ^ (36 * d ^ 3) * (B.block i).card)\n\nend Lax57.SparseHouseAcceleration\n",
+      "statements": [
+        {
+          "id": "Lax57.SparseHouseAcceleration.sparse_house_acceleration",
+          "signature": "sparse_house_acceleration : Exists fun d =>\n  And (instLENat.le 2 d)\n    (∀ (R : Nat),\n      instLENat.le 64 R →\n        ∀ {V : Type u} [Fintype V] [inst : DecidableEq V] (G : SimpleGraph V) [inst_1 : DecidableRel G.Adj]\n          (S : Finset V),\n          Lax57.GraphDefinitions.IsHouseFree G →\n            Lax57.GraphDefinitions.ESparse G (instHPow.hPow R 2) S →\n              Or\n                (Exists fun T =>\n                  And (Finset.instHasSubset.Subset T S)\n                    (And\n                      (instLENat.le S.card\n                        (instHMul.hMul (instHPow.hPow R (instHMul.hMul 32 (instHPow.hPow d 3))) T.card))\n                      (Lax57.GraphDefinitions.ESparse G (instHPow.hPow R (instHMul.hMul 2 d)) T)))\n                (Exists fun B =>\n                  And (B.IsInside S)\n                    (And (Lax57.GraphDefinitions.Blockade.IsUniform G B)\n                      (∀ (i : Fin R),\n                        instLENat.le S.card\n                          (instHMul.hMul (instHPow.hPow R (instHMul.hMul 36 (instHPow.hPow d 3))) (B.block i).card)))))",
+          "startLine": 21,
+          "endLine": 34,
+          "doc": "The sparse-house acceleration step, in reciprocal-square form."
+        }
+      ]
+    },
+    {
+      "id": "Lax57.SparseHouseTools",
+      "path": "concepts/Lax57/SparseHouseTools.lean",
+      "title": "Anticomplete pairs in sparse $P_5$-free graphs",
+      "type": "theorem",
+      "description": "A $1/32$-sparse $P_5$-free graph on a set $S$ of at least two vertices\nhas two anticomplete sets, each of size at least $|S|/32$. This is Lemma 4.4\nof Nguyen, Scott, and Seymour.",
+      "imports": [
+        "Lax57.GraphDefinitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax57.GraphDefinitions\n\n/-!\n---\ntitle: Anticomplete pairs in sparse $P_5$-free graphs\ntype: theorem\n---\nA $1/32$-sparse $P_5$-free graph on a set $S$ of at least two vertices\nhas two anticomplete sets, each of size at least $|S|/32$. This is Lemma 4.4\nof Nguyen, Scott, and Seymour.\n-/\n\nnamespace Lax57.SparseHouseTools\n\nopen Lax57.GraphDefinitions\n\nuniverse u\n\n/-- The linear anticomplete-pair lemma for sparse `P5`-free graphs. -/\naxiom sparse_P5_anticomplete_pair :\n    ∀ {V : Type u} [Fintype V] [DecidableEq V]\n      (G : SimpleGraph V) [DecidableRel G.Adj] (S : Finset V),\n      IsP5Free G → 2 ≤ S.card → ESparse G 32 S →\n        ∃ B : Blockade (V := V) 2,\n          B.IsInside S ∧ B.IsAnticomplete G ∧\n            ∀ i : Fin 2, S.card ≤ 32 * (B.block i).card\n\nend Lax57.SparseHouseTools\n",
+      "statements": [
+        {
+          "id": "Lax57.SparseHouseTools.sparse_P5_anticomplete_pair",
+          "signature": "sparse_P5_anticomplete_pair : ∀ {V : Type u} [Fintype V] [inst : DecidableEq V] (G : SimpleGraph V) [inst_1 : DecidableRel G.Adj] (S : Finset V),\n  Lax57.GraphDefinitions.IsP5Free G →\n    instLENat.le 2 S.card →\n      Lax57.GraphDefinitions.ESparse G 32 S →\n        Exists fun B =>\n          And (B.IsInside S)\n            (And (Lax57.GraphDefinitions.Blockade.IsAnticomplete G B)\n              (∀ (i : Fin 2), instLENat.le S.card (instHMul.hMul 32 (B.block i).card)))",
+          "startLine": 19,
+          "endLine": 26,
+          "doc": "The linear anticomplete-pair lemma for sparse `P5`-free graphs."
+        }
+      ]
+    },
+    {
+      "id": "Lax57.SparseHouseTrichotomy",
+      "path": "concepts/Lax57/SparseHouseTrichotomy.lean",
+      "title": "The sparse-house trichotomy",
+      "type": "theorem",
+      "description": "This is a denominator-cleared form of Lemma 7.1 of Nguyen, Scott, and\nSeymour. At scale $Q$, a sparse house-free graph either becomes polynomially\nsparser on a polynomial fraction of its vertices, contains a long complete\nblockade, or admits an anticomplete peel. In the last alternative, the set\n$Y$ omits at most a $3/Q$ fraction of the current vertex set.",
+      "imports": [
+        "Lax57.GraphDefinitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax57.GraphDefinitions\n\n/-!\n---\ntitle: The sparse-house trichotomy\ntype: theorem\n---\nThis is a denominator-cleared form of Lemma 7.1 of Nguyen, Scott, and\nSeymour. At scale $Q$, a sparse house-free graph either becomes polynomially\nsparser on a polynomial fraction of its vertices, contains a long complete\nblockade, or admits an anticomplete peel. In the last alternative, the set\n$Y$ omits at most a $3/Q$ fraction of the current vertex set.\n-/\n\nnamespace Lax57.SparseHouseTrichotomy\n\nopen Lax57.GraphDefinitions\n\nuniverse u\n\n/-- Sparse refinement, a complete blockade, or an anticomplete peel. -/\naxiom sparse_house_trichotomy :\n    ∃ d : ℕ, 40 ≤ d ∧\n      ∀ Q : ℕ, 8 ≤ Q →\n        ∀ {V : Type u} [Fintype V] [DecidableEq V]\n          (G : SimpleGraph V) [DecidableRel G.Adj] (S : Finset V),\n          IsHouseFree G → ESparse G Q S →\n            ( (∃ T : Finset V, T ⊆ S ∧\n                  S.card ≤ Q ^ (30 * d ^ 3) * T.card ∧\n                    ESparse G (Q ^ (2 * d)) T) ∨\n              (∃ B : Blockade (V := V) Q,\n                  B.IsInside S ∧ B.IsComplete G ∧\n                    ∀ i : Fin Q,\n                      S.card ≤ Q ^ (33 * d ^ 3) * (B.block i).card) ∨\n              (∃ X Y : Finset V,\n                  X ⊆ S ∧ Y ⊆ S ∧ Disjoint X Y ∧\n                    (∀ x ∈ X, ∀ y ∈ Y, ¬ G.Adj x y) ∧\n                    S.card ≤ Q ^ (33 * d ^ 3) * X.card ∧\n                    Q * (S.card - Y.card) ≤ 3 * S.card) )\n\nend Lax57.SparseHouseTrichotomy\n",
+      "statements": [
+        {
+          "id": "Lax57.SparseHouseTrichotomy.sparse_house_trichotomy",
+          "signature": "sparse_house_trichotomy : Exists fun d =>\n  And (instLENat.le 40 d)\n    (∀ (Q : Nat),\n      instLENat.le 8 Q →\n        ∀ {V : Type u} [Fintype V] [inst : DecidableEq V] (G : SimpleGraph V) [inst_1 : DecidableRel G.Adj]\n          (S : Finset V),\n          Lax57.GraphDefinitions.IsHouseFree G →\n            Lax57.GraphDefinitions.ESparse G Q S →\n              Or\n                (Exists fun T =>\n                  And (Finset.instHasSubset.Subset T S)\n                    (And\n                      (instLENat.le S.card\n                        (instHMul.hMul (instHPow.hPow Q (instHMul.hMul 30 (instHPow.hPow d 3))) T.card))\n                      (Lax57.GraphDefinitions.ESparse G (instHPow.hPow Q (instHMul.hMul 2 d)) T)))\n                (Or\n                  (Exists fun B =>\n                    And (B.IsInside S)\n                      (And (Lax57.GraphDefinitions.Blockade.IsComplete G B)\n                        (∀ (i : Fin Q),\n                          instLENat.le S.card\n                            (instHMul.hMul (instHPow.hPow Q (instHMul.hMul 33 (instHPow.hPow d 3))) (B.block i).card))))\n                  (Exists fun X =>\n                    Exists fun Y =>\n                      And (Finset.instHasSubset.Subset X S)\n                        (And (Finset.instHasSubset.Subset Y S)\n                          (And (Disjoint X Y)\n                            (And\n                              (∀ (x : V),\n                                SetLike.instMembership.mem X x →\n                                  ∀ (y : V), SetLike.instMembership.mem Y y → Not (G.Adj x y))\n                              (And\n                                (instLENat.le S.card\n                                  (instHMul.hMul (instHPow.hPow Q (instHMul.hMul 33 (instHPow.hPow d 3))) X.card))\n                                (instLENat.le (instHMul.hMul Q (instHSub.hSub S.card Y.card))\n                                  (instHMul.hMul 3 S.card)))))))))",
+          "startLine": 21,
+          "endLine": 39,
+          "doc": "Sparse refinement, a complete blockade, or an anticomplete peel."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax57Proofs.anticomponent_or_complete_blockade",
+      "path": "proofs/Lax57Proofs/AnticomponentBlockade.lean",
+      "conclusion": "Lax57.AnticomponentBlockade.anticomponent_or_complete_blockade",
+      "assumptions": [],
+      "description": "Consider the connected components of the complement induced on $T$. A\ncomponent of size at least $|T|/Q^2$ gives the first outcome. Otherwise,\ngreedily group whole components into $Q$ disjoint families, each of size at\nleast $|T|/(4Q^3)$. Distinct families are anticomplete in the complement and\ntherefore complete in $G$."
+    },
+    {
+      "id": "Lax57Proofs.erdos_hajnal_P5",
+      "path": "proofs/Lax57Proofs/Endgame.lean",
+      "conclusion": "Lax57.ErdosHajnalP5.erdos_hajnal_P5",
+      "assumptions": [
+        "Lax54.AveragingLemma.sparse_graph_thinning",
+        "Lax54.BipartiteCombLemma.bipartite_comb_lemma",
+        "Lax54.MaximumDegreeReduction.maximum_degree_reduction",
+        "Lax54.RodlTheorem.rodl_theorem"
+      ],
+      "description": "Apply the structural dichotomy to the complement of a $P_5$-free graph.\nStrong induction reduces the proof to a critical graph. A large restricted\nset and a uniform blockade each contradict criticality, the latter by\nsumming the blockwise values of $\\kappa$. Finally,\n$\\kappa(G)\\leq \\max\\{\\alpha(G),\\omega(G)\\}^2$ gives the stated\nErdős–Hajnal bound.",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "The structural input is Lemma 7.3 of Nguyen, Scott, and Seymour. The\ncritical-graph argument is an integral reformulation specific to this\nformalization."
+        }
+      ]
+    },
+    {
+      "id": "Lax57Proofs.house_dichotomy",
+      "path": "proofs/Lax57Proofs/HouseDichotomy.lean",
+      "conclusion": "Lax57.HouseDichotomy.house_dichotomy",
+      "assumptions": [
+        "Lax54.AveragingLemma.sparse_graph_thinning",
+        "Lax54.BipartiteCombLemma.bipartite_comb_lemma",
+        "Lax54.MaximumDegreeReduction.maximum_degree_reduction",
+        "Lax54.RodlTheorem.rodl_theorem"
+      ],
+      "description": "Rödl's maximum-degree reduction gives a linearly large induced set on which\none of the two complementary graphs is $1/64^2$-sparse. In the direct\norientation, iterate the sparse-house acceleration lemma until the requested\nparameter is reached. In the complementary orientation, the graph is\n$P_5$-free, so the sparse anticomplete-pair lemma gives a complete two-block\nblockade in the original graph. A single exponent absorbs the fixed and\npolynomial losses.",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "This packages the iteration in the proof of Lemma 7.3 of\nNguyen, Scott, and Seymour, using their Lemmas 4.4 and 7.2 and the\nmaximum-degree form of Rödl's theorem already formalized in Lax 54."
+        }
+      ]
+    },
+    {
+      "id": "Lax57Proofs.prepared_house_blockade",
+      "path": "proofs/Lax57Proofs/PreparedHouseBlockade.lean",
+      "conclusion": "Lax57.PreparedHouseBlockade.prepared_house_blockade",
+      "assumptions": [
+        "Lax54.AveragingLemma.sparse_graph_thinning",
+        "Lax54.BipartiteCombLemma.bipartite_comb_lemma",
+        "Lax54.RodlTheorem.rodl_theorem"
+      ],
+      "description": "Apply the semisparse-blockade theorem at scale $L=Q^{4d}$ and sample each\nblock to a common size. Simultaneous cleaning retains at least half of every\nsample and makes each noncomplete pair sparse in both directions. In each\ncleaned block, either the complement has a large connected component, or its\ncomponents yield the required complete $Q$-blockade. Choosing a large\ncomponent in every block preserves the relations between blocks.",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "Claim 7.1.1 of Nguyen, Scott, and Seymour, with reciprocal parameters and\nrounding expressed over the natural numbers."
+        }
+      ]
+    },
+    {
+      "id": "Lax57Proofs.semisparse_blockade_thinning",
+      "path": "proofs/Lax57Proofs/BlockadeThinning.lean",
+      "conclusion": "Lax57.BlockadeThinning.semisparse_blockade_thinning",
+      "assumptions": [],
+      "description": "Select $t$ vertices from each block in index order. Integer Markov bounds\ncontrol all pairs involving earlier samples and later blocks. Delete from\neach sample the vertices whose degree to another sample exceeds $t/(2E)$.\nThe hypothesis $P\\geq 128k^3E$ ensures that at least half of every sample\nremains, and the surviving noncomplete pairs are $1/E$-sparse in both\ndirections."
+    },
+    {
+      "id": "Lax57Proofs.semisparse_house_blockade",
+      "path": "proofs/Lax57Proofs/SemisparseBlockade.lean",
+      "conclusion": "Lax57.SemisparseBlockade.semisparse_house_blockade",
+      "assumptions": [
+        "Lax54.AveragingLemma.sparse_graph_thinning",
+        "Lax54.BipartiteCombLemma.bipartite_comb_lemma",
+        "Lax54.RodlTheorem.rodl_theorem"
+      ],
+      "description": "Start with the one-block layout and choose a maximal layout with fewer than\n$E$ blocks. Its conserved weight identifies a block containing a polynomial\nfraction of the graph. The local blockade theorem either gives at least $E$\nblocks at once or refines the layout to a larger one, which must cross the\n$E$-block threshold. The bound on exceptional ordered edges then gives the\nrequired semisparsity."
+    },
+    {
+      "id": "Lax57Proofs.sparse_house_acceleration",
+      "path": "proofs/Lax57Proofs/SparseHouseAcceleration.lean",
+      "conclusion": "Lax57.SparseHouseAcceleration.sparse_house_acceleration",
+      "assumptions": [
+        "Lax54.AveragingLemma.sparse_graph_thinning",
+        "Lax54.BipartiteCombLemma.bipartite_comb_lemma",
+        "Lax54.RodlTheorem.rodl_theorem"
+      ],
+      "description": "Apply the sparse-house trichotomy at $Q=R^2/2$. Its sparse and complete\noutcomes give the required alternatives after rescaling. In the peel\noutcome, repeatedly remove the anticomplete piece. Each removal loses at\nmost a $3/Q$ fraction of the current set, so after $R$ steps at least half\nof the original set remains. The removed pieces form the required\nanticomplete $R$-blockade.",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "This is the maximal-peeling proof of Lemma 7.2 of\nNguyen, Scott, and Seymour, stated with square reciprocal parameters and\ncleared denominators."
+        }
+      ]
+    },
+    {
+      "id": "Lax57Proofs.sparse_house_trichotomy",
+      "path": "proofs/Lax57Proofs/SparseHouseTrichotomy.lean",
+      "conclusion": "Lax57.SparseHouseTrichotomy.sparse_house_trichotomy",
+      "assumptions": [
+        "Lax54.AveragingLemma.sparse_graph_thinning",
+        "Lax54.BipartiteCombLemma.bipartite_comb_lemma",
+        "Lax54.RodlTheorem.rodl_theorem"
+      ],
+      "description": "Use the prepared blockade from Claim 7.1.1. A vertex mixed on at least a\n$1/Q$ fraction of the blocks cannot meet a complete pair among them, because\nanticonnectivity would supply four vertices that, together with it, induce a\nhouse. Their union gives the sparser outcome. Otherwise, double-counting\nmixed incidences finds a block with few mixed outside vertices. The original\nsparsity bound and the size of the prepared blockade leave a large set\nanticomplete to that block, giving the peel outcome.",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "Lemma 7.1 of Nguyen, Scott, and Seymour, including the house construction\nshown in their Figure 2."
+        }
+      ]
+    },
+    {
+      "id": "Lax57Proofs.sparse_P5_anticomplete_pair",
+      "path": "proofs/Lax57Proofs/SparseP5Pair.lean",
+      "conclusion": "Lax57.SparseHouseTools.sparse_P5_anticomplete_pair",
+      "assumptions": [],
+      "description": "Repeatedly choose a large connected component, producing nested connected\nsets. Sparsity keeps the successive neighborhoods small. If no large\nanticomplete pair exists, two applications of connectivity across a cut\nproduce five vertices that induce $P_5$.",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "Lemma 4.4 of Nguyen, Scott, and Seymour, with cleared denominators."
+        }
+      ]
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "619f0e305679898d1248f01778ff4c2ed3934ce276fd880c700ac5781afb705a",
+    "sourceCommit": "f12b2cace8869559e56c052b5be00f7642b29971",
+    "leanToolchain": "leanprover/lean4:v4.30.0",
+    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "files": [
+      {
+        "path": "concepts/ir/Lax57/AnticomponentBlockade.c",
+        "bytes": 1338,
+        "sha256": "7f27492c7d2b20357a03ad15a7a9110da035d92a89fd254fcb0d6a0e1b3a0ac8"
+      },
+      {
+        "path": "concepts/ir/Lax57/AnticomponentBlockade.c.hash",
+        "bytes": 16,
+        "sha256": "f0cc4fcc150b7b59e52696b02d7436a7c26af63b2e4df433eee46b927f763b08"
+      },
+      {
+        "path": "concepts/ir/Lax57/BlockadeThinning.c",
+        "bytes": 1328,
+        "sha256": "6b4470b671b348298c3b75501bc35f5fa3d38abf2ea3437d3e7df9e016a6f080"
+      },
+      {
+        "path": "concepts/ir/Lax57/BlockadeThinning.c.hash",
+        "bytes": 16,
+        "sha256": "6f993f094a7c25ec07582656d99cbc7d463982ae69d3c3f7a1abe89373e96c2c"
+      },
+      {
+        "path": "concepts/ir/Lax57/ErdosHajnalP5.c",
+        "bytes": 1322,
+        "sha256": "ed61d8c6e48a1bb3e32dd06d1d611d0448a39918df020d9c326d66976a11961e"
+      },
+      {
+        "path": "concepts/ir/Lax57/ErdosHajnalP5.c.hash",
+        "bytes": 16,
+        "sha256": "ebb3fda36220edf201906f3cc2856d22e16bfd6dac326332a2cdc837934a5887"
+      },
+      {
+        "path": "concepts/ir/Lax57/GraphDefinitions.c",
+        "bytes": 4234,
+        "sha256": "49e47c4ea2dc033ab82fe831f65782d44a8dce27172df118772be8ad821ba00e"
+      },
+      {
+        "path": "concepts/ir/Lax57/GraphDefinitions.c.hash",
+        "bytes": 16,
+        "sha256": "94001f129cd1cd77adc0e80a5517d007c780c4f2e22915be4c293ef5908a6694"
+      },
+      {
+        "path": "concepts/ir/Lax57/HouseDichotomy.c",
+        "bytes": 1324,
+        "sha256": "645cc708d4c602eec199c991eb9ac64814115ebfe713d54b1e621d6463621ac9"
+      },
+      {
+        "path": "concepts/ir/Lax57/HouseDichotomy.c.hash",
+        "bytes": 16,
+        "sha256": "bd17a889914775136d2054018455af5c280b4d9c60f77a29772f050666a01ecd"
+      },
+      {
+        "path": "concepts/ir/Lax57/PreparedHouseBlockade.c",
+        "bytes": 1338,
+        "sha256": "60d7c8ac9faba49f9d01d7484b5a83eba5f5f938fcd34a25989b4db1bcb9cdc8"
+      },
+      {
+        "path": "concepts/ir/Lax57/PreparedHouseBlockade.c.hash",
+        "bytes": 16,
+        "sha256": "775fb26b2273e6d314cd6bb9f5ebde7a42611d45e87375c0702a77638bcdec83"
+      },
+      {
+        "path": "concepts/ir/Lax57/SemisparseBlockade.c",
+        "bytes": 1332,
+        "sha256": "cab97eb06bc5476eccd6610e14bca1a1c4063fb81de6550ceacb7203eb441acf"
+      },
+      {
+        "path": "concepts/ir/Lax57/SemisparseBlockade.c.hash",
+        "bytes": 16,
+        "sha256": "23817e3facf79aadb7b89b3024e6b8e06d67f9207576b6adff6b867dd88b35bc"
+      },
+      {
+        "path": "concepts/ir/Lax57/SparseHouseAcceleration.c",
+        "bytes": 1342,
+        "sha256": "ef20b486091dbecf17b7f33dc5f2f09c863cc117b5c909178968ff96003b5e17"
+      },
+      {
+        "path": "concepts/ir/Lax57/SparseHouseAcceleration.c.hash",
+        "bytes": 16,
+        "sha256": "653df897fc08f562898144c8bd80518ce82c0776c653ecaf6519cb2afb7e25ee"
+      },
+      {
+        "path": "concepts/ir/Lax57/SparseHouseTools.c",
+        "bytes": 1328,
+        "sha256": "5bbb3e82e68ab137f53c832a3acb6d31b4e1bbe15fb8f67779e0c5e3ef2f62ab"
+      },
+      {
+        "path": "concepts/ir/Lax57/SparseHouseTools.c.hash",
+        "bytes": 16,
+        "sha256": "9bac755a88378663e3ccc964ccfd74a1a2f069779cd96e2c4cb0b84138d34b86"
+      },
+      {
+        "path": "concepts/ir/Lax57/SparseHouseTrichotomy.c",
+        "bytes": 1338,
+        "sha256": "6d5bba3b210eeee7935beb7f799bc6a3482e358a42d61951f2853ad16d1b5976"
+      },
+      {
+        "path": "concepts/ir/Lax57/SparseHouseTrichotomy.c.hash",
+        "bytes": 16,
+        "sha256": "9cfdc5a784de28defafae7a3ada0bdd391ad363c9de05710285c751cdaa6f508"
+      },
+      {
+        "path": "concepts/ir/Lax57.c",
+        "bytes": 3412,
+        "sha256": "ab1377ffac7c062771ee0eab78f3f19e46fb1cdd8cbaf00ca07927b6f6679cd8"
+      },
+      {
+        "path": "concepts/ir/Lax57.c.hash",
+        "bytes": 16,
+        "sha256": "b2c99ac1f77f522aa77f652af0cd901880648a21fb3843ca8787d4ea7eb519d8"
+      },
+      {
+        "path": "concepts/lib/Lax57/AnticomponentBlockade.ilean",
+        "bytes": 3750,
+        "sha256": "239c725078032abac911521f56613e7af7a70292e78490b92b2ba919ee597339"
+      },
+      {
+        "path": "concepts/lib/Lax57/AnticomponentBlockade.ilean.hash",
+        "bytes": 16,
+        "sha256": "52704217415ddc2d9c7658106dfc837540cd0b0f8f9785dc542a337105dd9a75"
+      },
+      {
+        "path": "concepts/lib/Lax57/AnticomponentBlockade.olean",
+        "bytes": 15848,
+        "sha256": "4a35cca1debd4182f68b2b60ba1c6d47598eeb25109b3b200a514ce79464a46e"
+      },
+      {
+        "path": "concepts/lib/Lax57/AnticomponentBlockade.olean.hash",
+        "bytes": 16,
+        "sha256": "249bea11f18daabc7c26a250df7ac801b3d9b107900cdd1f665fea3723dcb61c"
+      },
+      {
+        "path": "concepts/lib/Lax57/AnticomponentBlockade.trace",
+        "bytes": 2253,
+        "sha256": "5d371fe094b60a36d80ff61aabfb0e3876418c7d1252fe9412665e96440ea83a"
+      },
+      {
+        "path": "concepts/lib/Lax57/BlockadeThinning.ilean",
+        "bytes": 3362,
+        "sha256": "b3ceb6500ce77bdbeed723855747ac827b5b3112366a9a8065f764f693efff2e"
+      },
+      {
+        "path": "concepts/lib/Lax57/BlockadeThinning.ilean.hash",
+        "bytes": 16,
+        "sha256": "e9c98942ecdf61d71d87664edbfbb4644d1fbb7ba81e4c5a739df386485ab69f"
+      },
+      {
+        "path": "concepts/lib/Lax57/BlockadeThinning.olean",
+        "bytes": 18280,
+        "sha256": "4da4abcb53b60edcc284cde0b03bfc92fdc20c227af4a2ec85ccb04427283958"
+      },
+      {
+        "path": "concepts/lib/Lax57/BlockadeThinning.olean.hash",
+        "bytes": 16,
+        "sha256": "c223dd775ee9dbdb8aaf33f72c1edce5d892bcc6f48e7ad5e076cf7f5d2610ec"
+      },
+      {
+        "path": "concepts/lib/Lax57/BlockadeThinning.trace",
+        "bytes": 2213,
+        "sha256": "094edfe92678d04ae3f54bfa567db00f63414eaf599031af4e54c4884942986b"
+      },
+      {
+        "path": "concepts/lib/Lax57/ErdosHajnalP5.ilean",
+        "bytes": 1310,
+        "sha256": "b8a3ee57b93ba0a8fdd5fddfcb47a28952108b2dc206e7262019b98cbfb165e2"
+      },
+      {
+        "path": "concepts/lib/Lax57/ErdosHajnalP5.ilean.hash",
+        "bytes": 16,
+        "sha256": "1bb92e6520c1e0c044e210e91dcfdb173efd820e0f97b4099b4e52d1445ca45a"
+      },
+      {
+        "path": "concepts/lib/Lax57/ErdosHajnalP5.olean",
+        "bytes": 9840,
+        "sha256": "116269f2285de6338b9df00e47d2ce4b17dce1e73ca4194a5d781c14c9cce9c4"
+      },
+      {
+        "path": "concepts/lib/Lax57/ErdosHajnalP5.olean.hash",
+        "bytes": 16,
+        "sha256": "c994a055c7a265c0dd9f447e7c4a00d36a35204175c187aab8889a4218834333"
+      },
+      {
+        "path": "concepts/lib/Lax57/ErdosHajnalP5.trace",
+        "bytes": 2189,
+        "sha256": "c330d8327944670847b20d75bdac6a88e902a20dd03595dba546b4bc254ef045"
+      },
+      {
+        "path": "concepts/lib/Lax57/GraphDefinitions.ilean",
+        "bytes": 15355,
+        "sha256": "0e7afd67ef41747acf7dd60a25a2b4ef1c136760550fc5a710f8a52071fa9356"
+      },
+      {
+        "path": "concepts/lib/Lax57/GraphDefinitions.ilean.hash",
+        "bytes": 16,
+        "sha256": "1dad626ebfabfc6ea3e8546f25be7be3cedfce370369846b93b649c5dae181c4"
+      },
+      {
+        "path": "concepts/lib/Lax57/GraphDefinitions.olean",
+        "bytes": 108280,
+        "sha256": "ca8152735d6696ff913476b6a79612c3ecbf63a811b9018095edd58e1e456951"
+      },
+      {
+        "path": "concepts/lib/Lax57/GraphDefinitions.olean.hash",
+        "bytes": 16,
+        "sha256": "00e262b1844c31e92ba4a174dec3a0272a517f25a5bf3b06ea44bc8580c270f0"
+      },
+      {
+        "path": "concepts/lib/Lax57/GraphDefinitions.trace",
+        "bytes": 2629,
+        "sha256": "624e66f9516a7cb0bdd2041ab5d2b54a5ffc507724b2c44bff9c5a86340ff0f6"
+      },
+      {
+        "path": "concepts/lib/Lax57/HouseDichotomy.ilean",
+        "bytes": 2309,
+        "sha256": "6f347e5e82e7a115080a3986a89a46ac8dcfc8935f2cf1e04605d33e1bcdcba7"
+      },
+      {
+        "path": "concepts/lib/Lax57/HouseDichotomy.ilean.hash",
+        "bytes": 16,
+        "sha256": "6971578b7c6b9efb40b5022ee177b0b6e0db8af0d64167c30f568d32783be381"
+      },
+      {
+        "path": "concepts/lib/Lax57/HouseDichotomy.olean",
+        "bytes": 12712,
+        "sha256": "2d2c5a74d6c05b25039a75a466ce99cf223d252aeb79ef4fa29e89075f314132"
+      },
+      {
+        "path": "concepts/lib/Lax57/HouseDichotomy.olean.hash",
+        "bytes": 16,
+        "sha256": "34b9daf6ca1c8b0a159c668c814be084e347c5cabef154c3b71feb404621e2de"
+      },
+      {
+        "path": "concepts/lib/Lax57/HouseDichotomy.trace",
+        "bytes": 2197,
+        "sha256": "6adc6a697951c33a5c32739f0bb8be54ad43fc760c16ff19102cf8e51693e50a"
+      },
+      {
+        "path": "concepts/lib/Lax57/PreparedHouseBlockade.ilean",
+        "bytes": 5165,
+        "sha256": "53cf20d980277654ace18e536c2a7436fc5f4bc30fcdda2687a93c5653bf2151"
+      },
+      {
+        "path": "concepts/lib/Lax57/PreparedHouseBlockade.ilean.hash",
+        "bytes": 16,
+        "sha256": "b56239d12e3872831b0aeb4c9138d9ad27505f919829c0a42115c6413b3a2f1a"
+      },
+      {
+        "path": "concepts/lib/Lax57/PreparedHouseBlockade.olean",
+        "bytes": 24208,
+        "sha256": "ef2927fee130f15795d716faa84c8eb871c58b4e68f2386a386f21792a919266"
+      },
+      {
+        "path": "concepts/lib/Lax57/PreparedHouseBlockade.olean.hash",
+        "bytes": 16,
+        "sha256": "a8f7041b88a6c82da128e6d1946aae307ab936e234c835258118125ae91a7cc9"
+      },
+      {
+        "path": "concepts/lib/Lax57/PreparedHouseBlockade.trace",
+        "bytes": 2253,
+        "sha256": "ce370754c7b69cddf47458a0af5c11f758337e6cb86aa6b5d2545d62373adcfc"
+      },
+      {
+        "path": "concepts/lib/Lax57/SemisparseBlockade.ilean",
+        "bytes": 2410,
+        "sha256": "39522bb0cd841af3c2f7804533694dd31869e797ae9402ccc8e9eedf5815258a"
+      },
+      {
+        "path": "concepts/lib/Lax57/SemisparseBlockade.ilean.hash",
+        "bytes": 16,
+        "sha256": "f1f66032aeed0f101424e2cce8374349736f1c361a4b6db87b0c02c0c74daf44"
+      },
+      {
+        "path": "concepts/lib/Lax57/SemisparseBlockade.olean",
+        "bytes": 12816,
+        "sha256": "22f356c11d9ee15b87c3d5ad523ab7c7bb1f08b969b7e655e504cb09ebcdab74"
+      },
+      {
+        "path": "concepts/lib/Lax57/SemisparseBlockade.olean.hash",
+        "bytes": 16,
+        "sha256": "cce30ac9ecc0d52d33f21d328f3618221440264015de3e4386338563bb0652de"
+      },
+      {
+        "path": "concepts/lib/Lax57/SemisparseBlockade.trace",
+        "bytes": 2229,
+        "sha256": "f47e34f029272681fb91085004dac1d0f0e76e03d96dd3e8f09a5b3689aeb0c0"
+      },
+      {
+        "path": "concepts/lib/Lax57/SparseHouseAcceleration.ilean",
+        "bytes": 3550,
+        "sha256": "5bf6d039caea4b9b9ffd7c4720e80e272afecff3eb20c43a99da6c0573c604dd"
+      },
+      {
+        "path": "concepts/lib/Lax57/SparseHouseAcceleration.ilean.hash",
+        "bytes": 16,
+        "sha256": "4158eae9f680059629bfa3ba4f37d5c604030756689241fa6a363286221a2c4d"
+      },
+      {
+        "path": "concepts/lib/Lax57/SparseHouseAcceleration.olean",
+        "bytes": 16008,
+        "sha256": "36a0b98a80efe851e5de1c7f0db2b0c7a9d1966212ff5530e6d03a64b1bb03bf"
+      },
+      {
+        "path": "concepts/lib/Lax57/SparseHouseAcceleration.olean.hash",
+        "bytes": 16,
+        "sha256": "0df680271e4cc519881694b73e97279a12fa7d00412a8778bcebd2e35864732f"
+      },
+      {
+        "path": "concepts/lib/Lax57/SparseHouseAcceleration.trace",
+        "bytes": 2269,
+        "sha256": "c58f1ebf97ca4c201bcdecc1083762159efe4cc9bbaae807d9e3a8f2b5ba6024"
+      },
+      {
+        "path": "concepts/lib/Lax57/SparseHouseTools.ilean",
+        "bytes": 3002,
+        "sha256": "932484bb3552c62a52b58eda63e5fa6bf67969ac5c69e111bc7703fb775ff6e7"
+      },
+      {
+        "path": "concepts/lib/Lax57/SparseHouseTools.ilean.hash",
+        "bytes": 16,
+        "sha256": "156fe498ca567c4cf3842fbf42c963ff1d7d9d7114bf0d839bee93538b147d52"
+      },
+      {
+        "path": "concepts/lib/Lax57/SparseHouseTools.olean",
+        "bytes": 11824,
+        "sha256": "11adad3106b6a7687dea0d36fd54550f6b5a3a14c28535fa17f46f85e52fdb1d"
+      },
+      {
+        "path": "concepts/lib/Lax57/SparseHouseTools.olean.hash",
+        "bytes": 16,
+        "sha256": "12515d7dd5eae3e02da4dbeaf0b9fe2d1be54218b748409e0be8a38eee3b3721"
+      },
+      {
+        "path": "concepts/lib/Lax57/SparseHouseTools.trace",
+        "bytes": 2213,
+        "sha256": "08db7c6547419d30f08ce5952bec41aa691dac65f79b6750e42049e67ef731a8"
+      },
+      {
+        "path": "concepts/lib/Lax57/SparseHouseTrichotomy.ilean",
+        "bytes": 4090,
+        "sha256": "a73c33a054def1ad26cba0b78762757e896398e18884a3fa3534ffed2ab1fe4e"
+      },
+      {
+        "path": "concepts/lib/Lax57/SparseHouseTrichotomy.ilean.hash",
+        "bytes": 16,
+        "sha256": "9d91b7732be0dba2468d9f169a97325e285e9badf391892b46d6e712ec96abd1"
+      },
+      {
+        "path": "concepts/lib/Lax57/SparseHouseTrichotomy.olean",
+        "bytes": 20488,
+        "sha256": "2fb499ee96d7aa48d8043cb8713c98cd8a75c0072ce48d39e103bf5d803aeadc"
+      },
+      {
+        "path": "concepts/lib/Lax57/SparseHouseTrichotomy.olean.hash",
+        "bytes": 16,
+        "sha256": "83b10f6027da22c8a3cdb2761bf6b64860e6b215196a431f10cea139c4a6fc66"
+      },
+      {
+        "path": "concepts/lib/Lax57/SparseHouseTrichotomy.trace",
+        "bytes": 2253,
+        "sha256": "c2676530ac3dbc76850ee02cf9c4e4ac428beeaa56d0099a246ca38a3284fcfd"
+      },
+      {
+        "path": "concepts/lib/Lax57.ilean",
+        "bytes": 544,
+        "sha256": "e25dbcfd81c706fd770bae55f6592d0e391fb0c2791cc9a5e6a2dd57889cb1fd"
+      },
+      {
+        "path": "concepts/lib/Lax57.ilean.hash",
+        "bytes": 16,
+        "sha256": "80757c9bd6cfbdbf76c8d146ecdf5434549cb9e1fdd2226bdeae9e10958f52b7"
+      },
+      {
+        "path": "concepts/lib/Lax57.olean",
+        "bytes": 2408,
+        "sha256": "8ef8be850a876f437c6b124d77777098a6d7704e78caedf541f4f635b32187b2"
+      },
+      {
+        "path": "concepts/lib/Lax57.olean.hash",
+        "bytes": 16,
+        "sha256": "169b473421156dd29d2beea8fb0e25fac00657d35213cf340dcdd3ef9a4f5629"
+      },
+      {
+        "path": "concepts/lib/Lax57.trace",
+        "bytes": 3573,
+        "sha256": "8b78283b193624a5a4e98d8e840a69fe4f394747eba135eae31b1b64df4c2210"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3366,
+        "sha256": "db7b47f1346efdf822d07d0e07e045d26a2433f9d85ad629b925d2b86c740552"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 387,
+        "sha256": "8535c180104b4721bf8ebfc173cc3e78c9df586f799bc96aa0d789cdaec1db01"
+      },
+      {
+        "path": "concepts/package/Lax57/AnticomponentBlockade.lean",
+        "bytes": 1028,
+        "sha256": "c981f3918d00b69842df725400d577e4c491019610f26110781f59043db9339d"
+      },
+      {
+        "path": "concepts/package/Lax57/BlockadeThinning.lean",
+        "bytes": 1310,
+        "sha256": "3ff420ae31f4778d1480300e0b5dc0086f9f2ffe345b2fcc296f1a2bc53d670b"
+      },
+      {
+        "path": "concepts/package/Lax57/ErdosHajnalP5.lean",
+        "bytes": 669,
+        "sha256": "9b2a24fe1698f9f5b43ed9f1baa297b5d367f00df0416ddd61348ff42fe3a88f"
+      },
+      {
+        "path": "concepts/package/Lax57/GraphDefinitions.lean",
+        "bytes": 5606,
+        "sha256": "d677cfbb3aab4efddcbba1d2db805ba622b29e52b62d16d13dc827c937d92317"
+      },
+      {
+        "path": "concepts/package/Lax57/HouseDichotomy.lean",
+        "bytes": 1150,
+        "sha256": "da10a44ea525124e2cb0603dd5b4590ebba7181384eb7037bc97dd5beb9f2708"
+      },
+      {
+        "path": "concepts/package/Lax57/PreparedHouseBlockade.lean",
+        "bytes": 1951,
+        "sha256": "44178341b1d350c342ce00c9a23ae00b84354595efd71a058b52da402645d589"
+      },
+      {
+        "path": "concepts/package/Lax57/SemisparseBlockade.lean",
+        "bytes": 934,
+        "sha256": "6639f8d18b64a3484516a8611cf702cbf5829e47010cfc65e341dcee202e0773"
+      },
+      {
+        "path": "concepts/package/Lax57/SparseHouseAcceleration.lean",
+        "bytes": 1247,
+        "sha256": "320341a24f3f6e23c6ef15cfb3a1c5796756aa6ebd0c9c88ad21cad1a48328c5"
+      },
+      {
+        "path": "concepts/package/Lax57/SparseHouseTools.lean",
+        "bytes": 820,
+        "sha256": "d26d3589365f2aa7f09fe39dbf91d4cd618008fe4e839a63232c08e29b49aeed"
+      },
+      {
+        "path": "concepts/package/Lax57/SparseHouseTrichotomy.lean",
+        "bytes": 1541,
+        "sha256": "a7a494d9aeba5e46cc89cedab1a12c5979a26db065e1de34359993f2042757a0"
+      },
+      {
+        "path": "concepts/package/Lax57.lean",
+        "bytes": 319,
+        "sha256": "8878ef06b47af3d558ba9e32d1d12ea98cae6b5fa8ad48ebe81c1d7d260e4554"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/AccelerationBounds.c",
+        "bytes": 1330,
+        "sha256": "6989c3bb14cfc14f39bc22ed996c6476bbbe0c633198e74173571dc775528da8"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/AccelerationBounds.c.hash",
+        "bytes": 16,
+        "sha256": "af38604345dfc38eb0a42568aeb6ef46068ca44ec4b1ac0f8d16d1a2c3ab11d9"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/AnticomponentBlockade.c",
+        "bytes": 2092,
+        "sha256": "41907739b076973296017b8a797d8f192d519b3e016aa1b671e6f37057c92912"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/AnticomponentBlockade.c.hash",
+        "bytes": 16,
+        "sha256": "cfbde04de96db4f210d5cb9589e12de5843fda10f31a2427b8a309af537023b4"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/BlockadeOperations.c",
+        "bytes": 5312,
+        "sha256": "708b4dbcd9ee5cf6e717a5cc1e149f1e6751c6aa127f009fe6e4dc2cb3d29564"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/BlockadeOperations.c.hash",
+        "bytes": 16,
+        "sha256": "316ef2c3a832ed7d58ab4d337a8840574fc6d810fc66cb97d79102830a692a52"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/BlockadeSelection.c",
+        "bytes": 1578,
+        "sha256": "50185438cf0c4bc7b1ed6c370de841b95de3aa4f42b575db3bd003f031a14d21"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/BlockadeSelection.c.hash",
+        "bytes": 16,
+        "sha256": "145bce3ef6c731190876abd071e028c3586004a4109e7e975c78b2f335256e7c"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/BlockadeThinning.c",
+        "bytes": 1817,
+        "sha256": "0117a344daaf5aa356b601f70672a29be39b5ac35b7a8498d304fef36ecefd55"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/BlockadeThinning.c.hash",
+        "bytes": 16,
+        "sha256": "6324cfdbc426d09ff3ea7274d466ef2c507d63b6cc2003ef39dac5e12c3ef917"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/CombIteration.c",
+        "bytes": 2305,
+        "sha256": "f1477a4d7e984feca25063e279fcb1a26eba5c2a5fb39a06639cf00f020d0562"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/CombIteration.c.hash",
+        "bytes": 16,
+        "sha256": "6b00b622b61d71d600ab64bf4f567626ef56188ef3f2fe386a77d179eb5a51d0"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/CombPeeling.c",
+        "bytes": 3866,
+        "sha256": "ab44e5da4d7e08dd301cd36e70dcc99b48d151cd943e7b1267659841c934ebd4"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/CombPeeling.c.hash",
+        "bytes": 16,
+        "sha256": "598ed1573d01b03cef390425cae5db05e9a76f7bf0d82b9077ebb711abb80cb1"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/ComponentTools.c",
+        "bytes": 6891,
+        "sha256": "0ff5985c922fba2fb10309725520c226109fc60bfcf88d6e16453eb6fef874ad"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/ComponentTools.c.hash",
+        "bytes": 16,
+        "sha256": "76fc188f784a531d6a487841a65fffafc8cbb6d778c175191a1df01a5a90a91d"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/CoveringTools.c",
+        "bytes": 5398,
+        "sha256": "4d2f1515bada219f71a27bf1a4ef111ee7dd2237e7e31bb2acb38893848e963e"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/CoveringTools.c.hash",
+        "bytes": 16,
+        "sha256": "1e2ca29858c3c9f1022804d95ded255df90f4a1c51f5f0bd31f040fb26ff7b45"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/Endgame.c",
+        "bytes": 2013,
+        "sha256": "a6ce1e8f022f3a0349cadca8e79c127c30744c5647d083c24d26719d99c575cc"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/Endgame.c.hash",
+        "bytes": 16,
+        "sha256": "58b00e308c676cd1aedbc02188fa710bed5f38b489c5709e4c6914c68fd7b740"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/EqualBlockade.c",
+        "bytes": 1549,
+        "sha256": "3586a9d209a348291eced54c6be846558fa39604c976e36d4d30c457d6eb75a5"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/EqualBlockade.c.hash",
+        "bytes": 16,
+        "sha256": "c154b9fe1609988f7ffb8f6bdac00b9b6954a746924d303a9d573117e620a051"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/Helpers.c",
+        "bytes": 2040,
+        "sha256": "52eda2d59335be2c7b055759a46136c3dcff24707e2001f4a4c2d2f5854d9876"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/Helpers.c.hash",
+        "bytes": 16,
+        "sha256": "1c8743884caeac2378b0f466a3a075b3cae1cea4eacbe9a398926ac2169ac51a"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/HouseDichotomy.c",
+        "bytes": 2786,
+        "sha256": "16c4d5f1322a400636666205c5b54b6fd943e927b1d0dbc0cfb662531f0cf7d3"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/HouseDichotomy.c.hash",
+        "bytes": 16,
+        "sha256": "0b168214cd49d6f5f4ad34b9d133626d28bf5b94e7ade5576c620fd2e8fb06df"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/InducedBlockadeTools.c",
+        "bytes": 2057,
+        "sha256": "df84bac0110f26bae59f24bef82b5dee0b6c1d8b0347ba305b16426508e7a195"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/InducedBlockadeTools.c.hash",
+        "bytes": 16,
+        "sha256": "b21e518641836bc16b3081e040d3d4b12a0df1f29fcd17f4ba2698849d2feb78"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/InducedMapTools.c",
+        "bytes": 1577,
+        "sha256": "9b7547c12a890a06dfd7d3ce11a61bdf09f097fd3e538a2026716a0ef879c2d4"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/InducedMapTools.c.hash",
+        "bytes": 16,
+        "sha256": "80f5d2ef17d117a97dc4f9e356f9b515436790d276c4735f8e1e48adff042fac"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/Iteration.c",
+        "bytes": 1562,
+        "sha256": "1f170050b0bdae153b7f332d2b8462be0df861adc50e0c7478eca08b5118e8e2"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/Iteration.c.hash",
+        "bytes": 16,
+        "sha256": "9d690920de2cac9bfb8456502157d53f974a4e05c2b1a6824a891f8ce49be828"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/LayoutExtraction.c",
+        "bytes": 1585,
+        "sha256": "88001a9cefd010b02c408d55e39ecc20f3b484aa20c5b2e52812af9276b7dcf3"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/LayoutExtraction.c.hash",
+        "bytes": 16,
+        "sha256": "64ad08d7fc7a3419e9cbc9bd16ae93e7202f9c41c24a6e07d85aad8709051a0c"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/LayoutRefinement.c",
+        "bytes": 11524,
+        "sha256": "04d191b60425fbebf332e8a1d2278c51fba891ebdaf0d4aa89a464db72d032d0"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/LayoutRefinement.c.hash",
+        "bytes": 16,
+        "sha256": "18afb1bcf14547955ce4e0cf5971e919a1d18596cae5dd6b5cb1bc930f60e3e4"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/LayoutTools.c",
+        "bytes": 4113,
+        "sha256": "1a5d4ff852a943087e9036983cb090af4c627b8a49383ad08fd2f70e3e6a57a6"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/LayoutTools.c.hash",
+        "bytes": 16,
+        "sha256": "c2eddc6450b0e82f5e9c0eaf355e8e9cfb00db5c1722da255c927367ce51dda5"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/LocalBlockade.c",
+        "bytes": 2600,
+        "sha256": "5a76e6947c6ab271e5cec9fe8a3ad7d48e046c156c73e9cee6908b80b97ded96"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/LocalBlockade.c.hash",
+        "bytes": 16,
+        "sha256": "f68d70529f7533b66f237ca72c9e9c1f994ef82174e1f86f6132a493516f9a35"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/MixedTools.c",
+        "bytes": 2049,
+        "sha256": "7f1d44c39887e58258da3792e3001657c5cd03b61b762e5868534f6c25075473"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/MixedTools.c.hash",
+        "bytes": 16,
+        "sha256": "e230474eb66451cb275d8606185b09da9c460c8329b54ada8723f936f2bc67c5"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/PeelingTools.c",
+        "bytes": 4342,
+        "sha256": "5f61b6f5e70091198fd5e6d6978d5a8fa7b17ac2b4a486b0e3d3d63180c7d417"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/PeelingTools.c.hash",
+        "bytes": 16,
+        "sha256": "7f517dcffaacfab40e5cd55f6907853f4921eed56d858b4bfc25ac27a5699b73"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/PreparedBlockadeTools.c",
+        "bytes": 3235,
+        "sha256": "c6970359ed59f6d4e2407dbf035dda8278bbf62210acce651035daf569660217"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/PreparedBlockadeTools.c.hash",
+        "bytes": 16,
+        "sha256": "88970fc4497347b51bd7864c3fe939160ade62add7a03de95224c6019441e922"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/PreparedBounds.c",
+        "bytes": 1322,
+        "sha256": "bdaf3b5b3b494ef34e360a142ca76515ed694ec53755c2793b05a45d88cd1956"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/PreparedBounds.c.hash",
+        "bytes": 16,
+        "sha256": "36839200a86f960f9128945cd37d584c0bec1e9b1692007b5af6d4ad1eeb5924"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/PreparedHouseBlockade.c",
+        "bytes": 3375,
+        "sha256": "e4771fc6465e324acc7fc9612cbdf8c9e4778461748f05d343e4d0d4f5c034ef"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/PreparedHouseBlockade.c.hash",
+        "bytes": 16,
+        "sha256": "a95cfe49401f60c9ab8251d07f7cc8c83accd93cb9493ffd24af3f51ca65f85b"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/SemisparseBlockade.c",
+        "bytes": 2089,
+        "sha256": "5eca219273b9fe67f112198141df064d85bbb57a5d513887db7d9b07a3c9bebc"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/SemisparseBlockade.c.hash",
+        "bytes": 16,
+        "sha256": "9a58f892fa312a9f21c8863a01dadd87fc7f2c255157e57f118555d8bcd36a63"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/SparseCombStep.c",
+        "bytes": 2322,
+        "sha256": "690e9acf415afca988219e6856022b052bd24d4d499009737fafa303650b03d4"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/SparseCombStep.c.hash",
+        "bytes": 16,
+        "sha256": "d1937c46c3587daa9676a896a9260909f96641ae16f4184b7d20b71dcd540c6b"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/SparseHouseAcceleration.c",
+        "bytes": 2614,
+        "sha256": "d97405787628e40a94765eb8e8ec5ab6f364f47e88513347a1f571f54890100e"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/SparseHouseAcceleration.c.hash",
+        "bytes": 16,
+        "sha256": "f2a86b9cacd30c62e0842fc172421757d67ab67c869dd1a1b1098ded6e7cbb69"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/SparseHouseTrichotomy.c",
+        "bytes": 2128,
+        "sha256": "9f949cc581b289f8a45476bd0cfedaaba92ac731e6c7e0bfd5e6f363d196fde4"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/SparseHouseTrichotomy.c.hash",
+        "bytes": 16,
+        "sha256": "6a2681e46e3dd48193a308dcc955fe74f3c3f6e33a54e355572bd094778c02aa"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/SparseP5Pair.c",
+        "bytes": 2084,
+        "sha256": "533dc72090e02349c957c786c37b9ecff00396c1af67afa2e12d061d6fe0cd3d"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/SparseP5Pair.c.hash",
+        "bytes": 16,
+        "sha256": "46382d5513e2c90ffe6b82bc3e400d25cb9ad5a783abbcac2512b82c923a7754"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/ThinningTools.c",
+        "bytes": 1549,
+        "sha256": "c7a33530938752e8b7d9018758692f6b9bb7e132a2288ba3fc753b3d202f4be2"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/ThinningTools.c.hash",
+        "bytes": 16,
+        "sha256": "caac96ec06c352404e3ca15104792b6cf3db772a0de70a0eaf7ec38178e742bb"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/WeightedGrouping.c",
+        "bytes": 1326,
+        "sha256": "324ae48af769d54737f88655c3d5a3095faad871b20fdee702171dec28c42a28"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs/WeightedGrouping.c.hash",
+        "bytes": 16,
+        "sha256": "d5fa41deec31b3bb03d0fab4c6bcefb6756fa72467c34849f5898467e9a23da5"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs.c",
+        "bytes": 9266,
+        "sha256": "59a4296f215d0c842af28a38535ce45dea33cef0df014e683b6231e239908b95"
+      },
+      {
+        "path": "proofs/ir/Lax57Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "57a5e17a6980ea68e7246299fb3d90c924312906c8f5613cc7d2fb667b5d3456"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/AccelerationBounds.ilean",
+        "bytes": 3901,
+        "sha256": "85d2a4c33a60a6b2b7cdbf2790cfe5d416f6b27edeebb92504b8ca1f058d54d2"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/AccelerationBounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "8e88323c6cff99c1286edd3072e65c806cda981d9bcc6e48c340ceb4334c9b34"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/AccelerationBounds.olean",
+        "bytes": 434512,
+        "sha256": "671be0f299b4f4333dae2a8829ce4935fa0c871dde683fa62313a2578a10b7be"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/AccelerationBounds.olean.hash",
+        "bytes": 16,
+        "sha256": "4eab9da7e307c414a6bf3ac6efda1828cff6ef8f5d4d944aa1ffa4a82d0ce45f"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/AccelerationBounds.trace",
+        "bytes": 2407,
+        "sha256": "0d931d81fd60571426e2aa1080f096dabd04bb6e350179595832d8c3f30c5d6c"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/AnticomponentBlockade.ilean",
+        "bytes": 31128,
+        "sha256": "a107a644f2cd41b014a88ef2727bf391207c5892b335e1a693d9fc7b9be5898a"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/AnticomponentBlockade.ilean.hash",
+        "bytes": 16,
+        "sha256": "67491d2890f332662fcace24e17022235c4c474870305a215830c03ed29ee216"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/AnticomponentBlockade.olean",
+        "bytes": 645736,
+        "sha256": "c80e439104b612308350bfbaa70940f478339c44a8939980ba339b775eee902b"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/AnticomponentBlockade.olean.hash",
+        "bytes": 16,
+        "sha256": "ad7aa45129b8861ac3489492d640901c70334c2d026f9982f995834266f09467"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/AnticomponentBlockade.trace",
+        "bytes": 3566,
+        "sha256": "8113b90240fcacb709b2e2754a0f5dddef4241e064c4b773bae6220d290831e4"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/BlockadeOperations.ilean",
+        "bytes": 6820,
+        "sha256": "3ed5e073a9ffb53a1bb7d7777fec92d20c3e6ac255f81d2ff7f6b434eee85f86"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/BlockadeOperations.ilean.hash",
+        "bytes": 16,
+        "sha256": "e2baa4cf9222f92db040aee5cb5552d8b8614e56b0ec1bb27e2dd95bf49cbe16"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/BlockadeOperations.olean",
+        "bytes": 74528,
+        "sha256": "34b36666410fede3a4f2b7e1b1064502c868f4f3bda402341943c20ec1449c5c"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/BlockadeOperations.olean.hash",
+        "bytes": 16,
+        "sha256": "c64b96d83cb92d82e3e783630dde995b15ba0652711512215aebf29f82db8ed6"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/BlockadeOperations.trace",
+        "bytes": 2570,
+        "sha256": "18af70b4d3724f7132d4b04ac81241ea8ec015b768684ed9be59d4488b3970da"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/BlockadeSelection.ilean",
+        "bytes": 24275,
+        "sha256": "c7f73fce9d0cde4d54ea9c7770c48183278933b933740fdd631e511ed1cf04ed"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/BlockadeSelection.ilean.hash",
+        "bytes": 16,
+        "sha256": "6090bfaaeb5fda156589741416498dcafaae2fa8f74209ba0b1d0e25cee18129"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/BlockadeSelection.olean",
+        "bytes": 638136,
+        "sha256": "48d22394319b2e7b4434043a7540a461cfd11cd6721c400d27cdc2d9650f99fa"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/BlockadeSelection.olean.hash",
+        "bytes": 16,
+        "sha256": "fda7790d48cb836b130ee2665196958c93403fcaf8989ee9dc1fe8e838dbb00e"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/BlockadeSelection.trace",
+        "bytes": 2568,
+        "sha256": "52442014714badf7b9935efb673a7502f90d21196bf9c1132b12716ba8fc7528"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/BlockadeThinning.ilean",
+        "bytes": 25373,
+        "sha256": "cc1eab8730067a4be523160a108d592479ccc4f477c5082fde52e67a45577e39"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/BlockadeThinning.ilean.hash",
+        "bytes": 16,
+        "sha256": "018b677382d1e99a9b45c7bb99d6987334a00c9b14a0f2c872c49e6f14a9d7b8"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/BlockadeThinning.olean",
+        "bytes": 412296,
+        "sha256": "07b63d5b2a8328fd4e0a3c1759b2d1892024d7f18618b11b8ff2ab0907d5f079"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/BlockadeThinning.olean.hash",
+        "bytes": 16,
+        "sha256": "20ad5189d82e31d0144c73a517a7e8c98f18239b3a27f25abd4e32da9ca104f2"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/BlockadeThinning.trace",
+        "bytes": 3607,
+        "sha256": "37b80fdcb4188766d03b099e89a1a5c0f86a89be46b5cb2dc5f90dde4596feba"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/CombIteration.ilean",
+        "bytes": 18605,
+        "sha256": "928cba81fc470e34ab02b2d528a4fa4ae4604f754be5b761c612fd77d8921fed"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/CombIteration.ilean.hash",
+        "bytes": 16,
+        "sha256": "8d763b9cc1b88d70c1416e3c038dc23df424b8a0de60f781b039980e7c9db0f5"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/CombIteration.olean",
+        "bytes": 487280,
+        "sha256": "fc564950a98730fee7824495ce5969c1d17fa20ef27896a59cbaaff8e67795f8"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/CombIteration.olean.hash",
+        "bytes": 16,
+        "sha256": "c84592ad7f66c9ef0a2359e7b531f550b6e691e8200ba7f6312764e82337804d"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/CombIteration.trace",
+        "bytes": 3024,
+        "sha256": "b02fecc1c2a0fbb20840de6bf9ba6e5a7d255300706820fa7a0991ce9b35ee2f"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/CombPeeling.ilean",
+        "bytes": 10382,
+        "sha256": "2e589c2ee9daf65f455ff862fc0ee17c0b14c4c9dfb6ad93384707bcac763c52"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/CombPeeling.ilean.hash",
+        "bytes": 16,
+        "sha256": "6a90936dcb180820b2ed42d39e1d982fb91e02ba37d2d7fad5a6ba5bb3d117c4"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/CombPeeling.olean",
+        "bytes": 397896,
+        "sha256": "d95ae9eb19f7b3175b305fbd260d92f23374a1112c47cb61fdec2bfd0328fc9a"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/CombPeeling.olean.hash",
+        "bytes": 16,
+        "sha256": "291942e1827b0c6f5a6e96ed6d044d467cb07bee4e900d345b034d76cefd5047"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/CombPeeling.trace",
+        "bytes": 2629,
+        "sha256": "0fa04854bcb25c6cc743f2ddb159034b1582b6b987a8a7a1252de19ef228f93d"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/ComponentTools.ilean",
+        "bytes": 29875,
+        "sha256": "66e6d2c04c1e4696f642db3167c15cd2a2c6455a5a53e29b8f05fb536e9a0f5b"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/ComponentTools.ilean.hash",
+        "bytes": 16,
+        "sha256": "dd03b955901069bc358ddc01a315f5cbb2a9a995c65042dc551526997cafddc5"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/ComponentTools.olean",
+        "bytes": 656680,
+        "sha256": "24e92d924ed47fa1d75705773c4f8210b9f8e6ea38382e9093e5235f65d9d468"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/ComponentTools.olean.hash",
+        "bytes": 16,
+        "sha256": "468a8adf23d4d4d00fddec4b628deb0b57111c1de279081a4ccc52ff45463379"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/ComponentTools.trace",
+        "bytes": 4146,
+        "sha256": "cd1ef516f473bc9d1adad95eed259f6fda7b71a15bb3eeaeb1e2e9e83b578083"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/CoveringTools.ilean",
+        "bytes": 19519,
+        "sha256": "09b0e386ed1a8e0507fa7065947872581046d38a082b90f1dee1b0204c8db334"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/CoveringTools.ilean.hash",
+        "bytes": 16,
+        "sha256": "afef114c75202eda448b915bd4352480e51fd1cb3eefc7fa76e0dc154bab5b71"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/CoveringTools.olean",
+        "bytes": 273792,
+        "sha256": "04a65ee128aecb3edb5bd82d3dc46f5d9eccaf671ee9e38a1bd62721c2a3b9f2"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/CoveringTools.olean.hash",
+        "bytes": 16,
+        "sha256": "896578048c9644ae07142b801a77ecef91caa69dfb7c1320d900dcf53de05a96"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/CoveringTools.trace",
+        "bytes": 2922,
+        "sha256": "483bf462768944c129e43e4e4a22334ed9f954ee3f13e4e4649b33c3724c9206"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/Endgame.ilean",
+        "bytes": 27385,
+        "sha256": "eee60b49c6858eb30e805d36ac318dd2056111dadb22e0bb68cb95b09cacd3f5"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/Endgame.ilean.hash",
+        "bytes": 16,
+        "sha256": "bd16010e9a7789f00f909dc7ea2867348d4daff585082703cc2ad80f681e0036"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/Endgame.olean",
+        "bytes": 350576,
+        "sha256": "2443f15bd9081156287b0a09164db577fe94d8bc836d46abb42929cf5da19d36"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/Endgame.olean.hash",
+        "bytes": 16,
+        "sha256": "85012d7637d2b495070937f0e1634f52ef2d7ee5570a488507408f142d8039df"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/Endgame.trace",
+        "bytes": 2786,
+        "sha256": "b2ac443b7bdd7b8024d7296b1d7975d1d8892efc0d1a9748cd9d3e6ed41d060b"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/EqualBlockade.ilean",
+        "bytes": 5162,
+        "sha256": "f5c308ab36326f7a51dc0d9d8b3a65a83a57a7ff94faa7e23817fca80846a30c"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/EqualBlockade.ilean.hash",
+        "bytes": 16,
+        "sha256": "606cc0791bcb2c3c15b8d503c90d5849fd20af1b51acf2ee774c224df9ba5e4f"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/EqualBlockade.olean",
+        "bytes": 55480,
+        "sha256": "0eb4050c843131733609bc5ce6ad658d5693d79f99e8a7f2aea68ac2d16bd03d"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/EqualBlockade.olean.hash",
+        "bytes": 16,
+        "sha256": "4b096f74ba3a4ec6f93dddbe3198b58c369f915f9ebbada01473c4ccbb37ce43"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/EqualBlockade.trace",
+        "bytes": 2530,
+        "sha256": "aa59ff7cf077079aa078b5b55ff784a6276a24e4f931dc1ab09c1de8644ef182"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/Helpers.ilean",
+        "bytes": 21399,
+        "sha256": "40e0e32af636c5d37ac10c37c8e7597525ebdceafdf9eb9cf044564486bd8b4e"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/Helpers.ilean.hash",
+        "bytes": 16,
+        "sha256": "ddd7dc7f467298e2cb71f6217471e5881ef9926955b0876dfe2c06dd1e3d50a9"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/Helpers.olean",
+        "bytes": 268016,
+        "sha256": "746f3f87d38219af40ce68ac8af5c8fe4c28813ffc39cd407898b76a89d2ada7"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/Helpers.olean.hash",
+        "bytes": 16,
+        "sha256": "c487f3d0208500566febfcda88951e687f309d075596fec0eb8a5638bc254323"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/Helpers.trace",
+        "bytes": 3574,
+        "sha256": "7597f3e9973c8746d5eabfe2444d8ab632068b4b00ca114649e5570bd88143c8"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/HouseDichotomy.ilean",
+        "bytes": 10381,
+        "sha256": "612363fdee7df1accf18518d33c231ffc6eb4bfb764ea093ed08f2bccbf206c4"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/HouseDichotomy.ilean.hash",
+        "bytes": 16,
+        "sha256": "c33f043209ae77a7efdd6a187913049eeeb9a64c4a773af0a00b1a8a369e34d1"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/HouseDichotomy.olean",
+        "bytes": 239824,
+        "sha256": "a0ae9f852bf64bf06bee2e78077f05f7914b0d0d44c988621d16349ac4f1f229"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/HouseDichotomy.olean.hash",
+        "bytes": 16,
+        "sha256": "4734adaab671fe0a4c90631f1502c2c6a04660a09ec46496a163273a8e1f544f"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/HouseDichotomy.trace",
+        "bytes": 3398,
+        "sha256": "e1ea9f80e8aa84a7795cde2bcf9fb570161f609b98e2ef1c2d3393b64ee33cbb"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/InducedBlockadeTools.ilean",
+        "bytes": 6428,
+        "sha256": "15a8d3667b2c85503075eeb11f5383ae133de5fa4d045d7d012bf304e6da4802"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/InducedBlockadeTools.ilean.hash",
+        "bytes": 16,
+        "sha256": "3e9b21d486eac72a211fa231c230548fb6a653c5c25b4327b5a219281c5d9c93"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/InducedBlockadeTools.olean",
+        "bytes": 91040,
+        "sha256": "f2b87c94077dee7527fff5a9c75721cf18eac00143f7260674ccfbcbfdf3371a"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/InducedBlockadeTools.olean.hash",
+        "bytes": 16,
+        "sha256": "04e752fc98d3e4e4cf6a7433e746a3f6fa20fa8bedeec06e33a4615463cd8873"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/InducedBlockadeTools.trace",
+        "bytes": 2911,
+        "sha256": "a6d2e90b4dce39817e068cd2e108e8bffd69d18c85c2e4dabed3d6a059ab7cb5"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/InducedMapTools.ilean",
+        "bytes": 22540,
+        "sha256": "8823d59c78e5f8d7721948c12df94a1fff6899c85b435621ecf26ffe74ce274f"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/InducedMapTools.ilean.hash",
+        "bytes": 16,
+        "sha256": "1b89aaddb5400ff40a905eb07e4c1e336cc153d9df0608a99a00b3f74c5e96d4"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/InducedMapTools.olean",
+        "bytes": 365688,
+        "sha256": "16787ce1810f577d3feaeacacdccb095a63c7a421fffa1f006b7d8cb570f6a96"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/InducedMapTools.olean.hash",
+        "bytes": 16,
+        "sha256": "8300ece0b711c953f7b88001added0569f232fe616da48310042987d55f05456"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/InducedMapTools.trace",
+        "bytes": 2554,
+        "sha256": "02605c73e35d6a7318f5a9f39b67ece12b82405cca0e7594df18b338a7af231b"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/Iteration.ilean",
+        "bytes": 12232,
+        "sha256": "0ecc1f8c0802ab784da431bd6369a28c4f81178a543bcc870fc6a755ba448adb"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/Iteration.ilean.hash",
+        "bytes": 16,
+        "sha256": "ecf54a0648f8203a93155b0814b1ea2bc50dd31b209ab3ff3d2d83fbd2a2be2b"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/Iteration.olean",
+        "bytes": 416352,
+        "sha256": "08699601567df0d0763152b3a30d0933f2f28b23b8e79bfe922307075a0676f7"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/Iteration.olean.hash",
+        "bytes": 16,
+        "sha256": "6a8f504dc76d8be9430f5f440848c2b5baf5fc0518ccec9fb517060516ee21bd"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/Iteration.trace",
+        "bytes": 2512,
+        "sha256": "9d2cc8b9d8b05e6bed8b761ea643393ee9ff843f22957943c3b5634f895177a5"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LayoutExtraction.ilean",
+        "bytes": 12871,
+        "sha256": "c324260856e72d3ea49148542fe9d567a702819a109a5a8c9d391a7be76334ee"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LayoutExtraction.ilean.hash",
+        "bytes": 16,
+        "sha256": "56125de1ac161ed178b235b1c0216ebd41b57b79a278298c9222bf098830ed2c"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LayoutExtraction.olean",
+        "bytes": 209168,
+        "sha256": "8926ef2af7a13e09a1022c078c3abb4b2b0cb34ab3e818306a3cf84b3e48d7c6"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LayoutExtraction.olean.hash",
+        "bytes": 16,
+        "sha256": "f0abe9998a9fb251894ec3301d5939f7cec83cf013ad3386acbfb236a8107eb7"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LayoutExtraction.trace",
+        "bytes": 2566,
+        "sha256": "78fc0cb524d1c454e9dd89d95bec7829242b9ac3d93889e945cac48338be41cf"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LayoutRefinement.ilean",
+        "bytes": 42362,
+        "sha256": "daaa6e69c96e834a9fc4039277e6c147f94dbec073311d117668483767ec0c28"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LayoutRefinement.ilean.hash",
+        "bytes": 16,
+        "sha256": "0091881a203143dd567a8a8ba33ee497f4e9632feba3b5ded7c7294ab0b58f73"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LayoutRefinement.olean",
+        "bytes": 768672,
+        "sha256": "0bc2eb5cd74334fecb5d0ff553fcd4791a99cda4afa7e69e73ec1e7525137970"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LayoutRefinement.olean.hash",
+        "bytes": 16,
+        "sha256": "89f873c9b3d05e21c607ff06d480b6baf336a9b5bc5e4459b742ba2b2217e7e3"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LayoutRefinement.trace",
+        "bytes": 2556,
+        "sha256": "b01f10dc4bbd678880ede6c6dd6dd99e349d3c48bda43ca1dc6e9da67bc40b27"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LayoutTools.ilean",
+        "bytes": 30824,
+        "sha256": "973b085944e12cb8d4d711e22301e1bcffb309ea88c7c53a0165f8cfe0a3e651"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LayoutTools.ilean.hash",
+        "bytes": 16,
+        "sha256": "a9bd49363b961e140950dce3d40fad17937a16a38e9f8015e1b609e7c13353c8"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LayoutTools.olean",
+        "bytes": 361328,
+        "sha256": "f5af3a9ad6344a57729122241adb9f166f16f7e1470bcda14d906e781f491385"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LayoutTools.olean.hash",
+        "bytes": 16,
+        "sha256": "8480175e3ae044a84796cc802e97d9260ec6d1d292df095fa1107f97810fa4f3"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LayoutTools.trace",
+        "bytes": 2689,
+        "sha256": "58d34b335d495baff826df018ff97422220c5630518c309f705ca68a6a3ad81f"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LocalBlockade.ilean",
+        "bytes": 31097,
+        "sha256": "a83ed9be8c9589e8c32b852c7e4c5da9538c447c03cb324ff08583dddbe2acc1"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LocalBlockade.ilean.hash",
+        "bytes": 16,
+        "sha256": "4b0b04bca5af2ac6cc230f5db1eada02ef4b4d08b25d4282680854d9d8a425cd"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LocalBlockade.olean",
+        "bytes": 749752,
+        "sha256": "3888a8bf6d74ef879fe1c9f3b33f57580e1598c30ddd0e0add8ad0d80c7c7f80"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LocalBlockade.olean.hash",
+        "bytes": 16,
+        "sha256": "7b1f2ecc929de15a940fbc40561db7a83794be6898a66d63996639750f068d74"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/LocalBlockade.trace",
+        "bytes": 3805,
+        "sha256": "8ee7be69ec06551adbaf8464b143ce98f3fd90d2bad17cdb4251e367c7ffe365"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/MixedTools.ilean",
+        "bytes": 16114,
+        "sha256": "5d405ace32df39b3d67d7da259cab7188d54a6b22c5e72da6268fa354d006491"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/MixedTools.ilean.hash",
+        "bytes": 16,
+        "sha256": "5e8d9cc2d097f5d3023842a333f47c40540b01d79baaca6419aa63c99ddc001d"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/MixedTools.olean",
+        "bytes": 146248,
+        "sha256": "851bf733a2027b2b3f5d5c91f8a29d2a38c39ffcd6b17965b588e655c366f4ac"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/MixedTools.olean.hash",
+        "bytes": 16,
+        "sha256": "1e1edbdad7f18f6840f35d3b409efe79a4412fcdd58d3c88dbad5f0f96985680"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/MixedTools.trace",
+        "bytes": 2848,
+        "sha256": "e895c57c4f44e4cd53cbdeb0d0ef55bf792a2b3cbe87fca17ad55e45c040676f"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PeelingTools.ilean",
+        "bytes": 13175,
+        "sha256": "f8541baf70f030a17549eced723e591f85e77e80bca8968f7cf933bf84f85602"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PeelingTools.ilean.hash",
+        "bytes": 16,
+        "sha256": "21eb3d1d32673fe74e9af74f65e8671848c7471e00eb5d40576e8aa98409d29e"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PeelingTools.olean",
+        "bytes": 385928,
+        "sha256": "fa53336662684c9aa0e952ede6a2ce83c43305c7742903ff1f18817ef63ff3d1"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PeelingTools.olean.hash",
+        "bytes": 16,
+        "sha256": "8d39273f4fd80573da5d12673aeca3544eb19661b6031708227fcabe809c21f4"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PeelingTools.trace",
+        "bytes": 2884,
+        "sha256": "4fd4d5ef134a9385ec95a3169b91f52e9bdabf72f45e05ea0327e18b664a0ec3"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PreparedBlockadeTools.ilean",
+        "bytes": 38169,
+        "sha256": "30199f4ad80d3c34bf81d7c80dabf95f9d7d7f9986266326b0e9e91dab86a484"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PreparedBlockadeTools.ilean.hash",
+        "bytes": 16,
+        "sha256": "ead945506136a18cfc1db1c797774f7b2536abc821c86797f270b873880cd8ed"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PreparedBlockadeTools.olean",
+        "bytes": 884136,
+        "sha256": "06709c5d7f2048224e1d3ac2d08248a6c8995bce1568bbbb54e23e25a3fea9bf"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PreparedBlockadeTools.olean.hash",
+        "bytes": 16,
+        "sha256": "1df0cb24dc1ce8155e772ebf8d1e85f0305bf02d75579d246dda334eba9745e2"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PreparedBlockadeTools.trace",
+        "bytes": 4028,
+        "sha256": "aedbcd36377b5db9ea010461dc66c004b0fbfb2a55b3a0cca0d3463769a48a86"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PreparedBounds.ilean",
+        "bytes": 2769,
+        "sha256": "08c8a2d8a43bd9fbe21ddfe8b1d55f7695258e7406e83ecc1dc0a40e82f4656d"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PreparedBounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "36958d114887c4150b6c86367f6cfb568eeb64bf580d3526a7c9661f4b836bf5"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PreparedBounds.olean",
+        "bytes": 665488,
+        "sha256": "2a3d3ad0df75562e0bd445d331e4ac51b680e94c31274315dc2cf6e25c2f4985"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PreparedBounds.olean.hash",
+        "bytes": 16,
+        "sha256": "f781ab538e156ceb46f0e5a1bfa2f7c9ea85e0c69cb1d432355621510daa411d"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PreparedBounds.trace",
+        "bytes": 3515,
+        "sha256": "ca92b482f0152551e0cc4cd2c8dbe847ffdb60ee2822d1c3a1b834c9d49048b9"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PreparedHouseBlockade.ilean",
+        "bytes": 21489,
+        "sha256": "f556db922634a133bd617418d95367da3186d15614658b1c90df62e3c8965b36"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PreparedHouseBlockade.ilean.hash",
+        "bytes": 16,
+        "sha256": "25d2187b861ce036be6c8fb0b94afe5c2e0253eef5cd3ece0bf0e790a29b0d11"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PreparedHouseBlockade.olean",
+        "bytes": 646672,
+        "sha256": "3aecb856e92068eda413b88a40df4f30b1b67b217aee8f863dbe20167abdecb8"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PreparedHouseBlockade.olean.hash",
+        "bytes": 16,
+        "sha256": "52e2389e1646f4d527477c1898b5bc92dfba388ffd60f06b8bf318ad6f6ce089"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/PreparedHouseBlockade.trace",
+        "bytes": 5139,
+        "sha256": "ea0967a729b9ab0a4bcedb7e8e68feaf9d0f65d602843cef9aa9e6b4d9122317"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SemisparseBlockade.ilean",
+        "bytes": 21778,
+        "sha256": "c1c99eecdc370a8fac34a4aaf446e137a93fde223509efb78b9a905db7e2ea9e"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SemisparseBlockade.ilean.hash",
+        "bytes": 16,
+        "sha256": "7a59305c304ebb2140df18f27717e0ffabafc63e7c62442d79a6ea2884fd0d7d"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SemisparseBlockade.olean",
+        "bytes": 687456,
+        "sha256": "43ca71ae542343cf94850e1834e007f9f6214acbf8ab0635a573cbec42d64544"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SemisparseBlockade.olean.hash",
+        "bytes": 16,
+        "sha256": "b324c4fd4ec67f2267af88cd19c8d25bc7ef721ae1e08ed7d772050873d253ee"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SemisparseBlockade.trace",
+        "bytes": 2928,
+        "sha256": "1642ff74687c2ad88f578dca49c568148019b74ccc54854f6b07dfe6096b3e8d"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseCombStep.ilean",
+        "bytes": 54838,
+        "sha256": "68f0577df0945af8b29c9d464143ed9eddbf7cebaa1cde353424aa31b1396229"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseCombStep.ilean.hash",
+        "bytes": 16,
+        "sha256": "dc6bcb3eea57737b57b7ffa3293915947e53251c5fc139f6ca40b815a667ea99"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseCombStep.olean",
+        "bytes": 1115944,
+        "sha256": "6fb02f65e42860a57b1862ce50c4267d7968ceae6432c14a7dc5bd5442e14840"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseCombStep.olean.hash",
+        "bytes": 16,
+        "sha256": "23638917798a17d0fd0a6e9856263c065f6e9af0e16c35ca72c484e716e81417"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseCombStep.trace",
+        "bytes": 3287,
+        "sha256": "6da69ca3892eb6be40dbaf71cdd4730d6d4d1ca4de8daea6a6a049306aab8020"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseHouseAcceleration.ilean",
+        "bytes": 18584,
+        "sha256": "c678baeab1fe99404821f26e54055a4472bce9b267894cab60ec4b39864615b3"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseHouseAcceleration.ilean.hash",
+        "bytes": 16,
+        "sha256": "4fc6b992b86540d872788867556d7231ef65155703758ad3b24541370f884c3a"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseHouseAcceleration.olean",
+        "bytes": 388232,
+        "sha256": "95839302d781cdcaba9b0d6fb7d053d66ea37be280eecfef5832bd08293eb714"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseHouseAcceleration.olean.hash",
+        "bytes": 16,
+        "sha256": "8708a72a95b4104a923636e16f0f45a1291b3a9f53a1e5c34ca411d3fdad71ca"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseHouseAcceleration.trace",
+        "bytes": 3319,
+        "sha256": "60052de1d17e406a9d40a8fcb219c3e88eb836c1eaaf4775ab9692d5c42709ac"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseHouseTrichotomy.ilean",
+        "bytes": 22501,
+        "sha256": "97c50701c263d4b868db82d0760ad369ff2d2bd5d2deac1f4bc42d4f576fa67c"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseHouseTrichotomy.ilean.hash",
+        "bytes": 16,
+        "sha256": "73e219be89191877bfb81a11de20111e76c4da624e3b0319a88b39cef5549d07"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseHouseTrichotomy.olean",
+        "bytes": 416400,
+        "sha256": "e52ff6e05b1fd1ef3bbebc011c4dec188fc79f2ec952ae6d0dab1a1b1e9ecd83"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseHouseTrichotomy.olean.hash",
+        "bytes": 16,
+        "sha256": "32e980960bcd126c0cff3907d06e29ef0749a684561941dc99fe0c52f4461497"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseHouseTrichotomy.trace",
+        "bytes": 2974,
+        "sha256": "04ae68c49e40da2af65afc95a62f8cf4c64e4f693dac5f329d82cd47e4440425"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseP5Pair.ilean",
+        "bytes": 29912,
+        "sha256": "e628e5a0de339f237c85f66ff92fb7d4a5d5f7bc70ba1e5e81866b6e3d757aed"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseP5Pair.ilean.hash",
+        "bytes": 16,
+        "sha256": "df2991bf70492fab0d92dc2f157aa061ba2a2d0b90b9bf9314675e17b27183e3"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseP5Pair.olean",
+        "bytes": 1179456,
+        "sha256": "51b7f70847d4401a71fa614f3e46671fbf6da41b1170f30d28a4f7ad7adeaaa7"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseP5Pair.olean.hash",
+        "bytes": 16,
+        "sha256": "a4365fc6456b12e852a2608352f087dd65015332c7b26ad8a5ac4d8569cbda8c"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/SparseP5Pair.trace",
+        "bytes": 3543,
+        "sha256": "cb1f6ee4fb29d897c3058b4784a208b3673acf7827483056519eb972dfc5e2e1"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/ThinningTools.ilean",
+        "bytes": 11343,
+        "sha256": "fdf5b1de83634b34eec04f2c3b5bf92dc58e704969193da1a534056b3af1078b"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/ThinningTools.ilean.hash",
+        "bytes": 16,
+        "sha256": "c0f842f83575e13c6778cf36f28da5e6e3fb264deee322a74dd26566f9ccd076"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/ThinningTools.olean",
+        "bytes": 106568,
+        "sha256": "64eea3bd19d7925f3d5be7b690df0648c2585d7fc8676c74503ca30c71ce14f4"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/ThinningTools.olean.hash",
+        "bytes": 16,
+        "sha256": "cdeb1d0a93c18f72329050f19854c2f308152132e0c61e51a4a977dc5a5b1262"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/ThinningTools.trace",
+        "bytes": 2530,
+        "sha256": "6596f70d85b9a3199ce0e91deb3d805f4631522c21a993df75a898d8c8cf37d1"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/WeightedGrouping.ilean",
+        "bytes": 10455,
+        "sha256": "917322af095d8b97ada7b56b4840d713ed7ac8d1e55d28381f0a62011fc9f088"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/WeightedGrouping.ilean.hash",
+        "bytes": 16,
+        "sha256": "894eb7e9189a35ce100b2a2c69b260fb67f6ba1153fdf52772091c31280d8367"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/WeightedGrouping.olean",
+        "bytes": 250648,
+        "sha256": "16cb057f0b5612dd861f2c129783593264ff01ddde0bd78ac804d05536ac3f1d"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/WeightedGrouping.olean.hash",
+        "bytes": 16,
+        "sha256": "8ea1e23c630904e1f223bd6ba5b25e8db6d21e3fe924055f9e275242ea440b85"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs/WeightedGrouping.trace",
+        "bytes": 2391,
+        "sha256": "eb5e90ce155973bbb9985693a7af1ec57334a4a9d0568a44ac413a858c164e92"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs.ilean",
+        "bytes": 1678,
+        "sha256": "8d4e1b71e5384a87819d9873c2c1ca3fc613ecee06ca84a3f6fe380a4f4c4b08"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "0cfc1e1321ed303318555584f99266edf68a9cee815f682a93ae31be25dd6a28"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs.olean",
+        "bytes": 4912,
+        "sha256": "3724c5cc3b4d3e56cc5d5c591ad5a9cf0981d52e876a53219f7f40d9476bba63"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "f8f633ba9c79b124df42420faed5c8a3dbce37b1163694b9f66f35623d65e592"
+      },
+      {
+        "path": "proofs/lib/Lax57Proofs.trace",
+        "bytes": 7638,
+        "sha256": "f3915b659e890df7d7d6326037dfff07a47b9e59d42d70f0d00c882b1d709259"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3964,
+        "sha256": "42ba771fa8c07f087e9814cac3819aab252ce61ffc5613cd4335d8c41c8749bb"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 602,
+        "sha256": "b484729d5cbd2fa21cd38062af8d667f549c3f09b4956a990af21379a88c83c9"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/AccelerationBounds.lean",
+        "bytes": 3686,
+        "sha256": "2f95f101eec94892931d4c788bc3ecd64cbd0f7ae47c5b4cc6f1ca62102237d1"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/AnticomponentBlockade.lean",
+        "bytes": 10458,
+        "sha256": "48b1dc86f460d4d53d520643fc2dd32516df3f4b9239f97fec347836cdbc4ed0"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/BlockadeOperations.lean",
+        "bytes": 2209,
+        "sha256": "a3b456b034b23d686949406aaf360adc03a9870a6860095bb1480969f3f568fa"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/BlockadeSelection.lean",
+        "bytes": 10294,
+        "sha256": "5771214291771d30b4ad57551c1dd64f2e1c19ac8aa9ae5425fc6e851fd6c5ee"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/BlockadeThinning.lean",
+        "bytes": 9193,
+        "sha256": "e27d2fd43f38aec588f2cbc5f6206a2b2acd68c3c5c058beb6910f076f75d26a"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/CombIteration.lean",
+        "bytes": 9470,
+        "sha256": "01abbec406d9071d846e03288d57ca1439680da01f4185b3e7256da2317800fa"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/CombPeeling.lean",
+        "bytes": 4043,
+        "sha256": "7f5d0510ea4ccf408062c7d7dd56bf66d6b66568a780592e4c57bd9e22d3a4c5"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/ComponentTools.lean",
+        "bytes": 11043,
+        "sha256": "b0e9c966d6a32d14c0da2d524b8ba8110823a1c16b347972b8ba5380ee68fb18"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/CoveringTools.lean",
+        "bytes": 7798,
+        "sha256": "9a9f68a7868a5158e418bd69fb5c5458ff54c6bb8d6f74f839f893697dc40126"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/Endgame.lean",
+        "bytes": 11017,
+        "sha256": "211b0f08a1f8cde22439789812383a7b27e1d48ba642a8a1e9c0fe7150dbc9b9"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/EqualBlockade.lean",
+        "bytes": 1514,
+        "sha256": "547a5c4b4b5b2dde9d6e72bf8724ce4364dffc670a2ba9973777fcf785e4ca47"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/Helpers.lean",
+        "bytes": 6760,
+        "sha256": "17ea60f21e865c025ec60d018b98310442f66f61720655b3fdc506e8ac35013f"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/HouseDichotomy.lean",
+        "bytes": 5400,
+        "sha256": "d4c6cfce40c2b060a44ce9d13827859b443eda7c19a5914416f8404448eb5565"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/InducedBlockadeTools.lean",
+        "bytes": 1957,
+        "sha256": "267b52d1390d72be5a48713adddc7e247d3765c90c3181d6501644c5563a4544"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/InducedMapTools.lean",
+        "bytes": 8194,
+        "sha256": "b876501711263c81cad7e687176cee7808c51f7a3784119bfd5ec39024806fc5"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/Iteration.lean",
+        "bytes": 7583,
+        "sha256": "9801f673da086fe06695faa5ed8bba9dd5f0b3046558ddffad4a66526a02b96f"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/LayoutExtraction.lean",
+        "bytes": 3522,
+        "sha256": "c68c594553279286a9f8ab8d580c742de232b6feefd48ef4f3dd722ea263cb3d"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/LayoutRefinement.lean",
+        "bytes": 14716,
+        "sha256": "2f43f6134c656f8be4433c515c8fcbb2c2f41fcf836236c4146963b336c10a8d"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/LayoutTools.lean",
+        "bytes": 9245,
+        "sha256": "cce47918732193c3a4658ba281c6f8e53744beededa22367dd85b54bd169bd7c"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/LocalBlockade.lean",
+        "bytes": 14680,
+        "sha256": "7aa3868063a080834b62bd6c0d266ca0f672c1eaf3d3c3eddc7cc8571462edf3"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/MixedTools.lean",
+        "bytes": 6541,
+        "sha256": "c6fdd2617fde6de723266b238e99029f3133446f125ae2f5d153d84683b7092d"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/PeelingTools.lean",
+        "bytes": 5127,
+        "sha256": "d661bd7b8b59a5a6e54a8a269c63bd0370e8496ee5e8834e2ae3850f7ac29ac4"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/PreparedBlockadeTools.lean",
+        "bytes": 16176,
+        "sha256": "d4cca974d02e8fce810a2903ebb401947284722ed6ff66fe8fe2645effb55287"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/PreparedBounds.lean",
+        "bytes": 5447,
+        "sha256": "1e69d2a05c75cd2241ea35ab43dd1cbc33d032ca80351fca927875f55f95506e"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/PreparedHouseBlockade.lean",
+        "bytes": 11174,
+        "sha256": "02aa98fd3e2a8d8950ebb9073c4998e7280620302acdada46f437ba2ce5c2122"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/SemisparseBlockade.lean",
+        "bytes": 8640,
+        "sha256": "6d24b9f6e501127a958a49fc6c2747981901b768ebf338a89c374545f65cb97e"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/SparseCombStep.lean",
+        "bytes": 23592,
+        "sha256": "d686d14dd890356611f711ea7633573bc98b8c7dbf1968019fa65b4b4428f5e8"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/SparseHouseAcceleration.lean",
+        "bytes": 8379,
+        "sha256": "95d7638b809eefe711f7f89513804914f2a008b40b563bb880b71aea8bce92d1"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/SparseHouseTrichotomy.lean",
+        "bytes": 9641,
+        "sha256": "5e3a17fcc4fe436b7208541fd4c528e70fc1bd637dd60f48853bfe224c837243"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/SparseP5Pair.lean",
+        "bytes": 11783,
+        "sha256": "032c2eed98f1d4fc9ee6571a9f1443a3deadb4139f18b3e0903501a257194eca"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/ThinningTools.lean",
+        "bytes": 3502,
+        "sha256": "3cb329356d9db62c4e0bcc38559831e8841fb05af6fcc3a3dea56b264806e8e5"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs/WeightedGrouping.lean",
+        "bytes": 5455,
+        "sha256": "ac1728055a487ec60e7ff7952b5b5c4a7ca098a6e3eed4bb58a071ec7cd1d252"
+      },
+      {
+        "path": "proofs/package/Lax57Proofs.lean",
+        "bytes": 1117,
+        "sha256": "67451c097afc105ab8f61b2ab25b45b6624440dac4bdd4dec54dff7922ccb1aa"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:619f0e305679898d1248f01778ff4c2ed3934ce276fd880c700ac5781afb705a"
   }
 }
