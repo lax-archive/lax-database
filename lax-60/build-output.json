@@ -4,5 +4,2180 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 60
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-60",
+      "leanVersion": "v4.30.0",
+      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "title": "A Batch Approach to the Positive NCTD of Planar Graphs",
+      "authors": [],
+      "bibEntries": [],
+      "supersedes": "lax-16"
+    },
+    "abstract": "This submission formalizes the positive no-clash teaching dimension (NCTD) of\nclosed graph neighborhoods.  The teaching definitions are parameterized by a\nradius `k`: the concept represented by a vertex is its closed ball of radius\n`k`.  The sharp planar and outerplanar bounds below concern `k = 1`.\n\nThe main claims are that every finite planar graph has positive no-clash\nteaching dimension at most four at radius one, and every finite outerplanar\ngraph has positive no-clash teaching dimension at most two.  Explicit graphs\nshow that both constants are optimal.  The planar upper bound is organized\nthrough admissible local batches: a vertex may be assigned several teaching\nsets, and its last assignment is retained.\n\nPlanarity and outerplanarity are encoded through the finite forbidden-\nsubdivision characterizations of Kuratowski and Chartrand-Harary.  This keeps\nthe concept surface combinatorial and makes the graph-theoretic obstructions\nused by the draft explicit.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax60.AnchorLabels",
+      "path": "concepts/Lax60/AnchorLabels.lean",
+      "title": "An anchor label certifies against every concept that omits it",
+      "type": "theorem",
+      "description": "If a radius-one teaching set contains an anchor label `v`, it certifies its\nconcept against every closed neighborhood that omits `v`.  This is the\nanchor-label observation used for every local batch in the draft.",
+      "imports": [
+        "Lax60.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax60.TeachingMaps\n\n/-!\n---\ntitle: An anchor label certifies against every concept that omits it\ntype: theorem\n---\nIf a radius-one teaching set contains an anchor label `v`, it certifies its\nconcept against every closed neighborhood that omits `v`.  This is the\nanchor-label observation used for every local batch in the draft.\n-/\n\nnamespace Lax60.AnchorLabels\n\nopen Lax60.TeachingMaps\n\nuniverse u\n\n/-- An anchor certifies against every concept omitting that label. -/\naxiom anchor_certifies {V : Type u} {G : SimpleGraph V}\n    {T : TeachingMap V 1} {v w : V} (hv : v ∈ T w) :\n    ∀ x : V, v ∉ closedBall G 1 x →\n      ∃ y ∈ T w, y ∉ closedBall G 1 x\n\nend Lax60.AnchorLabels\n",
+      "statements": [
+        {
+          "id": "Lax60.AnchorLabels.anchor_certifies",
+          "signature": "anchor_certifies : ∀ {V : Type u} {G : SimpleGraph V} {T : Lax60.TeachingMaps.TeachingMap V 1} {v w : V},\n  SetLike.instMembership.mem (T w) v →\n    ∀ (x : V),\n      Not (Set.instMembership.mem (Lax60.TeachingMaps.closedBall G 1 x) v) →\n        Exists fun y =>\n          And (SetLike.instMembership.mem (T w) y)\n            (Not (Set.instMembership.mem (Lax60.TeachingMaps.closedBall G 1 x) y))",
+          "startLine": 19,
+          "endLine": 23,
+          "doc": "An anchor certifies against every concept omitting that label."
+        }
+      ]
+    },
+    {
+      "id": "Lax60.BatchFramework",
+      "path": "concepts/Lax60/BatchFramework.lean",
+      "title": "Admissible batches and last-assignment schedules",
+      "type": "definition",
+      "description": "A batch consists of a finite set of vertices and a proposed teaching set for\neach vertex.  It is admissible at radius one when the teaching sets are\npositive and uniformly bounded, separate every pair inside the batch, and\neach batch vertex certifies itself against every distinct concept outside the\nbatch.\n\nA finite schedule records, for each vertex, the last batch containing it.\nRetaining the corresponding teaching sets defines its final assignment.",
+      "imports": [
+        "Lax60.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax60.TeachingMaps\n\n/-!\n---\ntitle: Admissible batches and last-assignment schedules\ntype: definition\n---\nA batch consists of a finite set of vertices and a proposed teaching set for\neach vertex.  It is admissible at radius one when the teaching sets are\npositive and uniformly bounded, separate every pair inside the batch, and\neach batch vertex certifies itself against every distinct concept outside the\nbatch.\n\nA finite schedule records, for each vertex, the last batch containing it.\nRetaining the corresponding teaching sets defines its final assignment.\n-/\n\nnamespace Lax60.BatchFramework\n\nopen Lax60.TeachingMaps\n\nuniverse u\n\n/-- A finite batch of vertices together with proposed teaching sets. -/\nstructure BatchAssignment {V : Type u} (G : SimpleGraph V) where\n  /-- The vertices assigned in this batch. -/\n  vertices : Finset V\n  /-- A total map whose values on `vertices` are the batch assignments. -/\n  teaching : TeachingMap V 1\n\n/-- The three admissibility conditions from the batch construction. -/\ndef IsAdmissible {V : Type u} (G : SimpleGraph V) (d : ℕ)\n    (B : BatchAssignment G) : Prop :=\n  (∀ ⦃v x : V⦄, v ∈ B.vertices → x ∈ B.teaching v →\n    x ∈ closedBall G 1 v) ∧\n  (∀ v : V, v ∈ B.vertices → (B.teaching v).card ≤ d) ∧\n  (∀ ⦃v w : V⦄, v ∈ B.vertices → w ∈ B.vertices →\n    DistinctConcepts G 1 v w → Separates G 1 B.teaching v w) ∧\n  (∀ ⦃v x : V⦄, v ∈ B.vertices → x ∉ B.vertices →\n    DistinctConcepts G 1 v x →\n      ∃ y ∈ B.teaching v, y ∉ closedBall G 1 x)\n\n/--\nA finite batch schedule with an explicit, verified last batch for each\nvertex.  Carrying the last index as data keeps the final assignment readable.\n-/\nstructure BatchSchedule {V : Type u} (G : SimpleGraph V) where\n  /-- Number of batches in the schedule. -/\n  batchCount : ℕ\n  /-- The batches, in chronological order. -/\n  batch : Fin batchCount → BatchAssignment G\n  /-- The last batch containing each vertex. -/\n  last : V → Fin batchCount\n  /-- Every vertex belongs to its selected last batch. -/\n  mem_last : ∀ v : V, v ∈ (batch (last v)).vertices\n  /-- No later batch contains the vertex. -/\n  last_is_last :\n    ∀ (v : V) (i : Fin batchCount), v ∈ (batch i).vertices → i ≤ last v\n\n/-- The final map obtained by retaining each vertex's last assignment. -/\ndef BatchSchedule.finalTeaching {V : Type u} {G : SimpleGraph V}\n    (S : BatchSchedule G) : TeachingMap V 1 :=\n  fun v => (S.batch (S.last v)).teaching v\n\nend Lax60.BatchFramework\n",
+      "statements": []
+    },
+    {
+      "id": "Lax60.BatchReassignment",
+      "path": "concepts/Lax60/BatchReassignment.lean",
+      "title": "Last assignments from admissible batches form a global teaching map",
+      "type": "theorem",
+      "description": "If every batch in a finite covering schedule is admissible with width `d`,\nthen retaining the last assignment of each vertex produces a positive\nradius-one no-clash teaching map of the same width.",
+      "imports": [
+        "Lax60.BatchFramework"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax60.BatchFramework\n\n/-!\n---\ntitle: Last assignments from admissible batches form a global teaching map\ntype: theorem\n---\nIf every batch in a finite covering schedule is admissible with width `d`,\nthen retaining the last assignment of each vertex produces a positive\nradius-one no-clash teaching map of the same width.\n-/\n\nnamespace Lax60.BatchReassignment\n\nopen Lax60.BatchFramework\nopen Lax60.TeachingMaps\n\nuniverse u\n\n/-- Admissibility is preserved by the last-assignment construction. -/\naxiom reassignment {V : Type u} {G : SimpleGraph V} {d : ℕ}\n    (S : BatchSchedule G)\n    (hadmissible : ∀ i : Fin S.batchCount, IsAdmissible G d (S.batch i)) :\n    IsPositive G 1 S.finalTeaching ∧\n    IsNoClash G 1 S.finalTeaching ∧\n    HasWidthAtMost S.finalTeaching d\n\nend Lax60.BatchReassignment\n",
+      "statements": [
+        {
+          "id": "Lax60.BatchReassignment.reassignment",
+          "signature": "reassignment : ∀ {V : Type u} {G : SimpleGraph V} {d : Nat} (S : Lax60.BatchFramework.BatchSchedule G),\n  (∀ (i : Fin S.batchCount), Lax60.BatchFramework.IsAdmissible G d (S.batch i)) →\n    And (Lax60.TeachingMaps.IsPositive G 1 S.finalTeaching)\n      (And (Lax60.TeachingMaps.IsNoClash G 1 S.finalTeaching) (Lax60.TeachingMaps.HasWidthAtMost S.finalTeaching d))",
+          "startLine": 20,
+          "endLine": 26,
+          "doc": "Admissibility is preserved by the last-assignment construction."
+        }
+      ]
+    },
+    {
+      "id": "Lax60.DominatorCount",
+      "path": "concepts/Lax60/DominatorCount.lean",
+      "title": "A planar center has at most one dominator above degree four and at most two in degree four",
+      "type": "theorem",
+      "description": "A planar vertex with at least five neighbors has at most one dominating\nneighbor.  A planar vertex of degree four has at most two.  Three suitable\nneighbors together with the center and two dominators would form a\n`K₃,₃`; in the degree-four exception, three dominators would form a `K₅`.",
+      "imports": [
+        "Lax60.DominatorDefinitions",
+        "Lax60.PlanarGraphs"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite",
+        "Mathlib.Data.Set.Card"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Finite\nimport Mathlib.Data.Set.Card\nimport Lax60.DominatorDefinitions\nimport Lax60.PlanarGraphs\n\n/-!\n---\ntitle: A planar center has at most one dominator above degree four and at most two in degree four\ntype: theorem\n---\nA planar vertex with at least five neighbors has at most one dominating\nneighbor.  A planar vertex of degree four has at most two.  Three suitable\nneighbors together with the center and two dominators would form a\n`K₃,₃`; in the degree-four exception, three dominators would form a `K₅`.\n-/\n\nnamespace Lax60.DominatorCount\n\nopen Lax60.DominatorDefinitions\nopen Lax60.PlanarGraphs\n\nuniverse u\n\n/-- The high-degree and degree-four bounds on the number of dominators. -/\naxiom dominator_count_bounds {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (hplanar : IsPlanar G) (v : V) :\n    (5 ≤ (G.neighborSet v).ncard → (dominatorSet G v).ncard ≤ 1) ∧\n    ((G.neighborSet v).ncard = 4 → (dominatorSet G v).ncard ≤ 2)\n\nend Lax60.DominatorCount\n",
+      "statements": [
+        {
+          "id": "Lax60.DominatorCount.dominator_count_bounds",
+          "signature": "dominator_count_bounds : ∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n  Lax60.PlanarGraphs.IsPlanar G →\n    ∀ (v : V),\n      And (instLENat.le 5 (G.neighborSet v).ncard → instLENat.le (Lax60.DominatorDefinitions.dominatorSet G v).ncard 1)\n        (Eq (G.neighborSet v).ncard 4 → instLENat.le (Lax60.DominatorDefinitions.dominatorSet G v).ncard 2)",
+          "startLine": 24,
+          "endLine": 28,
+          "doc": "The high-degree and degree-four bounds on the number of dominators."
+        }
+      ]
+    },
+    {
+      "id": "Lax60.DominatorDefinitions",
+      "path": "concepts/Lax60/DominatorDefinitions.lean",
+      "title": "Active dominators and their local teaching assignments",
+      "type": "definition",
+      "description": "A neighbor `w` dominates a center `v` when the closed neighborhood of `v` is\ncontained in that of `w`.  It is active when the two closed neighborhoods are\ndifferent.  A valid dominator teaching set has at most four labels, contains\nthe center anchor, is positive for the dominator, and separates the dominator\nfrom every distinct non-active concept in the center's closed neighborhood.\nThe family condition handles pairs of active dominators using labels from\neither teaching set, as required by no-clash.",
+      "imports": [
+        "Lax60.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax60.TeachingMaps\n\n/-!\n---\ntitle: Active dominators and their local teaching assignments\ntype: definition\n---\nA neighbor `w` dominates a center `v` when the closed neighborhood of `v` is\ncontained in that of `w`.  It is active when the two closed neighborhoods are\ndifferent.  A valid dominator teaching set has at most four labels, contains\nthe center anchor, is positive for the dominator, and separates the dominator\nfrom every distinct non-active concept in the center's closed neighborhood.\nThe family condition handles pairs of active dominators using labels from\neither teaching set, as required by no-clash.\n-/\n\nnamespace Lax60.DominatorDefinitions\n\nopen Lax60.TeachingMaps\n\nuniverse u\n\n/-- The neighboring dominators of a center vertex. -/\ndef dominatorSet {V : Type u} (G : SimpleGraph V) (v : V) : Set V :=\n  {w | G.Adj v w ∧ Dominates G 1 v w}\n\n/-- A dominator whose closed neighborhood is genuinely different from the center's. -/\ndef IsActiveDominator {V : Type u} (G : SimpleGraph V)\n    (v w : V) : Prop :=\n  w ∈ dominatorSet G v ∧ DistinctConcepts G 1 v w\n\n/--\nA width-four anchored teaching set that handles every non-active concept in\nthe center ball.  Active dominator pairs are handled symmetrically by\n`CompletesActiveDominators`.\n-/\ndef IsDominatorTeachingSet {V : Type u} (G : SimpleGraph V)\n    (v w : V) (S : Finset V) : Prop :=\n  S.card ≤ 4 ∧\n  v ∈ S ∧\n  (∀ x ∈ S, x ∈ closedBall G 1 w) ∧\n  ∀ z : V, z ∈ closedBall G 1 v →\n    DistinctConcepts G 1 w z →\n    ¬ IsActiveDominator G v z →\n      ∃ x ∈ S, x ∉ closedBall G 1 z\n\n/--\nA family valid for every active dominator, with every active pair separated\nby the union of its two teaching sets.\n-/\ndef CompletesActiveDominators {V : Type u} (G : SimpleGraph V)\n    (v : V) (T : TeachingMap V 1) : Prop :=\n  (∀ w : V, IsActiveDominator G v w →\n    IsDominatorTeachingSet G v w (T w)) ∧\n  ∀ w z : V, IsActiveDominator G v w →\n    IsActiveDominator G v z →\n    DistinctConcepts G 1 w z →\n      Separates G 1 T w z\n\n/-- An outside vertex adjacent to all three selected neighbors. -/\ndef OutsideSees {V : Type u} (G : SimpleGraph V)\n    (v : V) (Y : Finset V) (x : V) : Prop :=\n  x ∉ closedBall G 1 v ∧ ∀ y ∈ Y, G.Adj x y\n\nend Lax60.DominatorDefinitions\n",
+      "statements": []
+    },
+    {
+      "id": "Lax60.OuterplanarBlockAssignment",
+      "path": "concepts/Lax60/OuterplanarBlockAssignment.lean",
+      "title": "Two-connected outerplanar graphs admit two-label teaching maps",
+      "type": "theorem",
+      "description": "Every finite two-connected outerplanar graph admits a positive radius-one\nno-clash teaching map in which every vertex receives exactly two distinct\nlabels.  This is the block lemma used to assemble the sharp outerplanar\nbound.",
+      "imports": [
+        "Lax60.PlanarGraphs",
+        "Lax60.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax60.PlanarGraphs\nimport Lax60.TeachingMaps\n\n/-!\n---\ntitle: Two-connected outerplanar graphs admit two-label teaching maps\ntype: theorem\n---\nEvery finite two-connected outerplanar graph admits a positive radius-one\nno-clash teaching map in which every vertex receives exactly two distinct\nlabels.  This is the block lemma used to assemble the sharp outerplanar\nbound.\n-/\n\nnamespace Lax60.OuterplanarBlockAssignment\n\nopen Lax60.PlanarGraphs\nopen Lax60.TeachingMaps\n\nuniverse u\n\n/-- A two-connected outerplanar graph has an exact two-label positive map. -/\naxiom exists_two_label_assignment {V : Type u} [Fintype V]\n    (G : SimpleGraph V)\n    (houter : IsOuterplanar G)\n    (htwo : IsTwoConnected G) :\n    ∃ T : TeachingMap V 1,\n      IsPositive G 1 T ∧\n      IsNoClash G 1 T ∧\n      ∀ v : V, (T v).card = 2\n\nend Lax60.OuterplanarBlockAssignment\n",
+      "statements": [
+        {
+          "id": "Lax60.OuterplanarBlockAssignment.exists_two_label_assignment",
+          "signature": "exists_two_label_assignment : ∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n  Lax60.PlanarGraphs.IsOuterplanar G →\n    Lax60.PlanarGraphs.IsTwoConnected G →\n      Exists fun T =>\n        And (Lax60.TeachingMaps.IsPositive G 1 T)\n          (And (Lax60.TeachingMaps.IsNoClash G 1 T) (∀ (v : V), Eq (T v).card 2))",
+          "startLine": 22,
+          "endLine": 30,
+          "doc": "A two-connected outerplanar graph has an exact two-label positive map."
+        }
+      ]
+    },
+    {
+      "id": "Lax60.OuterplanarBound",
+      "path": "concepts/Lax60/OuterplanarBound.lean",
+      "title": "Outerplanar graphs have positive NCTD at most two",
+      "type": "theorem",
+      "description": "Every finite outerplanar graph has positive no-clash teaching dimension at\nmost two for closed neighborhoods, equivalently for closed balls of radius\none.",
+      "imports": [
+        "Lax60.PlanarGraphs",
+        "Lax60.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax60.PlanarGraphs\nimport Lax60.TeachingMaps\n\n/-!\n---\ntitle: Outerplanar graphs have positive NCTD at most two\ntype: theorem\n---\nEvery finite outerplanar graph has positive no-clash teaching dimension at\nmost two for closed neighborhoods, equivalently for closed balls of radius\none.\n-/\n\nnamespace Lax60.OuterplanarBound\n\nopen Lax60.PlanarGraphs\nopen Lax60.TeachingMaps\n\nuniverse u\n\n/-- The sharp radius-one positive upper bound for outerplanar graphs. -/\naxiom positiveNCTD_le_two {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (houter : IsOuterplanar G) :\n    positiveNCTD G 1 ≤ 2\n\nend Lax60.OuterplanarBound\n",
+      "statements": [
+        {
+          "id": "Lax60.OuterplanarBound.positiveNCTD_le_two",
+          "signature": "positiveNCTD_le_two : ∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n  Lax60.PlanarGraphs.IsOuterplanar G → instLENat.le (Lax60.TeachingMaps.positiveNCTD G 1) 2",
+          "startLine": 21,
+          "endLine": 24,
+          "doc": "The sharp radius-one positive upper bound for outerplanar graphs."
+        }
+      ]
+    },
+    {
+      "id": "Lax60.OuterplanarLayer",
+      "path": "concepts/Lax60/OuterplanarLayer.lean",
+      "title": "Outerplanar neighbor layers admit width-three ambient assignments",
+      "type": "theorem",
+      "description": "Let `U` be a set of neighbors of a vertex `v₀`, and suppose the graph induced\nby `U` is outerplanar.  The vertices of `U` have positive ambient teaching\nsets of size at most three which separate every pair whose closed\nneighborhoods differ in the ambient graph.  Witnesses repairing closed twins\nof the induced graph may lie outside `U`.\n\nAdding the common anchor `v₀` gives sets of size at most four and certifies\nevery layer vertex against all vertices outside the closed neighborhood of\n`v₀`.",
+      "imports": [
+        "Lax60.PlanarGraphs",
+        "Lax60.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax60.PlanarGraphs\nimport Lax60.TeachingMaps\n\n/-!\n---\ntitle: Outerplanar neighbor layers admit width-three ambient assignments\ntype: theorem\n---\nLet `U` be a set of neighbors of a vertex `v₀`, and suppose the graph induced\nby `U` is outerplanar.  The vertices of `U` have positive ambient teaching\nsets of size at most three which separate every pair whose closed\nneighborhoods differ in the ambient graph.  Witnesses repairing closed twins\nof the induced graph may lie outside `U`.\n\nAdding the common anchor `v₀` gives sets of size at most four and certifies\nevery layer vertex against all vertices outside the closed neighborhood of\n`v₀`.\n-/\n\nnamespace Lax60.OuterplanarLayer\n\nopen Lax60.PlanarGraphs\nopen Lax60.TeachingMaps\n\nuniverse u\n\n/-- A width-three positive assignment separating all ambient concepts in `U`. -/\ndef IsLayerAssignment {V : Type u} (G : SimpleGraph V)\n    (U : Finset V) (S : TeachingMap V 1) : Prop :=\n  (∀ w : V, w ∈ U →\n    (S w).card ≤ 3 ∧\n    ∀ x ∈ S w, x ∈ closedBall G 1 w) ∧\n  ∀ w₁ w₂ : V, w₁ ∈ U → w₂ ∈ U →\n    DistinctConcepts G 1 w₁ w₂ →\n      Separates G 1 S w₁ w₂\n\n/-- Add a common anchor to every teaching set. -/\nnoncomputable def anchoredTeaching {V : Type u} (v₀ : V)\n    (S : TeachingMap V 1) : TeachingMap V 1 := by\n  classical\n  exact fun w => insert v₀ (S w)\n\n/-- The outerplanar layer assignment exists and gains external certification when anchored. -/\naxiom exists_outerplanar_layer_assignment {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (v₀ : V) (U : Finset V)\n    (hneighbors : ∀ w ∈ U, G.Adj v₀ w)\n    (houter : IsOuterplanar (G.induce (↑U : Set V))) :\n    ∃ S : TeachingMap V 1,\n      IsLayerAssignment G U S ∧\n      (∀ w : V, w ∈ U →\n        (anchoredTeaching v₀ S w).card ≤ 4 ∧\n        ∀ y ∈ anchoredTeaching v₀ S w, y ∈ closedBall G 1 w) ∧\n      ∀ w : V, w ∈ U → ∀ x : V, x ∉ closedBall G 1 v₀ →\n        ∃ y ∈ anchoredTeaching v₀ S w, y ∉ closedBall G 1 x\n\nend Lax60.OuterplanarLayer\n",
+      "statements": [
+        {
+          "id": "Lax60.OuterplanarLayer.exists_outerplanar_layer_assignment",
+          "signature": "exists_outerplanar_layer_assignment : ∀ {V : Type u} [Fintype V] (G : SimpleGraph V) (v₀ : V) (U : Finset V),\n  (∀ (w : V), SetLike.instMembership.mem U w → G.Adj v₀ w) →\n    Lax60.PlanarGraphs.IsOuterplanar (SimpleGraph.induce (Finset.instSetLike.coe U) G) →\n      Exists fun S =>\n        And (Lax60.OuterplanarLayer.IsLayerAssignment G U S)\n          (And\n            (∀ (w : V),\n              SetLike.instMembership.mem U w →\n                And (instLENat.le (Lax60.OuterplanarLayer.anchoredTeaching v₀ S w).card 4)\n                  (∀ (y : V),\n                    SetLike.instMembership.mem (Lax60.OuterplanarLayer.anchoredTeaching v₀ S w) y →\n                      Set.instMembership.mem (Lax60.TeachingMaps.closedBall G 1 w) y))\n            (∀ (w : V),\n              SetLike.instMembership.mem U w →\n                ∀ (x : V),\n                  Not (Set.instMembership.mem (Lax60.TeachingMaps.closedBall G 1 v₀) x) →\n                    Exists fun y =>\n                      And (SetLike.instMembership.mem (Lax60.OuterplanarLayer.anchoredTeaching v₀ S w) y)\n                        (Not (Set.instMembership.mem (Lax60.TeachingMaps.closedBall G 1 x) y))))",
+          "startLine": 43,
+          "endLine": 54,
+          "doc": "The outerplanar layer assignment exists and gains external certification when anchored."
+        }
+      ]
+    },
+    {
+      "id": "Lax60.OuterplanarSharpness",
+      "path": "concepts/Lax60/OuterplanarSharpness.lean",
+      "title": "Some outerplanar graph has positive NCTD at least two",
+      "type": "theorem",
+      "description": "Let `H` be the six-vertex graph formed from two triangles\n`0-1-2-0` and `3-4-5-3` together with the edges `0-3` and `1-4`.\nThis graph is outerplanar and witnesses that the positive radius-one\nno-clash teaching dimension of outerplanar graphs cannot be below two.",
+      "imports": [
+        "Lax60.PlanarGraphs",
+        "Lax60.TeachingMaps"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Operations"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Operations\nimport Lax60.PlanarGraphs\nimport Lax60.TeachingMaps\n\n/-!\n---\ntitle: Some outerplanar graph has positive NCTD at least two\ntype: theorem\n---\nLet `H` be the six-vertex graph formed from two triangles\n`0-1-2-0` and `3-4-5-3` together with the edges `0-3` and `1-4`.\nThis graph is outerplanar and witnesses that the positive radius-one\nno-clash teaching dimension of outerplanar graphs cannot be below two.\n-/\n\nnamespace Lax60.OuterplanarSharpness\n\nopen Lax60.PlanarGraphs\nopen Lax60.TeachingMaps\n\n/-- Two triangles joined by two matching edges, with the third matching edge absent. -/\ndef sharpOuterplanarGraph : SimpleGraph (Fin 6) :=\n  SimpleGraph.edge 0 1 ⊔\n  SimpleGraph.edge 1 2 ⊔\n  SimpleGraph.edge 2 0 ⊔\n  SimpleGraph.edge 3 4 ⊔\n  SimpleGraph.edge 4 5 ⊔\n  SimpleGraph.edge 5 3 ⊔\n  SimpleGraph.edge 0 3 ⊔\n  SimpleGraph.edge 1 4\n\n/-- The six-vertex example is outerplanar and has positive NCTD at least two. -/\naxiom positiveNCTD_ge_two :\n    IsOuterplanar sharpOuterplanarGraph ∧\n      2 ≤ positiveNCTD sharpOuterplanarGraph 1\n\nend Lax60.OuterplanarSharpness\n",
+      "statements": [
+        {
+          "id": "Lax60.OuterplanarSharpness.positiveNCTD_ge_two",
+          "signature": "positiveNCTD_ge_two : And (Lax60.PlanarGraphs.IsOuterplanar Lax60.OuterplanarSharpness.sharpOuterplanarGraph)\n  (instLENat.le 2 (Lax60.TeachingMaps.positiveNCTD Lax60.OuterplanarSharpness.sharpOuterplanarGraph 1))",
+          "startLine": 32,
+          "endLine": 35,
+          "doc": "The six-vertex example is outerplanar and has positive NCTD at least two."
+        }
+      ]
+    },
+    {
+      "id": "Lax60.PlanarBound",
+      "path": "concepts/Lax60/PlanarBound.lean",
+      "title": "Planar graphs have positive NCTD at most four",
+      "type": "theorem",
+      "description": "Every finite planar graph has positive no-clash teaching dimension at most\nfour for closed neighborhoods, equivalently for closed balls of radius one.",
+      "imports": [
+        "Lax60.PlanarGraphs",
+        "Lax60.TeachingMaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax60.PlanarGraphs\nimport Lax60.TeachingMaps\n\n/-!\n---\ntitle: Planar graphs have positive NCTD at most four\ntype: theorem\n---\nEvery finite planar graph has positive no-clash teaching dimension at most\nfour for closed neighborhoods, equivalently for closed balls of radius one.\n-/\n\nnamespace Lax60.PlanarBound\n\nopen Lax60.PlanarGraphs\nopen Lax60.TeachingMaps\n\nuniverse u\n\n/-- The radius-one positive upper bound for planar graphs. -/\naxiom positiveNCTD_le_four {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (hplanar : IsPlanar G) :\n    positiveNCTD G 1 ≤ 4\n\nend Lax60.PlanarBound\n",
+      "statements": [
+        {
+          "id": "Lax60.PlanarBound.positiveNCTD_le_four",
+          "signature": "positiveNCTD_le_four : ∀ {V : Type u} [Fintype V] (G : SimpleGraph V),\n  Lax60.PlanarGraphs.IsPlanar G → instLENat.le (Lax60.TeachingMaps.positiveNCTD G 1) 4",
+          "startLine": 20,
+          "endLine": 23,
+          "doc": "The radius-one positive upper bound for planar graphs."
+        }
+      ]
+    },
+    {
+      "id": "Lax60.PlanarGraphs",
+      "path": "concepts/Lax60/PlanarGraphs.lean",
+      "title": "Planar and outerplanar finite simple graphs",
+      "type": "definition",
+      "description": "A topological model of a graph `H` in a graph `G` maps the vertices of `H`\ninjectively to branch vertices of `G` and maps every edge of `H` to a path in\n`G`.  Path interiors contain no branch vertices and interiors belonging to\ndistinct edges are disjoint.\n\nFor finite simple graphs, planarity is encoded by Kuratowski's\ncharacterization: neither `K₅` nor `K₃,₃` has a topological model.\nOuterplanarity is encoded by the analogous characterization excluding\ntopological models of `K₄` and `K₂,₃`.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.CompleteMultipartite",
+        "Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected",
+        "Mathlib.Combinatorics.SimpleGraph.Paths"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.CompleteMultipartite\nimport Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected\nimport Mathlib.Combinatorics.SimpleGraph.Paths\n\n/-!\n---\ntitle: Planar and outerplanar finite simple graphs\ntype: definition\n---\nA topological model of a graph `H` in a graph `G` maps the vertices of `H`\ninjectively to branch vertices of `G` and maps every edge of `H` to a path in\n`G`.  Path interiors contain no branch vertices and interiors belonging to\ndistinct edges are disjoint.\n\nFor finite simple graphs, planarity is encoded by Kuratowski's\ncharacterization: neither `K₅` nor `K₃,₃` has a topological model.\nOuterplanarity is encoded by the analogous characterization excluding\ntopological models of `K₄` and `K₂,₃`.\n-/\n\nnamespace Lax60.PlanarGraphs\n\nuniverse u v\n\n/-- The internal vertices of a walk, with both endpoints removed. -/\ndef walkInterior {V : Type u} {G : SimpleGraph V} {a b : V}\n    (p : G.Walk a b) : Set V :=\n  {x | x ∈ p.support ∧ x ≠ a ∧ x ≠ b}\n\n/--\nA subdivision model of `H` in `G`: distinct branch vertices joined by\ninternally vertex-disjoint paths corresponding to the edges of `H`.\n-/\nstructure TopologicalModel {W : Type u} {V : Type v}\n    (H : SimpleGraph W) (G : SimpleGraph V) where\n  /-- The injective map from vertices of `H` to branch vertices of `G`. -/\n  branch : W ↪ V\n  /-- The path representing each oriented edge of `H`. -/\n  route : ∀ {a b : W}, H.Adj a b → G.Walk (branch a) (branch b)\n  /-- Every route is a graph-theoretic path. -/\n  route_isPath : ∀ {a b : W} (h : H.Adj a b), (route h).IsPath\n  /-- No branch vertex occurs internally on an edge route. -/\n  branch_avoids_interiors :\n    ∀ {a b : W} (h : H.Adj a b) (w : W),\n      branch w ∉ walkInterior (route h)\n  /-- Routes representing distinct undirected edges have disjoint interiors. -/\n  route_interiors_disjoint :\n    ∀ {a b c d : W} (hab : H.Adj a b) (hcd : H.Adj c d),\n      ¬ ((a = c ∧ b = d) ∨ (a = d ∧ b = c)) →\n        Disjoint (walkInterior (route hab)) (walkInterior (route hcd))\n\n/-- `H` occurs as a subdivision in `G`. -/\ndef HasTopologicalModel {W : Type u} {V : Type v}\n    (H : SimpleGraph W) (G : SimpleGraph V) : Prop :=\n  Nonempty (TopologicalModel H G)\n\n/-- Planarity via exclusion of subdivisions of `K₅` and `K₃,₃`. -/\ndef IsPlanar {V : Type v} (G : SimpleGraph V) : Prop :=\n  ¬ HasTopologicalModel (⊤ : SimpleGraph (Fin 5)) G ∧\n  ¬ HasTopologicalModel\n    (completeBipartiteGraph (Fin 3) (Fin 3)) G\n\n/-- Outerplanarity via exclusion of subdivisions of `K₄` and `K₂,₃`. -/\ndef IsOuterplanar {V : Type v} (G : SimpleGraph V) : Prop :=\n  ¬ HasTopologicalModel (⊤ : SimpleGraph (Fin 4)) G ∧\n  ¬ HasTopologicalModel\n    (completeBipartiteGraph (Fin 2) (Fin 3)) G\n\n/--\nA graph is two-connected when it has at least three vertices and remains\nconnected after deletion of any single vertex.\n-/\ndef IsTwoConnected {V : Type v} (G : SimpleGraph V) : Prop :=\n  3 ≤ Nat.card V ∧\n  ∀ v : V, (G.induce {w : V | w ≠ v}).Connected\n\nend Lax60.PlanarGraphs\n",
+      "statements": []
+    },
+    {
+      "id": "Lax60.PlanarSharpness",
+      "path": "concepts/Lax60/PlanarSharpness.lean",
+      "title": "Some planar graph has positive NCTD at least four",
+      "type": "theorem",
+      "description": "Let `W` be the five-vertex wheel whose center is `0` and whose rim is the\nfour-cycle `1-2-3-4-1`.  The graph is planar and its positive radius-one\nno-clash teaching dimension is at least four: the center must use all four\nrim vertices to distinguish itself from the four dominated rim concepts.",
+      "imports": [
+        "Lax60.PlanarGraphs",
+        "Lax60.TeachingMaps"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Operations"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Operations\nimport Lax60.PlanarGraphs\nimport Lax60.TeachingMaps\n\n/-!\n---\ntitle: Some planar graph has positive NCTD at least four\ntype: theorem\n---\nLet `W` be the five-vertex wheel whose center is `0` and whose rim is the\nfour-cycle `1-2-3-4-1`.  The graph is planar and its positive radius-one\nno-clash teaching dimension is at least four: the center must use all four\nrim vertices to distinguish itself from the four dominated rim concepts.\n-/\n\nnamespace Lax60.PlanarSharpness\n\nopen Lax60.PlanarGraphs\nopen Lax60.TeachingMaps\n\n/-- The five-vertex wheel with a four-cycle rim. -/\ndef sharpPlanarGraph : SimpleGraph (Fin 5) :=\n  SimpleGraph.edge 0 1 ⊔\n  SimpleGraph.edge 0 2 ⊔\n  SimpleGraph.edge 0 3 ⊔\n  SimpleGraph.edge 0 4 ⊔\n  SimpleGraph.edge 1 2 ⊔\n  SimpleGraph.edge 2 3 ⊔\n  SimpleGraph.edge 3 4 ⊔\n  SimpleGraph.edge 4 1\n\n/-- The five-vertex wheel is planar and has positive NCTD at least four. -/\naxiom positiveNCTD_ge_four :\n    IsPlanar sharpPlanarGraph ∧\n      4 ≤ positiveNCTD sharpPlanarGraph 1\n\nend Lax60.PlanarSharpness\n",
+      "statements": [
+        {
+          "id": "Lax60.PlanarSharpness.positiveNCTD_ge_four",
+          "signature": "positiveNCTD_ge_four : And (Lax60.PlanarGraphs.IsPlanar Lax60.PlanarSharpness.sharpPlanarGraph)\n  (instLENat.le 4 (Lax60.TeachingMaps.positiveNCTD Lax60.PlanarSharpness.sharpPlanarGraph 1))",
+          "startLine": 32,
+          "endLine": 35,
+          "doc": "The five-vertex wheel is planar and has positive NCTD at least four."
+        }
+      ]
+    },
+    {
+      "id": "Lax60.PlanarVertexBatch",
+      "path": "concepts/Lax60/PlanarVertexBatch.lean",
+      "title": "Every planar vertex with at least four neighbors admits a width-four batch",
+      "type": "theorem",
+      "description": "Let `v` be a vertex of degree at least four in a finite planar graph.  There\nis an admissible radius-one batch of width four which contains the whole\nclosed neighborhood of `v` and at most one additional outside vertex.",
+      "imports": [
+        "Lax60.BatchFramework",
+        "Lax60.PlanarGraphs"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Finite\nimport Lax60.BatchFramework\nimport Lax60.PlanarGraphs\n\n/-!\n---\ntitle: Every planar vertex with at least four neighbors admits a width-four batch\ntype: theorem\n---\nLet `v` be a vertex of degree at least four in a finite planar graph.  There\nis an admissible radius-one batch of width four which contains the whole\nclosed neighborhood of `v` and at most one additional outside vertex.\n-/\n\nnamespace Lax60.PlanarVertexBatch\n\nopen Lax60.BatchFramework\nopen Lax60.PlanarGraphs\nopen Lax60.TeachingMaps\n\nuniverse u\n\n/-- Every high-degree planar center has the required width-four batch. -/\naxiom exists_planar_vertex_batch_of_degree_ge_four {V : Type u}\n    [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (hplanar : IsPlanar G)\n    (v : V) (hdegree : 4 ≤ (G.neighborSet v).ncard) :\n    ∃ B : BatchAssignment G,\n      closedBallFinset G 1 v ⊆ B.vertices ∧\n      (B.vertices \\ closedBallFinset G 1 v).card ≤ 1 ∧\n      IsAdmissible G 4 B\n\nend Lax60.PlanarVertexBatch\n",
+      "statements": [
+        {
+          "id": "Lax60.PlanarVertexBatch.exists_planar_vertex_batch_of_degree_ge_four",
+          "signature": "exists_planar_vertex_batch_of_degree_ge_four : ∀ {V : Type u} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V),\n  Lax60.PlanarGraphs.IsPlanar G →\n    ∀ (v : V),\n      instLENat.le 4 (G.neighborSet v).ncard →\n        Exists fun B =>\n          And (Finset.instHasSubset.Subset (Lax60.TeachingMaps.closedBallFinset G 1 v) B.vertices)\n            (And (instLENat.le (Finset.instSDiff.sdiff B.vertices (Lax60.TeachingMaps.closedBallFinset G 1 v)).card 1)\n              (Lax60.BatchFramework.IsAdmissible G 4 B))",
+          "startLine": 23,
+          "endLine": 31,
+          "doc": "Every high-degree planar center has the required width-four batch."
+        }
+      ]
+    },
+    {
+      "id": "Lax60.SmallDegreeBatch",
+      "path": "concepts/Lax60/SmallDegreeBatch.lean",
+      "title": "Every vertex of degree at most three admits a width-four neighborhood batch",
+      "type": "theorem",
+      "description": "For a vertex `v` of degree at most three, its closed neighborhood is a batch\nof at most four vertices.  Give every batch vertex the anchor label `v`, then\nadd at most one positive witness for each of its at most three internal pairs.\nThis produces an admissible radius-one batch of width four without using\nplanarity.",
+      "imports": [
+        "Lax60.AnchorLabels",
+        "Lax60.BatchFramework"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite",
+        "Mathlib.Data.Set.Card"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Finite\nimport Mathlib.Data.Set.Card\nimport Lax60.BatchFramework\nimport Lax60.AnchorLabels\n\n/-!\n---\ntitle: Every vertex of degree at most three admits a width-four neighborhood batch\ntype: theorem\n---\nFor a vertex `v` of degree at most three, its closed neighborhood is a batch\nof at most four vertices.  Give every batch vertex the anchor label `v`, then\nadd at most one positive witness for each of its at most three internal pairs.\nThis produces an admissible radius-one batch of width four without using\nplanarity.\n-/\n\nnamespace Lax60.SmallDegreeBatch\n\nopen Lax60.BatchFramework\nopen Lax60.TeachingMaps\n\nuniverse u\n\n/-- A degree-at-most-three vertex has a complete width-four neighborhood batch. -/\naxiom exists_small_degree_batch {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (v : V)\n    (hdegree : (G.neighborSet v).ncard ≤ 3) :\n    ∃ B : BatchAssignment G,\n      B.vertices = closedBallFinset G 1 v ∧\n      IsAdmissible G 4 B\n\nend Lax60.SmallDegreeBatch\n",
+      "statements": [
+        {
+          "id": "Lax60.SmallDegreeBatch.exists_small_degree_batch",
+          "signature": "exists_small_degree_batch : ∀ {V : Type u} [inst : Fintype V] (G : SimpleGraph V) (v : V),\n  instLENat.le (G.neighborSet v).ncard 3 →\n    Exists fun B =>\n      And (Eq B.vertices (Lax60.TeachingMaps.closedBallFinset G 1 v)) (Lax60.BatchFramework.IsAdmissible G 4 B)",
+          "startLine": 25,
+          "endLine": 31,
+          "doc": "A degree-at-most-three vertex has a complete width-four neighborhood batch."
+        }
+      ]
+    },
+    {
+      "id": "Lax60.TeachingMaps",
+      "path": "concepts/Lax60/TeachingMaps.lean",
+      "title": "No-clash teaching for closed graph balls",
+      "type": "definition",
+      "description": "A vertex `v` of a finite simple graph represents its closed ball of radius\n`k`: the vertices reachable from `v` by a walk of length at most `k`.\n\nA teaching map assigns a finite set of labels to every vertex.  It is\nno-clash when every two distinct radius-`k` balls are distinguished by a\nlabel used by at least one of their teaching sets.  It is positive when every\nlabel assigned to `v` lies in the ball represented by `v`.\n\nThe ordinary and positive no-clash teaching dimensions are the least uniform\nwidths of such maps.  All subsequent results in this submission specialize\nthese definitions to `k = 1`, where the represented balls are precisely the\nclosed neighborhoods of the draft.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Paths",
+        "Mathlib.Data.Nat.Lattice"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Paths\nimport Mathlib.Data.Nat.Lattice\n\n/-!\n---\ntitle: No-clash teaching for closed graph balls\ntype: definition\n---\nA vertex `v` of a finite simple graph represents its closed ball of radius\n`k`: the vertices reachable from `v` by a walk of length at most `k`.\n\nA teaching map assigns a finite set of labels to every vertex.  It is\nno-clash when every two distinct radius-`k` balls are distinguished by a\nlabel used by at least one of their teaching sets.  It is positive when every\nlabel assigned to `v` lies in the ball represented by `v`.\n\nThe ordinary and positive no-clash teaching dimensions are the least uniform\nwidths of such maps.  All subsequent results in this submission specialize\nthese definitions to `k = 1`, where the represented balls are precisely the\nclosed neighborhoods of the draft.\n-/\n\nnamespace Lax60.TeachingMaps\n\nuniverse u\n\n/-- The closed radius-`k` ball around `v`, expressed by bounded walk length. -/\ndef closedBall {V : Type u} (G : SimpleGraph V) (k : ℕ) (v : V) : Set V :=\n  {w | ∃ p : G.Walk v w, p.length ≤ k}\n\n/-- The closed radius-`k` ball as a finset when the vertex type is finite. -/\nnoncomputable def closedBallFinset {V : Type u} [Fintype V]\n    (G : SimpleGraph V) (k : ℕ) (v : V) : Finset V := by\n  classical\n  exact Finset.univ.filter fun w => w ∈ closedBall G k v\n\n/--\nA radius-`k` teaching map assigns a finite set of vertex labels to each\nradius-`k` concept.  The index makes the represented neighborhood size\nexplicit in every later interface.\n-/\nabbrev TeachingMap (V : Type u) (_k : ℕ) := V → Finset V\n\n/-- Two vertices represent distinct concepts at radius `k`. -/\ndef DistinctConcepts {V : Type u} (G : SimpleGraph V) (k : ℕ)\n    (v w : V) : Prop :=\n  closedBall G k v ≠ closedBall G k w\n\n/-- A label witnesses one of the two sides of the symmetric difference. -/\ndef IsWitness {V : Type u} (G : SimpleGraph V) (k : ℕ)\n    (x v w : V) : Prop :=\n  x ∈ closedBall G k v ∧ x ∉ closedBall G k w\n\n/-- The teaching sets of `v` and `w` contain a label on which their concepts differ. -/\ndef Separates {V : Type u} (G : SimpleGraph V) (k : ℕ)\n    (T : TeachingMap V k) (v w : V) : Prop :=\n  ∃ x : V, (x ∈ T v ∨ x ∈ T w) ∧\n    (IsWitness G k x v w ∨ IsWitness G k x w v)\n\n/-- Every pair of distinct concepts is separated. -/\ndef IsNoClash {V : Type u} (G : SimpleGraph V) (k : ℕ)\n    (T : TeachingMap V k) : Prop :=\n  ∀ ⦃v w : V⦄, DistinctConcepts G k v w → Separates G k T v w\n\n/-- Every teaching label is positive for the concept receiving it. -/\ndef IsPositive {V : Type u} (G : SimpleGraph V) (k : ℕ)\n    (T : TeachingMap V k) : Prop :=\n  ∀ ⦃v x : V⦄, x ∈ T v → x ∈ closedBall G k v\n\n/-- Every teaching set has cardinality at most `d`. -/\ndef HasWidthAtMost {V : Type u} {k : ℕ}\n    (T : TeachingMap V k) (d : ℕ) : Prop :=\n  ∀ v : V, (T v).card ≤ d\n\n/-- Every teaching set is nonempty. -/\ndef HasNonemptySets {V : Type u} {k : ℕ} (T : TeachingMap V k) : Prop :=\n  ∀ v : V, (T v).Nonempty\n\n/-- There is a radius-`k` no-clash teaching map of width at most `d`. -/\ndef HasNCTDAtMost {V : Type u} (G : SimpleGraph V) (k d : ℕ) : Prop :=\n  ∃ T : TeachingMap V k, IsNoClash G k T ∧ HasWidthAtMost T d\n\n/-- There is a positive radius-`k` no-clash teaching map of width at most `d`. -/\ndef HasPositiveNCTDAtMost {V : Type u} (G : SimpleGraph V)\n    (k d : ℕ) : Prop :=\n  ∃ T : TeachingMap V k,\n    IsPositive G k T ∧ IsNoClash G k T ∧ HasWidthAtMost T d\n\n/-- The no-clash teaching dimension for closed balls of radius `k`. -/\nnoncomputable def nctd {V : Type u} (G : SimpleGraph V) (k : ℕ) : ℕ :=\n  sInf {d : ℕ | HasNCTDAtMost G k d}\n\n/-- The positive no-clash teaching dimension for closed balls of radius `k`. -/\nnoncomputable def positiveNCTD {V : Type u}\n    (G : SimpleGraph V) (k : ℕ) : ℕ :=\n  sInf {d : ℕ | HasPositiveNCTDAtMost G k d}\n\n/-- The radius-`k` ball of `v` is contained in that of `w`. -/\ndef Dominates {V : Type u} (G : SimpleGraph V) (k : ℕ)\n    (v w : V) : Prop :=\n  closedBall G k v ⊆ closedBall G k w\n\n/-- Replace the teaching set at `target` by the set at `source`. -/\nnoncomputable def copyTeachingSet {V : Type u} {k : ℕ} (T : TeachingMap V k)\n    (source target : V) : TeachingMap V k := by\n  classical\n  exact fun v => if v = target then T source else T v\n\nend Lax60.TeachingMaps\n",
+      "statements": []
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax60Proofs.AnchorLabels.anchor_certifies",
+      "path": "proofs/Lax60Proofs/AnchorLabels.lean",
+      "conclusion": "Lax60.AnchorLabels.anchor_certifies",
+      "assumptions": [],
+      "description": "The anchor itself is the required label: it belongs to the teaching set by\nhypothesis and is absent from the competing closed ball."
+    },
+    {
+      "id": "Lax60Proofs.BatchReassignment.reassignment",
+      "path": "proofs/Lax60Proofs/BatchReassignment.lean",
+      "conclusion": "Lax60.BatchReassignment.reassignment",
+      "assumptions": [],
+      "description": "Positivity and width pass directly from each vertex's last batch.  For a\npair of vertices, their last batches either agree, when within-batch\nseparation applies, or one is later.  In the latter case the earlier vertex\ncannot occur in the later batch, so the later vertex's outside-batch\ncertificate separates the final assignments."
+    },
+    {
+      "id": "Lax60Proofs.DominatorCount.dominator_count_bounds",
+      "path": "proofs/Lax60Proofs/DominatorCount.lean",
+      "conclusion": "Lax60.DominatorCount.dominator_count_bounds",
+      "assumptions": [],
+      "description": "Two dominators and three further neighbors give a direct `K₃,₃`.  When the\ncenter has exactly four neighbors, three dominators and the remaining\nneighbor give a direct `K₅`."
+    },
+    {
+      "id": "Lax60Proofs.OuterplanarBlockAssignment.exists_two_label_assignment",
+      "path": "proofs/Lax60Proofs/OuterplanarBlockAssignment.lean",
+      "conclusion": "Lax60.OuterplanarBlockAssignment.exists_two_label_assignment",
+      "assumptions": [],
+      "description": "Every finite two-connected outerplanar graph has an exact two-label\npositive no-clash teaching map."
+    },
+    {
+      "id": "Lax60Proofs.OuterplanarBound.positiveNCTD_le_two",
+      "path": "proofs/Lax60Proofs/OuterplanarBound.lean",
+      "conclusion": "Lax60.OuterplanarBound.positiveNCTD_le_two",
+      "assumptions": [
+        "Lax60.OuterplanarBlockAssignment.exists_two_label_assignment"
+      ],
+      "description": "Decompose into connected components.  On each nontrivial component, recurse\nat cut vertices; the two-connected leaves use the exact block assignment.\nAll recursive branch maps retain exact cardinality two, which separates\nvertices belonging to different branches."
+    },
+    {
+      "id": "Lax60Proofs.OuterplanarLayer.exists_outerplanar_layer_assignment",
+      "path": "proofs/Lax60Proofs/OuterplanarLayer.lean",
+      "conclusion": "Lax60.OuterplanarLayer.exists_outerplanar_layer_assignment",
+      "assumptions": [
+        "Lax60.OuterplanarBound.positiveNCTD_le_two"
+      ],
+      "description": "Transport a width-two positive map from the induced outerplanar layer.\nClasses of induced closed twins have size at most three.  A two-element\nclass needs at most one ambient repair label per vertex; on a three-element\nclass, use the self-label and at most two repair labels.  Such a triple is an\nisolated component by the forbidden-`K₄` condition."
+    },
+    {
+      "id": "Lax60Proofs.OuterplanarSharpness.positiveNCTD_ge_two",
+      "path": "proofs/Lax60Proofs/OuterplanarSharpness.lean",
+      "conclusion": "Lax60.OuterplanarSharpness.positiveNCTD_ge_two",
+      "assumptions": [],
+      "description": "The explicit outerplanar example and the lower half of its exact dimension\ncalculation give the required sharpness witness."
+    },
+    {
+      "id": "Lax60Proofs.PlanarBound.positiveNCTD_le_four",
+      "path": "proofs/Lax60Proofs/PlanarBound.lean",
+      "conclusion": "Lax60.PlanarBound.positiveNCTD_le_four",
+      "assumptions": [
+        "Lax60.BatchReassignment.reassignment",
+        "Lax60.PlanarVertexBatch.exists_planar_vertex_batch_of_degree_ge_four",
+        "Lax60.SmallDegreeBatch.exists_small_degree_batch"
+      ],
+      "description": "Choose an admissible batch centered at each vertex.  The schedule is indexed\nby all vertices, and the last batch of a vertex is the largest index of a\nbatch containing it.  This construction also handles an empty vertex type:\nall vertex-indexed obligations are then vacuous."
+    },
+    {
+      "id": "Lax60Proofs.PlanarSharpness.positiveNCTD_ge_four",
+      "path": "proofs/Lax60Proofs/PlanarSharpness.lean",
+      "conclusion": "Lax60.PlanarSharpness.positiveNCTD_ge_four",
+      "assumptions": [],
+      "description": "The planar wheel and the lower half of its exact dimension calculation give\nthe required sharpness witness."
+    },
+    {
+      "id": "Lax60Proofs.PlanarVertexBatch.exists_planar_vertex_batch_of_degree_ge_four",
+      "path": "proofs/Lax60Proofs/PlanarVertexBatch.lean",
+      "conclusion": "Lax60.PlanarVertexBatch.exists_planar_vertex_batch_of_degree_ge_four",
+      "assumptions": [
+        "Lax60.OuterplanarLayer.exists_outerplanar_layer_assignment"
+      ],
+      "description": "Use the four-label center set, the completed active-dominator assignments,\nand the anchored outerplanar-layer assignments on the remaining neighbors.\nThe unique possible outside vertex seeing the center set is added to the\nbatch and receives the outside-gadget assignment."
+    },
+    {
+      "id": "Lax60Proofs.SmallDegreeBatch.exists_small_degree_batch",
+      "path": "proofs/Lax60Proofs/SmallDegreeBatch.lean",
+      "conclusion": "Lax60.SmallDegreeBatch.exists_small_degree_batch",
+      "assumptions": [
+        "Lax60.AnchorLabels.anchor_certifies"
+      ],
+      "description": "Use the center as an anchor label for every vertex in its closed\nneighborhood.  For each ordered pair of batch vertices whose balls have a\nforward difference, choose one such witness.  A vertex has at most three\nother batch vertices, so its anchor plus these witnesses has width at most\nfour."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "2f376d339476c614089ad7f4f3d8be4274b627e2aae12645ec70cad69c4cf542",
+    "sourceCommit": "d07f4ba590781bdbbcfa12f2a3b944e55b2cf81c",
+    "leanToolchain": "leanprover/lean4:v4.30.0",
+    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "files": [
+      {
+        "path": "concepts/ir/Lax60/AnchorLabels.c",
+        "bytes": 1308,
+        "sha256": "1036525cc02a788a4c9cf667ad94e4590d4ddf9edfd06f4031bbe556de0631c7"
+      },
+      {
+        "path": "concepts/ir/Lax60/AnchorLabels.c.hash",
+        "bytes": 16,
+        "sha256": "3ad3cb2a3302ba19b64a0ef8341eec2460eb958b5110b9ba15cb57df11691318"
+      },
+      {
+        "path": "concepts/ir/Lax60/BatchFramework.c",
+        "bytes": 2612,
+        "sha256": "5b63f3e1fa44a4a7f6540866d40203484f7daf5caccd0b1551a950c423605414"
+      },
+      {
+        "path": "concepts/ir/Lax60/BatchFramework.c.hash",
+        "bytes": 16,
+        "sha256": "629578ad4782a8f73a6f321c70e93b7e40fa46bc2507f22b5b121b3604376518"
+      },
+      {
+        "path": "concepts/ir/Lax60/BatchReassignment.c",
+        "bytes": 1324,
+        "sha256": "0f0f37cdfc067e1634c62b980490d9e7220d762190c747c2df2846e4baa12e5f"
+      },
+      {
+        "path": "concepts/ir/Lax60/BatchReassignment.c.hash",
+        "bytes": 16,
+        "sha256": "1102e2234dedb468b239b4cb6b860e547eaefe61a19c98fe557b17837ddd2d92"
+      },
+      {
+        "path": "concepts/ir/Lax60/DominatorCount.c",
+        "bytes": 2070,
+        "sha256": "a9663ad903fccc467285b3ef8a7b421918d99fe665c477abeab044b2177cc81d"
+      },
+      {
+        "path": "concepts/ir/Lax60/DominatorCount.c.hash",
+        "bytes": 16,
+        "sha256": "672f532eb96983f40f702dfcdb63e3f30eaa8a1a03f59773fcafc7ac8a0318cf"
+      },
+      {
+        "path": "concepts/ir/Lax60/DominatorDefinitions.c",
+        "bytes": 1324,
+        "sha256": "92e06c1097904b2a82718c5b319b805388d2ec3c63c7a502a1192b789e389750"
+      },
+      {
+        "path": "concepts/ir/Lax60/DominatorDefinitions.c.hash",
+        "bytes": 16,
+        "sha256": "84f7deee59612db76d77d0ecfd875aecb8fefc5463d1fcca777d3f8c73f49536"
+      },
+      {
+        "path": "concepts/ir/Lax60/OuterplanarBlockAssignment.c",
+        "bytes": 1553,
+        "sha256": "ff2a5d1efb86dda9585e5430d315c4594be072b0e0ea4644649978d9f4afede9"
+      },
+      {
+        "path": "concepts/ir/Lax60/OuterplanarBlockAssignment.c.hash",
+        "bytes": 16,
+        "sha256": "0af1de6af2d095a1931fd1a8b673415559872db3acdc12c09bb51e6954715d12"
+      },
+      {
+        "path": "concepts/ir/Lax60/OuterplanarBound.c",
+        "bytes": 1533,
+        "sha256": "f56c0f7eba2a2f23aca9dc1a0abbc98e34db36de8adf603f9191493155ed49c2"
+      },
+      {
+        "path": "concepts/ir/Lax60/OuterplanarBound.c.hash",
+        "bytes": 16,
+        "sha256": "793c6f0a2fdae52e0b0d85e3bcada7d212e283b20142e005f87c1c81bc50b258"
+      },
+      {
+        "path": "concepts/ir/Lax60/OuterplanarLayer.c",
+        "bytes": 1533,
+        "sha256": "f8bae53a7cd6fce668c292f4317b1f5a075f77b1f7efd10f3900c3fcb1627b30"
+      },
+      {
+        "path": "concepts/ir/Lax60/OuterplanarLayer.c.hash",
+        "bytes": 16,
+        "sha256": "0b91ae89405efcd09826fec957e96d3c33b69471209f3a32dbd8918a6b9be66e"
+      },
+      {
+        "path": "concepts/ir/Lax60/OuterplanarSharpness.c",
+        "bytes": 2302,
+        "sha256": "c8848823a7d6427b142ace65a7a7d33922f80029ca49234a16c167307080d876"
+      },
+      {
+        "path": "concepts/ir/Lax60/OuterplanarSharpness.c.hash",
+        "bytes": 16,
+        "sha256": "05c5a5b0618dae003f46ae6bc779ac0d06d26cb6360e435a166400403842c2ab"
+      },
+      {
+        "path": "concepts/ir/Lax60/PlanarBound.c",
+        "bytes": 1523,
+        "sha256": "cda389b7224738d658bea140f00ecae4abf48b90a9e70b32bda9a440e57adb19"
+      },
+      {
+        "path": "concepts/ir/Lax60/PlanarBound.c.hash",
+        "bytes": 16,
+        "sha256": "069b29e4506f219baec4cb3350cf007afbe0ae6c8d57666ca1e8651f6d3c8c9c"
+      },
+      {
+        "path": "concepts/ir/Lax60/PlanarGraphs.c",
+        "bytes": 2039,
+        "sha256": "86d4f3ce54954392c9ce61deeca97ee7a588f943d073295c764d5e8aa73469aa"
+      },
+      {
+        "path": "concepts/ir/Lax60/PlanarGraphs.c.hash",
+        "bytes": 16,
+        "sha256": "a1eeca7e1bad83a5e93e123828d6110cba50834504d2ca7e8dc795f78793b2fc"
+      },
+      {
+        "path": "concepts/ir/Lax60/PlanarSharpness.c",
+        "bytes": 2242,
+        "sha256": "2509fba361418b3a0b478178db37b8ba0eead3ada468dbbf61f86d4c00c58f4e"
+      },
+      {
+        "path": "concepts/ir/Lax60/PlanarSharpness.c.hash",
+        "bytes": 16,
+        "sha256": "2d759238dfdd58e8bc562efa9e4e47394da2d6c33b29d505c6914734614f414e"
+      },
+      {
+        "path": "concepts/ir/Lax60/PlanarVertexBatch.c",
+        "bytes": 1828,
+        "sha256": "a5102a530db250b436d2d611f161e0ca5c15aba88f271253c25a1a9833606a3c"
+      },
+      {
+        "path": "concepts/ir/Lax60/PlanarVertexBatch.c.hash",
+        "bytes": 16,
+        "sha256": "e84dbd912dee9a545356df5081793c94f5df6080bfabda03f95085b9ef6a1654"
+      },
+      {
+        "path": "concepts/ir/Lax60/SmallDegreeBatch.c",
+        "bytes": 2056,
+        "sha256": "f2d1218dc9e56f083acb611f7001636f23dd25a9c51e3e3477b5f1d2bb6d238a"
+      },
+      {
+        "path": "concepts/ir/Lax60/SmallDegreeBatch.c.hash",
+        "bytes": 16,
+        "sha256": "47a9ff9cd350a6746cbcb39021b937841e273d7a3370a2cb7be3bf6466d303a3"
+      },
+      {
+        "path": "concepts/ir/Lax60/TeachingMaps.c",
+        "bytes": 1614,
+        "sha256": "021f104f5583e3022ac5999bf81be3133e99eef229d34d14e876ea9b4c9d5311"
+      },
+      {
+        "path": "concepts/ir/Lax60/TeachingMaps.c.hash",
+        "bytes": 16,
+        "sha256": "1524bfb0561c9d1b3b7b0d816dfb8995a0a4449f9eec50daa43d99ca471a9176"
+      },
+      {
+        "path": "concepts/ir/Lax60.c",
+        "bytes": 4494,
+        "sha256": "29a46287b44a976287fb868117bdfa32ca80fdf9a430a59512ea77909e53cb8e"
+      },
+      {
+        "path": "concepts/ir/Lax60.c.hash",
+        "bytes": 16,
+        "sha256": "7832603ff1f91df594261edae93390f7bed86513f987fabda5a08daafe41dfb1"
+      },
+      {
+        "path": "concepts/lib/Lax60/AnchorLabels.ilean",
+        "bytes": 901,
+        "sha256": "61bf6bb94970c2e7b9e8bdac01abd556add0598c80ea32507155e79d9b1f5463"
+      },
+      {
+        "path": "concepts/lib/Lax60/AnchorLabels.ilean.hash",
+        "bytes": 16,
+        "sha256": "65d5ae113c0fd2d04f2cf99bfbaa26c728ede231cc1d48cd1af8df8ce8fd9492"
+      },
+      {
+        "path": "concepts/lib/Lax60/AnchorLabels.olean",
+        "bytes": 9992,
+        "sha256": "942e675e12ffda93f2c424c9cc3a7a800377e1d2538a46395a8aff3a478296fc"
+      },
+      {
+        "path": "concepts/lib/Lax60/AnchorLabels.olean.hash",
+        "bytes": 16,
+        "sha256": "473af30e1083919cdc4371e50a512afb0b8ef6db41df98d657f97102dbd3f107"
+      },
+      {
+        "path": "concepts/lib/Lax60/AnchorLabels.trace",
+        "bytes": 2214,
+        "sha256": "2bb9310da7108b250e0fd1036f483760b79b602680de131cdac54b985a1f152f"
+      },
+      {
+        "path": "concepts/lib/Lax60/BatchFramework.ilean",
+        "bytes": 4775,
+        "sha256": "b71c4fbcc86fbf37f5566dcf2d7262a5e6015b54711c73176082e8e3074ca40b"
+      },
+      {
+        "path": "concepts/lib/Lax60/BatchFramework.ilean.hash",
+        "bytes": 16,
+        "sha256": "786d350533eed44828cbe74c92b596cc1f08e2d9a3ecc3f53ecea1f2c5f7f3ce"
+      },
+      {
+        "path": "concepts/lib/Lax60/BatchFramework.olean",
+        "bytes": 124632,
+        "sha256": "1e024f73fd62190870ad07e1001093ab59f2f5cb706eff80067421e69ff0952e"
+      },
+      {
+        "path": "concepts/lib/Lax60/BatchFramework.olean.hash",
+        "bytes": 16,
+        "sha256": "34e5512558a000cdcdc1d30abfc471c579cc1b5f2e3fd466da7b886e1cab0415"
+      },
+      {
+        "path": "concepts/lib/Lax60/BatchFramework.trace",
+        "bytes": 2230,
+        "sha256": "6e1553994384e79a158e553e8400e1de10b5e20fa7a223ef23bf06cd20f9f1dd"
+      },
+      {
+        "path": "concepts/lib/Lax60/BatchReassignment.ilean",
+        "bytes": 2293,
+        "sha256": "10ee4ca2de3d246903504d87254de1c2b62abc15f4457ae9a125618e280bf068"
+      },
+      {
+        "path": "concepts/lib/Lax60/BatchReassignment.ilean.hash",
+        "bytes": 16,
+        "sha256": "97d42e6792d106ecab732a54e45b52aed5a6e30e3a30deb723e9566ab3ba7486"
+      },
+      {
+        "path": "concepts/lib/Lax60/BatchReassignment.olean",
+        "bytes": 8560,
+        "sha256": "f973a7fa26c55a54784642d0b67936b7dc31e9eedc2cae5a5817df49add74317"
+      },
+      {
+        "path": "concepts/lib/Lax60/BatchReassignment.olean.hash",
+        "bytes": 16,
+        "sha256": "c0425065989a611110c9d9960ec10e90421b762c8a4ba51b47ea1299fb53886b"
+      },
+      {
+        "path": "concepts/lib/Lax60/BatchReassignment.trace",
+        "bytes": 2267,
+        "sha256": "8b6fa2ca45bfd58eed6212c7279a84905725c74b5232958ad1b3c3033e60ce97"
+      },
+      {
+        "path": "concepts/lib/Lax60/DominatorCount.ilean",
+        "bytes": 1870,
+        "sha256": "ac40b5fcfaf553cda3d405702248800a4b5a5281c2d1d8942a2aa19c133f0bde"
+      },
+      {
+        "path": "concepts/lib/Lax60/DominatorCount.ilean.hash",
+        "bytes": 16,
+        "sha256": "e6d0b00ff00212e172df6025a5c3a26903e1fddedd1692b701ec28237bf637d8"
+      },
+      {
+        "path": "concepts/lib/Lax60/DominatorCount.olean",
+        "bytes": 9936,
+        "sha256": "503c4031dbddacf24f8dca2cbe353bc6a1693db99d03beec2bd62ede89117e4a"
+      },
+      {
+        "path": "concepts/lib/Lax60/DominatorCount.olean.hash",
+        "bytes": 16,
+        "sha256": "c637e9e34807b305b625d949b6a668792a9f740726d1b46705992fc5c943c23b"
+      },
+      {
+        "path": "concepts/lib/Lax60/DominatorCount.trace",
+        "bytes": 2770,
+        "sha256": "b3c61375085311a1d633b9ea0b379357cdb589a4843e3dab552d5d10f2a0c307"
+      },
+      {
+        "path": "concepts/lib/Lax60/DominatorDefinitions.ilean",
+        "bytes": 3990,
+        "sha256": "5000453da1aa15af5c763d5dd3ed7e46c72c359aaf71685c0eeee85d4dd1fafa"
+      },
+      {
+        "path": "concepts/lib/Lax60/DominatorDefinitions.ilean.hash",
+        "bytes": 16,
+        "sha256": "7fa2a219ea486de76928cd4627bb34ae20ef2a19a98ab7ef096ac01e57c396ff"
+      },
+      {
+        "path": "concepts/lib/Lax60/DominatorDefinitions.olean",
+        "bytes": 21216,
+        "sha256": "7f237a8f53db56e7b1d4b2fae6c8da3f0e02955a75767a1d446955d4843d14aa"
+      },
+      {
+        "path": "concepts/lib/Lax60/DominatorDefinitions.olean.hash",
+        "bytes": 16,
+        "sha256": "bbb54456e1f714bf555f18977c88ceb0ec63d48d9673310795c371216ad2df24"
+      },
+      {
+        "path": "concepts/lib/Lax60/DominatorDefinitions.trace",
+        "bytes": 2278,
+        "sha256": "300fa89decaf659b6b276a2a615dd5c0ec04af4f7e7bce08ee2df24a48511e72"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarBlockAssignment.ilean",
+        "bytes": 1990,
+        "sha256": "31ed0e5c5f337c3ee1b67cbb360d0b1922f47e8650bf29e06f060c241808f7bf"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarBlockAssignment.ilean.hash",
+        "bytes": 16,
+        "sha256": "78d1dbd3d6cbce76d042c1a07f5d5951bb2f3e31bb26249ef7cf5201e94fabfa"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarBlockAssignment.olean",
+        "bytes": 9248,
+        "sha256": "f68075c211ea76efa72f095d06593dd8826e5caa75fa017a9480b5ed710ffeb0"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarBlockAssignment.olean.hash",
+        "bytes": 16,
+        "sha256": "0ae83b9286d1b78010122f42fd89e3faa94b515029810bd97e7b20072dce85bc"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarBlockAssignment.trace",
+        "bytes": 2472,
+        "sha256": "e33ce0e80b7583b4972db5defd1aee41a33aab08bf129a76adfeed58c93e6f57"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarBound.ilean",
+        "bytes": 1099,
+        "sha256": "f43340a2e738a3d237a69ea8dd063cb01699ed0e4c6310f232eb3c1672999069"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarBound.ilean.hash",
+        "bytes": 16,
+        "sha256": "fd59aff4b65a9aa38b9f4ce58432677f58b6f51c34d7845d0ffa42a6a1d0738a"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarBound.olean",
+        "bytes": 7448,
+        "sha256": "e2cbeddea8b2c6ead367982aff2975e9f28fee6482d011d26406f23033d0a4ca"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarBound.olean.hash",
+        "bytes": 16,
+        "sha256": "ec65d7002e051cee334c9c8b44e9a47ddb5c0c222e9fb84337e71fea23c0f895"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarBound.trace",
+        "bytes": 2392,
+        "sha256": "e391a9895ef8de569ad8f9699c047d904cfe78d1a6ad6bbcef26201ebfb8de04"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarLayer.ilean",
+        "bytes": 4028,
+        "sha256": "fd94348375dbb9f1738a95b93d25d2f7d6dc0f22c3ef90e5edee6d267ae2fe0b"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarLayer.ilean.hash",
+        "bytes": 16,
+        "sha256": "c67c14c44876cff9f8bcbf80187561cabd6f2b61ee330fa9ae8eb77e984b7f95"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarLayer.olean",
+        "bytes": 22008,
+        "sha256": "c0c66311cd3abb38bb6a087b7402dd17de6e2fe61f5248313a68de1dfade304a"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarLayer.olean.hash",
+        "bytes": 16,
+        "sha256": "c1eeaa47b9c9a23d18fcefdf64bb624733270da5a3ed6fdcaa0c745cadecad0c"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarLayer.trace",
+        "bytes": 2392,
+        "sha256": "b8de0a91a1ebacd12d88fd4403ae3a95e7917e1a9479a73053e353cbcd70954a"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarSharpness.ilean",
+        "bytes": 2175,
+        "sha256": "8cede6632e327e5d30e2abc539cb6bc5d3f2f54195610c8d6c48c6f0950eda57"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarSharpness.ilean.hash",
+        "bytes": 16,
+        "sha256": "d4c543f7b56730b689897f385f3f656411017bbc70fc226c438d3e0116b1a06b"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarSharpness.olean",
+        "bytes": 14384,
+        "sha256": "a3b3cf1f1b032a61a1ad36cc6af13fe26d7c5975e85181c9168af0c939b81100"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarSharpness.olean.hash",
+        "bytes": 16,
+        "sha256": "82435efb9a47e9516c4b8336f7df12c8a8eb6330bb0516546bae55a6120e6e33"
+      },
+      {
+        "path": "concepts/lib/Lax60/OuterplanarSharpness.trace",
+        "bytes": 2640,
+        "sha256": "c2f680a843bbba96494825441ca4984d09290900623c07ef208cece0a30c1ece"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarBound.ilean",
+        "bytes": 1056,
+        "sha256": "01fb72065464f6a58307a0ebaae2e65d1c10c862b26b7f9352d398a4a3ae294d"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarBound.ilean.hash",
+        "bytes": 16,
+        "sha256": "09713eda61c289138d64e6bb80182d7bdec0912f98e85bd0c5e381daf0d9c91f"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarBound.olean",
+        "bytes": 7416,
+        "sha256": "36e6f6cbc3f4d34619c69f0e5df134714cdb87715c8c3ed4634405edeed62fca"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarBound.olean.hash",
+        "bytes": 16,
+        "sha256": "356eed9b4bbc164d8913e3a6c22c855493e15df1a3fbf399caf9799694ebc489"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarBound.trace",
+        "bytes": 2349,
+        "sha256": "087874410c8233e1f9d36c2c82d8846c07d1ccd77d7b85fdb60e316a742dd01b"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarGraphs.ilean",
+        "bytes": 5639,
+        "sha256": "987595493ac2d844b234ea20a510d9355f542d06cef52e04f5c1a50916466bcd"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarGraphs.ilean.hash",
+        "bytes": 16,
+        "sha256": "a416c9f4e994731cc07aaff2a879f5a12bbb7c982a27282cb4b2fe960e193074"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarGraphs.olean",
+        "bytes": 146648,
+        "sha256": "84e57fc15dd4cb7ef6313027d16702e174a4e778a8965dc64b25c979fce74aa7"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarGraphs.olean.hash",
+        "bytes": 16,
+        "sha256": "1154100190d97827906a1cb69dd2fbe54ce88a63195f5f442cf3d1d924896eac"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarGraphs.trace",
+        "bytes": 2750,
+        "sha256": "e2a94cfcd44bf6c3f581458c8ccb87e4a4c5c5eda7068b32b267b47d713a2d94"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarSharpness.ilean",
+        "bytes": 2007,
+        "sha256": "c6007345e7856a1ea234f1b7031d91ae70012c4aaae1411a98ce18c8a08fb439"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarSharpness.ilean.hash",
+        "bytes": 16,
+        "sha256": "11602bfbf78100c89882c4fcee5981660085827e43ba4745068993958d5c9cbe"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarSharpness.olean",
+        "bytes": 14096,
+        "sha256": "0ce13669e967deca46b7cd0405ba09954259d9ec19f83bc969d737882d7892af"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarSharpness.olean.hash",
+        "bytes": 16,
+        "sha256": "67295f094fe0d88d977f4df45fe7fe23042786a9ecee77bc1e5a5f96ef4c934a"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarSharpness.trace",
+        "bytes": 2600,
+        "sha256": "2543e1e4ba851ecf105e57f108ae89867c8ad5c0ad0541d3c6a3e42b672106d6"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarVertexBatch.ilean",
+        "bytes": 2888,
+        "sha256": "22e3d7dfc6170bdec33a9741aa4a4d1feeb208785e1d8047389785190b23f432"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarVertexBatch.ilean.hash",
+        "bytes": 16,
+        "sha256": "5b0c96df5a3016c41890c26c69b4691378355489c932f0a3fea0f8700967ca3c"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarVertexBatch.olean",
+        "bytes": 11704,
+        "sha256": "921b842638e3cfe647bdc5b3fe5a280cd2a32c0c1b973b76ce5e4e90d3ac96b3"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarVertexBatch.olean.hash",
+        "bytes": 16,
+        "sha256": "f403b2ee005f59b370ffdf35108bd42766ea6b0bf47a81d940ff59fa3e6734fb"
+      },
+      {
+        "path": "concepts/lib/Lax60/PlanarVertexBatch.trace",
+        "bytes": 2621,
+        "sha256": "41fe42710e43fc644a3162b408d9673236f717b09a7ef2fc107ec5588c9c5b56"
+      },
+      {
+        "path": "concepts/lib/Lax60/SmallDegreeBatch.ilean",
+        "bytes": 1989,
+        "sha256": "04c225e2d9eea0f4af4c271cc44633c5c27feb854beaf2f701938a9710181d20"
+      },
+      {
+        "path": "concepts/lib/Lax60/SmallDegreeBatch.ilean.hash",
+        "bytes": 16,
+        "sha256": "b0da0598d516bdc3cfd501ebf46e7383619a64aa0fa23c2d32833b8be3c6ab09"
+      },
+      {
+        "path": "concepts/lib/Lax60/SmallDegreeBatch.olean",
+        "bytes": 10432,
+        "sha256": "972ecad3b61caec84227fb4f729ff30a6d56bae6fa392c04318c7765214654a5"
+      },
+      {
+        "path": "concepts/lib/Lax60/SmallDegreeBatch.olean.hash",
+        "bytes": 16,
+        "sha256": "a3ac3821623fa383c7a6e265f9753c165f31c5455fe60c8049d6e3188f1766e6"
+      },
+      {
+        "path": "concepts/lib/Lax60/SmallDegreeBatch.trace",
+        "bytes": 2774,
+        "sha256": "acc91c4b0e2ccfd7c2151f5e348fb3f1401f4991729d3c3381488820199fd821"
+      },
+      {
+        "path": "concepts/lib/Lax60/TeachingMaps.ilean",
+        "bytes": 7845,
+        "sha256": "518fc1af4440409f03929c4d4c2fc32e4888b3bbd78d544c33da3ff3df74c015"
+      },
+      {
+        "path": "concepts/lib/Lax60/TeachingMaps.ilean.hash",
+        "bytes": 16,
+        "sha256": "fbb80eaad19ac75f9181b94c0823c96b179c2dfc342008bba46697406e97f3db"
+      },
+      {
+        "path": "concepts/lib/Lax60/TeachingMaps.olean",
+        "bytes": 34328,
+        "sha256": "a4977b1f1b2e466270137c91c8639824e6791d218a5c7dc30e880d2c55b350be"
+      },
+      {
+        "path": "concepts/lib/Lax60/TeachingMaps.olean.hash",
+        "bytes": 16,
+        "sha256": "7657c2a671c042cf6ee8d16092920e5deab6853dcb68cc35fe0a0ef086644df5"
+      },
+      {
+        "path": "concepts/lib/Lax60/TeachingMaps.trace",
+        "bytes": 2441,
+        "sha256": "c91b9c44745ce772f5ed67db568e6aa641febc4db71c2da0ee1cf86041dc6f9e"
+      },
+      {
+        "path": "concepts/lib/Lax60.ilean",
+        "bytes": 748,
+        "sha256": "e667e79499ad46b6b99dff1591c8f690b5eaf8f858a8df20ef61b74a4c379fdb"
+      },
+      {
+        "path": "concepts/lib/Lax60.ilean.hash",
+        "bytes": 16,
+        "sha256": "37a132084cb8bd390bcefa5178cc0326324a62af1032ad833b3245e2fc7f005c"
+      },
+      {
+        "path": "concepts/lib/Lax60.olean",
+        "bytes": 2976,
+        "sha256": "8f9f589128549c52d8adbac28732746d3c2b3570e28beea10814519b683fb22b"
+      },
+      {
+        "path": "concepts/lib/Lax60.olean.hash",
+        "bytes": 16,
+        "sha256": "e2e22e8e8da3f649f2ba9d4cccb852a0100d5c00dc39ce04190ce99a294a769f"
+      },
+      {
+        "path": "concepts/lib/Lax60.trace",
+        "bytes": 4366,
+        "sha256": "2b36163f6250c51bc2939c7ff48f113b646a6ff8846afc8ec2151ad606e1f7a0"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3162,
+        "sha256": "a0cdc406f106d3b403d989288de4bf470ae19da1d1da7c4c53478757d0b9403f"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 314,
+        "sha256": "8570658e89294782a53dc5b7e0975b89787784aec1196182e9753891d0f58143"
+      },
+      {
+        "path": "concepts/package/Lax60/AnchorLabels.lean",
+        "bytes": 697,
+        "sha256": "44a7d0bec4f8be4f6f05671cd4dd5f2b31a9487f41563f613f02f01bf16f44bc"
+      },
+      {
+        "path": "concepts/package/Lax60/BatchFramework.lean",
+        "bytes": 2531,
+        "sha256": "a9fc33c13cf09bdd512c16a5378667fb2cb5a63b958c25ae2420579d831574bd"
+      },
+      {
+        "path": "concepts/package/Lax60/BatchReassignment.lean",
+        "bytes": 808,
+        "sha256": "1bdc4db101bc1e4f22f45ae2619a21e40833172af056927d1c6fafee5ae863e5"
+      },
+      {
+        "path": "concepts/package/Lax60/DominatorCount.lean",
+        "bytes": 1017,
+        "sha256": "60850a628120ab7acaa4855423ddc3006b65e082581a3c550e380c1ebbd84ddb"
+      },
+      {
+        "path": "concepts/package/Lax60/DominatorDefinitions.lean",
+        "bytes": 2292,
+        "sha256": "434d78a92c53fe543db9f2b3bea08f719936305fef41f37d9564748ad5f5da1f"
+      },
+      {
+        "path": "concepts/package/Lax60/OuterplanarBlockAssignment.lean",
+        "bytes": 861,
+        "sha256": "4d6ff3a3febe49032f2b0e58a0bdf010677d7dcae5ca333852a1d68c4756eea8"
+      },
+      {
+        "path": "concepts/package/Lax60/OuterplanarBound.lean",
+        "bytes": 622,
+        "sha256": "96ff7b1ceeb328c9d0ff9515f5f9cd24a66fee960ff1e51429980f4a9ebec297"
+      },
+      {
+        "path": "concepts/package/Lax60/OuterplanarLayer.lean",
+        "bytes": 2065,
+        "sha256": "c773ab9a6f8d0ee4cba7154dea6a6b0fa88f73e80a259dfb00b4cc9dd62adbec"
+      },
+      {
+        "path": "concepts/package/Lax60/OuterplanarSharpness.lean",
+        "bytes": 1132,
+        "sha256": "3293da8f1bde795fba6d434659c4087484f4b5f093d7ca5dfab083878c8aecb4"
+      },
+      {
+        "path": "concepts/package/Lax60/PlanarBound.lean",
+        "bytes": 590,
+        "sha256": "fad685756387c0fee326ff8e488c2a19681231cd3d2fd7d9b1ec570e2f7bbc18"
+      },
+      {
+        "path": "concepts/package/Lax60/PlanarGraphs.lean",
+        "bytes": 3074,
+        "sha256": "9f9629fcb8255fd3a9ba217ecb7ef8b07992a2285f940ffa2959cfd90f1309b1"
+      },
+      {
+        "path": "concepts/package/Lax60/PlanarSharpness.lean",
+        "bytes": 1090,
+        "sha256": "cd5814e7e732eab77694173391561d2527a0a72857142c5f48aa5833ed55b8b7"
+      },
+      {
+        "path": "concepts/package/Lax60/PlanarVertexBatch.lean",
+        "bytes": 1022,
+        "sha256": "c6515f6bccda86bff6e3502e9b7f8c5a2aa835f61e45a0f4744fc32d71e42c8d"
+      },
+      {
+        "path": "concepts/package/Lax60/SmallDegreeBatch.lean",
+        "bytes": 1010,
+        "sha256": "15729b5c0f8623dadfb0930a7c396f2e8bcd06355f16d37515940dbdbaee5cf7"
+      },
+      {
+        "path": "concepts/package/Lax60/TeachingMaps.lean",
+        "bytes": 4398,
+        "sha256": "970ba1c0f7cfb61dffbeef15029361c6d644c79c06d0b9be9c1c4593a1516d0b"
+      },
+      {
+        "path": "concepts/package/Lax60.lean",
+        "bytes": 448,
+        "sha256": "718259579fa3676ee3094ac9fc3502da9dd37ec148c0c079768b9784224070a8"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/AnchorLabels.c",
+        "bytes": 1326,
+        "sha256": "4c1c4140a83e91d97215e1969374aec876b70caa197a67e395b0efe65126d467"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/AnchorLabels.c.hash",
+        "bytes": 16,
+        "sha256": "9b825a55d1ade311247c1b770cb17e4b5c885d3ddc6091fd8f51158dff6b4870"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/BatchReassignment.c",
+        "bytes": 1351,
+        "sha256": "ec4bd3389f6c64b211d3d95f6b4224df6b70d45a1cda89674031fc19e9c5fe85"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/BatchReassignment.c.hash",
+        "bytes": 16,
+        "sha256": "bdb828533aa973a380750a1eee6245d22c1098a281fdae7f7314dfd551204301"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/CenterSet.c",
+        "bytes": 6997,
+        "sha256": "4839f7091ca10621bf0c01ee2807788ad7e1fa1c807bc0ec64152ca9d0fa4f81"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/CenterSet.c.hash",
+        "bytes": 16,
+        "sha256": "bb1df80f94020e2b2975007488f20b39d47e23d75f94dbdd3c090bf153470c67"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/ComponentReduction.c",
+        "bytes": 1969,
+        "sha256": "eb820a1e47fa727e49eeaf504620ebaf7f052b5681e7a90536e2f9376e02ffdc"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/ComponentReduction.c.hash",
+        "bytes": 16,
+        "sha256": "25c5296a693caa27b334f004645c61a3e12d9a91fa44d590099da55735d91be3"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/DominatorCompletion.c",
+        "bytes": 1882,
+        "sha256": "a348530cbe445e2cfc12a574c7847bed64ba097408e42d88ae4f8454f7763d24"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/DominatorCompletion.c.hash",
+        "bytes": 16,
+        "sha256": "4a110a315f0e4b83fad4d0e11c24f7788ed0549eddddfbd76b077b008ee08b5d"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/DominatorCount.c",
+        "bytes": 3225,
+        "sha256": "8898cb9302c91be82f080eae49b8b8bb8f11ec5f5e6f609761205a05242c4cbd"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/DominatorCount.c.hash",
+        "bytes": 16,
+        "sha256": "e582c404fd928bf7e463a2535116a474db5348a20188fcc1dabe3bb96f8e0ee5"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarBlockAssignment.c",
+        "bytes": 11597,
+        "sha256": "d5004fe1568367f4aa8bee902375c7d8bf86987f76be88eaff87aaed1faf8ed8"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarBlockAssignment.c.hash",
+        "bytes": 16,
+        "sha256": "23f521ff91fc18275e48078edaa821fb4c5b014dd609439761fb8a48b9546d01"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarBound.c",
+        "bytes": 7385,
+        "sha256": "dd59a87e7e832fad2c5b059f4c6f5bf86635baed3d056a709015d2f44f5064a5"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarBound.c.hash",
+        "bytes": 16,
+        "sha256": "082b2b8c14cf3e3c2cb2b948f07501b3d0a117db113f4aeb68dccbc3b7ab26da"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarLayer.c",
+        "bytes": 5033,
+        "sha256": "1221ed57578742d4f7ae140bc885540f489d2f6c244bda6589f70ba8689d61c5"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarLayer.c.hash",
+        "bytes": 16,
+        "sha256": "d2292898e98e5f2095da9aad7d6d38148f05ffb1354d4397a824ec7452ed83e3"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarSharpness.c",
+        "bytes": 39685,
+        "sha256": "9f46e73cc286677da2793a37e1d4fe9f4772055a09cfa878fe759cf73fd96791"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarSharpness.c.hash",
+        "bytes": 16,
+        "sha256": "193fd1ed4f1ea3d02b42bb3de3ae2ad83f849616a3278a0b99ca52c4ea2a192f"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarThetaBase.c",
+        "bytes": 1937,
+        "sha256": "caec56c2cc3257ad9260e5ba0e8be7d5dc7520cd97f17126925b9f6feaf19b17"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarThetaBase.c.hash",
+        "bytes": 16,
+        "sha256": "ab59bda5426296274f25c4eccb95f90245bff88f7b329c5b7d2c0f9df0602612"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarThetaDirect.c",
+        "bytes": 14986,
+        "sha256": "b14180a7e4196d2d8f870d6ded1d96a2e7b9dc5dcfc2abb57a559aaa13818849"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarThetaDirect.c.hash",
+        "bytes": 16,
+        "sha256": "0ce901ecc7b6b2ca9e448eb9efb3308fbdd880f10ed356ccf5b5ea8ff64f612d"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarThetaFinal.c",
+        "bytes": 2773,
+        "sha256": "3cec6ff9d0ac9da350a1e4fcc427a20e89195426d2fd302e454bb82b70f5482e"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarThetaFinal.c.hash",
+        "bytes": 16,
+        "sha256": "73926ed553e71432989193f6ad05083630602d4cefe2f43796937b4903f2a230"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarThetaK4.c",
+        "bytes": 1634,
+        "sha256": "13ed2793f30d5c6612a634705651ab169bea72c6527d553c7fa7ef10cd3de4b3"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarThetaK4.c.hash",
+        "bytes": 16,
+        "sha256": "aaad0349f4c4265407c669775b9382c3867fcd3724079f0f474d8343a7e9b4f4"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarThetaLeftReturn.c",
+        "bytes": 1414,
+        "sha256": "04c4ce29ad439c90a9a9c8e42ac2eff55d4f27d518a09d020ea6caba31d2aeb3"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarThetaLeftReturn.c.hash",
+        "bytes": 16,
+        "sha256": "007d53da0fabf7da7bda9aeaf888aa344b7b210d060b2380c52cd90cf026256e"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarThetaSameArm.c",
+        "bytes": 1408,
+        "sha256": "14bd15dbcd7a4f438eed2c1f6c3dc571371b8ed8e8c3abe825519662faade32c"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OuterplanarThetaSameArm.c.hash",
+        "bytes": 16,
+        "sha256": "af498c67c560f1c21a69fdf2783dada3d929ca47d5ad9fca835a057b8ac24be5"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OutsideThreeSetGadget.c",
+        "bytes": 3530,
+        "sha256": "ad94047faf289e17d2dbe6c710cd3e6383d6a379619244765991a623a2e91ba5"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/OutsideThreeSetGadget.c.hash",
+        "bytes": 16,
+        "sha256": "ee921130157f5a69105dd7f9be0a4d271530c45ce14cba6bfccf0c7f84b7a057"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/PlanarBound.c",
+        "bytes": 2237,
+        "sha256": "a3e5f027b5497c18590b82eda8fbb063866c6844bf6a1e6ff0bc960498eb5b23"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/PlanarBound.c.hash",
+        "bytes": 16,
+        "sha256": "d66a65b006bcfffa21f797b5671434113c76194b8112b4c0e81cc716309d0615"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/PlanarSharpness.c",
+        "bytes": 16911,
+        "sha256": "b97b9ef9a493a65bce5c15f9424d28efa481f8f492a11a38a9da78bcfab4cf6f"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/PlanarSharpness.c.hash",
+        "bytes": 16,
+        "sha256": "21bfc9d2769db0a38291d91c281d89f1138cd38cc92285b0bcf7ca174577dd41"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/PlanarToolbox.c",
+        "bytes": 34783,
+        "sha256": "95207aeb31aee8998f39a1b66c2263b2696c9359e80212ceb66ba8aeb98dbc38"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/PlanarToolbox.c.hash",
+        "bytes": 16,
+        "sha256": "3f4a7c77edc83f013629c4dd938677970bb73a1b6e0459d24557ed979cda4287"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/PlanarVertexBatch.c",
+        "bytes": 2610,
+        "sha256": "b8518333cf397971df28cf1069f2861861e43c72f1f3b637c618c060adccfe89"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/PlanarVertexBatch.c.hash",
+        "bytes": 16,
+        "sha256": "fe39dcb4d54b55459fed2461ab7a7bc8d53516776c600997c3e338f5b0e0ebcc"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/PositiveSeparation.c",
+        "bytes": 1338,
+        "sha256": "813aa9d7e38aa09914827871d92e105e7e424e8b9bb5341b52b9baf0a3055d14"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/PositiveSeparation.c.hash",
+        "bytes": 16,
+        "sha256": "913da80732ea25a1e5e78fcf262f2b2ea76eca4f14d6784bf839ef9215821977"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/SmallDegreeBatch.c",
+        "bytes": 1346,
+        "sha256": "fcfd5ef02c98abb8332d8b1f34e1f11c81d2de6239fb9b67bfe475ed8a890a29"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/SmallDegreeBatch.c.hash",
+        "bytes": 16,
+        "sha256": "e516f09ba6a31152b83ceb61fbfdf4bc9ad9799313d57427811898cfd920465e"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/TwinReduction.c",
+        "bytes": 1328,
+        "sha256": "924d3f22aea977ba785911ba24d92c9cbd32bd523691c9079ce4d31da47f1835"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/TwinReduction.c.hash",
+        "bytes": 16,
+        "sha256": "50ad3056fc9d28f67ca0171e4d04927087ac040db8109f04f90e683136dd754c"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/TwoDominators.c",
+        "bytes": 1856,
+        "sha256": "9764974a55be5c7170cceab9bcc91d483cf981229c78be6ce7d6c66bc2685037"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/TwoDominators.c.hash",
+        "bytes": 16,
+        "sha256": "08018a9d9ce23a158116596a16b4271156875bbe9f31da0d403b3616e2e194e7"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/UniqueDominator.c",
+        "bytes": 6692,
+        "sha256": "3dda57ee3bdf34f83b37fbfd745613c9afe02d4a0f6d4b17fb94acfd7ce95cb0"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs/UniqueDominator.c.hash",
+        "bytes": 16,
+        "sha256": "55fb85088584be4869c54306c7c4ac52fd9eca0ee45174ddfe399e0729b04e71"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs.c",
+        "bytes": 7916,
+        "sha256": "954321d1f668b7bdb28a31b7193158aa294bb94ce2f3d823036063cf153ce7a7"
+      },
+      {
+        "path": "proofs/ir/Lax60Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "23125a2b6abb085d16a5a065cf80d0763ac929a39a0fb563d8f1a8b917a3097b"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/AnchorLabels.ilean",
+        "bytes": 910,
+        "sha256": "5a9c861c2d42ec1e13446d25438becaa64c7f6fb37b542ca5cc82424b4f7fcb6"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/AnchorLabels.ilean.hash",
+        "bytes": 16,
+        "sha256": "f5c3bd90b99d726c6a20ad9614974c021700a639dbf4d47f1a3c08e69b411f12"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/AnchorLabels.olean",
+        "bytes": 11848,
+        "sha256": "4eb3b1070f0f23e080ceb45680596e785038fe83f87a12a9f14a476fa21f6462"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/AnchorLabels.olean.hash",
+        "bytes": 16,
+        "sha256": "49b1a362d67aa6d547ce6e2d9f459f4e4a691929b62be4e0126751f98f4bf0bd"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/AnchorLabels.trace",
+        "bytes": 2331,
+        "sha256": "df4939d65c943628a13e26b6493cfbf7f1b7b1414d763b05846578b328cba101"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/BatchReassignment.ilean",
+        "bytes": 8737,
+        "sha256": "4066d71c86a70f435af6440bf952dfaeb3a14a17e562fc19539365c8cfdd307d"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/BatchReassignment.ilean.hash",
+        "bytes": 16,
+        "sha256": "7333d4796948da57f80dd92cbaa2419f2a2c97ef7837285db0d713214f163fcf"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/BatchReassignment.olean",
+        "bytes": 70272,
+        "sha256": "badddf1ff42aae5d5fb7ef783e264f4aac065cb72f0c7fc8166229bd36c54805"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/BatchReassignment.olean.hash",
+        "bytes": 16,
+        "sha256": "0d509e25be9801d7a2d6d7a8416f92f3d9213dd0fc197c90db7ccd5abed9dd86"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/BatchReassignment.trace",
+        "bytes": 2390,
+        "sha256": "12999f463f79b590aa43d21fcb02822fff4c8f49f2652fefbb651e849a48b91f"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/CenterSet.ilean",
+        "bytes": 26731,
+        "sha256": "c68de59c55003649dd12e87f46d8deda7b96d698fdbb5dec0a85851d415fb166"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/CenterSet.ilean.hash",
+        "bytes": 16,
+        "sha256": "45904d8461cbb59a86195a4d59f911504d41f8f76d1b18ca798e268472d4bbfe"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/CenterSet.olean",
+        "bytes": 1107888,
+        "sha256": "ba8fb364d3040a2d6eba7cffc11f28ed74f9a6fa6bc0e5893f54969b7eb4d95b"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/CenterSet.olean.hash",
+        "bytes": 16,
+        "sha256": "86ff16c3786be0b2c1cb09f1438c4a5550fbd4823377a2dd543d0fccb9abeb24"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/CenterSet.trace",
+        "bytes": 3028,
+        "sha256": "3dcf870f2a79255ae4523e1a13ac26832f762565f8ae05b200c7f80e09f7357e"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/ComponentReduction.ilean",
+        "bytes": 11895,
+        "sha256": "9d029ff63b6c26d2007187b4c1087723b5a09fdb6b85b381c99ec5addd6d812c"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/ComponentReduction.ilean.hash",
+        "bytes": 16,
+        "sha256": "5d76cee11c2290948121f3fc049c1183f53befc54914c38d34581333cdfb61a7"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/ComponentReduction.olean",
+        "bytes": 164424,
+        "sha256": "8a1d50a06b23d4892740a64ea17c5bba861d1a7c2e05d1f4651dfe93b7746282"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/ComponentReduction.olean.hash",
+        "bytes": 16,
+        "sha256": "0834d8407fa78ff893308c8f69377e57679330894cc1276087e536450f11543c"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/ComponentReduction.trace",
+        "bytes": 2833,
+        "sha256": "cbc256d6d2edcda5bb3ae20ce8f7cd43439e4d10c0fec368fc54832bff15aa82"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/DominatorCompletion.ilean",
+        "bytes": 8087,
+        "sha256": "43fef26865832231bb51b455a5e8fc46680e2df93f63844bbec6dad23db99137"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/DominatorCompletion.ilean.hash",
+        "bytes": 16,
+        "sha256": "11801b9b668195ef110c3e5aecaa93e667761e5b87ed28606907e60be0196f6a"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/DominatorCompletion.olean",
+        "bytes": 132464,
+        "sha256": "62cc470070cfdee4aae004db8e871a69dffd32201112303903f9ded45710f15e"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/DominatorCompletion.olean.hash",
+        "bytes": 16,
+        "sha256": "83b166f5396cbbd1ee9c33c44015330fb16f35a46d4beb911ccef0ec7e7be94e"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/DominatorCompletion.trace",
+        "bytes": 2754,
+        "sha256": "a6b9b23bff7b529cd8fb167e9438a97702431f005332ad477033864ab08b7479"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/DominatorCount.ilean",
+        "bytes": 22109,
+        "sha256": "eccac501fd4341cd492776659eec7bb534482de44c509628eb8db58cfb5d89d8"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/DominatorCount.ilean.hash",
+        "bytes": 16,
+        "sha256": "b40b3aa7eba5becf2719fa21d385b6e7067c3f097238024fec767bfcfa33f78f"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/DominatorCount.olean",
+        "bytes": 1060008,
+        "sha256": "8397c576728abd587ccc504f7007e38ffaec9a688ea29b5f406a32c8b527d85b"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/DominatorCount.olean.hash",
+        "bytes": 16,
+        "sha256": "c02677ce45581e92751cf843d66c5303557b0b9d4ceb69c5016ea72bfd3a36ee"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/DominatorCount.trace",
+        "bytes": 6470,
+        "sha256": "454b4919a7e177bc6e1b2d5e5b0601dbec2a36d4c1c236c6c30ed5e553c2cba4"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarBlockAssignment.ilean",
+        "bytes": 271514,
+        "sha256": "c1206901ca35f57a5d571fc8bf5743b198999f1b3c36bdfbb3c73a74825b3d1a"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarBlockAssignment.ilean.hash",
+        "bytes": 16,
+        "sha256": "852e2860c530c76f4deb780548b36df5ff7969db4e6cd0d2bd4f752d0adfa096"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarBlockAssignment.olean",
+        "bytes": 2854128,
+        "sha256": "f64b9f40f82843f1f37095281b4f936c0b826cfdf68fb1f22d94808242683b30"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarBlockAssignment.olean.hash",
+        "bytes": 16,
+        "sha256": "b9f1b03d7be12bb3336b0abf5e29caf049a143ec316c83821d41d357bbe37b80"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarBlockAssignment.trace",
+        "bytes": 9511,
+        "sha256": "c1abef4f06b2e1101dfecf3431b465de5d325236d52a32697f3fc24582fe6099"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarBound.ilean",
+        "bytes": 62822,
+        "sha256": "e8df17a7a4e9af3fb1af605d887929a6953e2b766d02963fb88cbdccaa748fe2"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarBound.ilean.hash",
+        "bytes": 16,
+        "sha256": "8819ca0a3c0e609b747d83916b4f45e3c21250e7748d73e3917d1502be74f2a0"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarBound.olean",
+        "bytes": 554384,
+        "sha256": "f14fb53cdc858262385e779c77b4d16bcce7995883696992c190cd057979e1d9"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarBound.olean.hash",
+        "bytes": 16,
+        "sha256": "f705d8cfaaa19eb27007ba4bc171565f7e388ef63cd19f33be9fae059b0ad845"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarBound.trace",
+        "bytes": 3351,
+        "sha256": "963122da353965a17cd42056106997e2379ee996591e16d068d345557238dc12"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarLayer.ilean",
+        "bytes": 46069,
+        "sha256": "5a0e6b0ea89997f2412a9d1b87ee6ce8284e6e701907f2cc95cbe1052f624d25"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarLayer.ilean.hash",
+        "bytes": 16,
+        "sha256": "98c8605617588993d029449767c54b1666120dd0006701fdc0f85616bfc0ef8c"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarLayer.olean",
+        "bytes": 922696,
+        "sha256": "ccf8ddacb9e49b21d77c1544f8ad96873df5f4ca808a6f5c4df52b4848240742"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarLayer.olean.hash",
+        "bytes": 16,
+        "sha256": "5b1de8ad0d91eb09dca81c4245f9ff911e731c7011acce4a09c9d98cba26a3cb"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarLayer.trace",
+        "bytes": 2885,
+        "sha256": "59290ac67bdbffaee85103cd25837e5acd472e34a712262c532fecf1a3cc3045"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarSharpness.ilean",
+        "bytes": 72209,
+        "sha256": "89b6c9a7903ac82c5038e9b54d3af23d614bd7802b57f95edd516f82ebf78472"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarSharpness.ilean.hash",
+        "bytes": 16,
+        "sha256": "d6bd05ce323e616abbf2dfe1c99283ff237da064ecbacafd280c1cec014c561a"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarSharpness.olean",
+        "bytes": 2194080,
+        "sha256": "96df475eb43efed836591de9f4f2b3605dc73ba1056db7ffd2ee2752c852e7f1"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarSharpness.olean.hash",
+        "bytes": 16,
+        "sha256": "320942c29b42aeaa11ffe211df8a67f87e3ff82d2bb0d218b9e6603f3bd3da79"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarSharpness.trace",
+        "bytes": 6187,
+        "sha256": "053694854f6081d3bbf7a5e81b0750f65f02028b4a27dbe7310ba510e18edc32"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaBase.ilean",
+        "bytes": 63732,
+        "sha256": "d90294af487301162a8f622c2f649e26ab44c790614f03bea2af9ad51cf93be9"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaBase.ilean.hash",
+        "bytes": 16,
+        "sha256": "d845df85b967292495196c6f4feb2c03a5c65983aea806d57f0d90188d3fd87f"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaBase.olean",
+        "bytes": 1106552,
+        "sha256": "31240a387c03cadf645f6b517141b904b90d808a284453130611a4426566a54a"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaBase.olean.hash",
+        "bytes": 16,
+        "sha256": "73bf0076c9817fc22cc368caf8eb461dc9424caeadf2c2ebc6d061a2552238ca"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaBase.trace",
+        "bytes": 9076,
+        "sha256": "ecf85b0624105c990b47df9b22b50889f8730cea31a3af21f3cee1218cf0e371"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaDirect.ilean",
+        "bytes": 110800,
+        "sha256": "b4821a681329d1615e519a361ab84dfea1fc64a19ba1059b40d5ef730e46e90c"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaDirect.ilean.hash",
+        "bytes": 16,
+        "sha256": "462b87e5aee62e2df2f057fb936be5d73301d81a6f33be25e756dccfb29e4cb8"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaDirect.olean",
+        "bytes": 1119264,
+        "sha256": "3a8ecd2b5f7f5ab3d1a3ceba9fb934080654a2a082bf7efb2e7214d54899880b"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaDirect.olean.hash",
+        "bytes": 16,
+        "sha256": "000c6292de27df11f2435b2fd96bb5280e0b006a9b74ac8aadf651b65ab4bd07"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaDirect.trace",
+        "bytes": 4833,
+        "sha256": "7e01284486b303500d6c01b6604615746cc9ed3d4e509cd4712e47a2b419c789"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaFinal.ilean",
+        "bytes": 79105,
+        "sha256": "03518653fa73f8940c12f60657dd808bc560a51909d717187942c84453e9d276"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaFinal.ilean.hash",
+        "bytes": 16,
+        "sha256": "ea74985a2a33899fb2bf7b0e48df941b19297389e82b256e170e1dd54d157cf3"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaFinal.olean",
+        "bytes": 1455448,
+        "sha256": "c36c5292ed36d77ff67dddbddc3663d7c805cdb53417850211a249a35ae55c8e"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaFinal.olean.hash",
+        "bytes": 16,
+        "sha256": "63e8f47a8d7ce934241d4b120e6cd32c5b07ad6ae3ac5c60b528910294660321"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaFinal.trace",
+        "bytes": 3801,
+        "sha256": "80be2f94232bd6e1619dd576a74feea965db33815e95fe77afb59a3408e35b6f"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaK4.ilean",
+        "bytes": 48827,
+        "sha256": "092588a7301455d348ea153637313945232ba685cbb66654fa96f21646615847"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaK4.ilean.hash",
+        "bytes": 16,
+        "sha256": "d4b7c3bae4ef60c5130526379f90783c1dd3396becf7a39cc55227e1f5de3325"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaK4.olean",
+        "bytes": 1600528,
+        "sha256": "713e94645bc09ab75e11293a832570905a1a17a94b70b4d13dec89daea64a9af"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaK4.olean.hash",
+        "bytes": 16,
+        "sha256": "0baec351bc85b3b623512bf9f434db2075013ca27c437cc688ae9a0b07bc69a8"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaK4.trace",
+        "bytes": 4168,
+        "sha256": "18b91bb1995860060c1f41df11f503f9738344ff47a0f06cd469f14253dcd6cb"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaLeftReturn.ilean",
+        "bytes": 35004,
+        "sha256": "4468271f55bc3333f3d87d8526ac888b7c7d80c60e169646e5a39f88eda60e09"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaLeftReturn.ilean.hash",
+        "bytes": 16,
+        "sha256": "55e7149a2596ae5bcad0abde170355b5bd46967b25edb56e37d492bc0d9f9af3"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaLeftReturn.olean",
+        "bytes": 529392,
+        "sha256": "45a5009aa64d86f8b5adafe3012e742aac35c74b646f5e5c1a7d2e56f3caf3fb"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaLeftReturn.olean.hash",
+        "bytes": 16,
+        "sha256": "f55bdc66f90ec951c00c22b0f4069fbf166bcd61a4a7abf0965d4d0cbe900964"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaLeftReturn.trace",
+        "bytes": 3983,
+        "sha256": "7065ff69b587cee8218da10f23c3d87e594b0dc6f1a279c5469d97dc663d4cde"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaSameArm.ilean",
+        "bytes": 58910,
+        "sha256": "f6037fc50b455c0cef9317215e56ff8de26fb7c5a4dfc76c4569177ebcb4f471"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaSameArm.ilean.hash",
+        "bytes": 16,
+        "sha256": "e33af0d2aad588399ebae6046da31ebe73467fca1cf9b67efb95d3ac7f445ee9"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaSameArm.olean",
+        "bytes": 951464,
+        "sha256": "fae2db10ddf5e4de4911f54a95b8c6d95bc9e17b640a232e53574cbeff02c7af"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaSameArm.olean.hash",
+        "bytes": 16,
+        "sha256": "1fca02f9bb7dfe6bb8f41563f2b89145162046034341b4dcd80b319a788aa1ef"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OuterplanarThetaSameArm.trace",
+        "bytes": 3550,
+        "sha256": "50435f271ba0099e84ad89ff221d6aa6db54cae0f8dba6ad25ea7cbb0c1a2381"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OutsideThreeSetGadget.ilean",
+        "bytes": 17775,
+        "sha256": "c62b31bd2f8684e02b3701a1e7a30b9fdc6fb2d7f11342c1c0e3fa5f339ef070"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OutsideThreeSetGadget.ilean.hash",
+        "bytes": 16,
+        "sha256": "89399e4b7781e24d10717341fd2bcbc5b3f09f09b12abee0badc9dd31bd76142"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OutsideThreeSetGadget.olean",
+        "bytes": 560064,
+        "sha256": "1451bfff4765f9cd78eee51d1fc88e02bda5f3bb75e9485dbd57d50186f7e900"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OutsideThreeSetGadget.olean.hash",
+        "bytes": 16,
+        "sha256": "be1bfd38b4b6682d2fb13471f421c6f21d9f21f23e0263906ceb5176db504a66"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/OutsideThreeSetGadget.trace",
+        "bytes": 3084,
+        "sha256": "b202899fcbda2cd1cd5ccdbd22be246516c9c015bd779affc1345f0a0f3f78a3"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarBound.ilean",
+        "bytes": 8956,
+        "sha256": "daaf32bfae31f74553309fe5e7c6725130764b7e2def0b386b046487d42c9628"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarBound.ilean.hash",
+        "bytes": 16,
+        "sha256": "0c19c3fe40269976f10c9ca58fa902bb2f2a952eb5b7e03a0ce7e8fa03c17885"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarBound.olean",
+        "bytes": 99952,
+        "sha256": "010e640378faa8bde8e2045946155ea63834cb110dd0583e0499339354b6eb6b"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarBound.olean.hash",
+        "bytes": 16,
+        "sha256": "8656a32089f54c299a6ad5a7f96505e247b6af230bd4400004502d62ace947f0"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarBound.trace",
+        "bytes": 2973,
+        "sha256": "df481de183efcf67f9050b0056ebf7c7656befa128b858e3d4d648e66cdd41a3"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarSharpness.ilean",
+        "bytes": 24320,
+        "sha256": "48af1a665ec4f59213d7cefd71dcf38c737b0dd37a22439e48d6e5a4d47e925e"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarSharpness.ilean.hash",
+        "bytes": 16,
+        "sha256": "3ff225061741c07b4cf66bd8082807107245a9bc8c8dff2735d4541035bcbf80"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarSharpness.olean",
+        "bytes": 1032968,
+        "sha256": "ad4ba356a9a10e761e90ec1fe1c8440ac2540f9c6b1eadb71447cb7bd1ff5252"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarSharpness.olean.hash",
+        "bytes": 16,
+        "sha256": "ee003c1ab00f824871305af5e6fcb50885dd88bb3939364d884c670583b188fa"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarSharpness.trace",
+        "bytes": 2508,
+        "sha256": "ef665477fce2a444dc4553faa670f4763d53beaddef3ac456888523266c1f509"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarToolbox.ilean",
+        "bytes": 55419,
+        "sha256": "0bd46cf559f5ff5e64bb92d287c831efe82a7d7f70aae4226ac2d3a3d337e6d2"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarToolbox.ilean.hash",
+        "bytes": 16,
+        "sha256": "5f7c510b4d85b59baf072833c02e1bf48fa63d284bb4b672c7d40b224efb335e"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarToolbox.olean",
+        "bytes": 698848,
+        "sha256": "55a19fb8f61574d6e9174857bee8d3b8d9c139356de18d10784844667de267ed"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarToolbox.olean.hash",
+        "bytes": 16,
+        "sha256": "dfa999bb0bc314a779e415b79b820a5b784655ae0626884b2b0deb9ac79d3aca"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarToolbox.trace",
+        "bytes": 3943,
+        "sha256": "d60665f8acfb0724794c5819bfc6bbc902b9fbba4dde27cb1167265e547f6ed7"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarVertexBatch.ilean",
+        "bytes": 36281,
+        "sha256": "53aa1a601d51b1ea5a64fcb276ef3add3837a3497c57c35851a2c9b8834152cb"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarVertexBatch.ilean.hash",
+        "bytes": 16,
+        "sha256": "ccf2774df0c5ebfd2814c95a229e04ba8af50cf3487eb8671345432da814f095"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarVertexBatch.olean",
+        "bytes": 362488,
+        "sha256": "a841fa0a72431baaf77bda53745af1c9f4a05072ec0750a3babde451c30f401c"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarVertexBatch.olean.hash",
+        "bytes": 16,
+        "sha256": "60e7b2e46b9f2aa2a62d50f26b1baf1757e293bbb10a57d6b984552ac8720b4c"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PlanarVertexBatch.trace",
+        "bytes": 3249,
+        "sha256": "536c4a41b76ea17b8f236f4c2823f13bc317de10bcd0797635469b318eef3630"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PositiveSeparation.ilean",
+        "bytes": 2877,
+        "sha256": "7e10334e6589e79eba3d810620f4c0ea989ffed498d0c21139c8f67d698d5368"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PositiveSeparation.ilean.hash",
+        "bytes": 16,
+        "sha256": "4cc176b99754e5df44322767b6579e51d8e4aabc5a5a317b0cc75f2f9845c5df"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PositiveSeparation.olean",
+        "bytes": 33520,
+        "sha256": "c4c338fe1df036649339e82da5fbb7c9f0c12723636290e1955f884cef2ec897"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PositiveSeparation.olean.hash",
+        "bytes": 16,
+        "sha256": "684e05f5c367468618cd04efe92fc41cf5af4a696f1118ff099e163311ff349e"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/PositiveSeparation.trace",
+        "bytes": 2379,
+        "sha256": "25bfe4360dc305a02fc1d972d0ceab152646e0d0281e71b71bc45edb78cdb11b"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/SmallDegreeBatch.ilean",
+        "bytes": 14160,
+        "sha256": "2a07f20d984cc21b0816c208472b609d1d72667fd6c84ad57ee5179eb3344f99"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/SmallDegreeBatch.ilean.hash",
+        "bytes": 16,
+        "sha256": "1b1806cadf9a000d5788ca007dc590457de98b2f83400a402370eea3e0da885a"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/SmallDegreeBatch.olean",
+        "bytes": 173072,
+        "sha256": "1a0cedd7501a55b3fc1e3466defee284d90394befa8a2aaab8d81c44b7eb6239"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/SmallDegreeBatch.olean.hash",
+        "bytes": 16,
+        "sha256": "a651c3b4ac5fcfacb09ede248b1772ab25a6d182d52fc7e4dcb15d432240ef3c"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/SmallDegreeBatch.trace",
+        "bytes": 2380,
+        "sha256": "f093d3278654df303642adc8b4b20535971a585acaa937b22bd4560fb1b4f701"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/TwinReduction.ilean",
+        "bytes": 4134,
+        "sha256": "667ffdce3e2c36731d6813dee98a8753ce97eb22794b963764e6401a77cf8045"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/TwinReduction.ilean.hash",
+        "bytes": 16,
+        "sha256": "aac1e3565135c89c35b2e15c4fde09cc3df9b19f119b71aa8a792f938c381195"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/TwinReduction.olean",
+        "bytes": 64512,
+        "sha256": "5d1a85f4a7fdc7b4966af9d0fa8dc71e86d58a2c6f67ce10a785c783c747b16a"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/TwinReduction.olean.hash",
+        "bytes": 16,
+        "sha256": "8df7c95d24868f7f12dc45c461c7ddeaeb6bdbaa9c8d68abc2f9a0a8dfe7c3b4"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/TwinReduction.trace",
+        "bytes": 2339,
+        "sha256": "fe199e9e367e0ef3b78686274e83f4fd57e19a4783b97338fc3b1a405dc53c4e"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/TwoDominators.ilean",
+        "bytes": 25012,
+        "sha256": "dcef5bbd089f03f95fe4bd0080c25d95479e8da69ef1cac285cc7f983ea282a8"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/TwoDominators.ilean.hash",
+        "bytes": 16,
+        "sha256": "130efec8490c3f4f88dbb14bdfd3d93fe3ef55e06408e73c7706a0970fb3aa38"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/TwoDominators.olean",
+        "bytes": 378040,
+        "sha256": "f2217e0c2fc398734171d082e3b9abdcb2cc805382c6d97e1c8a325e7381c372"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/TwoDominators.olean.hash",
+        "bytes": 16,
+        "sha256": "3d97f05b43286b3c4428e9b72e751dff0e3706557959c026fe384b1ea3138ef0"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/TwoDominators.trace",
+        "bytes": 2718,
+        "sha256": "88d0c37f2ba6e52dd90464de94d9904bbb22b5ef9bb928281b94ea3bf41b4cc7"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/UniqueDominator.ilean",
+        "bytes": 22004,
+        "sha256": "983afac4dc5e54220d58024bec2edcfb84c3176e6761894c4b93d498dde71c3f"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/UniqueDominator.ilean.hash",
+        "bytes": 16,
+        "sha256": "d16e3505bcb9192006d16cfd5a82301c0987dfe1502667aa3e86260dd2efed92"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/UniqueDominator.olean",
+        "bytes": 683072,
+        "sha256": "c38413f5d987899cd8194e218db8fd10c30126a780aec730d32098dbe704e052"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/UniqueDominator.olean.hash",
+        "bytes": 16,
+        "sha256": "cdfbbec02b297de7f720f6e3684d7f68fbb687fc25b036ce9fcdc86bf4583418"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs/UniqueDominator.trace",
+        "bytes": 2691,
+        "sha256": "75f5616e0e1a75e7219750ee789a4ca8765ead9914d725588d17add22d52a0fd"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs.ilean",
+        "bytes": 1440,
+        "sha256": "973ddabe8c0bba5940c36430d4f53c3a223f8346a665c45670b6d247bb6272f3"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "4cc98528cf7145038216b8b8dc7a49ceac215d9e62a3f3e2ce74896e4f59c2be"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs.olean",
+        "bytes": 4296,
+        "sha256": "501c7e6013132b8609f723b0ab7da0dede682d68c7dc5b64b61b0a6a417f8b40"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "0c447e062df0dd5cb6c445e7ddf6e8b3364e7ed38ace5e6d374fbd7f2c3e8458"
+      },
+      {
+        "path": "proofs/lib/Lax60Proofs.trace",
+        "bytes": 6730,
+        "sha256": "25ffabbef64925d2ac7af62cb1da67112a307677a299e27571419ed6f4de6880"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3348,
+        "sha256": "57a8cf5f587c932d5fbc221c2c6c8c3922a7c388304ed886da072272e6f16a9d"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 381,
+        "sha256": "75d0a57ca3a4ef74eccfb7797705353bce82ff86015cb12d3444d81b9e054f2c"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/AnchorLabels.lean",
+        "bytes": 567,
+        "sha256": "93e550a0fea7ccafec8b7b93058bb94165432ba448af3a146e6a41ea407a77fd"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/BatchReassignment.lean",
+        "bytes": 2845,
+        "sha256": "68384a3b5ad24013fcd79b9aa90b13969ea27076a021fc88f77469f135de9fce"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/CenterSet.lean",
+        "bytes": 13108,
+        "sha256": "5459fa4925ec5961dcf63bc62cbf5bc8729fb7f532fa5b2f8dfd418bf55fad0f"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/ComponentReduction.lean",
+        "bytes": 5474,
+        "sha256": "5890ccb90a43cd74a4b04942a11f14bea2abde7e537c267876a8d39464f35860"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/DominatorCompletion.lean",
+        "bytes": 4096,
+        "sha256": "200e163a932b8657e9c7d93d49a599fe03ebc6ada8028abf9eae25b0bc65104c"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/DominatorCount.lean",
+        "bytes": 9336,
+        "sha256": "c6054390db80e40429f9b7d9a87e21f951901c95e8aaa2f773ff9cc940bd7d66"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/OuterplanarBlockAssignment.lean",
+        "bytes": 79698,
+        "sha256": "15626e7bc396c6bbc114a744fe9fd4838b1f95811433f5b84ea0bc20b560c074"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/OuterplanarBound.lean",
+        "bytes": 23960,
+        "sha256": "d9e406e95c5cd24bf9593399460542044fa5343b7ca2237242cb343f7808bf71"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/OuterplanarLayer.lean",
+        "bytes": 21599,
+        "sha256": "5f0cd5fd2d0db9b691b8e27ef00746b4ea26313fc387a1e79e3b468ae027c257"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/OuterplanarSharpness.lean",
+        "bytes": 35341,
+        "sha256": "731953862d1c11dbb0225132462a0d6e0b9d7b13a35ef91c422f26d917536536"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/OuterplanarThetaBase.lean",
+        "bytes": 19122,
+        "sha256": "414d84a0f165a37f0f13d222790ff21bd85c5d4f806a9a9f6f52f2060947dea2"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/OuterplanarThetaDirect.lean",
+        "bytes": 35098,
+        "sha256": "6cfd23d4d4a234a38c885352e713e5c32fa30ebb16a11bea6d971a8ea92bec1e"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/OuterplanarThetaFinal.lean",
+        "bytes": 25939,
+        "sha256": "cc340283e7a6f6fbc0e95c3ce7e00e257971f6748b4077917697eaa6998280f3"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/OuterplanarThetaK4.lean",
+        "bytes": 19237,
+        "sha256": "41c6809c5b3209f83c6b38f1698446fbf1346d61fdfc91fbbe1ccde1e88d7dd6"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/OuterplanarThetaLeftReturn.lean",
+        "bytes": 8442,
+        "sha256": "48befcdb5e349eb460d68f409f0785a3cad127f6b69bf56ce13db43027b98869"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/OuterplanarThetaSameArm.lean",
+        "bytes": 15347,
+        "sha256": "941a6b6178a63e8480592715a3c447819266246b1d85e79853364e5d65407353"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/OutsideThreeSetGadget.lean",
+        "bytes": 7138,
+        "sha256": "69c1fc1211645582787a7cb7b883aba6d8b6c265d4f4742691d59b3c15ff8ed0"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/PlanarBound.lean",
+        "bytes": 3575,
+        "sha256": "9ae14d5be0ef4d30a1e4db527a68dcf98c6ad51c5bf6f7d3ab96c984345f176e"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/PlanarSharpness.lean",
+        "bytes": 8190,
+        "sha256": "2314d7cd78f416b8aa61ec0899c20f296c331cafd86b21922eb9b3ae8420a198"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/PlanarToolbox.lean",
+        "bytes": 17124,
+        "sha256": "b640eff1464ad0e90cd36a3bfd396238bed777fbeacadfcd8f601b6e07046d46"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/PlanarVertexBatch.lean",
+        "bytes": 17130,
+        "sha256": "37b7253545af34b0c009007946ab684885831392e5db15b324e025bfc3359e0a"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/PositiveSeparation.lean",
+        "bytes": 1038,
+        "sha256": "06a66d60c8a9145934edd1ef18f00d2034f022f7d6e85bc72b53bb84acf29f48"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/SmallDegreeBatch.lean",
+        "bytes": 5661,
+        "sha256": "146115209ed803dab26f80604fc3274723daea3ff885d1ca84b30d83e3ab72bc"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/TwinReduction.lean",
+        "bytes": 2674,
+        "sha256": "5eaaa8bb85a96d149dda6694bf75ff665097205495873be6f7c070b12296653a"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/TwoDominators.lean",
+        "bytes": 13947,
+        "sha256": "ee2e58708ab9c8eea1ae95bd2fe1bfe046703f1a6f5432968bedf96bde0fd045"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs/UniqueDominator.lean",
+        "bytes": 9286,
+        "sha256": "2656318061b14ada72ec2e756a17e6d34669efb72dc379848af242dc1e6dfb66"
+      },
+      {
+        "path": "proofs/package/Lax60Proofs.lean",
+        "bytes": 969,
+        "sha256": "50334107c0985158975318afb88345c169d4cdf8065f9d0838e2571f13c68e21"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:2f376d339476c614089ad7f4f3d8be4274b627e2aae12645ec70cad69c4cf542"
   }
 }
