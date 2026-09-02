@@ -36,7 +36,7 @@
         "engine": "pdflatex"
       }
     },
-    "abstract": "This submission proves the Bonnet–Déprés separation in the form: for every\nnatural number $k$, there is a finite simple graph $G$ with\n$\\mathrm{treewidth}(G) \\le 2k+4$ and $2^k < \\mathrm{twinWidth}(G)$.\n\nThe concept surface has three review units: the complete definition of\ntreewidth, the complete definition of twin-width, and the separation theorem.\nTreewidth is phrased through tree decompositions with a bag-size bound;\ntwin-width through contraction sequences of vertex partitions whose red\ndegrees are derived from homogeneity in the graph, so no auxiliary state is\ncarried alongside the partitions. Both parameters are infima of explicit sets\nof naturals, and the separation is stated over the canonical finite vertex\ntypes $\\mathrm{Fin}\\ n$. The proof constructs the explicit Bonnet–Déprés\ngraph $BD_k$ in a trigraph-based source development and bridges it to the\nsubmitted concepts through the invariant that, along any contraction\nsequence, black pairs are exactly the complete pairs and red pairs exactly\nthe non-homogeneous pairs.\n\nThe submission carries the paper it formalizes, Bonnet and Déprés's\n*Twin-width can be exponential in treewidth* (arXiv:2204.07670), with its\nabstract, both definitions of twin-width, the main theorem, and the proof\nsection marked. The Lean statement is the paper's Theorem 1 at\n$\\varepsilon = 1/2$ with $t = 2k+3$ apices: $BD_k$ is $G_{t,\\varepsilon}$,\nits feedback vertex set of size $t$ gives treewidth at most $t+1 = 2k+4$, and\nthe paper's bound $2^{(1-\\varepsilon)t} \\ge 2^{k+1}$ is weakened to $2^k$.\n\nPorted from the original formalization by Édouard Bonnet\n(github.com/EdouardBonnet/leaning, `twin-width`, MIT-licensed).\n"
+    "abstract": "This submission proves the Bonnet–Déprés separation in the form: for every\nnatural number $k$, there is a finite simple graph $G$ with\n$\\mathrm{treewidth}(G) \\le 2k+4$ and $2^k < \\mathrm{twinWidth}(G)$.\n\nThe Lean statement is the paper's Theorem 1 at $\\varepsilon = 1/2$ with\n$t = 2k+3$ apices: $BD_k$ is $G_{t,\\varepsilon}$, its feedback vertex set of\nsize $t$ gives treewidth at most $t+1 = 2k+4$, and the paper's bound\n$2^{(1-\\varepsilon)t} \\ge 2^{k+1}$ is weakened to $2^k$.\n\nPorted from the original formalization by Édouard Bonnet\n(github.com/EdouardBonnet/leaning, `twin-width`, MIT-licensed).\n"
   },
   "requiredByConcepts": [],
   "requiredByProofs": [],
@@ -94,11 +94,11 @@
       "path": "concepts/Lax48/TwinWidth.lean",
       "title": "Twin-width",
       "type": "definition",
-      "description": "A contraction sequence of a finite simple graph *G* is a sequence of vertex\npartitions: it starts at the partition into singletons and merges two parts\nat every step, until at most one part remains. Two parts are homogeneous if\n*G* has either all possible edges between them or none; the red degree of a\npart is the number of other parts it is not homogeneous with. The width of a\ncontraction sequence is the largest red degree of any part occurring in it.\n\nThe twin-width of *G* is the least *d* such that *G* has a contraction\nsequence of width at most *d*.",
+      "description": "A partition sequence of a finite simple graph *G* is a sequence of partitions\nof its vertex set that starts at the partition into singletons, merges two\nparts into one at every step, and ends at the partition with a single part.\nTwo parts of a same partition are homogeneous if either every pair of\nvertices across them is adjacent or none is; two non-homogeneous parts are\nred-adjacent. The red degree of a part is the number of other parts of its\npartition that are red-adjacent to it.\n\nThe twin-width of *G* is the least *d* such that *G* has a partition sequence\nin which every part of every partition has red degree at most *d*.",
       "sections": [
         {
           "title": "Formalization notes",
-          "markdown": "Contracting in any order gives a sequence of width at most the number of\nvertices, so the\ninfimum in `twinWidth` ranges over a nonempty set. Because every state is\nreached from the singleton partition by merges, each `partition i` with\n`i ≤ stepCount` is automatically a partition of the vertex set; values of\n`partition` beyond `stepCount` are irrelevant."
+          "markdown": "The partitions are indexed by the number of merges performed so far, and\nvalues of `partition` beyond `stepCount` are irrelevant. Because every state\nis reached from the singleton partition by merges, each `partition i` with\n`i ≤ stepCount` is automatically a partition of the vertex set. Merging in\nany order gives a partition sequence whose red degrees are at most the number\nof vertices, so the infimum in `twinWidth` ranges over a nonempty set."
         }
       ],
       "imports": [],
@@ -107,7 +107,7 @@
         "Mathlib.Data.Nat.Lattice",
         "Mathlib.Data.Set.Card"
       ],
-      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Basic\nimport Mathlib.Data.Set.Card\nimport Mathlib.Data.Nat.Lattice\n\n/-!\n---\ntitle: Twin-width\ntype: definition\n---\nA contraction sequence of a finite simple graph *G* is a sequence of vertex\npartitions: it starts at the partition into singletons and merges two parts\nat every step, until at most one part remains. Two parts are homogeneous if\n*G* has either all possible edges between them or none; the red degree of a\npart is the number of other parts it is not homogeneous with. The width of a\ncontraction sequence is the largest red degree of any part occurring in it.\n\nThe twin-width of *G* is the least *d* such that *G* has a contraction\nsequence of width at most *d*.\n\n# Formalization notes\n\nContracting in any order gives a sequence of width at most the number of\nvertices, so the\ninfimum in `twinWidth` ranges over a nonempty set. Because every state is\nreached from the singleton partition by merges, each `partition i` with\n`i ≤ stepCount` is automatically a partition of the vertex set; values of\n`partition` beyond `stepCount` are irrelevant.\n-/\n\nnamespace Lax48.TwinWidth\n\n/-- Two vertex sets are homogeneous in `G`: either every pair of vertices\nacross them is adjacent, or none is. -/\ndef Homogeneous {V : Type} (G : SimpleGraph V) (A B : Finset V) : Prop :=\n  (∀ a ∈ A, ∀ b ∈ B, G.Adj a b) ∨ (∀ a ∈ A, ∀ b ∈ B, ¬ G.Adj a b)\n\n/-- The red degree of a part `A` in a family of parts `P`: the number of\nother parts of `P` that are not homogeneous with `A`. -/\nnoncomputable def redDegree {V : Type} (G : SimpleGraph V)\n    (P : Finset (Finset V)) (A : Finset V) : ℕ :=\n  {B | B ∈ P ∧ B ≠ A ∧ ¬ Homogeneous G A B}.ncard\n\n/-- The partition of a finite vertex type into singletons. -/\ndef singletonPartition (V : Type) [Fintype V] [DecidableEq V] :\n    Finset (Finset V) :=\n  Finset.univ.image fun v : V => ({v} : Finset V)\n\n/-- A contraction sequence for `G` of width at most `d`: starting from the\nsingleton partition, each step merges two parts, until at most one part\nremains; every part of every partition in the sequence has red degree at\nmost `d`. -/\nstructure ContractionSequence {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (d : ℕ) where\n  /-- The number of merge steps. -/\n  stepCount : ℕ\n  /-- The state after each number of merge steps. -/\n  partition : ℕ → Finset (Finset V)\n  /-- The sequence starts at the singleton partition. -/\n  starts : partition 0 = singletonPartition V\n  /-- The sequence ends with at most one part. -/\n  ends : (partition stepCount).card ≤ 1\n  /-- Each step merges two distinct parts and keeps all other parts. -/\n  step_merges :\n    ∀ i, i < stepCount → ∃ A ∈ partition i, ∃ B ∈ partition i, A ≠ B ∧\n      partition (i + 1) = insert (A ∪ B) (((partition i).erase A).erase B)\n  /-- Every part of every partition in the sequence has red degree at most\n  `d`. -/\n  redDegree_le :\n    ∀ i, i ≤ stepCount → ∀ ⦃A⦄, A ∈ partition i →\n      redDegree G (partition i) A ≤ d\n\n/-- `G` admits a contraction sequence of width at most `d`. -/\ndef HasTwinWidthAtMost {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (d : ℕ) : Prop :=\n  Nonempty (ContractionSequence G d)\n\n/-- The twin-width of a finite simple graph: the least `d` such that the\ngraph has a contraction sequence of width at most `d`. -/\nnoncomputable def twinWidth {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {d | HasTwinWidthAtMost G d}\n\nend Lax48.TwinWidth\n",
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Basic\nimport Mathlib.Data.Set.Card\nimport Mathlib.Data.Nat.Lattice\n\n/-!\n---\ntitle: Twin-width\ntype: definition\n---\nA partition sequence of a finite simple graph *G* is a sequence of partitions\nof its vertex set that starts at the partition into singletons, merges two\nparts into one at every step, and ends at the partition with a single part.\nTwo parts of a same partition are homogeneous if either every pair of\nvertices across them is adjacent or none is; two non-homogeneous parts are\nred-adjacent. The red degree of a part is the number of other parts of its\npartition that are red-adjacent to it.\n\nThe twin-width of *G* is the least *d* such that *G* has a partition sequence\nin which every part of every partition has red degree at most *d*.\n\n# Formalization notes\n\nThe partitions are indexed by the number of merges performed so far, and\nvalues of `partition` beyond `stepCount` are irrelevant. Because every state\nis reached from the singleton partition by merges, each `partition i` with\n`i ≤ stepCount` is automatically a partition of the vertex set. Merging in\nany order gives a partition sequence whose red degrees are at most the number\nof vertices, so the infimum in `twinWidth` ranges over a nonempty set.\n-/\n\nnamespace Lax48.TwinWidth\n\n/-- Two vertex sets are homogeneous in `G`: either every pair of vertices\nacross them is adjacent, or none is. -/\ndef Homogeneous {V : Type} (G : SimpleGraph V) (A B : Finset V) : Prop :=\n  (∀ a ∈ A, ∀ b ∈ B, G.Adj a b) ∨ (∀ a ∈ A, ∀ b ∈ B, ¬ G.Adj a b)\n\n/-- The red degree of a part `A` in a family of parts `P`: the number of\nother parts of `P` that are not homogeneous with `A`. -/\nnoncomputable def redDegree {V : Type} (G : SimpleGraph V)\n    (P : Finset (Finset V)) (A : Finset V) : ℕ :=\n  {B | B ∈ P ∧ B ≠ A ∧ ¬ Homogeneous G A B}.ncard\n\n/-- The partition of a finite vertex type into singletons. -/\ndef singletonPartition (V : Type) [Fintype V] [DecidableEq V] :\n    Finset (Finset V) :=\n  Finset.univ.image fun v : V => ({v} : Finset V)\n\n/-- A partition sequence of `G` in which every part has red degree at most\n`d`: starting from the singleton partition, each step merges two parts into\none, until a single part remains. -/\nstructure PartitionSequence {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (d : ℕ) where\n  /-- The number of merge steps. -/\n  stepCount : ℕ\n  /-- The partition after each number of merge steps. -/\n  partition : ℕ → Finset (Finset V)\n  /-- The sequence starts at the singleton partition. -/\n  starts : partition 0 = singletonPartition V\n  /-- The sequence ends with a single part. -/\n  ends : (partition stepCount).card ≤ 1\n  /-- Each step merges two distinct parts into one and keeps all other\n  parts. -/\n  step_merges :\n    ∀ i, i < stepCount → ∃ A ∈ partition i, ∃ B ∈ partition i, A ≠ B ∧\n      partition (i + 1) = insert (A ∪ B) (((partition i).erase A).erase B)\n  /-- Every part of every partition in the sequence has red degree at most\n  `d`. -/\n  redDegree_le :\n    ∀ i, i ≤ stepCount → ∀ ⦃A⦄, A ∈ partition i →\n      redDegree G (partition i) A ≤ d\n\n/-- `G` has a partition sequence in which every part has red degree at most\n`d`. -/\ndef HasTwinWidthAtMost {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (d : ℕ) : Prop :=\n  Nonempty (PartitionSequence G d)\n\n/-- The twin-width of a finite simple graph: the least `d` such that the\ngraph has a partition sequence in which every part has red degree at most\n`d`. -/\nnoncomputable def twinWidth {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {d | HasTwinWidthAtMost G d}\n\nend Lax48.TwinWidth\n",
       "statements": []
     }
   ],
@@ -132,8 +132,8 @@
   ],
   "capture": {
     "formatVersion": 1,
-    "digest": "6e99fd8c1de253d8101f78a518c7212abb34b6a7c8138ab247885eb4e03cf25b",
-    "sourceCommit": "4af15416d0e210c7b32961d1e26f68a203125710",
+    "digest": "f049404a861c0537f3e1d7b92e41a0486e96debcf17e290a0101f5c5b5760f54",
+    "sourceCommit": "b999c28492338182ea9d8dfa16e850e011dd16da",
     "leanToolchain": "leanprover/lean4:v4.30.0",
     "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
     "files": [
@@ -200,7 +200,7 @@
       {
         "path": "concepts/lib/Lax48/ExponentialSeparation.trace",
         "bytes": 2546,
-        "sha256": "591c52ce4d662d0e1d28efb627d5e8b80fa03572a4afd873ac96cafcb1eeca41"
+        "sha256": "24a7e5de522147da1068bc564dad1c8b8d848c677ba3c5fb61ba6d40afbb8136"
       },
       {
         "path": "concepts/lib/Lax48/Treewidth.ilean",
@@ -229,28 +229,28 @@
       },
       {
         "path": "concepts/lib/Lax48/TwinWidth.ilean",
-        "bytes": 5600,
-        "sha256": "1d93c4d8ac9974b372d4c522326d49505b6ffbde865e9f282075d9b89beaa03b"
+        "bytes": 5554,
+        "sha256": "5b1f72b56af33f0074de58eb3184f97bf475e2ce52e99424734c1ee801f44345"
       },
       {
         "path": "concepts/lib/Lax48/TwinWidth.ilean.hash",
         "bytes": 16,
-        "sha256": "840a5d857a74a3dfd0ce20d04929c45fcb726bc7e4496a8a4848d9036150ab14"
+        "sha256": "e2cf590b4a3ec889126d27961a7283cdaf83b13e138127a2e2fc187448236598"
       },
       {
         "path": "concepts/lib/Lax48/TwinWidth.olean",
-        "bytes": 144496,
-        "sha256": "a6995ad63e296885cb67ef172b6cef58c8c58890668d5cd494a7dd4cc013c0c7"
+        "bytes": 144672,
+        "sha256": "c30ae0f2f5b073349d129916c71ad1d73d65a109271f7ff2049a3a8ef8cfd3d9"
       },
       {
         "path": "concepts/lib/Lax48/TwinWidth.olean.hash",
         "bytes": 16,
-        "sha256": "651ad7550c12dd4d82cc2889477925ab65037088e67fcf66268095b6813f2d13"
+        "sha256": "a914523c3c589d84cba892974d161af2fd16c0b53c1493fc80a24b0e8dacc7da"
       },
       {
         "path": "concepts/lib/Lax48/TwinWidth.trace",
         "bytes": 2704,
-        "sha256": "44589966418087d9547a1fcef427c8ef4d23730d909d31a374a83e4cfec98d0c"
+        "sha256": "492af9760c84bc6857fd9cb446fbeaf42dd6391c8cf485283c4b89557d2cfda3"
       },
       {
         "path": "concepts/lib/Lax48.ilean",
@@ -275,7 +275,7 @@
       {
         "path": "concepts/lib/Lax48.trace",
         "bytes": 2543,
-        "sha256": "a1b49a1cb95db70333140d4cc0848d84c7e82b7d9e754986f9db8734bc7f8b07"
+        "sha256": "e1bbf939151f9c25922e3eab1948cd60b88ad3a4ea574c081b9948a9f73bdba5"
       },
       {
         "path": "concepts/package/lake-manifest.json",
@@ -299,8 +299,8 @@
       },
       {
         "path": "concepts/package/Lax48/TwinWidth.lean",
-        "bytes": 3547,
-        "sha256": "16db552707d391411ec9ad122c82ed53d6f2be0e24758381582991fbf43d849e"
+        "bytes": 3721,
+        "sha256": "bc86165111b225bb62d587d86bb2fa6f19fa2d86e383dba9477ea1f9c7e8e016"
       },
       {
         "path": "concepts/package/Lax48.lean",
@@ -329,13 +329,13 @@
       },
       {
         "path": "proofs/ir/Lax48Proofs/Main.c",
-        "bytes": 19068,
-        "sha256": "764a7da40ada8b1b429c92d3f54a1109898dba75e139a33e24da1f1d2dd0a1a4"
+        "bytes": 19028,
+        "sha256": "dacbdd1ec621d9edeb101b98713593b7b787c5706d950093d5e5b792270041b1"
       },
       {
         "path": "proofs/ir/Lax48Proofs/Main.c.hash",
         "bytes": 16,
-        "sha256": "fba7f2d9520818f3baffba68041330a69d26f66c0d0f3d4f271fb2e0ff569e58"
+        "sha256": "2689930d3a91161346e9ea10c332928e8d39a976087a4bb937969e44270f781b"
       },
       {
         "path": "proofs/ir/Lax48Proofs/Source/TwinWidth/Contraction/Trigraph.c",
@@ -429,28 +429,28 @@
       },
       {
         "path": "proofs/lib/Lax48Proofs/Main.ilean",
-        "bytes": 81814,
-        "sha256": "735b77f5b10ecd2f0552bfd4210d270215efa153682d286e2c1b57a47e71e076"
+        "bytes": 81700,
+        "sha256": "8630db74780e63fefcbe2710e917add23baad80f394f7df656a84183b562e3b4"
       },
       {
         "path": "proofs/lib/Lax48Proofs/Main.ilean.hash",
         "bytes": 16,
-        "sha256": "72b6601e7c5ae84800c949d335c5cb79beefc902fda567dee4782baa55647c56"
+        "sha256": "f9dca142daf2f60c96154d7561d1d7fe905c4fb02585be7bb9bf9e3cee52d8ea"
       },
       {
         "path": "proofs/lib/Lax48Proofs/Main.olean",
-        "bytes": 953216,
-        "sha256": "d81fdbfa57fc69e4c2306e9d6b06ec988a43fe28a3570e067cb686e6f8cccb27"
+        "bytes": 953248,
+        "sha256": "1d9d5aad60099b5378ba337397e44e0eeeccf2adbd3fae88d6a433c958d9522a"
       },
       {
         "path": "proofs/lib/Lax48Proofs/Main.olean.hash",
         "bytes": 16,
-        "sha256": "3b96a332946b474e58d40c014b0abfb8620ea388992b4e3e6bac71dea2f14f59"
+        "sha256": "80c20b3d9758a8771ceff001270b60cf6a224922d2c340612c9964917e0eb65f"
       },
       {
         "path": "proofs/lib/Lax48Proofs/Main.trace",
         "bytes": 2670,
-        "sha256": "9cb6c283f0a1222bf03cb36f361098b055da2919aaa45dd6ae84f39aa0a542b4"
+        "sha256": "e8797b246aabd7a01ec99d0bfa076860ff81557214da1ad111c7535108406e20"
       },
       {
         "path": "proofs/lib/Lax48Proofs/Source/TwinWidth/Contraction/Trigraph.ilean",
@@ -675,7 +675,7 @@
       {
         "path": "proofs/lib/Lax48Proofs.trace",
         "bytes": 4181,
-        "sha256": "081e6591fe481d4fb9b02f4818a104375ab73d5addd54de0150afbf56de8b67a"
+        "sha256": "ec2b3ed84576aa561bf5d9f25e0f8326aa1d2636ee471293920fa831c6eb060c"
       },
       {
         "path": "proofs/package/lake-manifest.json",
@@ -689,8 +689,8 @@
       },
       {
         "path": "proofs/package/Lax48Proofs/Main.lean",
-        "bytes": 33057,
-        "sha256": "28cf9b0b73b88cf02155f8ff1ae0374e14c1eefc3d4443dd7d31fad28f3938ab"
+        "bytes": 33013,
+        "sha256": "4783cb4a8bde85cc5c60d5eac0bff5c6c42ddaf3ef4da5069353246205d7b783"
       },
       {
         "path": "proofs/package/Lax48Proofs/Source/TwinWidth/Contraction/Trigraph.lean",
@@ -743,17 +743,17 @@
         "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
       }
     ],
-    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:6e99fd8c1de253d8101f78a518c7212abb34b6a7c8138ab247885eb4e03cf25b"
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:f049404a861c0537f3e1d7b92e41a0486e96debcf17e290a0101f5c5b5760f54"
   },
   "paper": {
     "folder": "paper",
     "main": "arxiv.tex",
     "engine": "pdflatex",
     "pdf": {
-      "digest": "4c6c60528abeab7fc7ce7f3530f95afe7252a99c9fc37e12594bb4edb97bb83b",
+      "digest": "2ffaf8b99a66214719ebad10976bd6ba9a81fa6dd583b1e9d42d718e0b9bea0c",
       "bytes": 574894,
       "pages": 11,
-      "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:4c6c60528abeab7fc7ce7f3530f95afe7252a99c9fc37e12594bb4edb97bb83b"
+      "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:2ffaf8b99a66214719ebad10976bd6ba9a81fa6dd583b1e9d42d718e0b9bea0c"
     },
     "pageSizes": [
       [
