@@ -4,5 +4,2171 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 56
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-56",
+      "leanVersion": "v4.30.0",
+      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "title": "Large Finite Point Sets Have 4 Collinear Points or a 6-Clique",
+      "authors": [
+        {
+          "name": "Édouard Bonnet",
+          "github": "EdouardBonnet"
+        }
+      ],
+      "bibEntries": [
+        "@misc{Bonnet2026, author = {\\'Edouard Bonnet}, title = {Large Finite Point Sets Have 4 Collinear Points or a 6-Clique}, year = {2026}}",
+        "@misc{HujterKisfaludiBak2014, author = {B\\'alint Hujter and S\\'andor Kisfaludi-Bak}, title = {5 Colorable Visibility Graphs Have Bounded Size or 4 Collinear Points}, year = {2014}, eprint = {1410.7273}, archivePrefix = {arXiv}}",
+        "@article{PopielarzSahasrabudheSnyder2018, author = {Kamil Popielarz and Julian Sahasrabudhe and Richard Snyder}, title = {A Stability Theorem for Maximal K_{r+1}-free Graphs}, journal = {Journal of Combinatorial Theory, Series B}, volume = {132}, pages = {236--257}, year = {2018}}"
+      ]
+    },
+    "abstract": "We formalize the theorem that every finite set of at least\n$10^{11055931}$ points in the real plane contains either four collinear\npoints or six points that are pairwise visible with respect to the whole\nset.  Visibility means that the open segment joining a pair contains no\npoint of the ambient finite set.\n\nThe proof follows Bonnet's interval-and-harmonic-weight argument. The\nquantitative Hujter--Kisfaludi-Bak bound for 5-colourable point-visibility\ngraphs and the vertex-removal form of Erdős--Simonovits stability for\n$K_6$-free graphs are proved in Lean in this package. The remaining external\nassumption is the empty-convex-hexagon bound $h(6) \\le 463$: every set of at\nleast 463 points in general position contains an empty convex hexagon.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax56.Geometry",
+      "path": "concepts/Lax56/Geometry.lean",
+      "title": "Point visibility in the real plane",
+      "type": "definition",
+      "description": "A pair of distinct points of a finite planar point set is visible when the\nopen segment joining it contains no point of the ambient set.  This module\nalso defines the visibility graph and the two geometric alternatives used in\nthe headline theorem.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Analysis.Convex.Segment",
+        "Mathlib.Combinatorics.SimpleGraph.Basic",
+        "Mathlib.Data.Real.Basic",
+        "Mathlib.LinearAlgebra.AffineSpace.FiniteDimensional"
+      ],
+      "sourceText": "import Mathlib.Analysis.Convex.Segment\nimport Mathlib.Combinatorics.SimpleGraph.Basic\nimport Mathlib.Data.Real.Basic\nimport Mathlib.LinearAlgebra.AffineSpace.FiniteDimensional\n\n/-!\n---\ntitle: Point visibility in the real plane\ntype: definition\n---\nA pair of distinct points of a finite planar point set is visible when the\nopen segment joining it contains no point of the ambient set.  This module\nalso defines the visibility graph and the two geometric alternatives used in\nthe headline theorem.\n-/\n\nnamespace Lax56.Geometry\n\n/-- The real affine plane, represented by Cartesian coordinates. -/\nabbrev Point := ℝ × ℝ\n\n/-- The signed twice-area of the oriented triangle `p q r`. -/\ndef turn (p q r : Point) : ℝ :=\n  (q.1 - p.1) * (r.2 - p.2) - (q.2 - p.2) * (r.1 - p.1)\n\n/-- `p` and `q` see one another with respect to the ambient finite set `P`. -/\ndef Visible (P : Finset Point) (p q : Point) : Prop :=\n  p ≠ q ∧ ∀ r ∈ P, r ∉ openSegment ℝ p q\n\n/-- The point-visibility graph of `P`; its vertices retain their membership proofs. -/\ndef visibilityGraph (P : Finset Point) : SimpleGraph P where\n  Adj p q := Visible P p q\n  symm := by\n    intro p q hpq\n    refine ⟨hpq.1.symm, ?_⟩\n    simpa only [openSegment_symm] using hpq.2\n  loopless := ⟨fun p hp => hp.1 rfl⟩\n\n/-- The finite point set contains four distinct collinear points. -/\ndef HasFourCollinear (P : Finset Point) : Prop :=\n  ∃ f : Fin 4 → Point,\n    Function.Injective f ∧ (∀ i, f i ∈ P) ∧ Collinear ℝ (Set.range f)\n\n/-- The finite point set contains three distinct collinear points. -/\ndef HasThreeCollinear (P : Finset Point) : Prop :=\n  ∃ f : Fin 3 → Point,\n    Function.Injective f ∧ (∀ i, f i ∈ P) ∧ Collinear ℝ (Set.range f)\n\n/-- The finite point set contains `k` points that pairwise see one another. -/\ndef HasVisibleClique (P : Finset Point) (k : ℕ) : Prop :=\n  ∃ f : Fin k → Point,\n    Function.Injective f ∧ (∀ i, f i ∈ P) ∧\n      Set.Pairwise (Set.range f) (Visible P)\n\nend Lax56.Geometry\n",
+      "statements": []
+    },
+    {
+      "id": "Lax56.HujterKisfaludiBak",
+      "path": "concepts/Lax56/HujterKisfaludiBak.lean",
+      "title": "The empty-hexagon input to the Hujter--Kisfaludi-Bak theorem",
+      "type": "definition",
+      "description": "This module isolates the geometric input that is external to the\nHujter--Kisfaludi-Bak blocking argument: the upper bound `h(6) ≤ 463` for the\nempty convex hexagon number.  The visibility-colouring theorem itself is\nproved in `Lax56Proofs.HujterKisfaludiBak`.",
+      "imports": [
+        "Lax56.Geometry"
+      ],
+      "mathlibImports": [
+        "Mathlib.Analysis.Convex.Hull",
+        "Mathlib.Combinatorics.SimpleGraph.Coloring.VertexColoring"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Coloring.VertexColoring\nimport Mathlib.Analysis.Convex.Hull\nimport Lax56.Geometry\n\n/-!\n---\ntitle: The empty-hexagon input to the Hujter--Kisfaludi-Bak theorem\ntype: definition\n---\nThis module isolates the geometric input that is external to the\nHujter--Kisfaludi-Bak blocking argument: the upper bound `h(6) ≤ 463` for the\nempty convex hexagon number.  The visibility-colouring theorem itself is\nproved in `Lax56Proofs.HujterKisfaludiBak`.\n-/\n\nnamespace Lax56.HujterKisfaludiBak\n\nopen Lax56.Geometry\n\n/-- Six labelled vertices in strict counterclockwise cyclic convex position.\n\nThe last conjunct records the complete cyclic order type, not merely its six\nsupporting-edge consequences.  This is useful in the direct geometric proof:\nan increasing triple of cyclic labels is positively oriented. -/\ndef StrictConvexHexagon (h : Fin 6 → Point) : Prop :=\n  Function.Injective h ∧\n    (∀ i j : Fin 6, j ≠ i → j ≠ i + 1 →\n      0 < turn (h i) (h (i + 1)) (h j)) ∧\n    ∀ i j k : Fin 6, i < j → j < k →\n      0 < turn (h i) (h j) (h k)\n\n/-- A convex hexagon whose convex hull contains no further point of `P`. -/\ndef EmptyConvexHexagon (P : Finset Point) (h : Fin 6 → Point) : Prop :=\n  StrictConvexHexagon h ∧\n    (∀ i, h i ∈ P) ∧\n    ∀ p ∈ P, p ∈ convexHull ℝ (Set.range h) → p ∈ Set.range h\n\n/-- The currently external geometric input, in an ordered form convenient for\nthe blocking proof.  This is precisely the bound `h(6) ≤ 463`. -/\naxiom exists_emptyConvexHexagon\n    (P : Finset Point) (hP : 463 ≤ P.card)\n    (hgeneral : ¬HasThreeCollinear P) :\n    ∃ h : Fin 6 → Point, EmptyConvexHexagon P h\n\nend Lax56.HujterKisfaludiBak\n",
+      "statements": [
+        {
+          "id": "Lax56.HujterKisfaludiBak.exists_emptyConvexHexagon",
+          "signature": "exists_emptyConvexHexagon : ∀ (P : Finset Lax56.Geometry.Point),\n  instLENat.le 463 P.card →\n    Not (Lax56.Geometry.HasThreeCollinear P) → Exists fun h => Lax56.HujterKisfaludiBak.EmptyConvexHexagon P h",
+          "startLine": 38,
+          "endLine": 43,
+          "doc": "The currently external geometric input, in an ordered form convenient for\nthe blocking proof.  This is precisely the bound `h(6) ≤ 463`."
+        }
+      ]
+    },
+    {
+      "id": "Lax56.MainTheorem",
+      "path": "concepts/Lax56/MainTheorem.lean",
+      "title": "Large finite point sets have four collinear points or a visible six-clique",
+      "type": "theorem",
+      "description": "Every finite set of at least `10^11055931` points in the real plane contains\nfour distinct collinear points or six distinct points that pairwise see one\nanother with respect to the whole set.",
+      "imports": [
+        "Lax56.Geometry"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax56.Geometry\n\n/-!\n---\ntitle: Large finite point sets have four collinear points or a visible six-clique\ntype: theorem\n---\nEvery finite set of at least `10^11055931` points in the real plane contains\nfour distinct collinear points or six distinct points that pairwise see one\nanother with respect to the whole set.\n-/\n\nnamespace Lax56.MainTheorem\n\nopen Lax56.Geometry\n\naxiom large_point_set_four_collinear_or_visible_six\n    (P : Finset Point) (hP : 10 ^ 11055931 ≤ P.card) :\n    HasFourCollinear P ∨ HasVisibleClique P 6\n\nend Lax56.MainTheorem\n",
+      "statements": [
+        {
+          "id": "Lax56.MainTheorem.large_point_set_four_collinear_or_visible_six",
+          "signature": "large_point_set_four_collinear_or_visible_six : ∀ (P : Finset Lax56.Geometry.Point),\n  instLENat.le (instHPow.hPow 10 11055931) P.card →\n    Or (Lax56.Geometry.HasFourCollinear P) (Lax56.Geometry.HasVisibleClique P 6)",
+          "startLine": 17,
+          "endLine": 19
+        }
+      ]
+    },
+    {
+      "id": "Lax56.VertexRemovalStability",
+      "path": "concepts/Lax56/VertexRemovalStability.lean",
+      "title": "Quantitative vertex-removal Erdős--Simonovits stability for K₆",
+      "type": "theorem",
+      "description": "For `0 < ε < 1/3750`, a `K₆`-free graph on at least 20 vertices with\nmore than `ex(m,K₆) - εm²` edges can be made 5-colourable by deleting\nfewer than `3500εm` vertices.  This is the explicit vertex-removal form used\nin the paper.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Clique",
+        "Mathlib.Combinatorics.SimpleGraph.Coloring.VertexColoring",
+        "Mathlib.Combinatorics.SimpleGraph.Extremal.Basic",
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Coloring.VertexColoring\nimport Mathlib.Combinatorics.SimpleGraph.Extremal.Basic\nimport Mathlib.Combinatorics.SimpleGraph.Clique\nimport Mathlib.Data.Real.Basic\n\n/-!\n---\ntitle: Quantitative vertex-removal Erdős--Simonovits stability for K₆\ntype: theorem\n---\nFor `0 < ε < 1/3750`, a `K₆`-free graph on at least 20 vertices with\nmore than `ex(m,K₆) - εm²` edges can be made 5-colourable by deleting\nfewer than `3500εm` vertices.  This is the explicit vertex-removal form used\nin the paper.\n-/\n\nnamespace Lax56.VertexRemovalStability\n\nopen SimpleGraph\n\n/-- The number of (unordered) edges of a finite simple graph. -/\nnoncomputable def edgeCount {V : Type*} [Finite V] (G : SimpleGraph V) : ℕ :=\n  Nat.card G.edgeSet\n\naxiom exists_fiveColorable_delete\n    {V : Type*} [Fintype V] (G : SimpleGraph V) (eps : ℝ)\n    (hepsPos : 0 < eps) (hepsSmall : eps < 1 / 3750)\n    (hcard : 20 ≤ Fintype.card V) (hK6 : G.CliqueFree 6)\n    (hedges :\n      (SimpleGraph.extremalNumber (Fintype.card V) (⊤ : SimpleGraph (Fin 6)) : ℝ) -\n          eps * (Fintype.card V : ℝ) ^ 2 < edgeCount G) :\n    ∃ Z : Set V,\n      (Nat.card Z : ℝ) < 3500 * eps * Fintype.card V ∧\n        (G.induce Zᶜ).Colorable 5\n\nend Lax56.VertexRemovalStability\n",
+      "statements": [
+        {
+          "id": "Lax56.VertexRemovalStability.exists_fiveColorable_delete",
+          "signature": "exists_fiveColorable_delete : failed to pretty print expression (use 'set_option pp.rawOnError true' for raw representation)",
+          "startLine": 25,
+          "endLine": 34
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax56Proofs.MainTheorem.large_point_set_four_collinear_or_visible_six",
+      "path": "proofs/Lax56Proofs/MainTheorem.lean",
+      "conclusion": "Lax56.MainTheorem.large_point_set_four_collinear_or_visible_six",
+      "assumptions": [
+        "Lax56.HujterKisfaludiBak.exists_emptyConvexHexagon"
+      ],
+      "description": "Every finite set of at least $10^{11055931}$ points in the real plane has\nfour distinct collinear points or six points which are pairwise visible with\nrespect to the entire set. The visibility-colouring and vertex-removal\nstability inputs are proved in this package. The remaining external input\nis the empty-convex-hexagon bound $h(6) \\le 463$."
+    },
+    {
+      "id": "Lax56Proofs.VertexRemovalStability.exists_fiveColorable_delete",
+      "path": "proofs/Lax56Proofs/VertexRemovalStability.lean",
+      "conclusion": "Lax56.VertexRemovalStability.exists_fiveColorable_delete",
+      "assumptions": [],
+      "description": "The quantitative vertex-removal stability theorem used in the paper."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "d27607037b5d25223f6ef30ce8f1c52040c9d8f139fa239f247ca362aa6936e3",
+    "sourceCommit": "3ef5b7935f0fd5ac0b2762d4e004f3c6cf722ebb",
+    "leanToolchain": "leanprover/lean4:v4.30.0",
+    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "files": [
+      {
+        "path": "concepts/ir/Lax56/Geometry.c",
+        "bytes": 6485,
+        "sha256": "6c427e9d8a14b87ed0d2e0ae9a0220d61cf921bd3e25e8c74ab71bbbbebaf276"
+      },
+      {
+        "path": "concepts/ir/Lax56/Geometry.c.hash",
+        "bytes": 16,
+        "sha256": "988128bc79ab1dadc0665a0ae509bc169615060b32709d5808cd0bb2d06bc47c"
+      },
+      {
+        "path": "concepts/ir/Lax56/HujterKisfaludiBak.c",
+        "bytes": 1897,
+        "sha256": "d2ac094fd011cdeed2a4a0c94a5a09765c9dcfd5b301e66c33748dc76b080bc8"
+      },
+      {
+        "path": "concepts/ir/Lax56/HujterKisfaludiBak.c.hash",
+        "bytes": 16,
+        "sha256": "8470914bf71978954ce248582c5b95e5e6c3bd2d1685f84f9fc1efc70d9cbe7c"
+      },
+      {
+        "path": "concepts/ir/Lax56/MainTheorem.c",
+        "bytes": 1294,
+        "sha256": "ef3cc18b1704b1d09483900b69801b159e7a04712884567a960f72ad88cc2cb1"
+      },
+      {
+        "path": "concepts/ir/Lax56/MainTheorem.c.hash",
+        "bytes": 16,
+        "sha256": "cceced54e752e58dfcd17ecd42891d1f755757484b4530c79a9cfc71257a0f13"
+      },
+      {
+        "path": "concepts/ir/Lax56/VertexRemovalStability.c",
+        "bytes": 2283,
+        "sha256": "b285f7b0c2ec586e0d5352ab7005c945b80c8d63996fff36b4483e615d828e7a"
+      },
+      {
+        "path": "concepts/ir/Lax56/VertexRemovalStability.c.hash",
+        "bytes": 16,
+        "sha256": "e89cf7e26134236f46872c60fa92461b165679f610411f3ce34dbcf343a430b0"
+      },
+      {
+        "path": "concepts/ir/Lax56.c",
+        "bytes": 1966,
+        "sha256": "19791e620f1022dd2feb82ca8b68a754ce0f588349ee8d6d980edf3a211a45dd"
+      },
+      {
+        "path": "concepts/ir/Lax56.c.hash",
+        "bytes": 16,
+        "sha256": "a8c6402baae48553d80c12751c42a9eb2a5b9e99a8bf43e0eae0c29030a898d8"
+      },
+      {
+        "path": "concepts/lib/Lax56/Geometry.ilean",
+        "bytes": 5895,
+        "sha256": "af93e54794943b3f620ef640c64c21744ad3ff364c9d3c90865b9417c00820d5"
+      },
+      {
+        "path": "concepts/lib/Lax56/Geometry.ilean.hash",
+        "bytes": 16,
+        "sha256": "5e5146ec5a44f9bad3daac24c7db887f3816863ba71334e43ddbc653002a8649"
+      },
+      {
+        "path": "concepts/lib/Lax56/Geometry.olean",
+        "bytes": 47264,
+        "sha256": "2c4b0769806f82b94a1156f4f5ec55558d4d05e46e0394cc4b894b45b66bcdbe"
+      },
+      {
+        "path": "concepts/lib/Lax56/Geometry.olean.hash",
+        "bytes": 16,
+        "sha256": "6b4879a1c793112c101efe51d4ac746b2bddb62ef32e3d7c6edc36653c5258d1"
+      },
+      {
+        "path": "concepts/lib/Lax56/Geometry.trace",
+        "bytes": 2717,
+        "sha256": "623f1fc66d2715c57faff5c95587525c820b71393034ab74ec13f248bcd0952a"
+      },
+      {
+        "path": "concepts/lib/Lax56/HujterKisfaludiBak.ilean",
+        "bytes": 3373,
+        "sha256": "2e4e510589f637aee9faaa9585b4560de4e2bb4ff195dcee511d6e609d731cf8"
+      },
+      {
+        "path": "concepts/lib/Lax56/HujterKisfaludiBak.ilean.hash",
+        "bytes": 16,
+        "sha256": "d9da8ab4ad8e2ab9a183acba5db1c86fd34638ba22b6a0fc9cd3d1442d0776bd"
+      },
+      {
+        "path": "concepts/lib/Lax56/HujterKisfaludiBak.olean",
+        "bytes": 23072,
+        "sha256": "01b83c33f72131a169b96b607d83bd12d9dd9785c2e7150631a5b9cb607750c8"
+      },
+      {
+        "path": "concepts/lib/Lax56/HujterKisfaludiBak.olean.hash",
+        "bytes": 16,
+        "sha256": "fdbad1333f9f286bc3388868d67dafb681df3dc1205369adeea9f07299815850"
+      },
+      {
+        "path": "concepts/lib/Lax56/HujterKisfaludiBak.trace",
+        "bytes": 2570,
+        "sha256": "417ad05c737c45fd5443c16984e7c84793c446f2a6dde422f4e53a23b87e6ccd"
+      },
+      {
+        "path": "concepts/lib/Lax56/MainTheorem.ilean",
+        "bytes": 1344,
+        "sha256": "4f7010f2e3f42dec9ffe5aaa380fb0859027b4a3824c74d544310ead5f81db6a"
+      },
+      {
+        "path": "concepts/lib/Lax56/MainTheorem.ilean.hash",
+        "bytes": 16,
+        "sha256": "699e3890581115df56dc2f29f4f7f3782232d2710daa5070caf46b70b7cd380f"
+      },
+      {
+        "path": "concepts/lib/Lax56/MainTheorem.olean",
+        "bytes": 7680,
+        "sha256": "e3867c90987269c5e373295e9d04965f254b82d013e64bf5ceeb150711b00ac6"
+      },
+      {
+        "path": "concepts/lib/Lax56/MainTheorem.olean.hash",
+        "bytes": 16,
+        "sha256": "0cef4175b0f673a93455e25baa5c329249fe593f396512b96b7fda5fe2ac65e7"
+      },
+      {
+        "path": "concepts/lib/Lax56/MainTheorem.trace",
+        "bytes": 2097,
+        "sha256": "df5808b0b106da4ea30402f7e5c407c1dcea586571bdab513333eb5f0a410206"
+      },
+      {
+        "path": "concepts/lib/Lax56/VertexRemovalStability.ilean",
+        "bytes": 4030,
+        "sha256": "dd6fb1393ebb11f6b11e9dc896b362f05b154831b9869fb31f969fbd7c1fabd0"
+      },
+      {
+        "path": "concepts/lib/Lax56/VertexRemovalStability.ilean.hash",
+        "bytes": 16,
+        "sha256": "8c52c620db13d40803712ee34e5a3b23c6b95abb83ef0fd5baa988fc903c8d34"
+      },
+      {
+        "path": "concepts/lib/Lax56/VertexRemovalStability.olean",
+        "bytes": 22480,
+        "sha256": "8901911d68795c02e591c17321b30a9e3a883e25b3b5be85ebe2e44ae474bf64"
+      },
+      {
+        "path": "concepts/lib/Lax56/VertexRemovalStability.olean.hash",
+        "bytes": 16,
+        "sha256": "3dcde267210dc09c0c48f81437e5b9a1da160be9fc71834ec972829b07c14039"
+      },
+      {
+        "path": "concepts/lib/Lax56/VertexRemovalStability.trace",
+        "bytes": 2886,
+        "sha256": "3f25e67e03009b5d6d1517a0f09df5724d6fee92a978d1ab5de167cacdfcd058"
+      },
+      {
+        "path": "concepts/lib/Lax56.ilean",
+        "bytes": 250,
+        "sha256": "66488f540833eb769983a877fadbc3eb98b53ac964eb57ada1e7eafe6cc7d9e6"
+      },
+      {
+        "path": "concepts/lib/Lax56.ilean.hash",
+        "bytes": 16,
+        "sha256": "282f81dd1ebb6e9ce3dcd4a6bbfaa57b5a555dcd6afab76018c2848dbead6be3"
+      },
+      {
+        "path": "concepts/lib/Lax56.olean",
+        "bytes": 1688,
+        "sha256": "f5b30d9176959431c2cdf2680b01114c87b4b6200c0241a2867b4a3c333c9ae9"
+      },
+      {
+        "path": "concepts/lib/Lax56.olean.hash",
+        "bytes": 16,
+        "sha256": "23a273eb272676957e57c8ce87910a557ea326db06cfb8bef306c257fdc04390"
+      },
+      {
+        "path": "concepts/lib/Lax56.trace",
+        "bytes": 2487,
+        "sha256": "9a82dce2f92b0f05aef9d353bb49c51cd51dc0981cb41cc521fad181b393e69e"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3162,
+        "sha256": "a0cdc406f106d3b403d989288de4bf470ae19da1d1da7c4c53478757d0b9403f"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 243,
+        "sha256": "572aa72488fb36f43c94098abbf714b7fde358827596980baedd3b712dc502de"
+      },
+      {
+        "path": "concepts/package/Lax56/Geometry.lean",
+        "bytes": 2030,
+        "sha256": "2d809d851cd9e40961286e80267a10fceae0317ebab675bd96ad28f2eb769cb4"
+      },
+      {
+        "path": "concepts/package/Lax56/HujterKisfaludiBak.lean",
+        "bytes": 1721,
+        "sha256": "4596d5bebf4d48d67612a8fbf594c33f58764e04cde0ea90c22bd7f9ce63aa0a"
+      },
+      {
+        "path": "concepts/package/Lax56/MainTheorem.lean",
+        "bytes": 557,
+        "sha256": "9b58ca3ee05f509c6cd94bd393904d0e548663cb1fd0cc0cf8ccace6f33515f5"
+      },
+      {
+        "path": "concepts/package/Lax56/VertexRemovalStability.lean",
+        "bytes": 1283,
+        "sha256": "d0bddb99f51d297585e764b8b1928372b008bcd8b9a85733c4c08eb635390b8f"
+      },
+      {
+        "path": "concepts/package/Lax56.lean",
+        "bytes": 115,
+        "sha256": "be2a4522d4b58cef3cadb5f46d04214b4d0cf01825a0e5334c1d3f3898480f5e"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/AnalyticBounds.c",
+        "bytes": 1850,
+        "sha256": "34390ce3af71f7d643cd625e40422352ca9a6a5cb9355640ea54283d2d2daaef"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/AnalyticBounds.c.hash",
+        "bytes": 16,
+        "sha256": "609c6d91fcbccf1781e456ea6d59a8159a9138da7ba31a6de70955aee4de0157"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/Blockers.c",
+        "bytes": 1560,
+        "sha256": "b31b03acfb337f33564e87a01c98d3764784f4e1b2a839042dc36e3613a48ca5"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/Blockers.c.hash",
+        "bytes": 16,
+        "sha256": "2438f776c36603315f4b530b4359c1a171bc033cc10b05e306737fa5895af3bc"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/FiniteIntervals.c",
+        "bytes": 5324,
+        "sha256": "b482e5be55fb5524fae3be9beb502d977a04e8516c84ae7ae5a7f4ce85f5052b"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/FiniteIntervals.c.hash",
+        "bytes": 16,
+        "sha256": "6a5468246b5017e93f7f397d01cd208218578df67bee45503eae7d5554177722"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HarmonicUpper.c",
+        "bytes": 7434,
+        "sha256": "b8c38caca722a457d77445efdddd3d6863f63e9203f291118d3f55924f648a02"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HarmonicUpper.c.hash",
+        "bytes": 16,
+        "sha256": "99456dc1b78296e385820f5d40cdf630ffa7f6363238e6cdebb1d87832891ffd"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBAffineMirror.c",
+        "bytes": 14307,
+        "sha256": "0b5402604cd78aec38f69750e2df6f47ac8bb6ee3017c86f3fe089245a39a7cc"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBAffineMirror.c.hash",
+        "bytes": 16,
+        "sha256": "0d7e0ed884071ee3985d0346aff9946ced13d0be1e3f80f8c0f582b8d2906e26"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBBlocking.c",
+        "bytes": 1563,
+        "sha256": "1a5cab9721552561dbd0fcf546e00a1503baa98d7902d10f90cd0f9e5193fb5d"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBBlocking.c.hash",
+        "bytes": 16,
+        "sha256": "42f2641d07c7176e737d336d7299e37a2cf8b26f42e26abd1708de3d8c27933e"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBColourBound.c",
+        "bytes": 1572,
+        "sha256": "34b91ed1d6bf6af4faac60c9d8020040ac9057dd415240c123bf6733f4ca99ee"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBColourBound.c.hash",
+        "bytes": 16,
+        "sha256": "1839dd85db62a40dff52a8dae1fc164a33679eda750a1496c6aeb29658b50cd6"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBColourClasses.c",
+        "bytes": 3484,
+        "sha256": "061f35348d1896c87a6beb5f42d80a1ca41e77615e6744b29618630b074f9f57"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBColourClasses.c.hash",
+        "bytes": 16,
+        "sha256": "ab7648a20e99980a6d5d00b623f0503615687fdcb256970ff054f3b75f410a99"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBColourCoverage.c",
+        "bytes": 1838,
+        "sha256": "1313c3d957b6a05b2a4b24cb907b3b38a73ec6606a3099f17ca928ad210d9eab"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBColourCoverage.c.hash",
+        "bytes": 16,
+        "sha256": "954a61b4a5bb7daa7cf890ac85014ae05d2f4b8593c61de2204b7378df37c3cf"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBColouring.c",
+        "bytes": 1616,
+        "sha256": "e9e307b055ad9c2449fb0ad19cf27f2555eef98a075ce1abfbdd41f5eaa6a28d"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBColouring.c.hash",
+        "bytes": 16,
+        "sha256": "3b2c15b17578f80e5a781ae2619e7ce656f1eec502062f5eed24ebd3c34a2bc1"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBConcaveColour.c",
+        "bytes": 1573,
+        "sha256": "e5ca5cdf7a0afa5b97717570601c852893b556b895b83a044942c682a7143522"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBConcaveColour.c.hash",
+        "bytes": 16,
+        "sha256": "6f99d04f18f1477dae5ba4482898bea9ea0b7c649c6d001eb286e58b688577a2"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBConcavity.c",
+        "bytes": 3339,
+        "sha256": "8c8901cb9d870f96a635c2cf296b5904c5c14d4d644b1a64b6107165ae5e321b"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBConcavity.c.hash",
+        "bytes": 16,
+        "sha256": "3174dc622ecf9b4cd84ad1c27c64cf7862aeade198a56e476132cefb7006a255"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBConvexity.c",
+        "bytes": 2103,
+        "sha256": "52a617f4cd0213d6e74e8d26679cd167703df800e2be7e8d4c7e01227950e3e6"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBConvexity.c.hash",
+        "bytes": 16,
+        "sha256": "188115329edef2fa2da332db94b5e14d19c681f87009e4c696c32efb84a6f69f"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDiagonals.c",
+        "bytes": 77733,
+        "sha256": "df45fb956f7712bafb8164e24d303f87ec6659fcc5e1cf3f7bb078e297d286a5"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDiagonals.c.hash",
+        "bytes": 16,
+        "sha256": "92844d1ec3b57258ee62bfbcfd98350d69536aaab339961a7210c12e686a3329"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDirectCells.c",
+        "bytes": 1849,
+        "sha256": "414762ad640dc8a843dce2d29d20d3f48d4cbd8cb5eb49eb37f4067bae844c0f"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDirectCells.c.hash",
+        "bytes": 16,
+        "sha256": "6de351d6ef6c31312875025cf90f3b85e4dcab3d870881ba5655f6f7f8acb982"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDirectConcave.c",
+        "bytes": 1576,
+        "sha256": "a031dc564aad405e7fdbaf48cbf8de2c15d1866175b460a84d3be7b9004a6a0f"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDirectConcave.c.hash",
+        "bytes": 16,
+        "sha256": "7d57a6dfb90f0c6a82c5975535d176fe965e9fa74382efd6b951464f4ea452fa"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDirectConcaveCases.c",
+        "bytes": 44149,
+        "sha256": "b3a37df2e18db612b0007d4973cfe50483e30b5c45b700803da142584cd03b61"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDirectConcaveCases.c.hash",
+        "bytes": 16,
+        "sha256": "2f03b04d04ef28a8b189a27f22ba83ab5069556e213cdefda60eb7406b08d76b"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDirectConcaveClosure.c",
+        "bytes": 1614,
+        "sha256": "f99d4f03ffab93c25484019cd0f3691f02fb85968cbca3c4f35940ae49f2437e"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDirectConcaveClosure.c.hash",
+        "bytes": 16,
+        "sha256": "9284f70ae67a6b7bf01d441bbffdcba085c4da1671039ced4e1925a38ce7b16d"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDirectCore.c",
+        "bytes": 1842,
+        "sha256": "dad17548e825941c088e3f6b16a178558f8e7d5f49e2be4a78e71355b39f1fbf"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDirectCore.c.hash",
+        "bytes": 16,
+        "sha256": "2b3ce08f556dafc5c9daa27f9bb710960ab3b50b8e24e062ef7c5eb37e674d5b"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDirectMc.c",
+        "bytes": 1596,
+        "sha256": "886f007e937edd23e316713dd0d6fcf8bdcb7b1276102ded7b1ff01f5b2e24e1"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDirectMc.c.hash",
+        "bytes": 16,
+        "sha256": "1d670ccede8aca136422b8a391e01a1d3d82beb53f8e4fab032b5a5acd6a0a68"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDirectTrianglePatterns.c",
+        "bytes": 34595,
+        "sha256": "acfa183732c53109ae1eca2ba6705e58d86eb1f9bc544fc3efa707e6f2521c10"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBDirectTrianglePatterns.c.hash",
+        "bytes": 16,
+        "sha256": "83fe1a9c6a7fc1656140dd5d9d33dc674d2a7455f7722981be3fa66a7210215d"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBFinalCases.c",
+        "bytes": 18431,
+        "sha256": "5bfe5db198bd4fe53313def6d63b423891675d2bdb2c34f14190f537c62776f5"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBFinalCases.c.hash",
+        "bytes": 16,
+        "sha256": "889fff914fe43c4a893ccd9e611a57c5d7c8aae2b65d1d1286bcee572708e0ee"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBGeometry.c",
+        "bytes": 1795,
+        "sha256": "c6409d23834e9c193574e1a6828c79f58f575b052f984da04d02a31b47748e18"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBGeometry.c.hash",
+        "bytes": 16,
+        "sha256": "9c614c6712684164be5e7c86b153ee446d7dca6b9d3508a74e1a8ddefe3eacb8"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBHexCardBound.c",
+        "bytes": 1821,
+        "sha256": "ff9888ce7330d0b98a7bbbbeaf4dbdd1c6bffd0b21287c3e577a48163aecbfd6"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBHexCardBound.c.hash",
+        "bytes": 16,
+        "sha256": "59ba27b42b1251f0c259c9b944b706b6f46983afca066684aa1e8a4275d77d59"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBHexFinalGeometry.c",
+        "bytes": 5211,
+        "sha256": "a9350ba0e63dee45371f0e5256c117caa78eeb70cf3b39bd33fe904fc0636c42"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBHexFinalGeometry.c.hash",
+        "bytes": 16,
+        "sha256": "bf932edf77d2213ede44432bc4c42484643244f3c7d334d179188927c9572ef3"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBHexGeometry.c",
+        "bytes": 1569,
+        "sha256": "30cdcadb7b883ebbd9524a8c4cbc76c99055283a5473cc0aebdbb5a825a6633c"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBHexGeometry.c.hash",
+        "bytes": 16,
+        "sha256": "5ff4b6d137561c2a56bc14af30851e5d73398a3e6bf76c6e9c4f554ed3b131ee"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBHullCount.c",
+        "bytes": 1565,
+        "sha256": "fa09be3443ecd7fca3b5228be062c88d8737089f5a536c428f2b435ddad88df4"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBHullCount.c.hash",
+        "bytes": 16,
+        "sha256": "4cb155ba8f331dd1873739aa10260413bf9c46f485b72c28a6f2c62a65825d6b"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBPlanarFive.c",
+        "bytes": 143997,
+        "sha256": "bc6b43315051ac308e3a85c7367f5a0c7d7da8c5fbc8acf5f8f8aa105c8cb25d"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBPlanarFive.c.hash",
+        "bytes": 16,
+        "sha256": "14068ba22769529d0ea05c22d26940ba8ce260ae21edcb532f4bf24a7c9ec007"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBQuadrilateral.c",
+        "bytes": 1579,
+        "sha256": "37510736451dab97542838fa4960d3988b8a74af4de9bc548ae6937daac2a0fd"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBQuadrilateral.c.hash",
+        "bytes": 16,
+        "sha256": "18fb1f0715be69569f8c7518d81a57545c29b69a5cd688b2a55ff0b71904d388"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBQuadrilateralMaximal.c",
+        "bytes": 2188,
+        "sha256": "bf03b12171bba537bd6133e997bf6677528e6cc6c7d030eb3f56020e931a1594"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBQuadrilateralMaximal.c.hash",
+        "bytes": 16,
+        "sha256": "7fd4a170992efb76b612d596de170813eec1b4e23f7e6f110fc8f8b577b635ec"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBQuadrilateralPattern.c",
+        "bytes": 1599,
+        "sha256": "091300dcc20946440e310b6d1f5d63cdc48c19f71666251b0eb0a58ba1193fb5"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBQuadrilateralPattern.c.hash",
+        "bytes": 16,
+        "sha256": "50f564297330a1957f8c60c90ba03e6d503663dc48f825dbc1e69dd4f59295de"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBSixStructure.c",
+        "bytes": 1828,
+        "sha256": "060de168218129e6b5e430de94ecd155f33b6635ddece1dd04e565d9f6986739"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBSixStructure.c.hash",
+        "bytes": 16,
+        "sha256": "3f5a08446559e47c5a86f212cf41b01b7c11317c92267b4203e70402f456bf35"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBTriangle.c",
+        "bytes": 2352,
+        "sha256": "5bbcc8db83abbbfd6cd94f50f1234f342fdf7689b857279e732f22f8f72ce3fa"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HKBTriangle.c.hash",
+        "bytes": 16,
+        "sha256": "62df9608ab0598e1f4e6547b44120b57bc42c569f8e8bf7ef5b1c01d3d4b4f8d"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HujterKisfaludiBak.c",
+        "bytes": 2099,
+        "sha256": "67304f0c015419af47cf44a64c9ab068b2857b3b239beceb26a73a03fb4fef17"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/HujterKisfaludiBak.c.hash",
+        "bytes": 16,
+        "sha256": "bce8b3f2243b6c0e4553f7c6afd09bb7b82ed48948f728ce318eeed52195e21c"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/IntervalDensity.c",
+        "bytes": 3299,
+        "sha256": "9ae6ab9728292a11b63f7afade67f66ac6ae2aa6c0fb8b3b16aa1923a0d316b5"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/IntervalDensity.c.hash",
+        "bytes": 16,
+        "sha256": "83013fd12d81d5ba00c6bb9b30de650006a525e18a44d645962aae17ceeba9b0"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/MainTheorem.c",
+        "bytes": 1577,
+        "sha256": "0cc6e47861fcba797737f8e0758245de215e267e36ec182a59f38d35d94aabc4"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/MainTheorem.c.hash",
+        "bytes": 16,
+        "sha256": "eaea305ceeeedab5b989bfc4dcb103c412c7d3ccbeb31f06058203712b9adf9a"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/NumericalBounds.c",
+        "bytes": 1870,
+        "sha256": "2ad78b3ef3d4ba33a6b2d3cd7ae646c18ec008154b0fbe2c7148967e446e399e"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/NumericalBounds.c.hash",
+        "bytes": 16,
+        "sha256": "85e66b0b8b813d65f50db9fa9d34214e4b22a2494aa949d3f4ba4e7bfb7d509e"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/OrderGeometry.c",
+        "bytes": 1988,
+        "sha256": "759a7ebd6671f4f3bbb8e31cbcdbd0d68bc2fca97c6ce38ca1011f2d60e09fe4"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/OrderGeometry.c.hash",
+        "bytes": 16,
+        "sha256": "572baab66e399e5a89ffdc370612939ff35f3c83093e03e2c73b90b346181525"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/Orientation.c",
+        "bytes": 15929,
+        "sha256": "53fe26324131489ab44bfe116f368d009374ac9d309133c14e2c797bdec21063"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/Orientation.c.hash",
+        "bytes": 16,
+        "sha256": "3b3db022a432c9d80fa2fe9e6f95b4e9c19eb07b35282da8baecd1e874ad5b84"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/PotentialLower.c",
+        "bytes": 2069,
+        "sha256": "8ee65ae5dc685cef72b41f0e504c507fc21ec79c609e8c6d6c5cc6592578b094"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/PotentialLower.c.hash",
+        "bytes": 16,
+        "sha256": "7df484d1c0c79fbf4cab9bf5ab3bf83b7f8abe6f8a8efd845702ef531c26a4cc"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/SlidingWindows.c",
+        "bytes": 9104,
+        "sha256": "6fb1f55fe87ea31d676180f32163b9ba77a617112e099ac3d517da7236ad2141"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/SlidingWindows.c.hash",
+        "bytes": 16,
+        "sha256": "4d7d99642eb816176743217cb131fd10dfba4759ecf23461815437dc77b2588e"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/Telescoping.c",
+        "bytes": 1316,
+        "sha256": "90863d01d81b83ae3de75b1a82da235edb52a6eabb7b49f21f5329997e4b422c"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/Telescoping.c.hash",
+        "bytes": 16,
+        "sha256": "0c8c80036ecdb1a4d8125800cf346c74b13eca774d4fdf43c62ba5272a243959"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/VertexRemovalStability.c",
+        "bytes": 2981,
+        "sha256": "e1c2a50242f1a47084fbc8f9b7398cc27bb01a8d5205ca44a69a492cae38d2b1"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/VertexRemovalStability.c.hash",
+        "bytes": 16,
+        "sha256": "9e73c65291c9f2c13b34fa07d83633783575fccac0f216cebdc7f3e8e14cfcef"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/WeightedPairs.c",
+        "bytes": 20978,
+        "sha256": "0f2c0ce6e9c9b7cc1c3b2d5aca57882c3f9299bc967b4209caece8fe20ca18d1"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/WeightedPairs.c.hash",
+        "bytes": 16,
+        "sha256": "ebfeabaf3a25202240fb1ab4ad36a1127ad2c3da3dfc62e170b550bb333d3b34"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs.c",
+        "bytes": 12323,
+        "sha256": "443aaabb27d3dc9ac1f4d09c0501d4fa134dd15deb51f22edb18ef26212d483e"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "f4220697338c380f7ccf557cb53f536ae9520becccb37ada1fd5a1d4d62366d1"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/AnalyticBounds.ilean",
+        "bytes": 36656,
+        "sha256": "c23922c8c4da023d7de158dccb145c0d0d89839f842f0f095dbbd41c02f78186"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/AnalyticBounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "cad4cec90ce66e8bb0aea757665cf04758cf1a105dbd595a4a3aed6b40e7f31f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/AnalyticBounds.olean",
+        "bytes": 998120,
+        "sha256": "f324a3901ca67c5e1a16d6cfdec7f5a7b8cc576efcd3ac9702ac8f4eb145f67b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/AnalyticBounds.olean.hash",
+        "bytes": 16,
+        "sha256": "a6d576d33dc88f40aa2949e0dd6119427d25425c8efca73dbf30d01f3270dbd3"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/AnalyticBounds.trace",
+        "bytes": 3960,
+        "sha256": "24fd72fac1243e07d934e58b9ad48bf80aec6e87cb5973edf6844cb2c5b686c0"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/Blockers.ilean",
+        "bytes": 6977,
+        "sha256": "a737923c825e877b348a2e6f7515efc2bb8c4dc86a0817876646d68844141ece"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/Blockers.ilean.hash",
+        "bytes": 16,
+        "sha256": "cbac762fc3330fba2eb9f2a0cf9606db9958a257c08a6ab29f3cf6c893f41d5d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/Blockers.olean",
+        "bytes": 460960,
+        "sha256": "dc199e76f7662b85d60b3be57fed39c4c2995ad03757cf5f2bd7ad18cb00d33c"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/Blockers.olean.hash",
+        "bytes": 16,
+        "sha256": "f45bae22422a8c33c59e1b597679fe9b2a07c85c1a9e83e8002a3da64727a160"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/Blockers.trace",
+        "bytes": 3824,
+        "sha256": "6493cd2c56aaf466320d2b698fa1c6bba5f58c576fd3983a24174912286327b9"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/FiniteIntervals.ilean",
+        "bytes": 27876,
+        "sha256": "3786f1fd22e901970b51113814427ad00b1ab4f17e1c5889a3d2b0ff90ce5ec1"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/FiniteIntervals.ilean.hash",
+        "bytes": 16,
+        "sha256": "6a323a1a4bce345e4afdf58b6b7adc3f453ef0ddeabf575a16120478570e02b3"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/FiniteIntervals.olean",
+        "bytes": 327040,
+        "sha256": "44136247f6b32e5624c571a7b0a8f9a7e73f067f368a3f62ad3c7be1d1cde272"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/FiniteIntervals.olean.hash",
+        "bytes": 16,
+        "sha256": "0b129809e42da397e541ba8f472b8d47d70e79a87a327c789a5843813dcc82f2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/FiniteIntervals.trace",
+        "bytes": 2980,
+        "sha256": "3ec85ee5d948f611a21f1456ff4ddb7389ee7d3919d4735d6f99c3e0d0644c73"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HarmonicUpper.ilean",
+        "bytes": 29987,
+        "sha256": "66d320fa5a3aeb5bd36f0907e2840c5a59c23b78c57540f10fd01436beec44d4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HarmonicUpper.ilean.hash",
+        "bytes": 16,
+        "sha256": "91072f9f661cdc4566f52a54359dbf63266c124546aad4e85388f1bb14b87060"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HarmonicUpper.olean",
+        "bytes": 460200,
+        "sha256": "8cbe1345e8681e07beca24291954157a67bd4f2b4ade0a075ec810ca3c0e98a7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HarmonicUpper.olean.hash",
+        "bytes": 16,
+        "sha256": "1a6a80675a5046fb367599c6c12f92ccf5dbea7ae4ce9a64b907084b49f5b37b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HarmonicUpper.trace",
+        "bytes": 2585,
+        "sha256": "7a64ad32576d27e1dbaf10ce07fa484755e1a8fb9b92abf1046c235dd849b019"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBAffineMirror.ilean",
+        "bytes": 29770,
+        "sha256": "af75abb4dfe74efe15532f0492445d9500042a7e1043063a7d4c0758c990277f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBAffineMirror.ilean.hash",
+        "bytes": 16,
+        "sha256": "ce8eb8bb0a2711e783177edae0e45d0b49aeff76d8b771a6f166b542267ed188"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBAffineMirror.olean",
+        "bytes": 318296,
+        "sha256": "a89aac4a523568da8b601e1fd280695513938b145d6f403a4defa6d548ab805d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBAffineMirror.olean.hash",
+        "bytes": 16,
+        "sha256": "8cb2323491c4236ccfc9048df2c553dd72d0fe50f6d07b8c16af8e7efda4c4eb"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBAffineMirror.trace",
+        "bytes": 2955,
+        "sha256": "9d63cb8ee99e4da61a5cd3fef319380e67149d43ada710da7237b8b348744570"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBBlocking.ilean",
+        "bytes": 15962,
+        "sha256": "75fad8f52dc9132284fa74d142f85b806d2d40a3bb1769985862f0a44f2bc232"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBBlocking.ilean.hash",
+        "bytes": 16,
+        "sha256": "ec9f257fef3c9ddf80188eb1cd4503db0b05aa58b9e8e6583240b9f0876c735e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBBlocking.olean",
+        "bytes": 72960,
+        "sha256": "c47904352595606f7ff8b3993f57a7cf5687a08fe3f58df94550decb3514fbb4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBBlocking.olean.hash",
+        "bytes": 16,
+        "sha256": "f7c4fcb4273443371f2e933e43a015151accac811eb7d98dd37b4cd11ab8064c"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBBlocking.trace",
+        "bytes": 2557,
+        "sha256": "779e1e4d0fab0f99af7589001d3d1f29acd897241e25c0d72ea132c1e6d30f42"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColourBound.ilean",
+        "bytes": 19864,
+        "sha256": "1958d4ac8246efc9bb59920d4137538b4ad3483c2141e854196e99b2a2349c01"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColourBound.ilean.hash",
+        "bytes": 16,
+        "sha256": "40e55743c6bb37828241f12c421d36ae5365972eb0a2c40bcd303428832a3917"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColourBound.olean",
+        "bytes": 198816,
+        "sha256": "846a133b348b5d10daf99975e825b29abbf5ddb1896b042f453db04b003e27e3"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColourBound.olean.hash",
+        "bytes": 16,
+        "sha256": "8b54d859f36e73e84e897606ce4eb195542c86c519056716159f9b47ddf7abc2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColourBound.trace",
+        "bytes": 2789,
+        "sha256": "e64320bb8b3a10869850a6c7891d6f0e46156dbf92e3f81f8db255128dc24215"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColourClasses.ilean",
+        "bytes": 39402,
+        "sha256": "9ebb0a8f30e150cf5a833ff0ff7181c3f7ecea430a78feb1931ee5daef1d63a1"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColourClasses.ilean.hash",
+        "bytes": 16,
+        "sha256": "bbfae48e527e26460ae692ce514ad501c0f6c5b978459cd56a5b75b7e470982f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColourClasses.olean",
+        "bytes": 1245040,
+        "sha256": "f6ebedc9dd18f5a9f7e9b64b3d4f5266590a5326e2b4977c69e29bee7b6bad36"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColourClasses.olean.hash",
+        "bytes": 16,
+        "sha256": "391f736b894689e934d30fb594fcb4dd685fe26c4901c92635ac79e2c75dc604"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColourClasses.trace",
+        "bytes": 2814,
+        "sha256": "fd997154b0a2f3d270bd611e60957614c2872c7ea6d43b371a483f09843c75e9"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColourCoverage.ilean",
+        "bytes": 12926,
+        "sha256": "3b4280c3a7238408d66aa6f7922282bcc03e27318ce89a4d23c73f2aa0d503e4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColourCoverage.ilean.hash",
+        "bytes": 16,
+        "sha256": "b9ca86297705dd2f096f58247e63f8f20a8d67f3ff558d060aa80da590e1f673"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColourCoverage.olean",
+        "bytes": 76312,
+        "sha256": "47fba8814301a3a8198c1c9dd9d5997bc1ad9df4d7603df316ba0d6f2473ceea"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColourCoverage.olean.hash",
+        "bytes": 16,
+        "sha256": "0d523504bb22ea07f49d7aacbf3ff6ea65d42b744665333b334b6ac4b1e6f311"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColourCoverage.trace",
+        "bytes": 3417,
+        "sha256": "910c847c167539bb08f0f8a83244120f0667ac1886e4f46c58eb3469dd52d122"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColouring.ilean",
+        "bytes": 7055,
+        "sha256": "f7703d9560a0c9e9e89e51d3d3c098ef5d38b31e72c2952cf63233c6b6861d4a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColouring.ilean.hash",
+        "bytes": 16,
+        "sha256": "99e04d8fbed07a1ea061bf72aa2e03b9ade48ad09b562bcb4c61f6c06e67fbc0"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColouring.olean",
+        "bytes": 70584,
+        "sha256": "e7e2c05fd3f35544684dc8e44c46ee35b687a8f5a6f910adf21125e7188c6785"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColouring.olean.hash",
+        "bytes": 16,
+        "sha256": "6aee7433860c03ab6cf14c84034f5b9dcdf5ef64b31a2332d28d30ff7e4a89b8"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBColouring.trace",
+        "bytes": 2427,
+        "sha256": "797312a0a3eda555c64531d71a752ba31cfce1f50eaf07eee45f5912806179ac"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBConcaveColour.ilean",
+        "bytes": 42679,
+        "sha256": "cea5a4d85cd3b5388623e37e9a9fdf9bdae43a1684776d4d4e4326ecd48b5a12"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBConcaveColour.ilean.hash",
+        "bytes": 16,
+        "sha256": "4be003b624f7e524617115601b1a7e94047d7366021e31ab29f479ca3f95bf94"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBConcaveColour.olean",
+        "bytes": 926216,
+        "sha256": "76da6b15cfa19b1c7dc6437bc215f022cd5f0fc9eac3cf122f279dbc140b03d8"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBConcaveColour.olean.hash",
+        "bytes": 16,
+        "sha256": "57f1630884c9ed8dd42ab30bb74db6b6868c909ec5ef739a09965bec43ac5393"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBConcaveColour.trace",
+        "bytes": 3035,
+        "sha256": "7d39e102f02ad6db6e3fa642b277c9b5b5f0480f0e2b2adcf371261b04f85234"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBConcavity.ilean",
+        "bytes": 33113,
+        "sha256": "562a2dbc2812ab9e10e1c5d617a33b72926b21497f15dbac53308d5390350476"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBConcavity.ilean.hash",
+        "bytes": 16,
+        "sha256": "2930e87fb4486ca2a1999df12a1d3fe90c9c18faa2a30b8dd93519cb32f14bde"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBConcavity.olean",
+        "bytes": 1737856,
+        "sha256": "389c53643420ae4d28c62e6ac948e0cfe867e0309dbee054ec4c92b8c18534e9"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBConcavity.olean.hash",
+        "bytes": 16,
+        "sha256": "c766af11f0ecb7f62bb0abb7b87fd001b1d6fd3e7290ef92560c43b25895e2e8"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBConcavity.trace",
+        "bytes": 2375,
+        "sha256": "74e3e1fe5a4eb5f8b139b10506acdc46a6438685f517f1b002144314447635c4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBConvexity.ilean",
+        "bytes": 24418,
+        "sha256": "6d7c826336cebad5e439166d922e9c2e503ff17a248dd8ef5f0cc73563843dfd"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBConvexity.ilean.hash",
+        "bytes": 16,
+        "sha256": "8ae3a38b4a84bb26ba6ab7bfbe15e147547d8a9750924be4d5d1c0e40798aa47"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBConvexity.olean",
+        "bytes": 290344,
+        "sha256": "ade513f5df55719f36d1c83661c9f726e57e65fd1dc5b0165e85f6e7ac815da1"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBConvexity.olean.hash",
+        "bytes": 16,
+        "sha256": "ee35186b1f4b2e86e1685141589cfd5e89d943764b90c3041066026f64300613"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBConvexity.trace",
+        "bytes": 2758,
+        "sha256": "3d5d277631a25104b6ba7234dca7ba0dba62a9d2ccc06bedd4fad0eedcfc91d4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDiagonals.ilean",
+        "bytes": 103872,
+        "sha256": "1d0591fa9f8a2fbf69a598d7444a3b0f88da66eacfa4635c4789b4b6f028adfd"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDiagonals.ilean.hash",
+        "bytes": 16,
+        "sha256": "e80bf596edf9da2c38cece039a5efec4b8d3ab97db235584cba60a7eff61b1bc"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDiagonals.olean",
+        "bytes": 2241856,
+        "sha256": "4b8eec9e1892cd7cbeca143d8c7803c22efbd11dee1f15653878398bdd027b7a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDiagonals.olean.hash",
+        "bytes": 16,
+        "sha256": "09b4690468c18ef72d82fe99062d91a95e0b3133d46d453103e2321cf824c98d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDiagonals.trace",
+        "bytes": 2777,
+        "sha256": "d43bfc2065e4edca5f470bff3cf7c0e8ffd66cdb664c841ecde7afd373467d9d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectCells.ilean",
+        "bytes": 88543,
+        "sha256": "8ed3348d015f7682fecb074255090ffaa9cc3f70185e83d0f0c73eaac50c7b10"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectCells.ilean.hash",
+        "bytes": 16,
+        "sha256": "2d3f7688c2818205f70324d115d7511135fe2d8f264fdf4cf09a4147133ea9de"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectCells.olean",
+        "bytes": 1160640,
+        "sha256": "5d3bc994acc693d1967cefa8770e47f57df6c524eaa2a388e3d64a00cd0e384b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectCells.olean.hash",
+        "bytes": 16,
+        "sha256": "9b4ad12a33a6965c131e8d57b32011016103f16fd92026579c819ba00a672256"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectCells.trace",
+        "bytes": 5076,
+        "sha256": "3aeb4e3c79f511037e8dbc696d4d10459e79ca5e0f7ad057b3d9d4249b85e27c"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectConcave.ilean",
+        "bytes": 19786,
+        "sha256": "3711ff2375e1c2811eee9ba8060ea162de18759485ceacef64cf2234db17c76e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectConcave.ilean.hash",
+        "bytes": 16,
+        "sha256": "f6a025dffec50439e99b3a1a08e6dece1050a619026101f2500d96afacb519ca"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectConcave.olean",
+        "bytes": 844616,
+        "sha256": "963a82ce0f72647533243ca5f5b3781482118e867f2e4c5f77f7c8fa2fcbeef1"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectConcave.olean.hash",
+        "bytes": 16,
+        "sha256": "0c84ceb1fd7e23b287d05dfd0bf52d221a18ee105c02be485e3a9314bae3cb9a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectConcave.trace",
+        "bytes": 2409,
+        "sha256": "30b74cc820928b69437e18d0930049bc29f836c2295a3bfbbc5463912317901e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectConcaveCases.ilean",
+        "bytes": 1902178,
+        "sha256": "d96af0240f2293be1aa330ea461b57261893256d9d3ca767af533249a1c70627"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectConcaveCases.ilean.hash",
+        "bytes": 16,
+        "sha256": "cee18e81fe4de60d3937afe65ee04dfa48af1abb343bf42c40864f4d9c47b232"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectConcaveCases.olean",
+        "bytes": 6980184,
+        "sha256": "e5561e74256ce279904bc0864b03975c008dbfa1618e1395747c6c9ae7656fc3"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectConcaveCases.olean.hash",
+        "bytes": 16,
+        "sha256": "cf1bce78e6266371e217e76b0570c129aa5edf1430fc8c819f066947547c390f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectConcaveCases.trace",
+        "bytes": 15059,
+        "sha256": "2199b1b9b8209630e2d6a67caecb1109f9a4141fdf2da63a1551f6aae85a95e5"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectConcaveClosure.ilean",
+        "bytes": 30067,
+        "sha256": "0bde92b622e5119adb5d0f64db9a6bfdc16fb1e37dbca226147c7e5b2e4d40b4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectConcaveClosure.ilean.hash",
+        "bytes": 16,
+        "sha256": "c12e14e96f7c264ca1458cab672f6be3a3e003e07cfd1e5f17e2691e9709b291"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectConcaveClosure.olean",
+        "bytes": 443440,
+        "sha256": "1830be4a17953abfbee32e6d8c4fb6c1d03279d6f6330db92e83a5d6895ee49e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectConcaveClosure.olean.hash",
+        "bytes": 16,
+        "sha256": "fbf1185dd48ca931ff5c93ed4b814f5aa3b69f8283381e113e6ddf4d224e1323"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectConcaveClosure.trace",
+        "bytes": 2484,
+        "sha256": "73a33a297c6fa74ee107e25dc60ffa2ad4b2413114e34015361351ad2f6e6ba2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectCore.ilean",
+        "bytes": 86620,
+        "sha256": "2cf080741dea134e4ae9a92085fa0c66ae40257f497d1302a02aa18e7232e615"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectCore.ilean.hash",
+        "bytes": 16,
+        "sha256": "21f492111ed556ea4d28ad93db00bc1c22b5305504faa109637406649d695a33"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectCore.olean",
+        "bytes": 1211584,
+        "sha256": "537b96e18d0338a591daa18187f8e118c472b477677b2a897916b345f7c1f64b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectCore.olean.hash",
+        "bytes": 16,
+        "sha256": "2c383a0304fe3cbc78d8cac2ca26d7bd18bb71a59ea6ef81a69dd1a2e9f22e1e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectCore.trace",
+        "bytes": 6707,
+        "sha256": "316ebb8a474788aafdbc6f3afde3a0e509a261dbe067dc54a580d19518d07d9e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectMc.ilean",
+        "bytes": 27619,
+        "sha256": "8cf24a891382df8376191fbb5d339c4d4b37cc0ec89175d4478a1c875b053880"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectMc.ilean.hash",
+        "bytes": 16,
+        "sha256": "9bf2d5ffbe15d8bc4dda6dd9cc3ea1aeabad187657abcd08593c650733fc4556"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectMc.olean",
+        "bytes": 216688,
+        "sha256": "903b9c246d3fad6392983b9e61acf6994cf8fa216ed82f94dbd7b27481ee743b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectMc.olean.hash",
+        "bytes": 16,
+        "sha256": "3956a2ff1034fbbce0ac05c3cb7c761e04b8adaa8e4c135eb1577d50e8019df7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectMc.trace",
+        "bytes": 2788,
+        "sha256": "ef51b605f651f8f15b70181c3af42c6159dc8f641510c0b4e84d41478697e52a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectTrianglePatterns.ilean",
+        "bytes": 285486,
+        "sha256": "8578c514c117be2ce7cade9ad373f5497702bb27c2fd147121fbafb7c508cb38"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectTrianglePatterns.ilean.hash",
+        "bytes": 16,
+        "sha256": "7319684e4d5bfbdc02554cf21f59ccc05b8a4413be4df6d07f9b88ed53942dd6"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectTrianglePatterns.olean",
+        "bytes": 3150888,
+        "sha256": "155c67b6ff6ab62adcf83bcbbd648712a7eb9737b07992c7a3aeba203b08ecb9"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectTrianglePatterns.olean.hash",
+        "bytes": 16,
+        "sha256": "151c649ef4a3fa1a3005d6369235de268dde4c5cd3037f12cddec57dafa3fcbc"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBDirectTrianglePatterns.trace",
+        "bytes": 3257,
+        "sha256": "509fc3635c402662beaaaced6fddceb7a49dabc877d5a1ce3c905db84151ba9b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBFinalCases.ilean",
+        "bytes": 991323,
+        "sha256": "16976c4184e85ea8ea33f5a1735859545eb49950554151d072268c47c52f62ff"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBFinalCases.ilean.hash",
+        "bytes": 16,
+        "sha256": "f3030f3699ad9f9ef3222a1201d37f51ecadaa1a8b39d31a5cdd4b70a756326b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBFinalCases.olean",
+        "bytes": 9471656,
+        "sha256": "cd399f5966668d3e230aafe3b3d585b0b0d9ca41746eb7aadbb3abdf26f6159b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBFinalCases.olean.hash",
+        "bytes": 16,
+        "sha256": "82a65363001fa4d3888980ec98f90d8998c1be4618b1806432328971304c15a5"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBFinalCases.trace",
+        "bytes": 12060,
+        "sha256": "7ff2f0e187d70c2bd47771a95fe818e259ae4799de8408b23861dc4fb3a177cd"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBGeometry.ilean",
+        "bytes": 27317,
+        "sha256": "2a8475f34a2707c00fa0c4aa38eb31fa14fc3dc90932f8e217d97cb7340e3ca8"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBGeometry.ilean.hash",
+        "bytes": 16,
+        "sha256": "f99af12fa10fba75b281bf8873113282b55b07e6af23772b97768349819d95e0"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBGeometry.olean",
+        "bytes": 663728,
+        "sha256": "f0d7c720830f027a182351ac461b8458d0c02ed0d6bb2ebf324983acf696735e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBGeometry.olean.hash",
+        "bytes": 16,
+        "sha256": "ac8f4971739668f3ad59d9a1ce374dd6cb5167dfc9787415a9606ba6c005bd6d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBGeometry.trace",
+        "bytes": 4042,
+        "sha256": "fdf08462a2db666b240c650c18da7c0fbc7c8be0580d4d707009df7e1a34cd5a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHexCardBound.ilean",
+        "bytes": 10156,
+        "sha256": "3b2cda62aef517f0ef0c7ed7d9321cb4ec993b51aa7a6f7e9801388dec223f2b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHexCardBound.ilean.hash",
+        "bytes": 16,
+        "sha256": "7ae2a44144157dba78b183aefc699a070f24a96ad262cce2d5370c24e5c1aa76"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHexCardBound.olean",
+        "bytes": 74608,
+        "sha256": "6bbceabece27bf528ce428422f5567dec50015cd8d6d7606d4bb0e4a7066c5bf"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHexCardBound.olean.hash",
+        "bytes": 16,
+        "sha256": "ffe07d7e42a7015a4baa713ad92f22c6e217e0d67baa399242a96071897259cf"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHexCardBound.trace",
+        "bytes": 2568,
+        "sha256": "3d7867f39700ed2d29ca068e46da6417a71d55e352082faa1d859363b02574f4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHexFinalGeometry.ilean",
+        "bytes": 78573,
+        "sha256": "8db5470fd27412c24489e040428b4b3386aead608321524ebe64465adb8e6a1f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHexFinalGeometry.ilean.hash",
+        "bytes": 16,
+        "sha256": "97926acd5650b3f28e540809c1e7c58b346a6a2d6c73ff8fd03f95bdd64d6335"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHexFinalGeometry.olean",
+        "bytes": 1322728,
+        "sha256": "65da1925b9e33ad195f671595fd8e5754b1e32576f07d8d583b5059f645a605b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHexFinalGeometry.olean.hash",
+        "bytes": 16,
+        "sha256": "a2c7b21544c7bfa978eaa00abb678ddc8dba8221d498cdf3b1335087f75afb10"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHexFinalGeometry.trace",
+        "bytes": 3700,
+        "sha256": "4349b0dff4017caa15eb71eaab05b9882469c4b3dc5f5705ae9765f88437c31d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHexGeometry.ilean",
+        "bytes": 29687,
+        "sha256": "7f776c2c5d20c864013623d977709fe7a9f1992ed9aef813721e2241324732cb"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHexGeometry.ilean.hash",
+        "bytes": 16,
+        "sha256": "3ad0487dcbdb035cec82257ceafe3d13fb75b9e569937724c3266c13bdc6d66d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHexGeometry.olean",
+        "bytes": 287560,
+        "sha256": "c24715aa5a0bd79d7f1df1113954b4e5e116e825f8b030793dfe9c5b89ce5352"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHexGeometry.olean.hash",
+        "bytes": 16,
+        "sha256": "160f0e94bb43dd85d15dfa65953badd0172159c5f7d48ee71ec044c0b584fcc4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHexGeometry.trace",
+        "bytes": 2892,
+        "sha256": "02d4b3364ca236c854329d648a190d3b230008abf39e9aefdc15a454eb368465"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHullCount.ilean",
+        "bytes": 7016,
+        "sha256": "6298849bf1d3bcbcfc8310d055dfe10a2a4c0d087ad118593e46355b3caed1e0"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHullCount.ilean.hash",
+        "bytes": 16,
+        "sha256": "d41c8591a83a2b7e4c7c9bc7bf9d4c76c55b066709bc12cb6e3c7791e5f790e4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHullCount.olean",
+        "bytes": 45272,
+        "sha256": "4fa2e205093bcbc00163d1b1aefc56467cc824343d10dfee28cb596502a05a69"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHullCount.olean.hash",
+        "bytes": 16,
+        "sha256": "e30b87ae8f8750ea13ebb5c20ded538a332e6fd45a4f5a55b437a48a89e4b1e9"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBHullCount.trace",
+        "bytes": 2375,
+        "sha256": "fe1ff990ef980643e865e494eb513997f740746d66b6a63c28e5901e384440a2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBPlanarFive.ilean",
+        "bytes": 75718,
+        "sha256": "b7f0794a7ab482609725bfad9c841fd2980e91e5c2caae586fbf6f02efe02cec"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBPlanarFive.ilean.hash",
+        "bytes": 16,
+        "sha256": "fa62b73fb49ae82a54e0bf531c501f2e9f49563ba1dea203b2a9e88262bcf389"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBPlanarFive.olean",
+        "bytes": 1019792,
+        "sha256": "ee1161999be83e351beb4904d90cc73f96676a565e2a97bdae70fc663d93f07f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBPlanarFive.olean.hash",
+        "bytes": 16,
+        "sha256": "4cf5180fa5c806e6c121d845927c3d25a81ba17de67a31119bbc51c3db2e3cc2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBPlanarFive.trace",
+        "bytes": 2391,
+        "sha256": "d16d1e3519b564814fa7dcbb8ec6684128a8faa9c75eefaf125abf6c18b25a00"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBQuadrilateral.ilean",
+        "bytes": 112255,
+        "sha256": "d39b4031dcdb04f611c653fea5f9ab4153824a1ddcff53764a6ce283bf55cf9e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBQuadrilateral.ilean.hash",
+        "bytes": 16,
+        "sha256": "2b2dc3ec2112813680c0e436c3bbd7484027cb6ab894ed6715b4b85d12f03e97"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBQuadrilateral.olean",
+        "bytes": 866456,
+        "sha256": "70761320af553c7592723d07447e8fbc1807259526c0d4274920e21ae3837f39"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBQuadrilateral.olean.hash",
+        "bytes": 16,
+        "sha256": "cc80ffa3f7870b69c563c70163cb7fb7532021f527eedbe58c9fd2e937679ee6"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBQuadrilateral.trace",
+        "bytes": 2731,
+        "sha256": "ff56847ad8ff303ad343dca1e96757171fd65f981903e4cc4a2e7c1c9c4051e3"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBQuadrilateralMaximal.ilean",
+        "bytes": 151094,
+        "sha256": "307168fadddad8f031f4ea9f4eff1204cb85e6f7ce9cd72669275cdfcbeec5e2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBQuadrilateralMaximal.ilean.hash",
+        "bytes": 16,
+        "sha256": "0db18fba877163118e80cae0191c45d105a1e52fc4f15d7be2730e205962d428"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBQuadrilateralMaximal.olean",
+        "bytes": 2138736,
+        "sha256": "aafc0e4486447e5211c3623bce30a3c606a75e7c7872ff29af6df8f6baa5aff4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBQuadrilateralMaximal.olean.hash",
+        "bytes": 16,
+        "sha256": "44c64d5d4dbda381c78bc4b7fff7e1f86bca1c74d8364b27afe07c6746bb6fcc"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBQuadrilateralMaximal.trace",
+        "bytes": 5225,
+        "sha256": "428dd3a29ef23369b66edf41505adfdbc071119853cb8d1994a5bf1d0b363924"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBQuadrilateralPattern.ilean",
+        "bytes": 54500,
+        "sha256": "1ce416fc594d19ba322b6d9b24af2b00ef86b40e4d15ff5ec8a69eed2be62089"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBQuadrilateralPattern.ilean.hash",
+        "bytes": 16,
+        "sha256": "67f47ebf9f130f53e81529a1105603385e294607c40919c894a70d398bc2bae6"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBQuadrilateralPattern.olean",
+        "bytes": 983992,
+        "sha256": "7c0d7201663e860af78c87b4d9ffd65925886794dbcbab9077e4687b68fc74f7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBQuadrilateralPattern.olean.hash",
+        "bytes": 16,
+        "sha256": "e80c6cc9eb15bb3d0634cf0978120079596f3642f95301efdd275b0488a77c69"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBQuadrilateralPattern.trace",
+        "bytes": 2674,
+        "sha256": "d8dc85cab6492a044c161906b148f6c9352bf898a2716151289d879368256f0d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBSixStructure.ilean",
+        "bytes": 68474,
+        "sha256": "8021400f1733ada605d497af6813786857244a4c42f5bd1d7cc97674a1d3f6d5"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBSixStructure.ilean.hash",
+        "bytes": 16,
+        "sha256": "6814851d272bc506f37aea9dda633502a2cb6779cffaf72ebbaff9f059379f66"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBSixStructure.olean",
+        "bytes": 719760,
+        "sha256": "67521d4d663db2bc1dbeb429ad075b3676aeafaabbb12f5ce65ff3693a781a75"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBSixStructure.olean.hash",
+        "bytes": 16,
+        "sha256": "590cc63a9dd08ba5d8880a922c6891e73e3edbd4d31444a0733255124b8866f4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBSixStructure.trace",
+        "bytes": 2578,
+        "sha256": "0e5aab73b6dc6240fb1748afd7e5e6fb96fa304d965161c738d23242d886c84a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBTriangle.ilean",
+        "bytes": 121948,
+        "sha256": "03f91785e7841891e7407d0c3b66328fb79b0a09c52266dd9ba9a311f6b275ce"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBTriangle.ilean.hash",
+        "bytes": 16,
+        "sha256": "718723c7594090c649cdad87c9f8e17d7457373594bcc8b4e841c42ef431ce13"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBTriangle.olean",
+        "bytes": 2596848,
+        "sha256": "ea5040751dab93072eac99b0a13a7cd91105fecf1bdbefa04e81d17422d382a0"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBTriangle.olean.hash",
+        "bytes": 16,
+        "sha256": "f2a9da92b20b8a52eeb1b3c1e4e234edb90e28f82810571d361be511a80b9272"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HKBTriangle.trace",
+        "bytes": 4447,
+        "sha256": "6f8cabdddbb9319d5e693fdab450fa411687315f34742010dedb8892fb5e1747"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HujterKisfaludiBak.ilean",
+        "bytes": 20519,
+        "sha256": "5fae41a0527e4755db548ce5b95d92fd390731079111f430bfb65636a2b6ab2e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HujterKisfaludiBak.ilean.hash",
+        "bytes": 16,
+        "sha256": "c577feacaa026b2242ba6dda3c1501f205fdf901db3369fc473b2ce87ec7d4d2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HujterKisfaludiBak.olean",
+        "bytes": 273928,
+        "sha256": "c42c5953d7a5ebfcae8b170be3e11aebafa119f8e2d222c4defb73471d1841ee"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HujterKisfaludiBak.olean.hash",
+        "bytes": 16,
+        "sha256": "8c0f41a5ddbaed1f597306b37fa2d90b5c1f36e5efd042fd84c83f28ef6b2f1a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/HujterKisfaludiBak.trace",
+        "bytes": 2781,
+        "sha256": "7ad8ffd9008189a4512c1511e9dafd6a66900dc9d810906c13604d94c58b79d9"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/IntervalDensity.ilean",
+        "bytes": 26233,
+        "sha256": "ffcd4dc8179c197ac981c230362a5a6e5cbd3f606a4b031eb491f6f1eea720d7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/IntervalDensity.ilean.hash",
+        "bytes": 16,
+        "sha256": "4d0ec3a63a84c98876307d04bea8db28737c5a1dca530c7c437802a7aad232e3"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/IntervalDensity.olean",
+        "bytes": 433864,
+        "sha256": "69f42f83c341ccbd144151e4237fa14e305e1fa35e28ae33336508a87ede1b9b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/IntervalDensity.olean.hash",
+        "bytes": 16,
+        "sha256": "c4307db16dc47ff603a321f32aa7fb8616b5ad320926c8bae80440fce3ce51be"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/IntervalDensity.trace",
+        "bytes": 3931,
+        "sha256": "65ab37b7cd4cda68433246168a58bbbaeec3107b83ac2fba2c1c6d0c07098756"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/MainTheorem.ilean",
+        "bytes": 2296,
+        "sha256": "de57f751a2bf5520fb7132a421328ba7ce93730e936c3ca4be25190d05687139"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/MainTheorem.ilean.hash",
+        "bytes": 16,
+        "sha256": "2934f7c260f77d1141ad75fb38dd46826acfbc31b9e718448bd9ec2d96bd4bb1"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/MainTheorem.olean",
+        "bytes": 11432,
+        "sha256": "685bf80662a66cf9e2f085cb667d96129c0026951623458522a180dd54d50515"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/MainTheorem.olean.hash",
+        "bytes": 16,
+        "sha256": "a7c79c9cf64ce55c011290174a04f47e37a62011e220d91f5db3a4b365ac17a2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/MainTheorem.trace",
+        "bytes": 2379,
+        "sha256": "39041500cafe5b89fd485371a0acafbc2be36f04cedd0d7206eaca5fbb06432e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/NumericalBounds.ilean",
+        "bytes": 11248,
+        "sha256": "f137898ce901fd50df19dacc044b411712b96c7418a05979c99c1da26284abac"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/NumericalBounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "10a8372f4186ef56c7377e4501c567e93a0be20377f4460a7dba3d20ed5082b6"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/NumericalBounds.olean",
+        "bytes": 329960,
+        "sha256": "85728d1e1bffba2724439d9c2631d010df321d23ac732cf1cb1cbffdca3b3c36"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/NumericalBounds.olean.hash",
+        "bytes": 16,
+        "sha256": "7fa561536194347edc563ef57f1f50fc57dcafe781a8a18a0db8afb01ad41a0e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/NumericalBounds.trace",
+        "bytes": 3315,
+        "sha256": "f1938879cfaa151428aaf11f6251d9f1fa983470abdb1ed6179a6d9fe17ab4a7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/OrderGeometry.ilean",
+        "bytes": 18369,
+        "sha256": "c7aed2e315a832e37954f7dbbff36303d92a0b44414d9ebcef05198590fb0783"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/OrderGeometry.ilean.hash",
+        "bytes": 16,
+        "sha256": "fd9e5d4a83648dafc8028beae8175f262198a03b89440fcffeef6526df414fc8"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/OrderGeometry.olean",
+        "bytes": 216360,
+        "sha256": "70af62b6464b0bfb49d6cb770f72174f2bc8bf254f9aaa8b779475dee84421be"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/OrderGeometry.olean.hash",
+        "bytes": 16,
+        "sha256": "281536b923fc5ba7affa2f19063e51efcc08764e7bcb6d05f5df623efcabf590"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/OrderGeometry.trace",
+        "bytes": 2678,
+        "sha256": "af97b1cb5c319df13f032d0b19ead59174253ff74af4babe5778feae848de4f7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/Orientation.ilean",
+        "bytes": 48010,
+        "sha256": "ac6859bda27745a3ae6f3dcf041fb97b00576fdc8619439fa2fcbe2008dc9fe8"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/Orientation.ilean.hash",
+        "bytes": 16,
+        "sha256": "87ac3a6db45c93bd92c896fc126e5eada7598a9360a5e95eaa9d286a26320cf0"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/Orientation.olean",
+        "bytes": 1095864,
+        "sha256": "a4790e9d162c417eb1e61d35f4cea25f16206fbbcc2700238381fa5504ffe92b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/Orientation.olean.hash",
+        "bytes": 16,
+        "sha256": "0337616b025111988c55b645e87506a2ca18801e56b92dcc98381238102c2cda"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/Orientation.trace",
+        "bytes": 3730,
+        "sha256": "28498c9891bf5f5648161529303ca35c604b7cae34b4070dbaf3a0046819db15"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/PotentialLower.ilean",
+        "bytes": 12253,
+        "sha256": "d461fedc5e217add529b4882e828f513f5ecc3cf6deea6d676d4a306fc3bc059"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/PotentialLower.ilean.hash",
+        "bytes": 16,
+        "sha256": "decddd0bd08974b1b4596cd8e5ad521802f47ad9f75cba04a99598b264f7d0e9"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/PotentialLower.olean",
+        "bytes": 231800,
+        "sha256": "cd2353a259f2212658296dacb95fb3c110b937742348125723c67005d64d5e72"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/PotentialLower.olean.hash",
+        "bytes": 16,
+        "sha256": "1bf9acb37ab8d60fa8ca612d9e613b4b9663558b37e8b1d2a5df96689db9a66f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/PotentialLower.trace",
+        "bytes": 2729,
+        "sha256": "d46832a0ad0571eaff274ee15581ec833e3a866fc0bbef476b126e2881fe896b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/SlidingWindows.ilean",
+        "bytes": 42090,
+        "sha256": "25d29aed7e804f27c29a72aa34e3704d96be1eaf0e9278ff9571c3ff01e4516d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/SlidingWindows.ilean.hash",
+        "bytes": 16,
+        "sha256": "178f73d3d9ef8cca2151ff3ca9bac8287f3bc28c0c2e084556310fc031c2e68f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/SlidingWindows.olean",
+        "bytes": 559264,
+        "sha256": "4710b383239bee34573967692e8942f3cb260ee7ed3f6933d09b844f534507f5"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/SlidingWindows.olean.hash",
+        "bytes": 16,
+        "sha256": "c832452df5aedb7bbc58e0871eb7f8ce7d2ce2e4d55e3f225911d2a59d2f88bc"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/SlidingWindows.trace",
+        "bytes": 2739,
+        "sha256": "f36a0fde47aa16a2a5189488639b7ed27eb3350dbf21b5601fe99fc114c4f784"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/Telescoping.ilean",
+        "bytes": 5770,
+        "sha256": "a8f9bfb4ee0bc712838b088eea19af9d362a62bf7200590c9d351a2526f08d3e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/Telescoping.ilean.hash",
+        "bytes": 16,
+        "sha256": "c226ec63be08d933bc64605194a6899ba97df555d6f09f5bd6e843380230cb1d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/Telescoping.olean",
+        "bytes": 415880,
+        "sha256": "d3702d130d9eef55a8fd991d5c338354a8a9af282426b763ada354e230cabcea"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/Telescoping.olean.hash",
+        "bytes": 16,
+        "sha256": "d8564b3a44710986b259d71270a300d4ff1dbf53f26a6eef8397676ca861c3db"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/Telescoping.trace",
+        "bytes": 2392,
+        "sha256": "db3488863daf7004e91191a267284e0b909c6570d8b4538c068527ed67ba017d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/VertexRemovalStability.ilean",
+        "bytes": 36990,
+        "sha256": "d0049bfe6bddf16c1cbf9ebfe91ffec1c6ffd96c9794142cf7f865b812077133"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/VertexRemovalStability.ilean.hash",
+        "bytes": 16,
+        "sha256": "c55dfc927b755a62be0e2ac6dc8fa7d6db271dcb21c72297eb0a8d99e5b05677"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/VertexRemovalStability.olean",
+        "bytes": 1302904,
+        "sha256": "028a96284a0b2b5d3576c45126393ed4ca7148d025ffc5dcf60c74d8df821af1"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/VertexRemovalStability.olean.hash",
+        "bytes": 16,
+        "sha256": "73f62f7302be53b0bc39ad532fd4a8df1e8da3c18739635fa6ad6892a49be454"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/VertexRemovalStability.trace",
+        "bytes": 2857,
+        "sha256": "001526b81b9e478f1cc41568c6886af66b77755aec3ecd342433587accf7c297"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/WeightedPairs.ilean",
+        "bytes": 39471,
+        "sha256": "ec15498796af9228b70a1c4aacafb58ae2be8d3a8671913a0215ced96ef85fee"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/WeightedPairs.ilean.hash",
+        "bytes": 16,
+        "sha256": "c1e5ce6c2ed4f7d9b6bdbcf0a3efdea72b95a904d16eefede6381457324b11d7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/WeightedPairs.olean",
+        "bytes": 349192,
+        "sha256": "389a432484c9101f7481eb0b4176c01912ffe9e831fce7eb43fdd27d3c94b4c0"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/WeightedPairs.olean.hash",
+        "bytes": 16,
+        "sha256": "cd3a348f04399eb5fcf5ba0f92a57bca01df5ee82f652db606ac0ee112babad3"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/WeightedPairs.trace",
+        "bytes": 2375,
+        "sha256": "ba6afc4627066524794a69b1dbfc3879e04a148dac1d6214517ea87a8605d46e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs.ilean",
+        "bytes": 2273,
+        "sha256": "0e29f7ad0fc95b05f7650674f3e958ee4c6b6e5fd1a03991ae41c83bcc602b54"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "1974a306093f83624aaf26ed5f8854fe110bd5d1c0476ab93a54a821557be64d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs.olean",
+        "bytes": 6272,
+        "sha256": "8ad689f8e8499ab2c41214874613deb59e81c4acd8b30ddb5b3d637acb1bf871"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "86f370228294e0b85fee773950900e54000b4fe1e4ce0e11dd480317107f68ba"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs.trace",
+        "bytes": 9607,
+        "sha256": "f1a88828791005fc896cb8d3b2eac38a9a590c32b7bf159e8ce55fe8bad6afbb"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3348,
+        "sha256": "4b86cc5322c685ef65f60493dd2997ec5c52c356922095766b5b958c33c68a15"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 310,
+        "sha256": "8cfda0d890757d5e788d0370a424968bb715096baa90c1d5c2314b1f5650113f"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/AnalyticBounds.lean",
+        "bytes": 12560,
+        "sha256": "b0a34a3da9be576b118e5cce4d844d704aaad9619b2f7ee6a74565dcd3d7be4f"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/Blockers.lean",
+        "bytes": 3686,
+        "sha256": "e6360a23eba92c9a3808238c180283cad6af0ce3687c8936cae9317f13b61adb"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/FiniteIntervals.lean",
+        "bytes": 7793,
+        "sha256": "b8f60773de3162aa1cca6b3841edf71475df6cbc7e29d960a569e520722d948e"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HarmonicUpper.lean",
+        "bytes": 5915,
+        "sha256": "6fa6666c8138d5613e1d105581b28dba76b914a47a8e118e5688bcc79498795b"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBAffineMirror.lean",
+        "bytes": 7646,
+        "sha256": "cf8511347cb4fbaedb0cc38910033a3a780f8bef6c5b9c665406938711693579"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBBlocking.lean",
+        "bytes": 4993,
+        "sha256": "0c36925f4121be327ebb5771809ef63a378da0b9e68ad46ceb02ae6039cc0b6f"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBColourBound.lean",
+        "bytes": 5776,
+        "sha256": "6555cfbb76a904f604d0638ea744505542dff03d2468fad8f5657a905b71f68d"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBColourClasses.lean",
+        "bytes": 17696,
+        "sha256": "b9fd0edbe93beea4785553ad6cf9af6970a2ca4e175bbec57772f14a011f62c3"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBColourCoverage.lean",
+        "bytes": 4305,
+        "sha256": "4725e454ba7c0c76c492c41da417e00eabf490fa812242b11d724ed0c4b96371"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBColouring.lean",
+        "bytes": 3285,
+        "sha256": "bafd0ac26288b0cdbeb89397156a222dbb16ee95fb47c4fa6eb865b6df9f2ec8"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBConcaveColour.lean",
+        "bytes": 13242,
+        "sha256": "53824d0b98a00e9d8ff75c9d28bcfa92b9f7dfe24dfed5a46404670735d91e01"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBConcavity.lean",
+        "bytes": 12643,
+        "sha256": "8bf6b98763e6198412a75e4403449c23268ee8919ec0e92f300e98be5abbc97f"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBConvexity.lean",
+        "bytes": 7678,
+        "sha256": "d52dbcf1d7023fc330f63646f35b9b99c56d07c1adb525c243d5ebf267a3a7b3"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBDiagonals.lean",
+        "bytes": 34098,
+        "sha256": "bc19aeb9b93ab557dbcb906e0160919c3a20e67550363c5341a50e7150635ba1"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBDirectCells.lean",
+        "bytes": 25775,
+        "sha256": "1fcdabdf1d96179a511dd255a775ba21c9cd3467405cf41b536325f5593b4f4c"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBDirectConcave.lean",
+        "bytes": 7635,
+        "sha256": "238c4ab0b03402a9c738a4fb97b32a57334c1bcc10a44130923eb45fb59daef0"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBDirectConcaveCases.lean",
+        "bytes": 409604,
+        "sha256": "b1cb9c08791cd42886e2c86b061772a8c29958e1d0aadb75464c53a14af085c0"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBDirectConcaveClosure.lean",
+        "bytes": 7724,
+        "sha256": "491e7cd0d8d8e583207f533acede1124b34e1c6d8d8dc4e0a1d22b259b43daeb"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBDirectCore.lean",
+        "bytes": 23787,
+        "sha256": "7eed41858db48bf593e486b2926c586458e504884a4d9faa306fcc3ec60e3b3d"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBDirectMc.lean",
+        "bytes": 7905,
+        "sha256": "9dd8992d7a70a8c3d1eb5ab5934c8ecfeb1dfd60c0f6125be90a74420881c3f2"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBDirectTrianglePatterns.lean",
+        "bytes": 74477,
+        "sha256": "cdc938b08bf310b2ba5f386b775926f8df86efad831f3a63f69dc8ea63c5c4f3"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBFinalCases.lean",
+        "bytes": 253654,
+        "sha256": "75d6f0f46c670d1962929c9b20a2e23276cd68fa0376cb7fe5f3a2ec34d7739a"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBGeometry.lean",
+        "bytes": 10009,
+        "sha256": "b46334131ae43243208b15c43fd0ee854631874d3f238dc4d44c86799620964c"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBHexCardBound.lean",
+        "bytes": 2628,
+        "sha256": "eed6e7fa074dabbc58eee26f3d23c393ce7c1160526fff77c4e300c065104c16"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBHexFinalGeometry.lean",
+        "bytes": 22880,
+        "sha256": "ac50cbf3967e5beca74ec14a79c2095677785ab4203c95fae43f7213572506f9"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBHexGeometry.lean",
+        "bytes": 8840,
+        "sha256": "4c13552da0976469ff8c24d1b21ee4c8a0a05566748136ba8f7ad2a47c037032"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBHullCount.lean",
+        "bytes": 1996,
+        "sha256": "2f3e192ea8825b53ccae9f9b7bb12589c4f94edd626f651cc05553f6f3c34320"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBPlanarFive.lean",
+        "bytes": 22873,
+        "sha256": "f5556879d920b04849d421867bb97acc5a03af6189d36ffd76dc01282fbd8f33"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBQuadrilateral.lean",
+        "bytes": 37483,
+        "sha256": "3194f3c997736204d3435dcc12fb0b3099dbe4bdb844ced7d386a8c937763248"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBQuadrilateralMaximal.lean",
+        "bytes": 41978,
+        "sha256": "b67fbffb67b9417e2823aa8a1478aa6d6a2f787c952992b1ccd712d356e30bad"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBQuadrilateralPattern.lean",
+        "bytes": 16812,
+        "sha256": "e2f0ff79840c059ce770114d8d47484b8722f5aefd9d39c9f5777ddeceb32236"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBSixStructure.lean",
+        "bytes": 23320,
+        "sha256": "003c26b3f0253937e33946c6e3107f9b8552aa5a918bebe1179f03fbe5793a19"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HKBTriangle.lean",
+        "bytes": 43223,
+        "sha256": "5d392bf0524cc6b1a8087a16ead819254f481b4564f296c31b87de1dec68262d"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/HujterKisfaludiBak.lean",
+        "bytes": 6284,
+        "sha256": "d6c2c9a7aba6b4813e714d8062d029f84eba6fd68b81337ce20ceba2a0b35150"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/IntervalDensity.lean",
+        "bytes": 7469,
+        "sha256": "99c91379075ace7c989736b1b98c3ac990b9535b7dc0814ed6f581ff78566367"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/MainTheorem.lean",
+        "bytes": 1041,
+        "sha256": "e19604788f0f7956b95428162abe965216706fdb0ca95336aca77ff2d1caa25d"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/NumericalBounds.lean",
+        "bytes": 3571,
+        "sha256": "18679c48fd31b0e8f7ff9b696144499fbe44354ee272eb2fee462770ea0166ab"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/OrderGeometry.lean",
+        "bytes": 4885,
+        "sha256": "492d9b0e7b944606e2e9c8b1530f673c5bd798f92df587dd4ba2695bf07c995c"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/Orientation.lean",
+        "bytes": 14338,
+        "sha256": "9562f61c367041e335cbc80280917915a701c56e709f6043fc181b868aa9bc00"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/PotentialLower.lean",
+        "bytes": 3271,
+        "sha256": "29069cdde6653d53e13e44f244712ee6d0d86772333cac0fbd416c3656c47d14"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/SlidingWindows.lean",
+        "bytes": 9978,
+        "sha256": "860f9679dd28ab8a910d06d01a9aba09187ad531fe34240625ae66b38ac138c0"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/Telescoping.lean",
+        "bytes": 2451,
+        "sha256": "e0d0e665ff6f089b53908cb41611d76050f0572d642ecb254760d6b55928e38a"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/VertexRemovalStability.lean",
+        "bytes": 10471,
+        "sha256": "d2486c22127e3acbf76afda8b1299a834865a2aeced22c930415ee10dccf13ef"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/WeightedPairs.lean",
+        "bytes": 8846,
+        "sha256": "98a5c605de6fd79e6aca851139284af70106ddbe0ede1e16fb071785547ceb98"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs.lean",
+        "bytes": 1532,
+        "sha256": "76ccbcb300ffb24e237955e75750ce0111b2e56771afbb96c6308ec2c144fe6e"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:d27607037b5d25223f6ef30ce8f1c52040c9d8f139fa239f247ca362aa6936e3"
   }
 }
