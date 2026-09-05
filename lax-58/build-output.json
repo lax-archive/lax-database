@@ -4,5 +4,844 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 58
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-58",
+      "leanVersion": "v4.30.0",
+      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "title": "Certified structural representations of finite data",
+      "authors": [
+        {
+          "name": "Jan Dreier"
+        },
+        {
+          "name": "Szymon Toruńczyk",
+          "github": "szymtor"
+        },
+        {
+          "name": "ChatGPT (5.6 and 6)"
+        }
+      ],
+      "bibEntries": []
+    },
+    "abstract": "We define a neutral structural input convention for finite constructor data.\nValues are represented by binary trees with natural-number leaves; structural\nsize counts tree nodes while primitive payload magnitude is tracked\nseparately. A small fixed vocabulary constructs natural-number, product, and\nordered-list presentations required by the current downstream application.\nA closed derivation command generates datatype encoders, complete constructor\nequations, and checked witnesses together. It accepts only natural numbers,\nfinite indices, proof-erased subtypes, finite families, and previously derived\ndatatypes. Unsupported fields fail elaboration; arbitrary field encoders have\nno access to this certified path. The generated equations remain inspectable\nand kernel-checked.\n\nThe mathematical concepts are structural presentations, their fixed\ncombinators, and the distinguished word arena. Separate, explicitly labeled\ninfrastructure modules provide encoding-agreement bookkeeping and derivation\ntools; an arbitrary agreement value is not itself a provenance certificate.\n\nEvery structural value has a distinguished dense immutable word arena. The\narena stores exactly three words per structural node plus one root word,\nfaithfully represents its source, and supplies the distinguished Lax word-RAM\ninput tape consisting of that root followed by the arena. It fits in fixed-width\nword memory under separate payload and address-space hypotheses. The submission does not\nprovide binary serialization, mutable-heap semantics, operation costs, or an\nalgorithmic runtime model.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax58.CertifiedDerivation",
+      "path": "concepts/Lax58/CertifiedDerivation.lean",
+      "title": "Field-encoding agreement (infrastructure)",
+      "type": "infrastructure",
+      "description": "An agreement witness fixes an encoder and a proposition, supplies an\nimplementation equal to that encoder, and carries a proof of the proposition.\nThe operations below retain natural values, erase subtype proofs, and\nenumerate finite families in intrinsic order.\n\nThis record is bookkeeping for generated certificates, not a standalone\ndefinition of advice-freedom: an arbitrary encoder and an arbitrary true\nproposition can have an agreement witness. The constructor equations generated\nfor a particular datatype supply the semantic specification.\n\nUse `Lax58.CertifiedDerivationElab` for the closed derivation command. Its\nfield resolver accepts only approved primitives and previously generated\ndatatype witnesses, never arbitrary values of this record. Constructor\nprivacy alone is not a proof boundary; the indexed specification and equality\nobligation prevent replacing a specified encoder with a different function.",
+      "imports": [
+        "Lax58.StructuralCombinators"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax58.StructuralCombinators\n\n/-!\n---\ntitle: Field-encoding agreement (infrastructure)\ntype: infrastructure\n---\n\nAn agreement witness fixes an encoder and a proposition, supplies an\nimplementation equal to that encoder, and carries a proof of the proposition.\nThe operations below retain natural values, erase subtype proofs, and\nenumerate finite families in intrinsic order.\n\nThis record is bookkeeping for generated certificates, not a standalone\ndefinition of advice-freedom: an arbitrary encoder and an arbitrary true\nproposition can have an agreement witness. The constructor equations generated\nfor a particular datatype supply the semantic specification.\n\nUse `Lax58.CertifiedDerivationElab` for the closed derivation command. Its\nfield resolver accepts only approved primitives and previously generated\ndatatype witnesses, never arbitrary values of this record. Constructor\nprivacy alone is not a proof boundary; the indexed specification and equality\nobligation prevent replacing a specified encoder with a different function.\n-/\n\nnamespace Lax58.CertifiedDerivation\n\nopen Lax58.StructuralPresentation Lax58.StructuralCombinators\n\nuniverse u\n\n/-- A checked implementation of a specified canonical encoder and law.\nBoth specifications are type indices, so even tactics accessing the private\nconstructor cannot replace them. Provenance of the specifications comes from\nthe closed derivation command, which never accepts arbitrary witness values. -/\nstructure CertifiedFieldEncoding (α : Type u) (canonical : α → Raw) (laws : Prop) where\n  private mk ::\n  toRaw : α → Raw\n  agrees : toRaw = canonical\n  checked : laws\n\nnamespace CertifiedFieldEncoding\n\n/-- Package a specified encoder with a proof of its law. This constructs only\nan agreement value: it does not register a datatype or certify the provenance\nof the supplied specification. The derivation command alone manages that\nregistry, after inspecting the source constructors. -/\ndef ofLaws {α : Type u} (canonical : α → Raw) {laws : Prop} (checked : laws) :\n    CertifiedFieldEncoding α canonical laws :=\n  ⟨canonical, rfl, checked⟩\n\n/-- The law fixed by a certificate's type, not chosen by its implementation. -/\ndef Laws {α : Type u} {canonical : α → Raw} {laws : Prop}\n    (_P : CertifiedFieldEncoding α canonical laws) : Prop := laws\n\n/-- The natural-number primitive. -/\ndef nat : CertifiedFieldEncoding Nat Raw.nat (∀ n : Nat, Raw.nat n = Raw.nat n) :=\n  ⟨Raw.nat, rfl, fun _ => rfl⟩\n\n/-- Finite indices retain their natural value. -/\ndef fin (n : Nat) : CertifiedFieldEncoding (Fin n) (fun i => Raw.nat i.val)\n    (∀ i : Fin n, Raw.nat i.val = Raw.nat i.val) :=\n  ⟨fun i => Raw.nat i.val, rfl, fun _ => rfl⟩\n\n/-- Erase only a subtype's proof, retaining its certified computational field. -/\ndef subtype {α : Type u} {canonical : α → Raw} {laws : Prop}\n    (P : CertifiedFieldEncoding α canonical laws) (p : α → Prop) :\n    CertifiedFieldEncoding (Subtype p) (fun x => canonical x.val) laws :=\n  ⟨fun x => canonical x.val, rfl, P.checked⟩\n\n/-- Enumerate a possibly dependent finite family in intrinsic index order. -/\ndef family {n : Nat} {α : Fin n → Type u}\n    {canonical : (i : Fin n) → α i → Raw} {laws : Fin n → Prop}\n    (P : (i : Fin n) → CertifiedFieldEncoding (α i) (canonical i) (laws i)) :\n    CertifiedFieldEncoding ((i : Fin n) → α i)\n      (fun f => Raw.fields (List.ofFn fun i => canonical i (f i))) (∀ i, laws i) :=\n  ⟨fun f => Raw.fields (List.ofFn fun i => canonical i (f i)),\n    rfl, fun i => (P i).checked⟩\n\nend CertifiedFieldEncoding\n\nend Lax58.CertifiedDerivation\n",
+      "statements": []
+    },
+    {
+      "id": "Lax58.CertifiedDerivationElab",
+      "path": "concepts/Lax58/CertifiedDerivationElab.lean",
+      "title": "Certified encoding derivation (elaboration infrastructure)",
+      "type": "elaboration infrastructure",
+      "description": "This module implements `derive_certified_encoding`; it is tooling, not a\nmathematical definition of advice-freedom. The mathematical vocabulary is in\n`StructuralPresentation` and `StructuralCombinators`. The small agreement\nrecord and its field operations are in `CertifiedDerivation`.\n\nThe command inspects the actual constructors and generates an encoder, its\ncomplete `.Laws`, and its checked `.certified` witness together. Field\nresolution is closed: Nat, Fin, proof-erased subtypes, finite families, direct\nrecursive children, and earlier successful constructor derivations only.\nUnsupported fields fail, and a failed command rolls back its declarations.\n\nThe private registry records successful command outputs; it never consumes\narbitrary agreement values or `FieldEncoding` instances. The generator\nestablishes correspondence with the source declaration, while Lean's kernel\nchecks the expanded equations and proofs. Importing this tooling does not\nmake arbitrary encoders certified.\n\nLax currently classifies every non-root concept-package module as a concept.\nThe infrastructure label makes this packaging constraint explicit; it does\nnot hide the implementation or introduce a new archive module category.",
+      "imports": [
+        "Lax58.CertifiedDerivation"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lean\nimport Lax58.CertifiedDerivation\n\n/-!\n---\ntitle: Certified encoding derivation (elaboration infrastructure)\ntype: elaboration infrastructure\n---\n\nThis module implements `derive_certified_encoding`; it is tooling, not a\nmathematical definition of advice-freedom. The mathematical vocabulary is in\n`StructuralPresentation` and `StructuralCombinators`. The small agreement\nrecord and its field operations are in `CertifiedDerivation`.\n\nThe command inspects the actual constructors and generates an encoder, its\ncomplete `.Laws`, and its checked `.certified` witness together. Field\nresolution is closed: Nat, Fin, proof-erased subtypes, finite families, direct\nrecursive children, and earlier successful constructor derivations only.\nUnsupported fields fail, and a failed command rolls back its declarations.\n\nThe private registry records successful command outputs; it never consumes\narbitrary agreement values or `FieldEncoding` instances. The generator\nestablishes correspondence with the source declaration, while Lean's kernel\nchecks the expanded equations and proofs. Importing this tooling does not\nmake arbitrary encoders certified.\n\nLax currently classifies every non-root concept-package module as a concept.\nThe infrastructure label makes this packaging constraint explicit; it does\nnot hide the implementation or introduce a new archive module category.\n-/\n\nnamespace Lax58.CertifiedDerivationElab\n\nopen Lax58.StructuralPresentation Lax58.StructuralCombinators\nopen Lax58.CertifiedDerivation\n\nopen Lean Meta Elab Term Command\nopen Lean.Parser.Term\n\nprivate initialize certifiedEncoders : SimplePersistentEnvExtension Name (Array Name) ←\n  registerSimplePersistentEnvExtension {\n    addEntryFn := Array.push\n    addImportedFn := fun entries => entries.foldl (· ++ ·) #[] }\n\n/-- Resolve only fixed primitives or a witness generated by this module's\ncommand. In particular, neither `FieldEncoding` nor user instances are read. -/\nprivate partial def certifiedField (type : Expr) : TermElabM Expr := do\n  let type ← whnf type\n  if type.isConstOf ``Nat then\n    return mkConst ``CertifiedFieldEncoding.nat\n  if type.isAppOfArity ``Fin 1 then\n    return ← mkAppM ``CertifiedFieldEncoding.fin #[type.appArg!]\n  if type.isAppOfArity ``Subtype 2 then\n    let args := type.getAppArgs\n    let base ← certifiedField args[0]!\n    return ← mkAppM ``CertifiedFieldEncoding.subtype #[base, args[1]!]\n  if let .forallE name domain body bi := type then\n    let domain ← whnf domain\n    if domain.isAppOfArity ``Fin 1 then\n      return ← withLocalDecl name bi domain fun i => do\n        let item ← certifiedField (body.instantiate1 i)\n        mkAppM ``CertifiedFieldEncoding.family #[← mkLambdaFVars #[i] item]\n  for name in certifiedEncoders.getState (← getEnv) do\n    let saved ← saveState\n    let candidate ← mkConstWithFreshMVarLevels name\n    let (args, _, result) ← forallMetaTelescopeReducing (← inferType candidate)\n    if result.isAppOfArity ``CertifiedFieldEncoding 3 &&\n        (← isDefEq result.getAppArgs[0]! type) then\n      let candidate ← instantiateMVars (mkAppN candidate args)\n      if !candidate.hasExprMVar then\n        return candidate\n    saved.restore\n  throwError \"unsupported certified field type {type}; expected Nat, Fin, a proof-erased subtype, a finite family, or an earlier constructor-certified datatype\"\n\nprivate def recursiveType (indName : Name) (type : Expr) : TermElabM Bool := do\n  return (← whnf type).getAppFn.constName? == some indName\n\nprivate def explicitBinders : Expr → Expr\n  | .lam name type body _ => .lam name type (explicitBinders body) .default\n  | body => body\n\nprivate def certifiedAlternative (indInfo : InductiveVal) (levels : List Level)\n    (params : Array Expr)\n    (recursiveCall : TSyntax `term) (constructorName : Name) :\n    TermElabM (TSyntax ``matchAlt) := do\n  let constructor ← getConstInfoCtor constructorName\n  let ctorType ← inferType (mkAppN (mkConst constructorName levels) params)\n  forallTelescopeReducing ctorType fun arguments result => do\n    let mut lctx ← getLCtx\n    for argument in arguments do\n      let decl ← argument.fvarId!.getDecl\n      lctx := lctx.setUserName argument.fvarId! (← mkFreshUserName decl.userName)\n    withLCtx lctx (← getLocalInstances) do\n      let mut patterns : Array (TSyntax `term) := #[]\n      for _ in params do patterns := patterns.push (← `(_))\n      let mut fields : Array (Ident × Expr × BinderInfo) := #[]\n      for argument in arguments do\n        let decl ← argument.fvarId!.getDecl\n        let name := mkIdent decl.userName\n        patterns := patterns.push name\n        fields := fields.push (name, decl.type, decl.binderInfo)\n      -- An actually empty field eliminates its whole constructor. This handles\n      -- function-free first-order languages without accepting a user IsEmpty.\n      for (name, type, _) in fields do\n        let type ← whnf type\n        if let .const emptyName _ := type.getAppFn then\n          if let .inductInfo emptyInfo ← getConstInfo emptyName then\n            if emptyInfo.ctors.isEmpty then\n              return ← `(matchAltExpr|\n                | @$(mkIdent constructor.name):ident $patterns:term* => nomatch $name:ident)\n      let mut encoded : TSyntax `term ← `([])\n      for (name, type, bi) in fields.reverse do\n        if ← isProp type then continue\n        -- Implicit fields must still pass validation. Only intrinsic indices\n        -- (Nat/Fin in the present supported syntax) are erased.\n        if !bi.isExplicit then\n          let normalized ← whnf type\n          unless normalized.isConstOf ``Nat || normalized.isAppOfArity ``Fin 1 do\n            throwError \"{constructorName}: unsupported implicit field {name}: {type}\"\n          let some decl := lctx.findFromUserName? name.getId\n            | throwError \"missing constructor field {name}\"\n          unless result.containsFVar decl.fvarId ||\n              fields.any (fun (_, ty, _) => ty.containsFVar decl.fvarId) do\n            throwError \"{constructorName}: implicit field {name} is not an intrinsic index\"\n          continue\n        if ← recursiveType indInfo.name type then\n          encoded ← `(($recursiveCall) $name:ident :: $encoded)\n        else\n          let type ← whnf type\n          if let .forallE _ domain body _ := type then\n            if (← whnf domain).isAppOfArity ``Fin 1 &&\n                (← recursiveType indInfo.name body) then\n              encoded ← `(List.ofFn (fun i => ($recursiveCall) ($name:ident i)) ++ $encoded)\n              continue\n          let witness ← try certifiedField type catch ex =>\n            throwError \"{constructorName}, field {name}: {ex.toMessageData}\"\n          -- Embed the checked expression itself, abstracting constructor locals\n          -- before leaving their telescope. Pretty-printer round trips would\n          -- let downstream delaborators change the selected witness.\n          let witnessFunction ← exprToSyntax (explicitBinders (← mkLambdaFVars arguments witness))\n          let fieldNames : Array (TSyntax `term) := fields.map fun (id, _, _) => ⟨id.raw⟩\n          encoded ← `((CertifiedFieldEncoding.toRaw\n            ($witnessFunction $fieldNames*) $name:ident) :: $encoded)\n      let tag := constructor.name.eraseMacroScopes.getString!\n      `(matchAltExpr| | @$(mkIdent constructor.name):ident $patterns:term* =>\n          Raw.constructor $(quote tag) $encoded)\n\nprivate def alternativesFor (type : Expr) (recursiveCall : TSyntax `term) :\n    TermElabM (Array (TSyntax ``matchAlt)) := do\n  let type ← whnf type\n  let some name := type.getAppFn.constName?\n    | throwError \"certified derivation expects an inductive datatype, got {type}\"\n  let info ← getConstInfoInduct name\n  unless info.all.length == 1 do\n    throwError \"certified derivation does not support mutual inductives: {name}\"\n  let params := type.getAppArgs.extract 0 info.numParams\n  return (← info.ctors.mapM\n    (certifiedAlternative info type.getAppFn.constLevels! params recursiveCall)).toArray\n\nelab \"certifiedFun% \" \"using \" recursiveCall:term : term <= expectedType => do\n  let .forallE _ domain _ _ ← whnf expectedType\n    | throwError \"expected an encoder function type\"\n  let alts ← alternativesFor domain recursiveCall\n  elabTerm (← `(fun $alts:matchAlt*)) (some expectedType)\n\nelab \"certifiedMatch% \" value:term \" using \" recursiveCall:term : term => do\n  let expr ← elabTerm value none\n  let alts ← alternativesFor (← inferType expr) recursiveCall\n  elabTerm (← `(match $value:term with $alts:matchAlt*)) (some (mkConst ``Raw))\n\n/-- Generate the encoder, `.Laws`, and `.certified`. Ordinary binders are\nfixed parameters; binders following `indexed` are intrinsic indices that\nrecursive constructors may change. All generated names belong to the encoder.\n-/\nsyntax (name := deriveCertifiedEncoding)\n  (docComment)? \"derive_certified_encoding \" ident bracketedBinder* \" indexed \" bracketedBinder*\n  \" : \" term : command\n\nelab_rules : command\n  | `($[$doc:docComment]? derive_certified_encoding $name:ident $params:bracketedBinder*\n      indexed $indices:bracketedBinder* : $type:term) => do\n    let mut paramNames : Array (TSyntax `term) := #[]\n    for param in params do\n      unless param.raw.getKind == ``Lean.Parser.Term.explicitBinder do\n        throwError \"fixed parameters must use explicit typed binders\"\n      for id in param.raw[1].getArgs do\n        unless id.isIdent do throwError \"expected named fixed parameter\"\n        paramNames := paramNames.push ⟨id⟩\n    let call ← `($name $paramNames*)\n    let lawsName := mkIdent (name.getId ++ `Laws)\n    let witnessName := mkIdent (name.getId ++ `certified)\n    let funIndices : TSyntaxArray ``funBinder := indices.map fun stx => ⟨stx.raw⟩\n    let mut indexNames : Array (TSyntax `term) := #[]\n    for binder in indices do\n      for id in binder.raw[1].getArgs do\n        unless id.isIdent do throwError \"expected named index\"\n        indexNames := indexNames.push ⟨id⟩\n    let savedEnv ← getEnv\n    try\n      elabCommand (← `($[$doc:docComment]? def $name $params* : ∀ $indices*, $type → Raw :=\n      fun $funIndices* => certifiedFun% using $call))\n      if (← get).messages.hasErrors then throwAbortCommand\n      elabCommand (← `(def $lawsName $params* $indices* : Prop :=\n      ∀ value : $type, $call value = certifiedMatch% value using $call))\n      if (← get).messages.hasErrors then throwAbortCommand\n      elabCommand (← `(def $witnessName $params* $indices* :\n          CertifiedFieldEncoding $type $call (@$lawsName $paramNames* $indexNames*) :=\n      CertifiedFieldEncoding.ofLaws $call (by\n        intro value\n        cases value <;> rfl)))\n      if (← get).messages.hasErrors then throwAbortCommand\n      let fullName ← resolveGlobalConstNoOverload witnessName\n      modifyEnv fun env => certifiedEncoders.addEntry env fullName\n    catch ex =>\n      setEnv savedEnv\n      throw ex\n\nend Lax58.CertifiedDerivationElab\n",
+      "statements": []
+    },
+    {
+      "id": "Lax58.FormulaExample",
+      "path": "concepts/Lax58/FormulaExample.lean",
+      "title": "Example — structural encoding of propositional formulas",
+      "type": "definition",
+      "description": "A propositional formula is finite mathematical data: an atom has a natural\nnumber as its name, a negation has one subformula, and a conjunction has two.\nThe example below represents this syntax directly, without evaluating the\nformula or attaching information about its truth or satisfiability.\n\nThe single `derive_certified_encoding` command generates `formulaRaw`, its\ncomplete constructor equations `formulaRaw.Laws`, and their checked witness\n`formulaRaw.certified`. Atoms retain their natural indices; negation and\nconjunction retain their constructor names and recursively encoded children.\n\nFor the sample formula $p_0 \\land \\neg p_1$, the structural description is\n`conj(atom(0), neg(atom(1)))`, expressed using the fixed `Raw.constructor`\nvocabulary. `sampleInput` then gives its distinguished word-arena input:\nthe root address followed by the three-word blocks for the structural nodes.\nThe same two-stage construction applies to other supported finite datatypes.",
+      "imports": [
+        "Lax58.CertifiedDerivationElab",
+        "Lax58.WordArena"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax58.CertifiedDerivationElab\nimport Lax58.WordArena\n\n/-!\n---\ntitle: Example — structural encoding of propositional formulas\ntype: definition\n---\n\nA propositional formula is finite mathematical data: an atom has a natural\nnumber as its name, a negation has one subformula, and a conjunction has two.\nThe example below represents this syntax directly, without evaluating the\nformula or attaching information about its truth or satisfiability.\n\nThe single `derive_certified_encoding` command generates `formulaRaw`, its\ncomplete constructor equations `formulaRaw.Laws`, and their checked witness\n`formulaRaw.certified`. Atoms retain their natural indices; negation and\nconjunction retain their constructor names and recursively encoded children.\n\nFor the sample formula $p_0 \\land \\neg p_1$, the structural description is\n`conj(atom(0), neg(atom(1)))`, expressed using the fixed `Raw.constructor`\nvocabulary. `sampleInput` then gives its distinguished word-arena input:\nthe root address followed by the three-word blocks for the structural nodes.\nThe same two-stage construction applies to other supported finite datatypes.\n-/\n\nnamespace Lax58.FormulaExample\n\nopen Lax58.StructuralPresentation Lax58.WordArena\n\n/-- Propositional syntax with natural-number atom names. -/\ninductive Formula where\n  | atom (index : Nat)\n  | neg (body : Formula)\n  | conj (left right : Formula)\n\n/-- Derive the structural encoder and its complete certificate together. -/\nderive_certified_encoding formulaRaw indexed : Formula\n\n/-- The formula $p_0 \\land \\neg p_1$. -/\ndef sample : Formula := .conj (.atom 0) (.neg (.atom 1))\n\n/-- Constructor structure, before choosing a word-memory layout. -/\ndef sampleStructure : Raw := formulaRaw sample\n\n/-- Exact input words, including the root address and no additional data. -/\ndef sampleInput : List Nat := (encodeRaw sampleStructure).toInput\n\nend Lax58.FormulaExample\n",
+      "statements": []
+    },
+    {
+      "id": "Lax58.StructuralCombinators",
+      "path": "concepts/Lax58/StructuralCombinators.lean",
+      "title": "Certified structural presentation combinators",
+      "type": "definition and theorem",
+      "description": "A small fixed vocabulary builds structural presentations from natural-number\nfields, products, and ordered lists. These are exactly the generic forms used\nby the current downstream ranked-tree development. Its laws show that the\nresulting representations round-trip and have exact constructor-derived\nsizes.\n\nThe named constructor helper localizes the numerical realization of symbolic\nconstructor names. Application-specific structurality is certified separately\nby equations describing each datatype constructor in terms of these fixed\noperations, without exposing numeric tags or binary-pair nesting.",
+      "imports": [
+        "Lax58.StructuralPresentation"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Nat.Pairing"
+      ],
+      "sourceText": "import Mathlib.Data.Nat.Pairing\nimport Lax58.StructuralPresentation\n\n/-!\n---\ntitle: Certified structural presentation combinators\ntype: definition and theorem\n---\n\nA small fixed vocabulary builds structural presentations from natural-number\nfields, products, and ordered lists. These are exactly the generic forms used\nby the current downstream ranked-tree development. Its laws show that the\nresulting representations round-trip and have exact constructor-derived\nsizes.\n\nThe named constructor helper localizes the numerical realization of symbolic\nconstructor names. Application-specific structurality is certified separately\nby equations describing each datatype constructor in terms of these fixed\noperations, without exposing numeric tags or binary-pair nesting.\n-/\n\nnamespace Lax58.StructuralCombinators\n\nopen Lax58.StructuralPresentation\nopen Lax58.StructuralPresentation.Presentation\n\nuniverse u v\n\nnamespace Raw\n\n/-- An injective numerical realization of character lists, used only inside\nthe named-constructor combinator. -/\ndef constructorCharsCode : List Char → Nat\n  | [] => 0\n  | c :: cs => Nat.pair c.toNat (constructorCharsCode cs) + 1\n\n/-- The internal numerical realization of a symbolic constructor name. -/\ndef constructorNameCode (name : String) : Nat :=\n  constructorCharsCode name.toList\n\n/-- Structural representation of an ordered list of already represented fields. -/\ndef fields : List StructuralPresentation.Raw → StructuralPresentation.Raw\n  | [] => .nat 0\n  | x :: xs => .pair x (fields xs)\n\n/-- A symbolically named constructor occurrence with ordered fields. -/\ndef constructor (name : String) (xs : List StructuralPresentation.Raw) :\n    StructuralPresentation.Raw :=\n  .pair (.nat (constructorNameCode name)) (fields xs)\n\n/-- Named constructors agree exactly when their names and ordered fields agree. -/\naxiom constructor_eq_iff {name₁ name₂ : String}\n    {xs₁ xs₂ : List StructuralPresentation.Raw} :\n    constructor name₁ xs₁ = constructor name₂ xs₂ ↔ name₁ = name₂ ∧ xs₁ = xs₂\n\nend Raw\n\n/-- Structural presentation of natural numbers. -/\ndef nat : Presentation Nat where\n  toRaw := .nat\n  fromRaw\n    | .nat n => some n\n    | _ => none\n\n/-- Structural presentation of a product. -/\ndef prod {α : Type u} {β : Type v} (A : Presentation α) (B : Presentation β) :\n    Presentation (α × β) where\n  toRaw x := .pair (A.toRaw x.1) (B.toRaw x.2)\n  fromRaw\n    | .pair a b =>\n        match A.fromRaw a with\n        | none => none\n        | some x =>\n            match B.fromRaw b with\n            | none => none\n            | some y => some (x, y)\n    | _ => none\n\n/-- Universal structural representation of a list. -/\ndef listToRaw {α : Type u} (P : Presentation α) : List α → StructuralPresentation.Raw\n  | [] => .nat 0\n  | x :: xs => .pair (P.toRaw x) (listToRaw P xs)\n\n/-- Partial inverse of `listToRaw`. -/\ndef listFromRaw {α : Type u} (P : Presentation α) : StructuralPresentation.Raw → Option (List α)\n  | .nat 0 => some []\n  | .pair x xs => do\n      let x ← P.fromRaw x\n      let xs ← listFromRaw P xs\n      pure (x :: xs)\n  | _ => none\n\n/-- Cons-list structural presentation. -/\ndef list {α : Type u} (P : Presentation α) : Presentation (List α) where\n  toRaw := listToRaw P\n  fromRaw := listFromRaw P\n\n/-- Round-trip laws for the fixed structural presentation vocabulary. -/\nstructure Lawful : Prop where\n  nat : StructuralCombinators.nat.Lawful\n  prod {α : Type u} {β : Type v} (A : Presentation α) (B : Presentation β) :\n    A.Lawful → B.Lawful → (StructuralCombinators.prod A B).Lawful\n  list {α : Type u} (P : Presentation α) : P.Lawful → (StructuralCombinators.list P).Lawful\n\n/-- Exact node-count equations for the fixed structural vocabulary. -/\nstructure SizeLaws : Prop where\n  nat (n : Nat) : StructuralCombinators.nat.structuralSize n = 1\n  prod {α : Type u} {β : Type v} (A : Presentation α) (B : Presentation β) (x : α) (y : β) :\n    (StructuralCombinators.prod A B).structuralSize (x, y) =\n      A.structuralSize x + B.structuralSize y + 1\n  list {α : Type u} (P : Presentation α) (xs : List α) :\n    (StructuralCombinators.list P).structuralSize xs =\n      1 + xs.length + (xs.map P.structuralSize).sum\n\naxiom lawful : Lawful.{u, v}\n\naxiom sizeLaws : SizeLaws.{u, v}\n\n/-- Evidence that a presentation was obtained solely from the fixed primitive\nand combinator vocabulary. Unlike an unconstrained presentation typeclass,\nthis witness cannot certify an advice-bearing encoder. -/\ninductive Generated : {α : Type} → Presentation α → Prop\n  | nat : Generated StructuralCombinators.nat\n  | prod {α β : Type} {A : Presentation α} {B : Presentation β} :\n      Generated A → Generated B → Generated (StructuralCombinators.prod A B)\n  | list {α : Type} {P : Presentation α} :\n      Generated P → Generated (StructuralCombinators.list P)\n\n/-- A type whose presentation can be synthesized from the fixed structural\nvocabulary. The accompanying derivation, rather than mere typeclass\nmembership, is the no-advice certificate. -/\nclass Derivable (α : Type) where\n  presentation : Presentation α\n  generated : Generated presentation\n\ninstance : Derivable Nat where\n  presentation := nat\n  generated := .nat\n\ninstance {α β : Type} [A : Derivable α] [B : Derivable β] :\n    Derivable (α × β) where\n  presentation := prod A.presentation B.presentation\n  generated := .prod A.generated B.generated\n\ninstance {α : Type} [P : Derivable α] : Derivable (List α) where\n  presentation := list P.presentation\n  generated := .list P.generated\n\n/-- Presentation synthesized by recursively following the `Nat`, product,\nand list structure of its type. -/\ndef derivedPresentation {α : Type} [P : Derivable α] : Presentation α :=\n  P.presentation\n\nend Lax58.StructuralCombinators\n",
+      "statements": [
+        {
+          "id": "Lax58.StructuralCombinators.lawful",
+          "signature": "lawful : Lax58.StructuralCombinators.Lawful",
+          "startLine": 115,
+          "endLine": 115
+        },
+        {
+          "id": "Lax58.StructuralCombinators.Raw.constructor_eq_iff",
+          "signature": "Raw.constructor_eq_iff : ∀ {name₁ name₂ : String} {xs₁ xs₂ : List Lax58.StructuralPresentation.Raw},\n  Iff\n    (Eq (Lax58.StructuralCombinators.Raw.constructor name₁ xs₁) (Lax58.StructuralCombinators.Raw.constructor name₂ xs₂))\n    (And (Eq name₁ name₂) (Eq xs₁ xs₂))",
+          "startLine": 51,
+          "endLine": 54,
+          "doc": "Named constructors agree exactly when their names and ordered fields agree."
+        },
+        {
+          "id": "Lax58.StructuralCombinators.sizeLaws",
+          "signature": "sizeLaws : Lax58.StructuralCombinators.SizeLaws",
+          "startLine": 117,
+          "endLine": 117
+        }
+      ]
+    },
+    {
+      "id": "Lax58.StructuralDerivation",
+      "path": "concepts/Lax58/StructuralDerivation.lean",
+      "title": "Unrestricted structural folds (elaboration infrastructure)",
+      "type": "elaboration infrastructure",
+      "description": "The `structural% value using recursiveCall` term derives the structural fold\nof an inductive value from its declaration. Constructor names and explicit\nconstructor-field order are read from the declaration; direct recursive fields\nand finite families of recursive fields are folded recursively. Implicit\nindices and witnesses are erased. Only genuinely primitive explicit fields\nrequire an explicit `FieldEncoding`.\n\n`FieldEncoding` and the folds in this module are low-level elaboration\ninfrastructure, not structurality certificates. Reduction equations using\nunrestricted field instances do not establish the provenance of those fields.\n`Lax58.CertifiedDerivationElab` supplies the separate closed derivation path and\ndoes not consult this module's instances.",
+      "imports": [
+        "Lax58.StructuralCombinators"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lean.Elab.Match\nimport Lax58.StructuralCombinators\n\n/-!\n---\ntitle: Unrestricted structural folds (elaboration infrastructure)\ntype: elaboration infrastructure\n---\n\nThe `structural% value using recursiveCall` term derives the structural fold\nof an inductive value from its declaration. Constructor names and explicit\nconstructor-field order are read from the declaration; direct recursive fields\nand finite families of recursive fields are folded recursively. Implicit\nindices and witnesses are erased. Only genuinely primitive explicit fields\nrequire an explicit `FieldEncoding`.\n\n`FieldEncoding` and the folds in this module are low-level elaboration\ninfrastructure, not structurality certificates. Reduction equations using\nunrestricted field instances do not establish the provenance of those fields.\n`Lax58.CertifiedDerivationElab` supplies the separate closed derivation path and\ndoes not consult this module's instances.\n-/\n\nnamespace Lax58.StructuralDerivation\n\nopen Lax58.StructuralPresentation\nopen Lax58.StructuralCombinators\n\nuniverse u\n\n/-- Low-level encoding of a non-recursive constructor field. Possessing an\ninstance alone confers no complexity-theoretic status. -/\nclass FieldEncoding (α : Type u) where\n  toRaw : α → Raw\n\n/-- Apply the selected primitive-field encoding. -/\ndef fieldRaw {α : Type u} [P : FieldEncoding α] (x : α) : Raw :=\n  P.toRaw x\n\ninstance : FieldEncoding Nat where\n  toRaw := Raw.nat\n\ninstance {n : Nat} : FieldEncoding (Fin n) where\n  toRaw i := Raw.nat i.val\n\n/-- Finite function fields are represented by their values in intrinsic\nindex order. This determines represented content but makes no claim about the\ncost of evaluating the Lean function. -/\ninstance {n : Nat} {α : Type u} [P : FieldEncoding α] :\n    FieldEncoding (Fin n → α) where\n  toRaw f := Raw.fields (List.ofFn fun i => P.toRaw (f i))\n\nopen Lean Meta Elab Term\nopen Lean.Parser.Term\n\nprivate def isDirectRecursiveField (inductiveName : Name) (type : Expr) : Bool :=\n  type.getAppFn.constName? == some inductiveName\n\nprivate def isFiniteRecursiveFamily (inductiveName : Name) (type : Expr) : Bool :=\n  match type with\n  | .forallE _ domain body _ =>\n      domain.getAppFn.constName? == some ``Fin &&\n        body.getAppFn.constName? == some inductiveName\n  | _ => false\n\nprivate def structuralAlternative (indInfo : InductiveVal)\n    (recursiveCall : TSyntax `term) (constructorName : Name) :\n    TermElabM (TSyntax ``matchAlt) := do\n  let constructor ← getConstInfoCtor constructorName\n  forallTelescopeReducing constructor.type fun arguments _ => do\n    let mut patternArguments := #[]\n    for _ in *...indInfo.numParams do\n      patternArguments := patternArguments.push (← `(_))\n    let mut fields : Array (Ident × Expr) := #[]\n    for i in *...constructor.numFields do\n      let argument := arguments[indInfo.numParams + i]!\n      let declaration ← argument.fvarId!.getDecl\n      if declaration.binderInfo.isExplicit then\n        let fieldName := mkIdent (← mkFreshUserName `field)\n        fields := fields.push (fieldName, declaration.type)\n        patternArguments := patternArguments.push fieldName\n      else\n        -- Intrinsic indices and dependent witnesses are implicit constructor\n        -- arguments. They remain available to dependent pattern matching, but\n        -- do not duplicate data already fixed by the indexed value and its\n        -- explicit fields. A downstream `Presentation.Lawful` proof remains\n        -- responsible for showing that this erasure loses no value.\n        patternArguments := patternArguments.push (← `(_))\n    let mut encodedFields : TSyntax `term ← `([])\n    for (fieldName, fieldType) in fields.reverse do\n      encodedFields ←\n        if isDirectRecursiveField indInfo.name fieldType then\n          `(($recursiveCall:term) $fieldName:ident :: $encodedFields:term)\n        else if isFiniteRecursiveFamily indInfo.name fieldType then\n          `(List.ofFn (fun i => ($recursiveCall:term) ($fieldName:ident i)) ++\n              $encodedFields:term)\n        else\n          `(Lax58.StructuralDerivation.fieldRaw $fieldName:ident ::\n              $encodedFields:term)\n    let tag := constructor.name.eraseMacroScopes.getString!\n    let rightHandSide ←\n      `(Lax58.StructuralCombinators.Raw.constructor $(quote tag)\n          $encodedFields:term)\n    `(matchAltExpr|\n      | @$(mkIdent constructor.name):ident $patternArguments:term* =>\n          $rightHandSide:term)\n\n/-- Derive one complete constructor-structural match. The caller supplies the\nrecursive function application so ordinary Lean termination checking remains\nauthoritative. -/\nelab \"structural% \" value:term \" using \" recursiveCall:term : term => do\n  let valueExpression ← elabTerm value none\n  let valueType ← whnf (← inferType valueExpression)\n  let some inductiveName := valueType.getAppFn.constName?\n    | throwError \"structural% expects an inductive value, got {valueType}\"\n  let indInfo ← getConstInfoInduct inductiveName\n  let alternatives := (← indInfo.ctors.mapM\n    (structuralAlternative indInfo recursiveCall)).toArray\n  let generated ← `(match $value:term with $alternatives:matchAlt*)\n  elabTerm generated (some (mkConst ``Raw))\n\n/-- Derive a complete constructor-structural function from its expected\nsingle-argument function type. Unlike an inner `match`, the generated\nconstructor clauses remain visible to Lean's equation compiler, which is\nneeded for nested recursive fields such as `Fin n → Tree`.\n\nExample:\n```\ndef treeRaw : Tree → Raw :=\n  structuralFun% using treeRaw\n```\n-/\nelab \"structuralFun% \" \"using \" recursiveCall:term : term <= expectedType => do\n  let expectedType ← instantiateMVars expectedType\n  let functionType ← whnf expectedType\n  let .forallE _ valueType _resultType _ := functionType\n    | throwError\n        \"structuralFun% expects a single-argument function type, got {expectedType}\"\n  let valueType ← whnf valueType\n  let some inductiveName := valueType.getAppFn.constName?\n    | throwError\n        \"structuralFun% expects an inductive argument type, got {valueType}\"\n  let indInfo ← getConstInfoInduct inductiveName\n  let alternatives := (← indInfo.ctors.mapM\n    (structuralAlternative indInfo recursiveCall)).toArray\n  let generated ← `(fun $alternatives:matchAlt*)\n  elabTerm generated (some expectedType)\n\nend Lax58.StructuralDerivation\n",
+      "statements": []
+    },
+    {
+      "id": "Lax58.StructuralPresentation",
+      "path": "concepts/Lax58/StructuralPresentation.lean",
+      "title": "Structural presentations of finite data",
+      "type": "definition",
+      "description": "Finite data may be presented through one universal shape: binary trees with\nnatural-number leaves. A presentation consists of a map into this shape and a\npartial inverse. Its structural size counts shape nodes, independently of any\nbinary serialization or in-memory layout.\n\n`Presentation` is deliberately low-level infrastructure. An arbitrary\npresentation is not automatically a neutral complexity-theoretic input\nrepresentation: its forward map could compute and attach derived advice.\nAdvice-freedom is supplied downstream by complete, kernel-checked constructor\nequations built from the fixed structural vocabulary.\n\nNatural payload magnitude is recorded separately from structural size. This\nseparation is useful for word-machine applications: a large natural leaf still\noccupies one structural node, but may require a wider machine word.",
+      "imports": [],
+      "mathlibImports": [],
+      "sourceText": "/-!\n---\ntitle: Structural presentations of finite data\ntype: definition\n---\n\nFinite data may be presented through one universal shape: binary trees with\nnatural-number leaves. A presentation consists of a map into this shape and a\npartial inverse. Its structural size counts shape nodes, independently of any\nbinary serialization or in-memory layout.\n\n`Presentation` is deliberately low-level infrastructure. An arbitrary\npresentation is not automatically a neutral complexity-theoretic input\nrepresentation: its forward map could compute and attach derived advice.\nAdvice-freedom is supplied downstream by complete, kernel-checked constructor\nequations built from the fixed structural vocabulary.\n\nNatural payload magnitude is recorded separately from structural size. This\nseparation is useful for word-machine applications: a large natural leaf still\noccupies one structural node, but may require a wider machine word.\n-/\n\nnamespace Lax58.StructuralPresentation\n\nuniverse u\n\n/-- The universal shape of structurally finite data. -/\ninductive Raw where\n  | nat : Nat → Raw\n  | pair : Raw → Raw → Raw\n  deriving DecidableEq\n\nnamespace Raw\n\n/-- Number of nodes in a universal structural representation. -/\ndef nodes : Raw → Nat\n  | .nat _ => 1\n  | .pair a b => nodes a + nodes b + 1\n\n/-- Largest natural-number payload occurring in a representation. -/\ndef maxNat : Raw → Nat\n  | .nat n => n\n  | .pair a b => max a.maxNat b.maxNat\n\n/-- Every natural payload in a representation fits into a `w`-bit word. -/\ndef PayloadsFitInWord (raw : Raw) (w : Nat) : Prop :=\n  raw.maxNat < 2 ^ w\n\nend Raw\n\n/-- An encoder into the universal shape and a partial inverse. -/\nstructure Presentation (α : Type u) where\n  toRaw : α → Raw\n  fromRaw : Raw → Option α\n\n/-- Package an injective structural map as a low-level presentation by\nchoosing a preimage on its range. This construction certifies no complexity\nor constructor-structurality property of the supplied map. -/\nnoncomputable def presentationOf {α : Type u} (f : α → Raw) : Presentation α := by\n  classical\n  exact {\n    toRaw := f\n    fromRaw := fun raw =>\n      if h : ∃ x, f x = raw then some (Classical.choose h) else none\n  }\n\nnamespace Presentation\n\n/-- Distinguished representations round-trip. -/\ndef Lawful {α : Type u} (P : Presentation α) : Prop :=\n  ∀ x : α, P.fromRaw (P.toRaw x) = some x\n\n/-- Distinct values have distinct structural representations. -/\ndef Faithful {α : Type u} (P : Presentation α) : Prop :=\n  Function.Injective P.toRaw\n\n/-- Structural size before any serialization or memory layout is chosen. -/\ndef structuralSize {α : Type u} (P : Presentation α) (x : α) : Nat :=\n  (P.toRaw x).nodes\n\n/-- Largest natural payload in the distinguished representation. -/\ndef maxNat {α : Type u} (P : Presentation α) (x : α) : Nat :=\n  (P.toRaw x).maxNat\n\n/-- Every natural payload of a value fits into a `w`-bit word. -/\ndef PayloadsFitInWord {α : Type u}\n    (P : Presentation α) (x : α) (w : Nat) : Prop :=\n  (P.toRaw x).PayloadsFitInWord w\n\nend Presentation\n\nend Lax58.StructuralPresentation\n",
+      "statements": []
+    },
+    {
+      "id": "Lax58.WordArena",
+      "path": "concepts/Lax58/WordArena.lean",
+      "title": "Distinguished immutable word arenas",
+      "type": "definition and theorem",
+      "description": "Every universal structural value has a distinguished dense postorder arena\nusing three natural-number words per node. Natural leaves store a tag, payload,\nand padding word; pairs store a tag and two addresses of previously stored\nchildren. The root address is supplied as one additional word.\n\nThe explicit encoder determines every stored word. Density separately says\nthat it adds no unreachable auxiliary blocks. The semantic representation\nrelation, exact footprint, and explicit payload and address-space hypotheses\nform the public interface. The distinguished Lax-13 input is the root word\nfollowed by the arena words on the machine's read-only input tape. No whole-memory\ndecoder, uniqueness of arbitrary physical layouts, mutation semantics, or\noperation-cost model is imposed.",
+      "imports": [
+        "Lax58.StructuralPresentation"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax58.StructuralPresentation\n\n/-!\n---\ntitle: Distinguished immutable word arenas\ntype: definition and theorem\n---\n\nEvery universal structural value has a distinguished dense postorder arena\nusing three natural-number words per node. Natural leaves store a tag, payload,\nand padding word; pairs store a tag and two addresses of previously stored\nchildren. The root address is supplied as one additional word.\n\nThe explicit encoder determines every stored word. Density separately says\nthat it adds no unreachable auxiliary blocks. The semantic representation\nrelation, exact footprint, and explicit payload and address-space hypotheses\nform the public interface. The distinguished Lax-13 input is the root word\nfollowed by the arena words on the machine's read-only input tape. No whole-memory\ndecoder, uniqueness of arbitrary physical layouts, mutation semantics, or\noperation-cost model is imposed.\n-/\n\nnamespace Lax58.WordArena\n\nopen Lax58.StructuralPresentation\n\nuniverse u\n\n/-- A finite array of unbounded natural-number words. -/\nabbrev WordMemory := Array Nat\n\n/-- A closed word array together with its distinguished root address. -/\nstructure WordImage where\n  memory : WordMemory\n  root : Nat\n  deriving DecidableEq\n\nnamespace WordImage\n\n/-- Number of words in the memory array. -/\ndef memoryWords (I : WordImage) : Nat := I.memory.size\n\n/-- Total supplied words, including the separately supplied root. -/\ndef totalWords (I : WordImage) : Nat := I.memoryWords + 1\n\n/-- The distinguished Lax-13 input tape: root, followed by all arena words. -/\ndef toInput (I : WordImage) : List Nat := I.root :: I.memory.toList\n\n/-- The memory array fits in the address space of `w`-bit words. -/\ndef AddressSpaceFits (I : WordImage) (w : Nat) : Prop :=\n  I.memoryWords ≤ 2 ^ w\n\n/-- Every supplied word, including the root, fits in `w` bits. -/\ndef ValuesFitInWord (I : WordImage) (w : Nat) : Prop :=\n  ∀ x ∈ I.toInput, x < 2 ^ w\n\n/-- Both the address space and all supplied word values fit at width `w`. -/\ndef FitsInWord (I : WordImage) (w : Nat) : Prop :=\n  I.AddressSpaceFits w ∧ I.ValuesFitInWord w\n\n/-- The word at an in-bounds arena address. -/\ndef wordAt? (I : WordImage) (address : Nat) : Option Nat :=\n  I.memory[address]?\n\n/-- Start of a complete aligned three-word arena block. -/\ndef ValidAddress (I : WordImage) (address : Nat) : Prop :=\n  address % 3 = 0 ∧ address + 2 < I.memoryWords\n\n/-- Tag of a natural-payload block. -/\ndef natTag : Nat := 0\n\n/-- Tag of a binary-pair block. -/\ndef pairTag : Nat := 1\n\n/-- A block rooted at an address semantically represents a structural value. -/\ninductive Represents (I : WordImage) : Nat → Raw → Prop where\n  | nat {address payload : Nat}\n      (address_valid : I.ValidAddress address)\n      (tag : I.wordAt? address = some natTag)\n      (value : I.wordAt? (address + 1) = some payload)\n      (padding : I.wordAt? (address + 2) = some 0) :\n      I.Represents address (.nat payload)\n  | pair {address leftAddress rightAddress : Nat} {left right : Raw}\n      (address_valid : I.ValidAddress address)\n      (tag : I.wordAt? address = some pairTag)\n      (left_reference : I.wordAt? (address + 1) = some leftAddress)\n      (right_reference : I.wordAt? (address + 2) = some rightAddress)\n      (left_value : I.Represents leftAddress left)\n      (right_value : I.Represents rightAddress right) :\n      I.Represents address (.pair left right)\n\n/-- A pair block directly refers to one valid child block. -/\ninductive ChildAddress (I : WordImage) : Nat → Nat → Prop where\n  | left {parent child : Nat}\n      (parent_valid : I.ValidAddress parent)\n      (child_valid : I.ValidAddress child)\n      (tag : I.wordAt? parent = some pairTag)\n      (reference : I.wordAt? (parent + 1) = some child) :\n      I.ChildAddress parent child\n  | right {parent child : Nat}\n      (parent_valid : I.ValidAddress parent)\n      (child_valid : I.ValidAddress child)\n      (tag : I.wordAt? parent = some pairTag)\n      (reference : I.wordAt? (parent + 2) = some child) :\n      I.ChildAddress parent child\n\n/-- Addresses reachable from a chosen root by following child references. -/\ninductive ReachableFrom (I : WordImage) (root : Nat) : Nat → Prop where\n  | root : I.ReachableFrom root root\n  | child {parent child : Nat}\n      (parent_reachable : I.ReachableFrom root parent)\n      (child_address : I.ChildAddress parent child) :\n      I.ReachableFrom root child\n\n/-- Every aligned block is meaningful and all child references are valid. -/\ndef BlocksWellFormed (I : WordImage) : Prop :=\n  I.memoryWords % 3 = 0 ∧\n    ∀ address, I.ValidAddress address → ∃ raw, I.Represents address raw\n\n/-- Every block is valid and the distinguished root represents a value. -/\ndef RootedWellFormed (I : WordImage) : Prop :=\n  I.BlocksWellFormed ∧ ∃ raw, I.Represents I.root raw\n\n/-- Every complete block is reachable from the distinguished root. -/\ndef Dense (I : WordImage) : Prop :=\n  ∀ address, I.ValidAddress address → I.ReachableFrom I.root address\n\nend WordImage\n\n/-- Append the postorder arena of a raw value and return its root address. -/\ndef encodeInto : Raw → WordMemory → WordMemory × Nat\n  | .nat payload, memory =>\n      let address := memory.size\n      (memory.push WordImage.natTag |>.push payload |>.push 0, address)\n  | .pair left right, memory =>\n      let (memory, leftAddress) := encodeInto left memory\n      let (memory, rightAddress) := encodeInto right memory\n      let address := memory.size\n      (memory.push WordImage.pairTag |>.push leftAddress |>.push rightAddress, address)\n\n/-- Distinguished closed postorder arena of a structural value. -/\ndef encodeRaw (raw : Raw) : WordImage :=\n  let (memory, root) := encodeInto raw #[]\n  { memory, root }\n\n/-- Distinguished arena of a value through a named structural presentation. -/\ndef encode {α : Type u} (P : Presentation α) (x : α) : WordImage :=\n  encodeRaw (P.toRaw x)\n\n/-- An input word is exactly the distinguished arena input of the presented\nvalue; no extra prefix, suffix, or advice is permitted. -/\ndef ArenaInput {α : Type u} (P : Presentation α) (x : α)\n    (input : List Nat) : Prop :=\n  input = (encode P x).toInput\n\naxiom encodeRaw_represents (raw : Raw) :\n  (encodeRaw raw).Represents (encodeRaw raw).root raw\n\naxiom encodeRaw_wellFormed (raw : Raw) :\n  (encodeRaw raw).RootedWellFormed\n\naxiom encodeRaw_dense (raw : Raw) :\n  (encodeRaw raw).Dense\n\naxiom encodeRaw_memoryWords (raw : Raw) :\n  (encodeRaw raw).memoryWords = 3 * raw.nodes\n\naxiom encodeRaw_totalWords (raw : Raw) :\n  (encodeRaw raw).totalWords = 3 * raw.nodes + 1\n\naxiom encodeRaw_toInput_length (raw : Raw) :\n  (encodeRaw raw).toInput.length = 3 * raw.nodes + 1\n\naxiom encodeRaw_fits (raw : Raw) (w : Nat) :\n  raw.PayloadsFitInWord w →\n  3 * raw.nodes ≤ 2 ^ w →\n  (encodeRaw raw).FitsInWord w\n\naxiom encode_represents {α : Type u} (P : Presentation α) (x : α) :\n  (encode P x).Represents (encode P x).root (P.toRaw x)\n\naxiom encode_memoryWords {α : Type u} (P : Presentation α) (x : α) :\n  (encode P x).memoryWords = 3 * P.structuralSize x\n\naxiom encode_totalWords {α : Type u} (P : Presentation α) (x : α) :\n  (encode P x).totalWords = 3 * P.structuralSize x + 1\n\naxiom encode_toInput_length {α : Type u} (P : Presentation α) (x : α) :\n  (encode P x).toInput.length = 3 * P.structuralSize x + 1\n\naxiom encode_fits {α : Type u} (P : Presentation α) (x : α) (w : Nat) :\n  P.PayloadsFitInWord x w →\n  3 * P.structuralSize x ≤ 2 ^ w →\n  (encode P x).FitsInWord w\n\nend Lax58.WordArena\n",
+      "statements": [
+        {
+          "id": "Lax58.WordArena.encode_fits",
+          "signature": "encode_fits : ∀ {α : Type u} (P : Lax58.StructuralPresentation.Presentation α) (x : α) (w : Nat),\n  P.PayloadsFitInWord x w →\n    instLENat.le (instHMul.hMul 3 (P.structuralSize x)) (instHPow.hPow 2 w) → (Lax58.WordArena.encode P x).FitsInWord w",
+          "startLine": 191,
+          "endLine": 194
+        },
+        {
+          "id": "Lax58.WordArena.encode_memoryWords",
+          "signature": "encode_memoryWords : ∀ {α : Type u} (P : Lax58.StructuralPresentation.Presentation α) (x : α),\n  Eq (Lax58.WordArena.encode P x).memoryWords (instHMul.hMul 3 (P.structuralSize x))",
+          "startLine": 182,
+          "endLine": 183
+        },
+        {
+          "id": "Lax58.WordArena.encode_represents",
+          "signature": "encode_represents : ∀ {α : Type u} (P : Lax58.StructuralPresentation.Presentation α) (x : α),\n  (Lax58.WordArena.encode P x).Represents (Lax58.WordArena.encode P x).root (P.toRaw x)",
+          "startLine": 179,
+          "endLine": 180
+        },
+        {
+          "id": "Lax58.WordArena.encode_toInput_length",
+          "signature": "encode_toInput_length : ∀ {α : Type u} (P : Lax58.StructuralPresentation.Presentation α) (x : α),\n  Eq (Lax58.WordArena.encode P x).toInput.length (instHAdd.hAdd (instHMul.hMul 3 (P.structuralSize x)) 1)",
+          "startLine": 188,
+          "endLine": 189
+        },
+        {
+          "id": "Lax58.WordArena.encode_totalWords",
+          "signature": "encode_totalWords : ∀ {α : Type u} (P : Lax58.StructuralPresentation.Presentation α) (x : α),\n  Eq (Lax58.WordArena.encode P x).totalWords (instHAdd.hAdd (instHMul.hMul 3 (P.structuralSize x)) 1)",
+          "startLine": 185,
+          "endLine": 186
+        },
+        {
+          "id": "Lax58.WordArena.encodeRaw_dense",
+          "signature": "encodeRaw_dense : ∀ (raw : Lax58.StructuralPresentation.Raw), (Lax58.WordArena.encodeRaw raw).Dense",
+          "startLine": 162,
+          "endLine": 163
+        },
+        {
+          "id": "Lax58.WordArena.encodeRaw_fits",
+          "signature": "encodeRaw_fits : ∀ (raw : Lax58.StructuralPresentation.Raw) (w : Nat),\n  raw.PayloadsFitInWord w →\n    instLENat.le (instHMul.hMul 3 raw.nodes) (instHPow.hPow 2 w) → (Lax58.WordArena.encodeRaw raw).FitsInWord w",
+          "startLine": 174,
+          "endLine": 177
+        },
+        {
+          "id": "Lax58.WordArena.encodeRaw_memoryWords",
+          "signature": "encodeRaw_memoryWords : ∀ (raw : Lax58.StructuralPresentation.Raw), Eq (Lax58.WordArena.encodeRaw raw).memoryWords (instHMul.hMul 3 raw.nodes)",
+          "startLine": 165,
+          "endLine": 166
+        },
+        {
+          "id": "Lax58.WordArena.encodeRaw_represents",
+          "signature": "encodeRaw_represents : ∀ (raw : Lax58.StructuralPresentation.Raw),\n  (Lax58.WordArena.encodeRaw raw).Represents (Lax58.WordArena.encodeRaw raw).root raw",
+          "startLine": 156,
+          "endLine": 157
+        },
+        {
+          "id": "Lax58.WordArena.encodeRaw_toInput_length",
+          "signature": "encodeRaw_toInput_length : ∀ (raw : Lax58.StructuralPresentation.Raw),\n  Eq (Lax58.WordArena.encodeRaw raw).toInput.length (instHAdd.hAdd (instHMul.hMul 3 raw.nodes) 1)",
+          "startLine": 171,
+          "endLine": 172
+        },
+        {
+          "id": "Lax58.WordArena.encodeRaw_totalWords",
+          "signature": "encodeRaw_totalWords : ∀ (raw : Lax58.StructuralPresentation.Raw),\n  Eq (Lax58.WordArena.encodeRaw raw).totalWords (instHAdd.hAdd (instHMul.hMul 3 raw.nodes) 1)",
+          "startLine": 168,
+          "endLine": 169
+        },
+        {
+          "id": "Lax58.WordArena.encodeRaw_wellFormed",
+          "signature": "encodeRaw_wellFormed : ∀ (raw : Lax58.StructuralPresentation.Raw), (Lax58.WordArena.encodeRaw raw).RootedWellFormed",
+          "startLine": 159,
+          "endLine": 160
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax58Proofs.StructuralCombinators.constructor_eq_iff_proof",
+      "path": "proofs/Lax58Proofs/StructuralCombinators.lean",
+      "conclusion": "Lax58.StructuralCombinators.Raw.constructor_eq_iff",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax58Proofs.StructuralCombinators.structural_combinator_size_laws",
+      "path": "proofs/Lax58Proofs/StructuralCombinators.lean",
+      "conclusion": "Lax58.StructuralCombinators.sizeLaws",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax58Proofs.StructuralCombinators.structural_combinators_lawful",
+      "path": "proofs/Lax58Proofs/StructuralCombinators.lean",
+      "conclusion": "Lax58.StructuralCombinators.lawful",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax58Proofs.WordArena.encode_fits_proof",
+      "path": "proofs/Lax58Proofs/WordArena.lean",
+      "conclusion": "Lax58.WordArena.encode_fits",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax58Proofs.WordArena.encode_memoryWords_proof",
+      "path": "proofs/Lax58Proofs/WordArena.lean",
+      "conclusion": "Lax58.WordArena.encode_memoryWords",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax58Proofs.WordArena.encode_represents_proof",
+      "path": "proofs/Lax58Proofs/WordArena.lean",
+      "conclusion": "Lax58.WordArena.encode_represents",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax58Proofs.WordArena.encode_toInput_length_proof",
+      "path": "proofs/Lax58Proofs/WordArena.lean",
+      "conclusion": "Lax58.WordArena.encode_toInput_length",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax58Proofs.WordArena.encode_totalWords_proof",
+      "path": "proofs/Lax58Proofs/WordArena.lean",
+      "conclusion": "Lax58.WordArena.encode_totalWords",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax58Proofs.WordArena.encodeRaw_dense_proof",
+      "path": "proofs/Lax58Proofs/WordArena.lean",
+      "conclusion": "Lax58.WordArena.encodeRaw_dense",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax58Proofs.WordArena.encodeRaw_fits_proof",
+      "path": "proofs/Lax58Proofs/WordArena.lean",
+      "conclusion": "Lax58.WordArena.encodeRaw_fits",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax58Proofs.WordArena.encodeRaw_memoryWords_proof",
+      "path": "proofs/Lax58Proofs/WordArena.lean",
+      "conclusion": "Lax58.WordArena.encodeRaw_memoryWords",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax58Proofs.WordArena.encodeRaw_represents_proof",
+      "path": "proofs/Lax58Proofs/WordArena.lean",
+      "conclusion": "Lax58.WordArena.encodeRaw_represents",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax58Proofs.WordArena.encodeRaw_toInput_length_proof",
+      "path": "proofs/Lax58Proofs/WordArena.lean",
+      "conclusion": "Lax58.WordArena.encodeRaw_toInput_length",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax58Proofs.WordArena.encodeRaw_totalWords_proof",
+      "path": "proofs/Lax58Proofs/WordArena.lean",
+      "conclusion": "Lax58.WordArena.encodeRaw_totalWords",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax58Proofs.WordArena.encodeRaw_wellFormed_proof",
+      "path": "proofs/Lax58Proofs/WordArena.lean",
+      "conclusion": "Lax58.WordArena.encodeRaw_wellFormed",
+      "assumptions": [],
+      "description": ""
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "dd5de87b5686d0fd190f778d0a821f56bdf4bf01042740e824e8b55888677d9c",
+    "sourceCommit": "53278a48b0605bde8cfc9510066ee797d085a6f1",
+    "leanToolchain": "leanprover/lean4:v4.30.0",
+    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "files": [
+      {
+        "path": "concepts/ir/Lax58/CertifiedDerivation.c",
+        "bytes": 11356,
+        "sha256": "bce361a04505b72b9d6aa8c4e4d47342ff80db9c8bc5d2324ba6015762f2d8eb"
+      },
+      {
+        "path": "concepts/ir/Lax58/CertifiedDerivation.c.hash",
+        "bytes": 16,
+        "sha256": "c3ea54c4cb2f039aa37edac70625804504279be1207f9ec0979de464409c4913"
+      },
+      {
+        "path": "concepts/ir/Lax58/CertifiedDerivationElab.c",
+        "bytes": 743266,
+        "sha256": "d3cb9a3486e1377e9197ab728dc462e4d8bc7a70330921a38c1c61602fa24efa"
+      },
+      {
+        "path": "concepts/ir/Lax58/CertifiedDerivationElab.c.hash",
+        "bytes": 16,
+        "sha256": "caa4e45d76d1d81afbb29f3641fc5b7c8f560efa32dab81c044fa5e9da836266"
+      },
+      {
+        "path": "concepts/ir/Lax58/FormulaExample.c",
+        "bytes": 17446,
+        "sha256": "2cbc20add505681837c471bfc108bf8b74248e57f4193835aa4007e54c483946"
+      },
+      {
+        "path": "concepts/ir/Lax58/FormulaExample.c.hash",
+        "bytes": 16,
+        "sha256": "f7d2e908a98934f1ab1a2eed67fd546d39369825445727c6544a160ecb4af9fe"
+      },
+      {
+        "path": "concepts/ir/Lax58/StructuralCombinators.c",
+        "bytes": 26695,
+        "sha256": "0f8b2793ea677b0ed212023fa16bcf34e2d9031a8c6c557699f7105b0265273b"
+      },
+      {
+        "path": "concepts/ir/Lax58/StructuralCombinators.c.hash",
+        "bytes": 16,
+        "sha256": "4e025d257448d51495b2c941de8aeda390d95a517307d9e9d6bf26e4dc7fb39b"
+      },
+      {
+        "path": "concepts/ir/Lax58/StructuralDerivation.c",
+        "bytes": 292333,
+        "sha256": "247ef0aadf21e9831da3426f36599c71d7b3fbfc87fa831f9adf63d4452bca1a"
+      },
+      {
+        "path": "concepts/ir/Lax58/StructuralDerivation.c.hash",
+        "bytes": 16,
+        "sha256": "50367427305879a0943993ddd4e1628ea729afd818ac64ec8183a3a14bb4b0dc"
+      },
+      {
+        "path": "concepts/ir/Lax58/StructuralPresentation.c",
+        "bytes": 12651,
+        "sha256": "ad1459895834b4a90fafa2aefbd16c189ed8eae3e1dc78bd7449421b9756b4cc"
+      },
+      {
+        "path": "concepts/ir/Lax58/StructuralPresentation.c.hash",
+        "bytes": 16,
+        "sha256": "01f5adf166d7c955de42a4c9a204966457250b8a948a1316a91fa6f2d2864434"
+      },
+      {
+        "path": "concepts/ir/Lax58/WordArena.c",
+        "bytes": 19255,
+        "sha256": "4149f919b4685e88bb27849f5f28b14a4cfaf5ee65747b9a30ce1f6a2399c8c8"
+      },
+      {
+        "path": "concepts/ir/Lax58/WordArena.c.hash",
+        "bytes": 16,
+        "sha256": "5eece0e440ec2c53ea7d05599cd32bc772cae484cbefd7616e34a2d277005c87"
+      },
+      {
+        "path": "concepts/ir/Lax58.c",
+        "bytes": 2716,
+        "sha256": "33d2d947e15f60573cc956568723a8f8b369792d454db0420622298857e8852b"
+      },
+      {
+        "path": "concepts/ir/Lax58.c.hash",
+        "bytes": 16,
+        "sha256": "8faea71ff806bf2d630bb13417f7466422e6340c9ccb83980d2fbd49744d82ca"
+      },
+      {
+        "path": "concepts/lib/Lax58/CertifiedDerivation.ilean",
+        "bytes": 7213,
+        "sha256": "6d48c25c476d6c304d734d9ea6a874700457d50397fdda6c2bed3320ba5e7478"
+      },
+      {
+        "path": "concepts/lib/Lax58/CertifiedDerivation.ilean.hash",
+        "bytes": 16,
+        "sha256": "67d7fda96bfe6193aafb35123239227b374e11e583e49bd3eb62b584bfe89c98"
+      },
+      {
+        "path": "concepts/lib/Lax58/CertifiedDerivation.olean",
+        "bytes": 94424,
+        "sha256": "1ee34ba05f6469f99cbce7eb6652edf6cc58a01f14d54e551b26edc097575752"
+      },
+      {
+        "path": "concepts/lib/Lax58/CertifiedDerivation.olean.hash",
+        "bytes": 16,
+        "sha256": "1755c71594f42975cc7b54fedc97f4228029ae7254ce2b050f032efc7651d4e3"
+      },
+      {
+        "path": "concepts/lib/Lax58/CertifiedDerivation.trace",
+        "bytes": 2196,
+        "sha256": "03b0d5070f3fa7e84e5a652a7f8b5fc5e242709cc83eec3e6c90bc210379ecc1"
+      },
+      {
+        "path": "concepts/lib/Lax58/CertifiedDerivationElab.ilean",
+        "bytes": 43979,
+        "sha256": "dfee4daa8402b083cbc5197c4354898c868fef9363fe795d2547cbb72dc119b4"
+      },
+      {
+        "path": "concepts/lib/Lax58/CertifiedDerivationElab.ilean.hash",
+        "bytes": 16,
+        "sha256": "575d292bef1719191a3f83925815dd33e71de3dccc00361bd35b785b752b4846"
+      },
+      {
+        "path": "concepts/lib/Lax58/CertifiedDerivationElab.olean",
+        "bytes": 1673616,
+        "sha256": "1c40d803738f220cf1d28efdd4e9ff4a99ff745fb862ec9c64a6fc0699edea94"
+      },
+      {
+        "path": "concepts/lib/Lax58/CertifiedDerivationElab.olean.hash",
+        "bytes": 16,
+        "sha256": "23f9f6fa00cf570abfdc33e79446f6f12b1de084b2e34520d56ef9d4220a3443"
+      },
+      {
+        "path": "concepts/lib/Lax58/CertifiedDerivationElab.trace",
+        "bytes": 2224,
+        "sha256": "7680be0fac761745c2fad68529a61f971a4da0bef864789d1e91d1336a0b5109"
+      },
+      {
+        "path": "concepts/lib/Lax58/FormulaExample.ilean",
+        "bytes": 2939,
+        "sha256": "983371d206cde1f80d9a7991d2d5921baa6281ad53e6181f293236a6cf6f05e9"
+      },
+      {
+        "path": "concepts/lib/Lax58/FormulaExample.ilean.hash",
+        "bytes": 16,
+        "sha256": "ee2184277f5a7b85f21b398e78e27879bcf3ecd8815a1fbae6e319465e34da41"
+      },
+      {
+        "path": "concepts/lib/Lax58/FormulaExample.olean",
+        "bytes": 125872,
+        "sha256": "9c73ae2477d5292a71c165d74a08d54336607f5dad6d79efa7a25541ec50ead1"
+      },
+      {
+        "path": "concepts/lib/Lax58/FormulaExample.olean.hash",
+        "bytes": 16,
+        "sha256": "f7619cca22bab9fcb7c1da4ff668a72b9174b9e2331d3c071c77209a4c71ff2c"
+      },
+      {
+        "path": "concepts/lib/Lax58/FormulaExample.trace",
+        "bytes": 2300,
+        "sha256": "fb164687774566bf1094bcee66fd9b02cbc17491390c9b789896de5d2becce8c"
+      },
+      {
+        "path": "concepts/lib/Lax58/StructuralCombinators.ilean",
+        "bytes": 17877,
+        "sha256": "95e17346af1139ade153809165e581ca89b7e2075b4cfff9a08877de53f87981"
+      },
+      {
+        "path": "concepts/lib/Lax58/StructuralCombinators.ilean.hash",
+        "bytes": 16,
+        "sha256": "e450e54a2b97a66c71e584e5ee2ab01f5c7a4a8b1593844a807234e2da09bb1e"
+      },
+      {
+        "path": "concepts/lib/Lax58/StructuralCombinators.olean",
+        "bytes": 214256,
+        "sha256": "22db24db47870b1d5a412485045b6340e386f7226f4e359701b10b15dc171e06"
+      },
+      {
+        "path": "concepts/lib/Lax58/StructuralCombinators.olean.hash",
+        "bytes": 16,
+        "sha256": "65478d2da3bcda0a55f07c24db1f0e6dc7fb4dcf1d7c3988377d9fd5d02894c4"
+      },
+      {
+        "path": "concepts/lib/Lax58/StructuralCombinators.trace",
+        "bytes": 2381,
+        "sha256": "af2a3596a2aacf825ecf195f37968ea95cee17cacfaa992210b15c3edad397f9"
+      },
+      {
+        "path": "concepts/lib/Lax58/StructuralDerivation.ilean",
+        "bytes": 20292,
+        "sha256": "264892bcad0235eb0e80ae522dae11be4df5d9508f0374576e5c4474dbbe646b"
+      },
+      {
+        "path": "concepts/lib/Lax58/StructuralDerivation.ilean.hash",
+        "bytes": 16,
+        "sha256": "abbb73995f83cc3ace29c1e7ce8bc83c3462561b2c9bece7ee4cd66695afd930"
+      },
+      {
+        "path": "concepts/lib/Lax58/StructuralDerivation.olean",
+        "bytes": 639248,
+        "sha256": "a1b1f8d7c57d8ad2e205af5cc2e60e8ff28baad5ac1d34d22bfb1380ef59f79f"
+      },
+      {
+        "path": "concepts/lib/Lax58/StructuralDerivation.olean.hash",
+        "bytes": 16,
+        "sha256": "f983b2d0897d9cc38ab097aadf70e4da06b82df5d9a65c64c433a69eac61d07a"
+      },
+      {
+        "path": "concepts/lib/Lax58/StructuralDerivation.trace",
+        "bytes": 2204,
+        "sha256": "3e3129899ba906b15bfb976064d71ac7ad7dc8e0de476871e21835462189bff5"
+      },
+      {
+        "path": "concepts/lib/Lax58/StructuralPresentation.ilean",
+        "bytes": 7023,
+        "sha256": "ac4e5540d148e51331cf6758123e00a62f5475a6c54e099d77d6aa277bf9833f"
+      },
+      {
+        "path": "concepts/lib/Lax58/StructuralPresentation.ilean.hash",
+        "bytes": 16,
+        "sha256": "38e5a1785d98b388eb0f222e424973b38ea5bb3711ae9bd0de4c983d5bf1b2d6"
+      },
+      {
+        "path": "concepts/lib/Lax58/StructuralPresentation.olean",
+        "bytes": 171112,
+        "sha256": "3e7e70ae5aee8fe8fa4710bfe4528fb41eb90a0c99dd9451b6993d992473ee47"
+      },
+      {
+        "path": "concepts/lib/Lax58/StructuralPresentation.olean.hash",
+        "bytes": 16,
+        "sha256": "9ad6b2c208d3f17cb26587d12a1cdee330b486d15a17632e8c3ba1d5498fe10d"
+      },
+      {
+        "path": "concepts/lib/Lax58/StructuralPresentation.trace",
+        "bytes": 2066,
+        "sha256": "4caa6675222e0543bc980e82bbd3b40c9f9be2540197eaffe149c94284f846ea"
+      },
+      {
+        "path": "concepts/lib/Lax58/WordArena.ilean",
+        "bytes": 20469,
+        "sha256": "572206bac34b3a76c95e2234fbada37aae69d2ad5d81af833ff443dc74604cf1"
+      },
+      {
+        "path": "concepts/lib/Lax58/WordArena.ilean.hash",
+        "bytes": 16,
+        "sha256": "c76f457aebe6deae8b5e80b3c12745f2de7e0a5e93d2eecd046b030a3c7a0232"
+      },
+      {
+        "path": "concepts/lib/Lax58/WordArena.olean",
+        "bytes": 221096,
+        "sha256": "6aded72bddcfe1d163f9d84858e502d2d9c0016c4c8201a1a98f2f874213cee8"
+      },
+      {
+        "path": "concepts/lib/Lax58/WordArena.olean.hash",
+        "bytes": 16,
+        "sha256": "239460d0af37fa8d57123809eafc09eb8660cacdb58dd2d63e8165402b34672d"
+      },
+      {
+        "path": "concepts/lib/Lax58/WordArena.trace",
+        "bytes": 2118,
+        "sha256": "1982042e883be7312bdc9fa24c19fcdda6e6c69e720c323aa61b36519d815d9a"
+      },
+      {
+        "path": "concepts/lib/Lax58.ilean",
+        "bytes": 406,
+        "sha256": "7aa7dc0e75bbdb4e6cc1673cab1a832203ff438bd37c3dd14116a64e903aa14c"
+      },
+      {
+        "path": "concepts/lib/Lax58.ilean.hash",
+        "bytes": 16,
+        "sha256": "44ac2897a39176b170351bb71780f44899d18e9dbd6c9afd5bd83290f6ffc6cf"
+      },
+      {
+        "path": "concepts/lib/Lax58.olean",
+        "bytes": 2048,
+        "sha256": "6310bb3869b866874ce7ba0a7245597b0b785aca5b61d10e1d496ae5a3a301b3"
+      },
+      {
+        "path": "concepts/lib/Lax58.olean.hash",
+        "bytes": 16,
+        "sha256": "1c230c292f783817121955e1eb5563eeff7d5680419e484c260b3261c014eeae"
+      },
+      {
+        "path": "concepts/lib/Lax58.trace",
+        "bytes": 3027,
+        "sha256": "337179eb4457dcfd48888398c98bbe4218d9ece9b10ffb2e899eb04f78c36951"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3162,
+        "sha256": "a0cdc406f106d3b403d989288de4bf470ae19da1d1da7c4c53478757d0b9403f"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 243,
+        "sha256": "233d0baab7c54cb978151f9de87c8938682dd0ce2679498420b9a22e35f216ce"
+      },
+      {
+        "path": "concepts/package/Lax58/CertifiedDerivation.lean",
+        "bytes": 3631,
+        "sha256": "19e14eb7d103968e7f6ad2ec46ca86516d575b5fa466144588df4c97d9d6f031"
+      },
+      {
+        "path": "concepts/package/Lax58/CertifiedDerivationElab.lean",
+        "bytes": 10998,
+        "sha256": "7a1d1946eaaf30e8f66c43d72190edca6e6b9a107360e91e4c28986b84d5a240"
+      },
+      {
+        "path": "concepts/package/Lax58/FormulaExample.lean",
+        "bytes": 1899,
+        "sha256": "0c4119f6c92dcef87276a5233aff76003d0091050780126facedc20d90d64207"
+      },
+      {
+        "path": "concepts/package/Lax58/StructuralCombinators.lean",
+        "bytes": 5816,
+        "sha256": "5089ff75e576561c95b7edd33306c19801334c6c6879e39206b73eeb06a8128e"
+      },
+      {
+        "path": "concepts/package/Lax58/StructuralDerivation.lean",
+        "bytes": 6372,
+        "sha256": "34a2a498491a0d88f10ee1616496152ab136e91570f0e9b32e22854d97d7a7cf"
+      },
+      {
+        "path": "concepts/package/Lax58/StructuralPresentation.lean",
+        "bytes": 3096,
+        "sha256": "2ea19cef9091da0bbcdb66b5dd579126671b216e0b879b6b9344250b13554af6"
+      },
+      {
+        "path": "concepts/package/Lax58/WordArena.lean",
+        "bytes": 7526,
+        "sha256": "d18720aa38a0b0c187e0d70282020cbc9abae45b00fd158995f9e57a2fe6457c"
+      },
+      {
+        "path": "concepts/package/Lax58.lean",
+        "bytes": 226,
+        "sha256": "f69d3ec32c90ac6816b1f66eaaadae478dd361333eb5a6c16fc022ce265dc316"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      },
+      {
+        "path": "proofs/ir/Lax58Proofs/StructuralCombinators.c",
+        "bytes": 15957,
+        "sha256": "833086a2b52a7fbef409f46277f556fbd44a187c049da215838ad1c7a5a580e7"
+      },
+      {
+        "path": "proofs/ir/Lax58Proofs/StructuralCombinators.c.hash",
+        "bytes": 16,
+        "sha256": "dddc5169907fd47e19964e7fc95fed5d3aba2cf689639f65e28758a37cde8789"
+      },
+      {
+        "path": "proofs/ir/Lax58Proofs/StructuralPresentation.c",
+        "bytes": 1376,
+        "sha256": "cb056cf9d058670e5b87f99c927ecac58f3dff4cb38d27014bc8ae839dd9452a"
+      },
+      {
+        "path": "proofs/ir/Lax58Proofs/StructuralPresentation.c.hash",
+        "bytes": 16,
+        "sha256": "36920789b1dd979233cb5278b7d86485a2a7da88977ff7480502452a1f8c9121"
+      },
+      {
+        "path": "proofs/ir/Lax58Proofs/WordArena.c",
+        "bytes": 6604,
+        "sha256": "79f45647659a29cfa2e85a5f8d287dea0b12d9f6a31a71a15931af9a5bb7daf0"
+      },
+      {
+        "path": "proofs/ir/Lax58Proofs/WordArena.c.hash",
+        "bytes": 16,
+        "sha256": "893cb23da9e4a9b34a5030356cbf0a6dff6c4a7fea4b717df3029f55ee09fe73"
+      },
+      {
+        "path": "proofs/ir/Lax58Proofs.c",
+        "bytes": 1872,
+        "sha256": "24765c2a8e0c5b51bca99ac725bc1397dd3bfc697926a2304b69c24fdbe34353"
+      },
+      {
+        "path": "proofs/ir/Lax58Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "3b34d9b6c0a0706d7a2360526d408b98f13f077976c57d3f773d1a54d5f7bbaa"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs/StructuralCombinators.ilean",
+        "bytes": 25294,
+        "sha256": "cce17372428ac3c135d949d0ce4b440bd5bb2c89b6273ff76bb05320ac47f217"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs/StructuralCombinators.ilean.hash",
+        "bytes": 16,
+        "sha256": "d70e9fba817300e597e9a4a47b3e7eef6e3b48cf0bc94b0340278a70049202be"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs/StructuralCombinators.olean",
+        "bytes": 306536,
+        "sha256": "9596b0e21056b29e8429e06c31ccfa09cd3bbf86085e49efeb46865e2f5d12c4"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs/StructuralCombinators.olean.hash",
+        "bytes": 16,
+        "sha256": "109d60fd23b4cba530b9f89c63388c950e18054ddf6eabc215efd8e179412ea8"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs/StructuralCombinators.trace",
+        "bytes": 2315,
+        "sha256": "5a69bb5e7d2a28f5e09f7b83ca1cd7a4ccf9ae554845557a35711fb8a90e318b"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs/StructuralPresentation.ilean",
+        "bytes": 3112,
+        "sha256": "c532a61c8581727154b7b2dbaafb54d35020dd8955b5c441e152bafec8397aa1"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs/StructuralPresentation.ilean.hash",
+        "bytes": 16,
+        "sha256": "f7551296de276e0fb27ca8d951762a9b651f3e0c1bcb8cbba25609d75a0d78bc"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs/StructuralPresentation.olean",
+        "bytes": 22120,
+        "sha256": "a221d3fef6757987c23b03f1f7bca8f66dad45d174df5f453c72ad1e0b6b1d27"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs/StructuralPresentation.olean.hash",
+        "bytes": 16,
+        "sha256": "622bf089e8492bd670d1b0579ec988b6039479d7dc2c015d5c58709345af35be"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs/StructuralPresentation.trace",
+        "bytes": 2328,
+        "sha256": "62bdcca98c33707277ee34ae00f1a325471347d31e06f6b442b561aa1b6ad536"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs/WordArena.ilean",
+        "bytes": 89731,
+        "sha256": "5cf9cb58abb28f42c4b5bf19783c8a6d1c2c588e5feed8bd833367ae070178dc"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs/WordArena.ilean.hash",
+        "bytes": 16,
+        "sha256": "91a8166abd818db2fd17b78bd0fb3a719964cc271beacee8bde49b8e5e8e2db4"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs/WordArena.olean",
+        "bytes": 869760,
+        "sha256": "7a6c94aa1fc01152d65fe12eb7ca72545f167ce2b613360e220482bf04151ac7"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs/WordArena.olean.hash",
+        "bytes": 16,
+        "sha256": "d14ed7b2a1fc847612b3b79076092db87d0d458baec06d8350fa1499c22ad5a5"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs/WordArena.trace",
+        "bytes": 2186,
+        "sha256": "a8776dc83328cc16c04d8c5ef87f6d9b95d71f939eaad7ffe6ab3b6802625d1c"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs.ilean",
+        "bytes": 238,
+        "sha256": "53412faa16643abc224ae49d2a5ea49a7b5fd528e5cff184a279d075caf822d8"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "bbf956f0a43e11b65da5db4613d5b48a6c07c7b9d16f855b1e5d895a192c5280"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs.olean",
+        "bytes": 1584,
+        "sha256": "ea316a94bf3aaec0878e27bfd5b4d22338beb6f506fc86f10c1e8bd000cc77c3"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "f68c34e201429423792c94949a62efe43c201316759e63a1a4e988a35a53c627"
+      },
+      {
+        "path": "proofs/lib/Lax58Proofs.trace",
+        "bytes": 2508,
+        "sha256": "73c4657c2446d00da4a0c51a956c822837fee0f9ce2b1f8f2e07ce0a7781da73"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3348,
+        "sha256": "8ef1b3f9a602f5caf6bbf5bf01e68224a39579e6d69e32ebd2bd32a5e88285a2"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 310,
+        "sha256": "0b5e7713341e6312c58d70121f232e29512e1648a63a5146d7f33a88b1023ef7"
+      },
+      {
+        "path": "proofs/package/Lax58Proofs/StructuralCombinators.lean",
+        "bytes": 4655,
+        "sha256": "97ebbd3f1c377e5a88a186f7a3d8ba5b187d669719e24cb5453875c611647dcc"
+      },
+      {
+        "path": "proofs/package/Lax58Proofs/StructuralPresentation.lean",
+        "bytes": 1009,
+        "sha256": "424d7b275f4e0eb8f3217cbab2003dab50fc6c82a28abda4d3c5cff725978532"
+      },
+      {
+        "path": "proofs/package/Lax58Proofs/WordArena.lean",
+        "bytes": 32108,
+        "sha256": "787e5d842be5f95f6ef4e6d8c7bf61a3727719adf73980396d7e963e7525186f"
+      },
+      {
+        "path": "proofs/package/Lax58Proofs.lean",
+        "bytes": 112,
+        "sha256": "f8ad9c6ec6b597c11eb02135321e1ff9fc5372b00255893d93554cc0d573f465"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:dd5de87b5686d0fd190f778d0a821f56bdf4bf01042740e824e8b55888677d9c"
   }
 }
