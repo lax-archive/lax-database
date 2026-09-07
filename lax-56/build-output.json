@@ -19,16 +19,32 @@
         }
       ],
       "bibEntries": [
+        "@incollection{Valtr2008, author = {Pavel Valtr}, title = {On Empty Hexagons}, booktitle = {Surveys on Discrete and Computational Geometry: Twenty Years Later}, series = {Contemporary Mathematics}, volume = {453}, pages = {433--441}, publisher = {American Mathematical Society}, year = {2008}}",
         "@misc{Bonnet2026, author = {\\'Edouard Bonnet}, title = {Large Finite Point Sets Have 4 Collinear Points or a 6-Clique}, year = {2026}}",
         "@misc{HujterKisfaludiBak2014, author = {B\\'alint Hujter and S\\'andor Kisfaludi-Bak}, title = {5 Colorable Visibility Graphs Have Bounded Size or 4 Collinear Points}, year = {2014}, eprint = {1410.7273}, archivePrefix = {arXiv}}",
         "@article{PopielarzSahasrabudheSnyder2018, author = {Kamil Popielarz and Julian Sahasrabudhe and Richard Snyder}, title = {A Stability Theorem for Maximal K_{r+1}-free Graphs}, journal = {Journal of Combinatorial Theory, Series B}, volume = {132}, pages = {236--257}, year = {2018}}"
       ]
     },
-    "abstract": "We formalize the theorem that every finite set of at least\n$10^{11055931}$ points in the real plane contains either four collinear\npoints or six points that are pairwise visible with respect to the whole\nset.  Visibility means that the open segment joining a pair contains no\npoint of the ambient finite set.\n\nThe proof follows Bonnet's interval-and-harmonic-weight argument. The\nquantitative Hujter--Kisfaludi-Bak bound for 5-colourable point-visibility\ngraphs and the vertex-removal form of Erdős--Simonovits stability for\n$K_6$-free graphs are proved in Lean in this package. The remaining external\nassumption is the empty-convex-hexagon bound $h(6) \\le 463$: every set of at\nleast 463 points in general position contains an empty convex hexagon.\n"
+    "abstract": "We formalize the theorem that every finite set of at least\n$10^{2^{450}}$ points in the real plane contains either four collinear\npoints or six points that are pairwise visible with respect to the whole\nset.  Visibility means that the open segment joining a pair contains no\npoint of the ambient finite set.\n\nThe proof follows Bonnet's interval-and-harmonic-weight argument. The\nquantitative Hujter--Kisfaludi-Bak bound for 5-colourable point-visibility\ngraphs and the vertex-removal form of Erdős--Simonovits stability for\n$K_6$-free graphs are proved in Lean in this package. We also prove Valtr's\nfour-layer implication for a minimal outer layer of at least sixteen\nvertices. From it we derive the empty-convex-hexagon bound\n$h(6) \\le 2^{428}+1$, using 216 points in convex position. The minimum-polygon\nselection, the consecutive-layer inequality, the weak Erdős--Szekeres theorem,\nand the cyclic-order bridge are formalized in Lean. The last endpoint case\nis resolved by a supporting-edge cap bound and projective propagation.\nThe headline theorem uses only Lean's standard logical axioms, with no\nexternal geometric assumption, `sorry`, or SAT-based proof step.\n"
   },
   "requiredByConcepts": [],
   "requiredByProofs": [],
   "concepts": [
+    {
+      "id": "Lax56.ConvexLayers",
+      "path": "concepts/Lax56/ConvexLayers.lean",
+      "title": "Convex layers and minimal polygons",
+      "type": "definition",
+      "description": "The unordered, finite-set definitions used in the unoptimized convex-layer\nroute to Valtr's empty-hexagon theorem. No geometric theorem is assumed here.",
+      "imports": [
+        "Lax56.Geometry"
+      ],
+      "mathlibImports": [
+        "Mathlib.Analysis.Convex.Independent"
+      ],
+      "sourceText": "import Lax56.Geometry\nimport Mathlib.Analysis.Convex.Independent\n\n/-!\n---\ntitle: Convex layers and minimal polygons\ntype: definition\n---\nThe unordered, finite-set definitions used in the unoptimized convex-layer\nroute to Valtr's empty-hexagon theorem. No geometric theorem is assumed here.\n-/\n\nnamespace Lax56.ConvexLayers\n\nopen Lax56.Geometry\nopen scoped Classical\n\n/-- Every point is a vertex: no point lies in the convex hull of the others. -/\ndef ConvexPosition (P : Finset Point) : Prop :=\n  ConvexIndependent ℝ (fun p : {p : Point // p ∈ P} ↦ p.val)\n\n/-- Vertices of the convex hull, including all points of sets of size at most two. -/\nnoncomputable def extremeLayer (P : Finset Point) : Finset Point :=\n  P.filter (fun p ↦ p ∈ (convexHull ℝ (P : Set Point)).extremePoints ℝ)\n\n/-- The remainder after deleting the current outer layer. -/\nnoncomputable def inner (P : Finset Point) : Finset Point := P \\ extremeLayer P\n\n/-- The remainder after `n` layers have been removed. -/\nnoncomputable def remainder (P : Finset Point) : ℕ → Finset Point\n  | 0 => P\n  | n + 1 => inner (remainder P n)\n\n/-- Layers are indexed from zero: `layer P 0` is the outer layer. -/\nnoncomputable def layer (P : Finset Point) (n : ℕ) : Finset Point :=\n  extremeLayer (remainder P n)\n\n/-- All ambient points in the convex hull of `A`, not just its interior points. -/\nnoncomputable def hullClosure (P A : Finset Point) : Finset Point :=\n  P.filter (fun p ↦ p ∈ convexHull ℝ (A : Set Point))\n\n/-- Passing from `P` to `S` loses no ambient point inside the new convex hull. -/\ndef HullClosedIn (P S : Finset Point) : Prop :=\n  S ⊆ P ∧ ∀ p ∈ P, p ∈ convexHull ℝ (S : Set Point) → p ∈ S\n\n/-- The exact minimality condition in the proposed four-layer lemma. -/\ndef MinimalOuter (S : Finset Point) : Prop :=\n  ∀ X ⊆ S, ConvexPosition X → (extremeLayer S).card ≤ X.card → X = extremeLayer S\n\n/-- An unordered empty convex polygon with exactly `k` vertices. -/\ndef EmptyPolygon (P H : Finset Point) (k : ℕ) : Prop :=\n  H ⊆ P ∧ H.card = k ∧ ConvexPosition H ∧\n    ∀ p ∈ P, p ∈ convexHull ℝ (H : Set Point) → p ∈ H\n\ndef HasEmptyHexagon (P : Finset Point) : Prop :=\n  ∃ H, EmptyPolygon P H 6\n\nend Lax56.ConvexLayers\n",
+      "statements": []
+    },
     {
       "id": "Lax56.Geometry",
       "path": "concepts/Lax56/Geometry.lean",
@@ -48,9 +64,9 @@
     {
       "id": "Lax56.HujterKisfaludiBak",
       "path": "concepts/Lax56/HujterKisfaludiBak.lean",
-      "title": "The empty-hexagon input to the Hujter--Kisfaludi-Bak theorem",
+      "title": "The unoptimized empty-hexagon bound",
       "type": "definition",
-      "description": "This module isolates the geometric input that is external to the\nHujter--Kisfaludi-Bak blocking argument: the upper bound `h(6) ≤ 463` for the\nempty convex hexagon number.  The visibility-colouring theorem itself is\nproved in `Lax56Proofs.HujterKisfaludiBak`.",
+      "description": "This module states the upper bound `h(6) ≤ 2^428 + 1` and the ordered hexagon\ndefinitions used by the blocking argument. The bound is proved in\n`Lax56Proofs.EmptyHexagon` from Valtr's four-layer lemma. The visibility-colouring\ntheorem is proved in `Lax56Proofs.HujterKisfaludiBak`.",
       "imports": [
         "Lax56.Geometry"
       ],
@@ -58,14 +74,14 @@
         "Mathlib.Analysis.Convex.Hull",
         "Mathlib.Combinatorics.SimpleGraph.Coloring.VertexColoring"
       ],
-      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Coloring.VertexColoring\nimport Mathlib.Analysis.Convex.Hull\nimport Lax56.Geometry\n\n/-!\n---\ntitle: The empty-hexagon input to the Hujter--Kisfaludi-Bak theorem\ntype: definition\n---\nThis module isolates the geometric input that is external to the\nHujter--Kisfaludi-Bak blocking argument: the upper bound `h(6) ≤ 463` for the\nempty convex hexagon number.  The visibility-colouring theorem itself is\nproved in `Lax56Proofs.HujterKisfaludiBak`.\n-/\n\nnamespace Lax56.HujterKisfaludiBak\n\nopen Lax56.Geometry\n\n/-- Six labelled vertices in strict counterclockwise cyclic convex position.\n\nThe last conjunct records the complete cyclic order type, not merely its six\nsupporting-edge consequences.  This is useful in the direct geometric proof:\nan increasing triple of cyclic labels is positively oriented. -/\ndef StrictConvexHexagon (h : Fin 6 → Point) : Prop :=\n  Function.Injective h ∧\n    (∀ i j : Fin 6, j ≠ i → j ≠ i + 1 →\n      0 < turn (h i) (h (i + 1)) (h j)) ∧\n    ∀ i j k : Fin 6, i < j → j < k →\n      0 < turn (h i) (h j) (h k)\n\n/-- A convex hexagon whose convex hull contains no further point of `P`. -/\ndef EmptyConvexHexagon (P : Finset Point) (h : Fin 6 → Point) : Prop :=\n  StrictConvexHexagon h ∧\n    (∀ i, h i ∈ P) ∧\n    ∀ p ∈ P, p ∈ convexHull ℝ (Set.range h) → p ∈ Set.range h\n\n/-- The currently external geometric input, in an ordered form convenient for\nthe blocking proof.  This is precisely the bound `h(6) ≤ 463`. -/\naxiom exists_emptyConvexHexagon\n    (P : Finset Point) (hP : 463 ≤ P.card)\n    (hgeneral : ¬HasThreeCollinear P) :\n    ∃ h : Fin 6 → Point, EmptyConvexHexagon P h\n\nend Lax56.HujterKisfaludiBak\n",
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Coloring.VertexColoring\nimport Mathlib.Analysis.Convex.Hull\nimport Lax56.Geometry\n\n/-!\n---\ntitle: The unoptimized empty-hexagon bound\ntype: definition\n---\nThis module states the upper bound `h(6) ≤ 2^428 + 1` and the ordered hexagon\ndefinitions used by the blocking argument. The bound is proved in\n`Lax56Proofs.EmptyHexagon` from Valtr's four-layer lemma. The visibility-colouring\ntheorem is proved in `Lax56Proofs.HujterKisfaludiBak`.\n-/\n\nnamespace Lax56.HujterKisfaludiBak\n\nopen Lax56.Geometry\n\n/-- Six labelled vertices in strict counterclockwise cyclic convex position.\n\nThe last conjunct records the complete cyclic order type, not merely its six\nsupporting-edge consequences.  This is useful in the direct geometric proof:\nan increasing triple of cyclic labels is positively oriented. -/\ndef StrictConvexHexagon (h : Fin 6 → Point) : Prop :=\n  Function.Injective h ∧\n    (∀ i j : Fin 6, j ≠ i → j ≠ i + 1 →\n      0 < turn (h i) (h (i + 1)) (h j)) ∧\n    ∀ i j k : Fin 6, i < j → j < k →\n      0 < turn (h i) (h j) (h k)\n\n/-- A convex hexagon whose convex hull contains no further point of `P`. -/\ndef EmptyConvexHexagon (P : Finset Point) (h : Fin 6 → Point) : Prop :=\n  StrictConvexHexagon h ∧\n    (∀ i, h i ∈ P) ∧\n    ∀ p ∈ P, p ∈ convexHull ℝ (Set.range h) → p ∈ Set.range h\n\n/-- The deliberately unoptimized Valtr bound `h(6) ≤ 2^428 + 1`, via 216\npoints in convex position. Its proof in `Lax56Proofs.EmptyHexagon` includes\nthe four-layer lemma and uses only standard logical axioms. This concept declaration\nis a theorem specification, not the input used directly by the main proof. -/\naxiom exists_emptyConvexHexagon\n    (P : Finset Point) (hP : 2 ^ 428 + 1 ≤ P.card)\n    (hgeneral : ¬HasThreeCollinear P) :\n    ∃ h : Fin 6 → Point, EmptyConvexHexagon P h\n\nend Lax56.HujterKisfaludiBak\n",
       "statements": [
         {
           "id": "Lax56.HujterKisfaludiBak.exists_emptyConvexHexagon",
-          "signature": "exists_emptyConvexHexagon : ∀ (P : Finset Lax56.Geometry.Point),\n  instLENat.le 463 P.card →\n    Not (Lax56.Geometry.HasThreeCollinear P) → Exists fun h => Lax56.HujterKisfaludiBak.EmptyConvexHexagon P h",
+          "signature": "exists_emptyConvexHexagon : ∀ (P : Finset Lax56.Geometry.Point),\n  instLENat.le (instHAdd.hAdd (instHPow.hPow 2 428) 1) P.card →\n    Not (Lax56.Geometry.HasThreeCollinear P) → Exists fun h => Lax56.HujterKisfaludiBak.EmptyConvexHexagon P h",
           "startLine": 38,
-          "endLine": 43,
-          "doc": "The currently external geometric input, in an ordered form convenient for\nthe blocking proof.  This is precisely the bound `h(6) ≤ 463`."
+          "endLine": 45,
+          "doc": "The deliberately unoptimized Valtr bound `h(6) ≤ 2^428 + 1`, via 216\npoints in convex position. Its proof in `Lax56Proofs.EmptyHexagon` includes\nthe four-layer lemma and uses only standard logical axioms. This concept declaration\nis a theorem specification, not the input used directly by the main proof."
         }
       ]
     },
@@ -74,18 +90,39 @@
       "path": "concepts/Lax56/MainTheorem.lean",
       "title": "Large finite point sets have four collinear points or a visible six-clique",
       "type": "theorem",
-      "description": "Every finite set of at least `10^11055931` points in the real plane contains\nfour distinct collinear points or six distinct points that pairwise see one\nanother with respect to the whole set.",
+      "description": "Every finite set of at least `10^(2^450)` points in the real plane contains\nfour distinct collinear points or six distinct points that pairwise see one\nanother with respect to the whole set.",
       "imports": [
         "Lax56.Geometry"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax56.Geometry\n\n/-!\n---\ntitle: Large finite point sets have four collinear points or a visible six-clique\ntype: theorem\n---\nEvery finite set of at least `10^11055931` points in the real plane contains\nfour distinct collinear points or six distinct points that pairwise see one\nanother with respect to the whole set.\n-/\n\nnamespace Lax56.MainTheorem\n\nopen Lax56.Geometry\n\naxiom large_point_set_four_collinear_or_visible_six\n    (P : Finset Point) (hP : 10 ^ 11055931 ≤ P.card) :\n    HasFourCollinear P ∨ HasVisibleClique P 6\n\nend Lax56.MainTheorem\n",
+      "sourceText": "import Lax56.Geometry\n\n/-!\n---\ntitle: Large finite point sets have four collinear points or a visible six-clique\ntype: theorem\n---\nEvery finite set of at least `10^(2^450)` points in the real plane contains\nfour distinct collinear points or six distinct points that pairwise see one\nanother with respect to the whole set.\n-/\n\nnamespace Lax56.MainTheorem\n\nopen Lax56.Geometry\n\naxiom large_point_set_four_collinear_or_visible_six\n    (P : Finset Point) (hP : 10 ^ (2 ^ 450) ≤ P.card) :\n    HasFourCollinear P ∨ HasVisibleClique P 6\n\nend Lax56.MainTheorem\n",
       "statements": [
         {
           "id": "Lax56.MainTheorem.large_point_set_four_collinear_or_visible_six",
-          "signature": "large_point_set_four_collinear_or_visible_six : ∀ (P : Finset Lax56.Geometry.Point),\n  instLENat.le (instHPow.hPow 10 11055931) P.card →\n    Or (Lax56.Geometry.HasFourCollinear P) (Lax56.Geometry.HasVisibleClique P 6)",
+          "signature": "large_point_set_four_collinear_or_visible_six : ∀ (P : Finset Lax56.Geometry.Point),\n  instLENat.le (instHPow.hPow 10 (instHPow.hPow 2 450)) P.card →\n    Or (Lax56.Geometry.HasFourCollinear P) (Lax56.Geometry.HasVisibleClique P 6)",
           "startLine": 17,
           "endLine": 19
+        }
+      ]
+    },
+    {
+      "id": "Lax56.ValtrFourLayer",
+      "path": "concepts/Lax56/ValtrFourLayer.lean",
+      "title": "Valtr's four-layer lemma",
+      "type": "theorem",
+      "description": "This theorem specification is proved in `Lax56Proofs.ValtrFourLayer`.\nThe outer-layer threshold sixteen allows an unoptimized endgame; it is\nsufficient for the 216-point convex-position application. Chain replacement,\nall endpoint cases, and the four-layer reduction are proved in Lean. The\nmain proof invokes the proved theorem, not this specification as an axiom.\n\nReference: Pavel Valtr, \"On Empty Hexagons\", Section 3 (Section 2 in the\nauthor's preprint at https://kam.mff.cuni.cz/~valtr/h.ps).",
+      "imports": [
+        "Lax56.ConvexLayers"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax56.ConvexLayers\n\n/-!\n---\ntitle: Valtr's four-layer lemma\ntype: theorem\n---\nThis theorem specification is proved in `Lax56Proofs.ValtrFourLayer`.\nThe outer-layer threshold sixteen allows an unoptimized endgame; it is\nsufficient for the 216-point convex-position application. Chain replacement,\nall endpoint cases, and the four-layer reduction are proved in Lean. The\nmain proof invokes the proved theorem, not this specification as an axiom.\n\nReference: Pavel Valtr, \"On Empty Hexagons\", Section 3 (Section 2 in the\nauthor's preprint at https://kam.mff.cuni.cz/~valtr/h.ps).\n-/\n\nnamespace Lax56.ValtrFourLayer\n\nopen Lax56.Geometry Lax56.ConvexLayers\n\n/-- The weakened four-layer lemma requested for the unoptimized proof.\n`layer S 3` is the fourth layer because layer indices start at zero. -/\naxiom exists_emptyHexagon_of_four_layers\n    (S : Finset Point) (hgeneral : ¬HasThreeCollinear S)\n    (hminimal : MinimalOuter S) (hlarge : 16 ≤ (extremeLayer S).card)\n    (hfourth : (layer S 3).Nonempty) : HasEmptyHexagon S\n\nend Lax56.ValtrFourLayer\n",
+      "statements": [
+        {
+          "id": "Lax56.ValtrFourLayer.exists_emptyHexagon_of_four_layers",
+          "signature": "exists_emptyHexagon_of_four_layers : ∀ (S : Finset Lax56.Geometry.Point),\n  Not (Lax56.Geometry.HasThreeCollinear S) →\n    Lax56.ConvexLayers.MinimalOuter S →\n      instLENat.le 16 (Lax56.ConvexLayers.extremeLayer S).card →\n        (Lax56.ConvexLayers.layer S 3).Nonempty → Lax56.ConvexLayers.HasEmptyHexagon S",
+          "startLine": 22,
+          "endLine": 27,
+          "doc": "The weakened four-layer lemma requested for the unoptimized proof.\n`layer S 3` is the fourth layer because layer indices start at zero."
         }
       ]
     },
@@ -115,13 +152,25 @@
   ],
   "proofs": [
     {
+      "id": "Lax56Proofs.EmptyHexagon.exists_emptyConvexHexagon",
+      "path": "proofs/Lax56Proofs/EmptyHexagon.lean",
+      "conclusion": "Lax56.HujterKisfaludiBak.exists_emptyConvexHexagon",
+      "assumptions": [],
+      "description": "The unoptimized Valtr argument, including the four-layer lemma. The\nminimum-polygon argument, consecutive-layer inequality, Erdős--Szekeres\nbound, shear, and cyclic-order\nbridge are all proved; no SAT solver or native decision axiom is used."
+    },
+    {
       "id": "Lax56Proofs.MainTheorem.large_point_set_four_collinear_or_visible_six",
       "path": "proofs/Lax56Proofs/MainTheorem.lean",
       "conclusion": "Lax56.MainTheorem.large_point_set_four_collinear_or_visible_six",
-      "assumptions": [
-        "Lax56.HujterKisfaludiBak.exists_emptyConvexHexagon"
-      ],
-      "description": "Every finite set of at least $10^{11055931}$ points in the real plane has\nfour distinct collinear points or six points which are pairwise visible with\nrespect to the entire set. The visibility-colouring and vertex-removal\nstability inputs are proved in this package. The remaining external input\nis the empty-convex-hexagon bound $h(6) \\le 463$."
+      "assumptions": [],
+      "description": "Every finite set of at least $10^{2^{450}}$ points in the real plane has\nfour distinct collinear points or six points which are pairwise visible with\nrespect to the entire set. The visibility-colouring and vertex-removal\nstability inputs are proved in this package. The empty-convex-hexagon bound\n$h(6) \\le 2^{428}+1$ is derived from the fully proved four-layer lemma.\nThe theorem uses only Lean's standard logical axioms."
+    },
+    {
+      "id": "Lax56Proofs.ValtrFourLayer.exists_emptyHexagon_of_four_layers",
+      "path": "proofs/Lax56Proofs/ValtrFourLayer.lean",
+      "conclusion": "Lax56.ValtrFourLayer.exists_emptyHexagon_of_four_layers",
+      "assumptions": [],
+      "description": "Valtr's four-layer implication with the deliberately unoptimized\nouter threshold sixteen. The convex endpoint case is proved by edge caps\nand backward projective propagation, not assumed."
     },
     {
       "id": "Lax56Proofs.VertexRemovalStability.exists_fiveColorable_delete",
@@ -133,11 +182,21 @@
   ],
   "capture": {
     "formatVersion": 1,
-    "digest": "d27607037b5d25223f6ef30ce8f1c52040c9d8f139fa239f247ca362aa6936e3",
-    "sourceCommit": "2bd6eee4ac3208968d4153b67c449a43c1fe30c3",
+    "digest": "91b360b01351c5023d25c33c1a478e094cccabdc41649efe34f93a703d558221",
+    "sourceCommit": "730c74fec86c041054279663b009afd953fe24b5",
     "leanToolchain": "leanprover/lean4:v4.30.0",
     "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
     "files": [
+      {
+        "path": "concepts/ir/Lax56/ConvexLayers.c",
+        "bytes": 1568,
+        "sha256": "198b6bd4c9c99cfbff8a86bde2ae29aa9d93287ccd1ec1c6aaeaa1cf13683413"
+      },
+      {
+        "path": "concepts/ir/Lax56/ConvexLayers.c.hash",
+        "bytes": 16,
+        "sha256": "6b6072f3c1e583f9c2c7b749930f6dd04155c1389b20de17518fcc336c1e9c4d"
+      },
       {
         "path": "concepts/ir/Lax56/Geometry.c",
         "bytes": 6485,
@@ -169,6 +228,16 @@
         "sha256": "cceced54e752e58dfcd17ecd42891d1f755757484b4530c79a9cfc71257a0f13"
       },
       {
+        "path": "concepts/ir/Lax56/ValtrFourLayer.c",
+        "bytes": 1312,
+        "sha256": "d530a5164798e1ffcfa358e2b55d741d7950519443aea12ab2d61a6021bc4cbd"
+      },
+      {
+        "path": "concepts/ir/Lax56/ValtrFourLayer.c.hash",
+        "bytes": 16,
+        "sha256": "95887b41ab769ce920f63690034c92413f4d2e084b403b63059ad4b25dda8ab0"
+      },
+      {
         "path": "concepts/ir/Lax56/VertexRemovalStability.c",
         "bytes": 2283,
         "sha256": "b285f7b0c2ec586e0d5352ab7005c945b80c8d63996fff36b4483e615d828e7a"
@@ -180,13 +249,38 @@
       },
       {
         "path": "concepts/ir/Lax56.c",
-        "bytes": 1966,
-        "sha256": "19791e620f1022dd2feb82ca8b68a754ce0f588349ee8d6d980edf3a211a45dd"
+        "bytes": 2406,
+        "sha256": "2dc1dd20440abe6339440b4c3cb8637b2d1faa9ec2bbd57c7298072f678b5e4c"
       },
       {
         "path": "concepts/ir/Lax56.c.hash",
         "bytes": 16,
-        "sha256": "a8c6402baae48553d80c12751c42a9eb2a5b9e99a8bf43e0eae0c29030a898d8"
+        "sha256": "8715f6b2642655cb9fc9a5a35f62371774091faeed40ecf83c0bc5aac88077a6"
+      },
+      {
+        "path": "concepts/lib/Lax56/ConvexLayers.ilean",
+        "bytes": 6312,
+        "sha256": "ac90a69fbccd3da7670f1bd587c7e4e8787716535070207ff70cf5d2d748846a"
+      },
+      {
+        "path": "concepts/lib/Lax56/ConvexLayers.ilean.hash",
+        "bytes": 16,
+        "sha256": "a8a16bf6a7a9e5b38cefe7e4354ea505a53642badd50b6a0190f7fecbd6da5cc"
+      },
+      {
+        "path": "concepts/lib/Lax56/ConvexLayers.olean",
+        "bytes": 35568,
+        "sha256": "7a60a81ed9b7ffb4476b565a4c3b433f647e80e42a60aeba5b2e601592ea23d1"
+      },
+      {
+        "path": "concepts/lib/Lax56/ConvexLayers.olean.hash",
+        "bytes": 16,
+        "sha256": "e5c8e4f5ebcb585973abe6e3405540e18fdc9fa7c92c292832d9028672fa3698"
+      },
+      {
+        "path": "concepts/lib/Lax56/ConvexLayers.trace",
+        "bytes": 2303,
+        "sha256": "60252b212663b9aeb51c39b7e53d31363458e1539a2c40df0058d04cfc2df619"
       },
       {
         "path": "concepts/lib/Lax56/Geometry.ilean",
@@ -216,52 +310,77 @@
       {
         "path": "concepts/lib/Lax56/HujterKisfaludiBak.ilean",
         "bytes": 3373,
-        "sha256": "2e4e510589f637aee9faaa9585b4560de4e2bb4ff195dcee511d6e609d731cf8"
+        "sha256": "fc17ee973840a1d6696eb8144903fb4cb3fa5285de4408e2c32d78bd5ad99f70"
       },
       {
         "path": "concepts/lib/Lax56/HujterKisfaludiBak.ilean.hash",
         "bytes": 16,
-        "sha256": "d9da8ab4ad8e2ab9a183acba5db1c86fd34638ba22b6a0fc9cd3d1442d0776bd"
+        "sha256": "13369dca1bedf97b0fdee6a33bb6d03e71d998a6e897a733531669cf90b4abfe"
       },
       {
         "path": "concepts/lib/Lax56/HujterKisfaludiBak.olean",
-        "bytes": 23072,
-        "sha256": "01b83c33f72131a169b96b607d83bd12d9dd9785c2e7150631a5b9cb607750c8"
+        "bytes": 24368,
+        "sha256": "161447d9fdef5a0f22149c370f8fab06513740fa6a60a664035cdafac4fec61b"
       },
       {
         "path": "concepts/lib/Lax56/HujterKisfaludiBak.olean.hash",
         "bytes": 16,
-        "sha256": "fdbad1333f9f286bc3388868d67dafb681df3dc1205369adeea9f07299815850"
+        "sha256": "e4f1b90a0c10322946f31fa3ac806f373b92ceade1e3cf6f35daa657d8228427"
       },
       {
         "path": "concepts/lib/Lax56/HujterKisfaludiBak.trace",
         "bytes": 2570,
-        "sha256": "417ad05c737c45fd5443c16984e7c84793c446f2a6dde422f4e53a23b87e6ccd"
+        "sha256": "ff3e26a248a9490a378db0f9725dd602f0c17a61e2e83748a301f8ffd207f978"
       },
       {
         "path": "concepts/lib/Lax56/MainTheorem.ilean",
         "bytes": 1344,
-        "sha256": "4f7010f2e3f42dec9ffe5aaa380fb0859027b4a3824c74d544310ead5f81db6a"
+        "sha256": "2a8b53283fd3eefc82929f9a27bb01c218a66db3df8aa7330ff8f3419e3f2b87"
       },
       {
         "path": "concepts/lib/Lax56/MainTheorem.ilean.hash",
         "bytes": 16,
-        "sha256": "699e3890581115df56dc2f29f4f7f3782232d2710daa5070caf46b70b7cd380f"
+        "sha256": "fec2593f3cff647a81929e4c38fb3b5ae0042ea3e586a51cbac829e26550b9d3"
       },
       {
         "path": "concepts/lib/Lax56/MainTheorem.olean",
-        "bytes": 7680,
-        "sha256": "e3867c90987269c5e373295e9d04965f254b82d013e64bf5ceeb150711b00ac6"
+        "bytes": 7880,
+        "sha256": "fe6b26dfe84e5c11791dfd7a665978d8d01632e5c700fa2c1c83020386413acf"
       },
       {
         "path": "concepts/lib/Lax56/MainTheorem.olean.hash",
         "bytes": 16,
-        "sha256": "0cef4175b0f673a93455e25baa5c329249fe593f396512b96b7fda5fe2ac65e7"
+        "sha256": "47284dc0e73487ceeacf9dd19d8f09981974e4549ae11e5ea76d06925bdf97f7"
       },
       {
         "path": "concepts/lib/Lax56/MainTheorem.trace",
         "bytes": 2097,
-        "sha256": "df5808b0b106da4ea30402f7e5c407c1dcea586571bdab513333eb5f0a410206"
+        "sha256": "6df2aa5946eae6e84c9be73a5bfb7812ac9eb39c5d2fc832f29a3d67a7f535ec"
+      },
+      {
+        "path": "concepts/lib/Lax56/ValtrFourLayer.ilean",
+        "bytes": 2027,
+        "sha256": "b9157c20c56783e444744d476bab0ef3d7a17983103177e5e5e69b26f23cd4f2"
+      },
+      {
+        "path": "concepts/lib/Lax56/ValtrFourLayer.ilean.hash",
+        "bytes": 16,
+        "sha256": "9f8bcafac4a749f42153ba42a98e25a4573adf8c52b4c0b5246b0d9a26098eb4"
+      },
+      {
+        "path": "concepts/lib/Lax56/ValtrFourLayer.olean",
+        "bytes": 8248,
+        "sha256": "481fff7984d2ece2ff9da3675795e307f5cff752a1ca7916a5a687f667db0507"
+      },
+      {
+        "path": "concepts/lib/Lax56/ValtrFourLayer.olean.hash",
+        "bytes": 16,
+        "sha256": "a27cdc5dc58158948769bfa5cc40406280c416867e32c6559b8a95037fe5c9d7"
+      },
+      {
+        "path": "concepts/lib/Lax56/ValtrFourLayer.trace",
+        "bytes": 2129,
+        "sha256": "3ca6ab7a1d7468cf269b5b52e522355efa95028d25a5cc50fdc07f8d7aaf1e0c"
       },
       {
         "path": "concepts/lib/Lax56/VertexRemovalStability.ilean",
@@ -290,28 +409,28 @@
       },
       {
         "path": "concepts/lib/Lax56.ilean",
-        "bytes": 250,
-        "sha256": "66488f540833eb769983a877fadbc3eb98b53ac964eb57ada1e7eafe6cc7d9e6"
+        "bytes": 334,
+        "sha256": "70fad7532d55cb67fb42fb3aba73dd2b3de41f6f5d3f0f9a90b200442a37e4b5"
       },
       {
         "path": "concepts/lib/Lax56.ilean.hash",
         "bytes": 16,
-        "sha256": "282f81dd1ebb6e9ce3dcd4a6bbfaa57b5a555dcd6afab76018c2848dbead6be3"
+        "sha256": "9abb89f9c50dc92f3cff05f73e668017086cd25baaca2fe0641937a94a234406"
       },
       {
         "path": "concepts/lib/Lax56.olean",
-        "bytes": 1688,
-        "sha256": "f5b30d9176959431c2cdf2680b01114c87b4b6200c0241a2867b4a3c333c9ae9"
+        "bytes": 1912,
+        "sha256": "818c581a7b7b3ce59ee3cae3a278d1aceadaa4f7791504997c967f42ba06b6b2"
       },
       {
         "path": "concepts/lib/Lax56.olean.hash",
         "bytes": 16,
-        "sha256": "23a273eb272676957e57c8ce87910a557ea326db06cfb8bef306c257fdc04390"
+        "sha256": "a8906651a44cd7ecb93eb7439217e969e85151c6a65f5f85d3dd5434cd2f40bd"
       },
       {
         "path": "concepts/lib/Lax56.trace",
-        "bytes": 2487,
-        "sha256": "9a82dce2f92b0f05aef9d353bb49c51cd51dc0981cb41cc521fad181b393e69e"
+        "bytes": 2792,
+        "sha256": "c85a7964f12b9afbf2b0c87fc54dcc9eab3da3a521faee843c38fe50e73efba9"
       },
       {
         "path": "concepts/package/lake-manifest.json",
@@ -324,19 +443,29 @@
         "sha256": "572aa72488fb36f43c94098abbf714b7fde358827596980baedd3b712dc502de"
       },
       {
+        "path": "concepts/package/Lax56/ConvexLayers.lean",
+        "bytes": 2261,
+        "sha256": "4daee0057a64cc90be80cc7adab754c2e7b8cf2705dac2a1677520b4e5c7a26c"
+      },
+      {
         "path": "concepts/package/Lax56/Geometry.lean",
         "bytes": 2030,
         "sha256": "2d809d851cd9e40961286e80267a10fceae0317ebab675bd96ad28f2eb769cb4"
       },
       {
         "path": "concepts/package/Lax56/HujterKisfaludiBak.lean",
-        "bytes": 1721,
-        "sha256": "4596d5bebf4d48d67612a8fbf594c33f58764e04cde0ea90c22bd7f9ce63aa0a"
+        "bytes": 1894,
+        "sha256": "935219ecc8c7efdea17343198e6679dee0ba5b5b29f18d409afae4f8490ef686"
       },
       {
         "path": "concepts/package/Lax56/MainTheorem.lean",
         "bytes": 557,
-        "sha256": "9b58ca3ee05f509c6cd94bd393904d0e548663cb1fd0cc0cf8ccace6f33515f5"
+        "sha256": "791bf3bfa81fb1655303b953158840ac2b7974dd3a414d6217dabc8f9cb50fd8"
+      },
+      {
+        "path": "concepts/package/Lax56/ValtrFourLayer.lean",
+        "bytes": 1057,
+        "sha256": "75d4af9f33f63a238ed9c59a6a1f3f1f842608938552ea84f9f91140fda39d1c"
       },
       {
         "path": "concepts/package/Lax56/VertexRemovalStability.lean",
@@ -345,8 +474,8 @@
       },
       {
         "path": "concepts/package/Lax56.lean",
-        "bytes": 115,
-        "sha256": "be2a4522d4b58cef3cadb5f46d04214b4d0cf01825a0e5334c1d3f3898480f5e"
+        "bytes": 169,
+        "sha256": "ca8e4d61b0a80bec7e9761f892e87fdf391c7f97af282ca7dcb32d7163b13b86"
       },
       {
         "path": "concepts/package/lean-toolchain",
@@ -372,6 +501,66 @@
         "path": "proofs/ir/Lax56Proofs/Blockers.c.hash",
         "bytes": 16,
         "sha256": "2438f776c36603315f4b530b4359c1a171bc033cc10b05e306737fa5895af3bc"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ConvexLayers.c",
+        "bytes": 2070,
+        "sha256": "53d04f0a9e515794e2ef741dea241831d09f0fa1f473409a4f105a9007cf44fe"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ConvexLayers.c.hash",
+        "bytes": 16,
+        "sha256": "02dfda88ff96b22afefaaa86e1a2fe5f825e9017835e9203f7605299b6d73b66"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/CupsCaps.c",
+        "bytes": 1561,
+        "sha256": "88c7b047bc167e2e00a153d3e174ca07ecaa220c1006d4172d1b6b8e913190cf"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/CupsCaps.c.hash",
+        "bytes": 16,
+        "sha256": "1fc6151e7523e2dc1bb4b120b0be4bcf7bb4108699e043d58227531bac4d3dc2"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/CupsCapsGeometry.c",
+        "bytes": 1843,
+        "sha256": "98785769cbad5e4f8d7801f923bcfeb45f3375bcf109e2b56399bcdcbcf7ce21"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/CupsCapsGeometry.c.hash",
+        "bytes": 16,
+        "sha256": "63c9176afb6ca9c6bb1de55e4467728d915240458494c677a4f43a2787a51e27"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/CyclicOrder.c",
+        "bytes": 1601,
+        "sha256": "07c62b2aaf44fce793576df87a04c49f59e21c6db89cbe73597385259cb3c2bf"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/CyclicOrder.c.hash",
+        "bytes": 16,
+        "sha256": "02c6ddf31e5de045b055bba7a9996591bef003b0081cd6c2a22f078aacff188c"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/EmptyHexagon.c",
+        "bytes": 1600,
+        "sha256": "392e1f3133c2485c96d78f2c64276355ff6f2d4f4851891a42360cbec5f27de8"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/EmptyHexagon.c.hash",
+        "bytes": 16,
+        "sha256": "12c90ad8478547ada02e816d5104b799985ba65e7f0680f2bb980b9f68d974e6"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ErdosSzekeres.c",
+        "bytes": 6495,
+        "sha256": "5ddb8b18573964cb9e03a559212c79becb05848f6704150044d00a2009161067"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ErdosSzekeres.c.hash",
+        "bytes": 16,
+        "sha256": "9af44d0b45e17f370d389b306b67f5bfd11b980e817b93662ee4e54012403666"
       },
       {
         "path": "proofs/ir/Lax56Proofs/FiniteIntervals.c",
@@ -685,23 +874,23 @@
       },
       {
         "path": "proofs/ir/Lax56Proofs/HujterKisfaludiBak.c",
-        "bytes": 2099,
-        "sha256": "67304f0c015419af47cf44a64c9ab068b2857b3b239beceb26a73a03fb4fef17"
+        "bytes": 2346,
+        "sha256": "2f95d275ad78374ff57847828e183c61641f3750815a9fbe1cd37789f0316f5b"
       },
       {
         "path": "proofs/ir/Lax56Proofs/HujterKisfaludiBak.c.hash",
         "bytes": 16,
-        "sha256": "bce8b3f2243b6c0e4553f7c6afd09bb7b82ed48948f728ce318eeed52195e21c"
+        "sha256": "2e8ad263328aacd74b2a1a65f39dfdb947236c575dbab941a69a1b928951b6e5"
       },
       {
         "path": "proofs/ir/Lax56Proofs/IntervalDensity.c",
-        "bytes": 3299,
-        "sha256": "9ae6ab9728292a11b63f7afade67f66ac6ae2aa6c0fb8b3b16aa1923a0d316b5"
+        "bytes": 5694,
+        "sha256": "a10681210ca777692a6f3a700b9407a74d0067af990ba733fb330145df323acb"
       },
       {
         "path": "proofs/ir/Lax56Proofs/IntervalDensity.c.hash",
         "bytes": 16,
-        "sha256": "83013fd12d81d5ba00c6bb9b30de650006a525e18a44d645962aae17ceeba9b0"
+        "sha256": "b306cd8e50c5ab4f5d18806e9ca8c2bf30fe6721ae8d12854e46ba20950af588"
       },
       {
         "path": "proofs/ir/Lax56Proofs/MainTheorem.c",
@@ -774,6 +963,406 @@
         "sha256": "0c8c80036ecdb1a4d8125800cf346c74b13eca774d4fdf43c62ba5272a243959"
       },
       {
+        "path": "proofs/ir/Lax56Proofs/ValtrCaps.c",
+        "bytes": 8090,
+        "sha256": "dcb26daef7da624a9e3f2d490a43ce848f03ee4fac5ef99c10ef1f79681c89f4"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrCaps.c.hash",
+        "bytes": 16,
+        "sha256": "0934a46742820f8cda506e6cbcce5503b5f3647e080da368fbd2131b671fe8af"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrCompressedSupport.c",
+        "bytes": 1388,
+        "sha256": "ee493c695f48acf393a69cc8c70a77a04a9f2d79ca341152dc6fad5a83a17852"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrCompressedSupport.c.hash",
+        "bytes": 16,
+        "sha256": "30c0247aa3178eac045c9af076ce05279e063527e33825b5b22504effd55caeb"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrCompression.c",
+        "bytes": 1367,
+        "sha256": "921fa63b77bd2cf8a7e24e4118e34ffbb03aaec1053727b2513c47e95c5f7eb1"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrCompression.c.hash",
+        "bytes": 16,
+        "sha256": "e9a34e8d9b99f9f1763794b208f2ed44e12ad1a51ea2f88c09f628558eb7103c"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrConvexRun.c",
+        "bytes": 1360,
+        "sha256": "0e84b2035d870c10b5edf8c17bc74518c49e47287068793dd68bd6399aab0174"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrConvexRun.c.hash",
+        "bytes": 16,
+        "sha256": "b7c02c2dbafe91cbaf905f4ee6fabece58a6af372bf2a4169df6750ebaadb5ae"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrCounting.c",
+        "bytes": 1364,
+        "sha256": "fed2e860ae3c7ed5cf3c1e300fa4787d068a986c60fef47ddf4bb835679b197b"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrCounting.c.hash",
+        "bytes": 16,
+        "sha256": "44fc1aab35f9b9b55db9dba65120e4d750d2596d8bc784868c7911b79caa3780"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrCoverage.c",
+        "bytes": 1641,
+        "sha256": "73eedeb0b15070019e65739ec9b9976b5029a12d7ebe7f026c097b2ade5f6ab1"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrCoverage.c.hash",
+        "bytes": 16,
+        "sha256": "c7d0ef0276b1c4cc2de86d1a10e634a74a1458905aa644c4f020f23a694fa462"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrCoverSetup.c",
+        "bytes": 1365,
+        "sha256": "560cf510727ab8474fcf4872179c18b89d08d927149b3c4536962a04abda2c87"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrCoverSetup.c.hash",
+        "bytes": 16,
+        "sha256": "09cdff4f61a1133cc52d327aaf7b10ed4a8a1e687d32b506738011ceda6845c9"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrCyclic.c",
+        "bytes": 1354,
+        "sha256": "b9e6105e111a8ff15ede0bca33c820f03f0f8217b0db97c8ecba6f7335342eab"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrCyclic.c.hash",
+        "bytes": 16,
+        "sha256": "adc7a4a44abc01d4cc86fa0a33d94728739b94912a5c5a56089ae4b34fb9a636"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrCyclicRuns.c",
+        "bytes": 1353,
+        "sha256": "d7ce26bf53aa41b53ddc4d7afedf07e3eb9e1e7347e808aec8f08bdd05b4393d"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrCyclicRuns.c.hash",
+        "bytes": 16,
+        "sha256": "6593b01a6b03b66ea1d770d8ef67c9b4100184c548198264479ce9ff08413424"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrEdgeCaps.c",
+        "bytes": 1364,
+        "sha256": "3d376061e47c8f528af8d7e35785ea371646392747d0c00a98796d788520c751"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrEdgeCaps.c.hash",
+        "bytes": 16,
+        "sha256": "966b4c105ca6e6454a6ed9d8b054ffbff6781e2b778a52a7d827b02a5a1f3b65"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrEndpointCompletion.c",
+        "bytes": 1643,
+        "sha256": "596bd56e56d6da6e129c427ef6a63806f3706932d52b20101d71bf171713c55a"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrEndpointCompletion.c.hash",
+        "bytes": 16,
+        "sha256": "9f48118ff104b333fa5da03dc02978cbe0e9a3a607d5ebdcd02d15570d8802ae"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrEndpointDrop.c",
+        "bytes": 1393,
+        "sha256": "63c321bf93a45e40c7ae92d1dd360cf41d53091ea53c46f0ab6832677fcff509"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrEndpointDrop.c.hash",
+        "bytes": 16,
+        "sha256": "755a3c97ba9dd23b4389f14c5feca63d764693ceb2993e1683211e884f61a5e3"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrEndpointGeometry.c",
+        "bytes": 1377,
+        "sha256": "aa302fa8cffdee69a4b545911dc864bb5887e23a6cc9e8e021fb59543f194445"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrEndpointGeometry.c.hash",
+        "bytes": 16,
+        "sha256": "741c4c9aa824ee07066412333219619b72c198515728273792a0646c70336e60"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrExtension.c",
+        "bytes": 1351,
+        "sha256": "47a3cae69f7cbafe130a44409fb410306eac126f163886b6fb3ca42f63058f5e"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrExtension.c.hash",
+        "bytes": 16,
+        "sha256": "b1401314fa30430014ee3352292e32ffd3eaeb3d8e6eab9ca7299abbd32d754b"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrExtremalRun.c",
+        "bytes": 1379,
+        "sha256": "5f2e5dcebbdb4ebb5732f277cba61174001b9b7e1a05f6a550ed3acc0f5cda4c"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrExtremalRun.c.hash",
+        "bytes": 16,
+        "sha256": "3347a99a40d847beb4d57402a949c466d46f17d077754e7ab1daa912dd23d945"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrFourLayer.c",
+        "bytes": 1875,
+        "sha256": "00ccad2f7e553ebae7d6491cff5d5aec4be6bb729893da15801507e53344fcbd"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrFourLayer.c.hash",
+        "bytes": 16,
+        "sha256": "63d0c6337ee297fd2fec0b5f27d04fb9b37fa09c776a9bb6626b056e97303429"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrFourLayerReduction.c",
+        "bytes": 1390,
+        "sha256": "7a754163cdb1afc1f2414b6784871334cf67f21376e0394fdcc1b418e1a5b1a3"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrFourLayerReduction.c.hash",
+        "bytes": 16,
+        "sha256": "996c9ee2bb78af8d748af1d833ea526df5d2db8c7e848866eeec5b0aee717a75"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrLocalSupport.c",
+        "bytes": 1378,
+        "sha256": "11faa634695e0ecd1ef697e130c2eba287769b8d3eb41a309729710e175fd768"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrLocalSupport.c.hash",
+        "bytes": 16,
+        "sha256": "0becbe1ec064aff9397c5f6e90267c371c6a22a5f74592dd744492d3f6cc7359"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrMatching.c",
+        "bytes": 1361,
+        "sha256": "0541dae9c859ae6575b71c500b0ef2bb6e9b6324a8cccfc539347b5795e8c53e"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrMatching.c.hash",
+        "bytes": 16,
+        "sha256": "4048d72143089fb367cce459d883c4d79d2fe49f718b01ae02a1d5d2e6448196"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrMaximum.c",
+        "bytes": 1318,
+        "sha256": "ef561471e3d1705733c87d2286e354667abc0066cb51619d2fb8cbeb8ebfd337"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrMaximum.c.hash",
+        "bytes": 16,
+        "sha256": "4ad50c1c378fae8d5995d3a98c677d3da2eaa29d0f9f5ba0cb6418dce26c10d6"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrMissing.c",
+        "bytes": 1646,
+        "sha256": "bfdb9862a9b3d38b184c0ce746be1610607f859d3a5edc79215f0fa151658f96"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrMissing.c.hash",
+        "bytes": 16,
+        "sha256": "1052d7ee2cabed40ab5d6183e431d4561eef852bef3618d3052180fe48e7bcc4"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrMissingExtension.c",
+        "bytes": 1380,
+        "sha256": "5c0a892e7281adbf57e5ebe6ca0daf5442f9aa60f2b74c82470e0a2f6deb8279"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrMissingExtension.c.hash",
+        "bytes": 16,
+        "sha256": "e78df01622b56dcdb4131974c8b75f169de3af8ef8a70ad53757b78cc5a25353"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrPolygon.c",
+        "bytes": 3216,
+        "sha256": "5ec7a43def6645cd3338099a7c1b3eb37f02ba51c02c306aaea3ebebb94eac3f"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrPolygon.c.hash",
+        "bytes": 16,
+        "sha256": "0fcdfa962b6473f13ec3aa74747cc2c04f1ddcfaccf7b5d4f3d7f21b154c60cc"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrPrivateRuns.c",
+        "bytes": 1373,
+        "sha256": "e2bc595cb3d0241031ae1827bb858c47cc7fedb50aac3fcc51baa4097e42c02c"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrPrivateRuns.c.hash",
+        "bytes": 16,
+        "sha256": "5a44ef0b8d40b9fec97152b433a3540d8083a8ddc20c2335405cd3ed65972859"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrProjective.c",
+        "bytes": 1615,
+        "sha256": "29e93d46fab61fc94cb50c24d2a03195bd701a931881505528255f9927852670"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrProjective.c.hash",
+        "bytes": 16,
+        "sha256": "cc91158714a96fba43b854063cbad085ebfa60f7642c8ef7a51f327f86070539"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrRadialOrder.c",
+        "bytes": 1626,
+        "sha256": "c5cf6056ae96cf2c6a46398c010a3d03797c2c39c349c31f3c9bf74b2c36fead"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrRadialOrder.c.hash",
+        "bytes": 16,
+        "sha256": "ebdfbed9db7bc125fd51e7f7d9a323a34d6d6247698169b0e416a722c7d4f776"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrReduction.c",
+        "bytes": 1595,
+        "sha256": "6e145841eb262c9bf3d77906103d95e5311fe5b596ca69584241bb986b12d110"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrReduction.c.hash",
+        "bytes": 16,
+        "sha256": "3c070a65b2740c683a302184d70aaf312fadd4d9287b6f80d504773132733e71"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrRunInduction.c",
+        "bytes": 1661,
+        "sha256": "39519987f9f66b4a626f992fc86af0795cdcf49d47d86c682c013cee857f06cb"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrRunInduction.c.hash",
+        "bytes": 16,
+        "sha256": "379d276b1e4bfafbb452cf60d62e2156fd175c9cd93b77e9939cde9631e3fe22"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrRunReduction.c",
+        "bytes": 1631,
+        "sha256": "7bb6304902b412f5458e072ef56921cae0016bc3f5c1880daa361cd4a04ce5ad"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrRunReduction.c.hash",
+        "bytes": 16,
+        "sha256": "67daf80f8789a23fa4e8866d5caeb5234871af426a52fc96300fcef37015fa50"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrRuns.c",
+        "bytes": 3189,
+        "sha256": "9a3444fe9905b623f8a584d8243c363a9736358f42a3a1d98cb85fd0d6342da1"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrRuns.c.hash",
+        "bytes": 16,
+        "sha256": "8c8c0fd4c0915d9b6e28a53d3da6354457cce0c98d33ac0107b9c4a6974d534e"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrRunSetup.c",
+        "bytes": 10064,
+        "sha256": "9e09297dfd580cef8502993bc6e7dda8808a550ecbb2daf334f9de841c064338"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrRunSetup.c.hash",
+        "bytes": 16,
+        "sha256": "76ee2aac50afcb8ed8a0e6387330d57d65b4527eb90444543e72dc1505d5cb77"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrRunSupport.c",
+        "bytes": 1877,
+        "sha256": "d6da76dc75d2e162ecb016e0a645921eddf97beea8b6ecf3b0295c9a6185c629"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrRunSupport.c.hash",
+        "bytes": 16,
+        "sha256": "6e9617c3b5961537bca20798bbe076031cba7db3205c7fb90bba81c2702a146c"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrSectorArcs.c",
+        "bytes": 1371,
+        "sha256": "80e6c7c3bfa10f67a824c62639abf809620302c77629002e279c76c15b3f5210"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrSectorArcs.c.hash",
+        "bytes": 16,
+        "sha256": "0685568f4f29c8cd9b9177f1a520c6a130b4e9cd82f0dbbaa7c918595509b231"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrSectorBounds.c",
+        "bytes": 1607,
+        "sha256": "cb0d19e2585a61307640fd9bd8812e144f8a176fcff1a2f14d275efb84f5ce59"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrSectorBounds.c.hash",
+        "bytes": 16,
+        "sha256": "1e39f5a01f897fd456a7daeca9764e6505a66b3376a8da2aa2dfb0b2aecfe85e"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrSectors.c",
+        "bytes": 1362,
+        "sha256": "72b7b74de2ddbc994d8b25b2198be146be89c24697e007e2bf808ab308cc38a1"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrSectors.c.hash",
+        "bytes": 16,
+        "sha256": "aa94fa80dd5c11e68e42845ba34098aedc2e9e78a54d5d13d378a9a023d2e737"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrSectorSetup.c",
+        "bytes": 1632,
+        "sha256": "533aaa3b83a677561fc8e05845142e0c130a7750a7d25326eb54712e4178bd13"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrSectorSetup.c.hash",
+        "bytes": 16,
+        "sha256": "981f65afdf9c8704cde2aad996f95df242ee0390f7c770837dcd25bb1c577443"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrSelection.c",
+        "bytes": 1650,
+        "sha256": "bf1f53349a483437bf7c9951d3d309ebe3bbfa869b05ba2ed0b42b88e8fd8a44"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrSelection.c.hash",
+        "bytes": 16,
+        "sha256": "e7473fc9068deeaa5217ac3323f87f46db98587f757facd08c3631b124b2826b"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrShortSetup.c",
+        "bytes": 6321,
+        "sha256": "d54a2d3548d41ff893cb7eab9e384794ded69b911a64b115d1c420a98159c4f4"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrShortSetup.c.hash",
+        "bytes": 16,
+        "sha256": "d8dfb049ea61a4570f7ea46292ecea263d8a0267c14ec04046a2d008c7cbd4da"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrShortSplice.c",
+        "bytes": 3568,
+        "sha256": "92b72d6966a087ae2c49dd298121da37b80a7ba9240ebc08e3df23f5283b717a"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrShortSplice.c.hash",
+        "bytes": 16,
+        "sha256": "102f67ddf5a1f637c8823395ceb15a3185e3e082cd0b71baa0ac62804e6d8a4d"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrSplice.c",
+        "bytes": 1354,
+        "sha256": "f7320388a5bcd038e3777575b4e8dd829bdf467e36c152758d517caa814d7bff"
+      },
+      {
+        "path": "proofs/ir/Lax56Proofs/ValtrSplice.c.hash",
+        "bytes": 16,
+        "sha256": "9d1fbf546f053c94dbe37a0e05e22f7fae83f82ac6cff822f44d2c178b0581e3"
+      },
+      {
         "path": "proofs/ir/Lax56Proofs/VertexRemovalStability.c",
         "bytes": 2981,
         "sha256": "e1c2a50242f1a47084fbc8f9b7398cc27bb01a8d5205ca44a69a492cae38d2b1"
@@ -795,38 +1384,38 @@
       },
       {
         "path": "proofs/ir/Lax56Proofs.c",
-        "bytes": 12323,
-        "sha256": "443aaabb27d3dc9ac1f4d09c0501d4fa134dd15deb51f22edb18ef26212d483e"
+        "bytes": 24057,
+        "sha256": "331585c40e0c320bfb21b3ab1b5266e063cf2db919f37b62cd122573f45eff49"
       },
       {
         "path": "proofs/ir/Lax56Proofs.c.hash",
         "bytes": 16,
-        "sha256": "f4220697338c380f7ccf557cb53f536ae9520becccb37ada1fd5a1d4d62366d1"
+        "sha256": "1df786ea0d5976d8b06dd0c65631acd8ce7bf3e62cd94a2e0aff8e6c90cf1960"
       },
       {
         "path": "proofs/lib/Lax56Proofs/AnalyticBounds.ilean",
-        "bytes": 36656,
-        "sha256": "c23922c8c4da023d7de158dccb145c0d0d89839f842f0f095dbbd41c02f78186"
+        "bytes": 36797,
+        "sha256": "505d2fc439fd7a7ce9c07ee1f66af3eef309c894c68480e903d5cab1ff012a1c"
       },
       {
         "path": "proofs/lib/Lax56Proofs/AnalyticBounds.ilean.hash",
         "bytes": 16,
-        "sha256": "cad4cec90ce66e8bb0aea757665cf04758cf1a105dbd595a4a3aed6b40e7f31f"
+        "sha256": "8ec3ce9320bc699de7b0cf3eebb05db097308f6895af9c0d4a8f672559ddafdf"
       },
       {
         "path": "proofs/lib/Lax56Proofs/AnalyticBounds.olean",
-        "bytes": 998120,
-        "sha256": "f324a3901ca67c5e1a16d6cfdec7f5a7b8cc576efcd3ac9702ac8f4eb145f67b"
+        "bytes": 1017520,
+        "sha256": "4a65ad9ce2859b206af0415b1b1f77e88643e3937c6c1ab58c412a94cefda5ce"
       },
       {
         "path": "proofs/lib/Lax56Proofs/AnalyticBounds.olean.hash",
         "bytes": 16,
-        "sha256": "a6d576d33dc88f40aa2949e0dd6119427d25425c8efca73dbf30d01f3270dbd3"
+        "sha256": "5cd25350c5089986b41fddb3d0f23ae8e3bca5d504f353ed2aeb8c9880415e2d"
       },
       {
         "path": "proofs/lib/Lax56Proofs/AnalyticBounds.trace",
         "bytes": 3960,
-        "sha256": "24fd72fac1243e07d934e58b9ad48bf80aec6e87cb5973edf6844cb2c5b686c0"
+        "sha256": "fa420b5e43e4535ab61180f0a92ea0af2580bb13b2c12494913495e7483118ca"
       },
       {
         "path": "proofs/lib/Lax56Proofs/Blockers.ilean",
@@ -851,7 +1440,157 @@
       {
         "path": "proofs/lib/Lax56Proofs/Blockers.trace",
         "bytes": 3824,
-        "sha256": "6493cd2c56aaf466320d2b698fa1c6bba5f58c576fd3983a24174912286327b9"
+        "sha256": "72f104370dcea6f1007124ab3b01e59e3c6831aa7b8fabba02df3f6809dfc405"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ConvexLayers.ilean",
+        "bytes": 47848,
+        "sha256": "d562af65f6e0ec3bfdec18b4cc62ed4451a74b01feffb61b4822bd40f5046035"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ConvexLayers.ilean.hash",
+        "bytes": 16,
+        "sha256": "2c2d089edadfdf9621b450517ad90e259680ec9a62f544e61e939192b86822f9"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ConvexLayers.olean",
+        "bytes": 219912,
+        "sha256": "1c4d8128f3ec6b248b77ff8e33f08f97676f4aa805183a9b1e2b1bcd4148cfd4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ConvexLayers.olean.hash",
+        "bytes": 16,
+        "sha256": "39ab0e65ac0dfe30ab46b9b1adb7aa25421527d9fdd450527abe1e7f367a799b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ConvexLayers.trace",
+        "bytes": 2735,
+        "sha256": "5f99c8a8141bca7b0c502c385661b3a60fae96aada1597f370b60287b6277f37"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/CupsCaps.ilean",
+        "bytes": 18132,
+        "sha256": "6ab43f292948176827d71803584a0a15b2380569e10acfcade33b41a200dffe9"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/CupsCaps.ilean.hash",
+        "bytes": 16,
+        "sha256": "2c4f2657ebcbcaa6dd5b533fe09817b7b8d90a0e7d7d5a0c004340634fb068d3"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/CupsCaps.olean",
+        "bytes": 342952,
+        "sha256": "861aa833041ea1aacb3e641ab05b13f6d5e496ebe38f6752385d40aaeb5579e4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/CupsCaps.olean.hash",
+        "bytes": 16,
+        "sha256": "7f9fb01096611b110d8c059e84741ac7cbe3ffb6ecc6a8ca2067cd8fd211ccf8"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/CupsCaps.trace",
+        "bytes": 2733,
+        "sha256": "821107d75347d17bfbda7d64f4863fed76a419286a71e13190183f3613dfeeda"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/CupsCapsGeometry.ilean",
+        "bytes": 35308,
+        "sha256": "aa847a9e441a7e3975920ba977e8cfa04624b260d0313ddd8ed4be5ab8bcc7d6"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/CupsCapsGeometry.ilean.hash",
+        "bytes": 16,
+        "sha256": "4c68df19e54e40725f1f2f7509825b8bab927e22cd10b9f2760cf3d1d4d7192a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/CupsCapsGeometry.olean",
+        "bytes": 988688,
+        "sha256": "ae2eba62752b69ce39fc6ffa3a9e9118e2144a27f34f66fe498851be47c245b4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/CupsCapsGeometry.olean.hash",
+        "bytes": 16,
+        "sha256": "e0100d96702d8be96dadf00d07efb55ad4dd90be8a520abf9f2b641421ee042e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/CupsCapsGeometry.trace",
+        "bytes": 2915,
+        "sha256": "c9ff3909864d0b292c9889693c3669b8ec9b7bc37008d7ccf3f1a235562fb9ac"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/CyclicOrder.ilean",
+        "bytes": 37774,
+        "sha256": "ccff62a453a64be3a2b36f00dc0ae57399c68654681f3ff0a2aa6c754ba86a8e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/CyclicOrder.ilean.hash",
+        "bytes": 16,
+        "sha256": "8f2d83ff8838c5d9587be11b4c46047e29399bfc2022bc61a87bf61b72def6c6"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/CyclicOrder.olean",
+        "bytes": 537520,
+        "sha256": "1d7bf4787c12f0e828aa9bbc1c0735310e284322279d0e18eeba507df55bac25"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/CyclicOrder.olean.hash",
+        "bytes": 16,
+        "sha256": "a33a4c6d28668054a23c9b48daf033487028570cdec958bce833b76e8e490592"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/CyclicOrder.trace",
+        "bytes": 2396,
+        "sha256": "919732c0b95bbe7a30f39c459207efd1273cc50c178da4b70ddf551951037d37"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/EmptyHexagon.ilean",
+        "bytes": 1924,
+        "sha256": "776e33ac01bcf7fd38b482b412a39e64e3d2139dba8bb0ec5c0e2eb5d9ebadaa"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/EmptyHexagon.ilean.hash",
+        "bytes": 16,
+        "sha256": "0e6e4cb40329c79958a7e2b3a47e0d3becf44637cb1701954522f8b39ca2bf1a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/EmptyHexagon.olean",
+        "bytes": 10960,
+        "sha256": "81ff50f29cbca8c79e8a45cb68d884ddd2469f7a936ad693844bfdb545496b49"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/EmptyHexagon.olean.hash",
+        "bytes": 16,
+        "sha256": "457c38e48aa9e4f41fa91ac4299948e048bbded16382c633483ab0768969466a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/EmptyHexagon.trace",
+        "bytes": 2402,
+        "sha256": "abe3c37049b5056e8abadd6ab42319f0f32ac45875c272308d62f3fa700853d7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ErdosSzekeres.ilean",
+        "bytes": 17835,
+        "sha256": "294147cc6cdfce7b01a061f7c72b9a559e523a4c08f9301855ccef959e508f85"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ErdosSzekeres.ilean.hash",
+        "bytes": 16,
+        "sha256": "8115bb8e120f7213462c8ba88f6cb7a75efb96123720513083659b59245d3595"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ErdosSzekeres.olean",
+        "bytes": 249568,
+        "sha256": "47b749bc78275b060536d90c38e584c6296fe3d5bc98b5b3068df4b43de29bb0"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ErdosSzekeres.olean.hash",
+        "bytes": 16,
+        "sha256": "48f6a869bccf83eeac43df88e966b08ede5a93a05f9367404b5edd67eead9c6a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ErdosSzekeres.trace",
+        "bytes": 2876,
+        "sha256": "0a2c9679ac73674df7d2191217ee96d7d61ab3889b14d569863b8b1bfd14a686"
       },
       {
         "path": "proofs/lib/Lax56Proofs/FiniteIntervals.ilean",
@@ -876,7 +1615,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/FiniteIntervals.trace",
         "bytes": 2980,
-        "sha256": "3ec85ee5d948f611a21f1456ff4ddb7389ee7d3919d4735d6f99c3e0d0644c73"
+        "sha256": "1ee2fd26eda6f37d3fa0175b5399945786147f3d141580f18599f6bec98b8ab4"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HarmonicUpper.ilean",
@@ -901,7 +1640,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HarmonicUpper.trace",
         "bytes": 2585,
-        "sha256": "7a64ad32576d27e1dbaf10ce07fa484755e1a8fb9b92abf1046c235dd849b019"
+        "sha256": "a46ea7eabd50e8393ab9e626087162160e7e794ff750ce0ba4e9274f06304a28"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBAffineMirror.ilean",
@@ -926,7 +1665,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBAffineMirror.trace",
         "bytes": 2955,
-        "sha256": "9d63cb8ee99e4da61a5cd3fef319380e67149d43ada710da7237b8b348744570"
+        "sha256": "3f80a210b63b874ebd500f8d02dc342a4e32d026bc3e7775bc8ec14ff79f34ae"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBBlocking.ilean",
@@ -951,7 +1690,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBBlocking.trace",
         "bytes": 2557,
-        "sha256": "779e1e4d0fab0f99af7589001d3d1f29acd897241e25c0d72ea132c1e6d30f42"
+        "sha256": "6719de9c5a04e057f5089b859cd90858724435d68ba8042785397f1d04232737"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBColourBound.ilean",
@@ -976,7 +1715,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBColourBound.trace",
         "bytes": 2789,
-        "sha256": "e64320bb8b3a10869850a6c7891d6f0e46156dbf92e3f81f8db255128dc24215"
+        "sha256": "5e6807eda5fd6ff1cea49692d0d372b6b136559a91a9a3d74d73fc60c13ad188"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBColourClasses.ilean",
@@ -1001,7 +1740,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBColourClasses.trace",
         "bytes": 2814,
-        "sha256": "fd997154b0a2f3d270bd611e60957614c2872c7ea6d43b371a483f09843c75e9"
+        "sha256": "808d3443bd156de3313dea069f1d3de1546298fa9f620d2b6b8be4fa5e827163"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBColourCoverage.ilean",
@@ -1026,7 +1765,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBColourCoverage.trace",
         "bytes": 3417,
-        "sha256": "910c847c167539bb08f0f8a83244120f0667ac1886e4f46c58eb3469dd52d122"
+        "sha256": "87e034e135b8171e04f471c1ef0c35ae99c4178b3f2f596f6889bfaa65830938"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBColouring.ilean",
@@ -1051,7 +1790,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBColouring.trace",
         "bytes": 2427,
-        "sha256": "797312a0a3eda555c64531d71a752ba31cfce1f50eaf07eee45f5912806179ac"
+        "sha256": "de2acc5f2be8b1cf0a39ce09df30cc8ad2293c93126dbed8548bf944293305a2"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBConcaveColour.ilean",
@@ -1076,7 +1815,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBConcaveColour.trace",
         "bytes": 3035,
-        "sha256": "7d39e102f02ad6db6e3fa642b277c9b5b5f0480f0e2b2adcf371261b04f85234"
+        "sha256": "65edbf14e4647778a6ad5262d655397986083f1b56867f7c13e8cd47a581fc49"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBConcavity.ilean",
@@ -1101,7 +1840,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBConcavity.trace",
         "bytes": 2375,
-        "sha256": "74e3e1fe5a4eb5f8b139b10506acdc46a6438685f517f1b002144314447635c4"
+        "sha256": "e10d8092d0b3ab2d24c92e6382483dcf83b4c4fb594da3e39d32f8b67ff19846"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBConvexity.ilean",
@@ -1126,7 +1865,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBConvexity.trace",
         "bytes": 2758,
-        "sha256": "3d5d277631a25104b6ba7234dca7ba0dba62a9d2ccc06bedd4fad0eedcfc91d4"
+        "sha256": "e4b57da7d55a0d3078dcf7c753c3994acb59079f3e5cebbbfd5c5494800a66f9"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBDiagonals.ilean",
@@ -1151,7 +1890,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBDiagonals.trace",
         "bytes": 2777,
-        "sha256": "d43bfc2065e4edca5f470bff3cf7c0e8ffd66cdb664c841ecde7afd373467d9d"
+        "sha256": "e9cb9afb4d0089b9a69bbe3bb24c08e6709ec61d54cf2687b0bc7a14fc1af7a1"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectCells.ilean",
@@ -1176,7 +1915,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectCells.trace",
         "bytes": 5076,
-        "sha256": "3aeb4e3c79f511037e8dbc696d4d10459e79ca5e0f7ad057b3d9d4249b85e27c"
+        "sha256": "7f00ad21ff4a52f6d87dbbea3e31a46d22cefa2f8bf1780e199c64465cbc2f65"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectConcave.ilean",
@@ -1201,7 +1940,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectConcave.trace",
         "bytes": 2409,
-        "sha256": "30b74cc820928b69437e18d0930049bc29f836c2295a3bfbbc5463912317901e"
+        "sha256": "6f208df28ec146689d2c5aff294f6855c0ab583b6a9547bb02eec89bf8533f34"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectConcaveCases.ilean",
@@ -1226,7 +1965,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectConcaveCases.trace",
         "bytes": 15059,
-        "sha256": "2199b1b9b8209630e2d6a67caecb1109f9a4141fdf2da63a1551f6aae85a95e5"
+        "sha256": "0fad630c5f85b41acbe0d6ec60c3bad2f6b82b0d6a421c17959f98130f126ea6"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectConcaveClosure.ilean",
@@ -1251,7 +1990,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectConcaveClosure.trace",
         "bytes": 2484,
-        "sha256": "73a33a297c6fa74ee107e25dc60ffa2ad4b2413114e34015361351ad2f6e6ba2"
+        "sha256": "a39734704c82bf5ab266e31a76c054df0fdf618db85cf3e3180fc6491781cab5"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectCore.ilean",
@@ -1266,17 +2005,17 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectCore.olean",
         "bytes": 1211584,
-        "sha256": "537b96e18d0338a591daa18187f8e118c472b477677b2a897916b345f7c1f64b"
+        "sha256": "a0f1deca34238f02f8f83ead3f369f2344cdb40dae15d87e6c6004ff3617e393"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectCore.olean.hash",
         "bytes": 16,
-        "sha256": "2c383a0304fe3cbc78d8cac2ca26d7bd18bb71a59ea6ef81a69dd1a2e9f22e1e"
+        "sha256": "b6e2ac7a3cf21744fcca95832725d3698c08f2a26f4b68ed0c8bec51492f6733"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectCore.trace",
         "bytes": 6707,
-        "sha256": "316ebb8a474788aafdbc6f3afde3a0e509a261dbe067dc54a580d19518d07d9e"
+        "sha256": "5d9d8edf17c161003c07decef0e52327c9220e726391eb4f00a1d56947714328"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectMc.ilean",
@@ -1301,7 +2040,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectMc.trace",
         "bytes": 2788,
-        "sha256": "ef51b605f651f8f15b70181c3af42c6159dc8f641510c0b4e84d41478697e52a"
+        "sha256": "12a3dcbb8c5f7955051eff1cc3fed6839e9868b428e1425ab7d2292d18be87c9"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectTrianglePatterns.ilean",
@@ -1315,18 +2054,18 @@
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectTrianglePatterns.olean",
-        "bytes": 3150888,
-        "sha256": "155c67b6ff6ab62adcf83bcbbd648712a7eb9737b07992c7a3aeba203b08ecb9"
+        "bytes": 3150904,
+        "sha256": "90b0fa77a43eca72add4961d788f6c4372e3f07ba03bfe7e3e359eedf1eb08f3"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectTrianglePatterns.olean.hash",
         "bytes": 16,
-        "sha256": "151c649ef4a3fa1a3005d6369235de268dde4c5cd3037f12cddec57dafa3fcbc"
+        "sha256": "2d2f829d35863c41f1f3f3c7277425e652b7d3da08c77fe1cec25cad3400bec4"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBDirectTrianglePatterns.trace",
         "bytes": 3257,
-        "sha256": "509fc3635c402662beaaaced6fddceb7a49dabc877d5a1ce3c905db84151ba9b"
+        "sha256": "67f266b86b81f394e536df6190234d184f6f014961faa0e3d01159480af58b2a"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBFinalCases.ilean",
@@ -1351,7 +2090,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBFinalCases.trace",
         "bytes": 12060,
-        "sha256": "7ff2f0e187d70c2bd47771a95fe818e259ae4799de8408b23861dc4fb3a177cd"
+        "sha256": "4c1bc90365ac8dfbae90e6ad39b3061d20fee2a25c99249e625ee0465c8d4a91"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBGeometry.ilean",
@@ -1366,17 +2105,17 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBGeometry.olean",
         "bytes": 663728,
-        "sha256": "f0d7c720830f027a182351ac461b8458d0c02ed0d6bb2ebf324983acf696735e"
+        "sha256": "95bda10a2eb737ab0833c8346fbf95eac046572e85c08bb0e035fd76f5a1c219"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBGeometry.olean.hash",
         "bytes": 16,
-        "sha256": "ac8f4971739668f3ad59d9a1ce374dd6cb5167dfc9787415a9606ba6c005bd6d"
+        "sha256": "b1e39fe9dce166464206afd9999f7fde2be587cbe40f2d9b13f45146e1acff79"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBGeometry.trace",
         "bytes": 4042,
-        "sha256": "fdf08462a2db666b240c650c18da7c0fbc7c8be0580d4d707009df7e1a34cd5a"
+        "sha256": "c7aef76cc654cec840fcc88f665f95a0db0ea1284d81a8c8a08cbcfade8c8b80"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBHexCardBound.ilean",
@@ -1401,7 +2140,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBHexCardBound.trace",
         "bytes": 2568,
-        "sha256": "3d7867f39700ed2d29ca068e46da6417a71d55e352082faa1d859363b02574f4"
+        "sha256": "4e85bf6e500b967cda2b619a37d510e8ecd259cba448a3ba55ac434c2e7e21c0"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBHexFinalGeometry.ilean",
@@ -1426,7 +2165,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBHexFinalGeometry.trace",
         "bytes": 3700,
-        "sha256": "4349b0dff4017caa15eb71eaab05b9882469c4b3dc5f5705ae9765f88437c31d"
+        "sha256": "fcb8474d7ff3042d56b1d37d4320eb9514f4e1e20efd8ed6a6bcebcaa7c5d398"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBHexGeometry.ilean",
@@ -1451,7 +2190,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBHexGeometry.trace",
         "bytes": 2892,
-        "sha256": "02d4b3364ca236c854329d648a190d3b230008abf39e9aefdc15a454eb368465"
+        "sha256": "0b4901250061d42eb3dc81148a8a5cec48f0739c8b6e460c7a9073aa58df73a8"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBHullCount.ilean",
@@ -1476,7 +2215,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBHullCount.trace",
         "bytes": 2375,
-        "sha256": "fe1ff990ef980643e865e494eb513997f740746d66b6a63c28e5901e384440a2"
+        "sha256": "9285eb127fe86b9e8f940c2a778fa796b1caed7c1b4b5db1c8892d70facaeb00"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBPlanarFive.ilean",
@@ -1491,17 +2230,17 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBPlanarFive.olean",
         "bytes": 1019792,
-        "sha256": "ee1161999be83e351beb4904d90cc73f96676a565e2a97bdae70fc663d93f07f"
+        "sha256": "f6c3fd2a68647ebc7889bafa843f74867d2567e2c9a4c0c9f8501e9c61751926"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBPlanarFive.olean.hash",
         "bytes": 16,
-        "sha256": "4cf5180fa5c806e6c121d845927c3d25a81ba17de67a31119bbc51c3db2e3cc2"
+        "sha256": "782bdf383d52cb45a5ace318bfeee3049702894528f14d629a03fcdae60f52b5"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBPlanarFive.trace",
         "bytes": 2391,
-        "sha256": "d16d1e3519b564814fa7dcbb8ec6684128a8faa9c75eefaf125abf6c18b25a00"
+        "sha256": "6e60b30a48769713f2fcea5447c4881126cc1e1bee71d174cb5112309efd19aa"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBQuadrilateral.ilean",
@@ -1516,17 +2255,17 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBQuadrilateral.olean",
         "bytes": 866456,
-        "sha256": "70761320af553c7592723d07447e8fbc1807259526c0d4274920e21ae3837f39"
+        "sha256": "9eff7399993802c025fa7e6d60251f9ac5df57ffe25a81634c3bf2d4c0340bdf"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBQuadrilateral.olean.hash",
         "bytes": 16,
-        "sha256": "cc80ffa3f7870b69c563c70163cb7fb7532021f527eedbe58c9fd2e937679ee6"
+        "sha256": "012d413cd4a7b6efb612fb99384d84827a013a91d5e4951b5004026722cd1c8e"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBQuadrilateral.trace",
         "bytes": 2731,
-        "sha256": "ff56847ad8ff303ad343dca1e96757171fd65f981903e4cc4a2e7c1c9c4051e3"
+        "sha256": "d776039761792198bef37e73b60b47dd55906aacb9832324ac42b0f1fc3981c8"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBQuadrilateralMaximal.ilean",
@@ -1551,7 +2290,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBQuadrilateralMaximal.trace",
         "bytes": 5225,
-        "sha256": "428dd3a29ef23369b66edf41505adfdbc071119853cb8d1994a5bf1d0b363924"
+        "sha256": "ce356b791b9b96d07b1ec86aa12f6104620fa86f513b96cd837ef7b72ca9fe35"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBQuadrilateralPattern.ilean",
@@ -1576,7 +2315,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBQuadrilateralPattern.trace",
         "bytes": 2674,
-        "sha256": "d8dc85cab6492a044c161906b148f6c9352bf898a2716151289d879368256f0d"
+        "sha256": "7429919a8b9e44b64e00fe4bf423560018a4123284e58d9c2b8e7b50f53a4793"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBSixStructure.ilean",
@@ -1591,17 +2330,17 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBSixStructure.olean",
         "bytes": 719760,
-        "sha256": "67521d4d663db2bc1dbeb429ad075b3676aeafaabbb12f5ce65ff3693a781a75"
+        "sha256": "a17c4bab8a8d2619ec5ca1dbc2706ccff08acff7b4686707e816314ee8e2f596"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBSixStructure.olean.hash",
         "bytes": 16,
-        "sha256": "590cc63a9dd08ba5d8880a922c6891e73e3edbd4d31444a0733255124b8866f4"
+        "sha256": "341737a2a302862ae44c49d1d62124cd86a0bb2383ae6f1162b5e7217028f4b0"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBSixStructure.trace",
         "bytes": 2578,
-        "sha256": "0e5aab73b6dc6240fb1748afd7e5e6fb96fa304d965161c738d23242d886c84a"
+        "sha256": "0fdc8710da56472ac0883b6085b9f3814e5260ecb1647e7e968745162338ca56"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBTriangle.ilean",
@@ -1616,117 +2355,117 @@
       {
         "path": "proofs/lib/Lax56Proofs/HKBTriangle.olean",
         "bytes": 2596848,
-        "sha256": "ea5040751dab93072eac99b0a13a7cd91105fecf1bdbefa04e81d17422d382a0"
+        "sha256": "00981b4043e88f049dd86fcb030657c07252c239a87fd92bd24d79a44e17163e"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBTriangle.olean.hash",
         "bytes": 16,
-        "sha256": "f2a9da92b20b8a52eeb1b3c1e4e234edb90e28f82810571d361be511a80b9272"
+        "sha256": "889b6926cbdad2c4f0d8b7c290e3f5fb2a737ccfed09d968f4968441a5926f00"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HKBTriangle.trace",
         "bytes": 4447,
-        "sha256": "6f8cabdddbb9319d5e693fdab450fa411687315f34742010dedb8892fb5e1747"
+        "sha256": "59066728e146509fb23b83dff2252b46255125d7e64e13f5297f05f99255c4cc"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HujterKisfaludiBak.ilean",
-        "bytes": 20519,
-        "sha256": "5fae41a0527e4755db548ce5b95d92fd390731079111f430bfb65636a2b6ab2e"
+        "bytes": 20702,
+        "sha256": "626f54347b1da643186e93346c5a9a207bccd49f577e84a8f6fab4e9b66e3710"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HujterKisfaludiBak.ilean.hash",
         "bytes": 16,
-        "sha256": "c577feacaa026b2242ba6dda3c1501f205fdf901db3369fc473b2ce87ec7d4d2"
+        "sha256": "7da463b00b248123f5fc62d876ba3a8dbca7c64ebae35eb8e0a91e5acd5ee764"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HujterKisfaludiBak.olean",
-        "bytes": 273928,
-        "sha256": "c42c5953d7a5ebfcae8b170be3e11aebafa119f8e2d222c4defb73471d1841ee"
+        "bytes": 280824,
+        "sha256": "437441b40457af6241c5ad72bdc390dd8ab7acd305d43eda59d2d46a53d2e877"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HujterKisfaludiBak.olean.hash",
         "bytes": 16,
-        "sha256": "8c0f41a5ddbaed1f597306b37fa2d90b5c1f36e5efd042fd84c83f28ef6b2f1a"
+        "sha256": "e085db49cc5a4aaef61f83574634cec649cb2a9b83f4eb92df3b7425df7d1f12"
       },
       {
         "path": "proofs/lib/Lax56Proofs/HujterKisfaludiBak.trace",
-        "bytes": 2781,
-        "sha256": "7ad8ffd9008189a4512c1511e9dafd6a66900dc9d810906c13604d94c58b79d9"
+        "bytes": 2948,
+        "sha256": "b6ef9c8c2c9dd94fa8138518d30a48114c9a2cdabfe245e8ee773218838caddd"
       },
       {
         "path": "proofs/lib/Lax56Proofs/IntervalDensity.ilean",
-        "bytes": 26233,
-        "sha256": "ffcd4dc8179c197ac981c230362a5a6e5cbd3f606a4b031eb491f6f1eea720d7"
+        "bytes": 27141,
+        "sha256": "53afc847c392ac600cb471637decefda640a4b5efc6a90b429c7c09eca8ff423"
       },
       {
         "path": "proofs/lib/Lax56Proofs/IntervalDensity.ilean.hash",
         "bytes": 16,
-        "sha256": "4d0ec3a63a84c98876307d04bea8db28737c5a1dca530c7c437802a7aad232e3"
+        "sha256": "828106f8d2a00b03bc15372bc75212e44e04cd7d33aa514ae0e1b82e8eb2f2ab"
       },
       {
         "path": "proofs/lib/Lax56Proofs/IntervalDensity.olean",
-        "bytes": 433864,
-        "sha256": "69f42f83c341ccbd144151e4237fa14e305e1fa35e28ae33336508a87ede1b9b"
+        "bytes": 520352,
+        "sha256": "1032894627c6211d39f01b7fb79baf8d1a46b2dc26a3aecdc3f373375e679030"
       },
       {
         "path": "proofs/lib/Lax56Proofs/IntervalDensity.olean.hash",
         "bytes": 16,
-        "sha256": "c4307db16dc47ff603a321f32aa7fb8616b5ad320926c8bae80440fce3ce51be"
+        "sha256": "d229bb90d938dc3afafce8b22d84857b64e4a6bbd35517a4f333c0469d9d545f"
       },
       {
         "path": "proofs/lib/Lax56Proofs/IntervalDensity.trace",
-        "bytes": 3931,
-        "sha256": "65ab37b7cd4cda68433246168a58bbbaeec3107b83ac2fba2c1c6d0c07098756"
+        "bytes": 3964,
+        "sha256": "184607c8103a162ea2bb15d0d051da4707c0a2483a157cc3308a89c7b3264db2"
       },
       {
         "path": "proofs/lib/Lax56Proofs/MainTheorem.ilean",
         "bytes": 2296,
-        "sha256": "de57f751a2bf5520fb7132a421328ba7ce93730e936c3ca4be25190d05687139"
+        "sha256": "3f23ee8bba7e7a204b870525a7bdb4ae06ff992a25021e2737388d312141bce7"
       },
       {
         "path": "proofs/lib/Lax56Proofs/MainTheorem.ilean.hash",
         "bytes": 16,
-        "sha256": "2934f7c260f77d1141ad75fb38dd46826acfbc31b9e718448bd9ec2d96bd4bb1"
+        "sha256": "0026f6b802dad63923a6388c1619ba4b081855c502bcda8fb0b9f237f0d91660"
       },
       {
         "path": "proofs/lib/Lax56Proofs/MainTheorem.olean",
-        "bytes": 11432,
-        "sha256": "685bf80662a66cf9e2f085cb667d96129c0026951623458522a180dd54d50515"
+        "bytes": 11448,
+        "sha256": "d6e2df58c9b9fc5f00ac9ff7149bfb6fd41cd769aae3bdeec7a91a5c85f9a551"
       },
       {
         "path": "proofs/lib/Lax56Proofs/MainTheorem.olean.hash",
         "bytes": 16,
-        "sha256": "a7c79c9cf64ce55c011290174a04f47e37a62011e220d91f5db3a4b365ac17a2"
+        "sha256": "45b3ed659f642e538d74cc58904a5e638b682af5bf67c3c44420f06b86c22eb9"
       },
       {
         "path": "proofs/lib/Lax56Proofs/MainTheorem.trace",
         "bytes": 2379,
-        "sha256": "39041500cafe5b89fd485371a0acafbc2be36f04cedd0d7206eaca5fbb06432e"
+        "sha256": "343582ff1e1d1fd7acd5da9ce1c6cad9333ea7efc34adff9019fe634b1b825ac"
       },
       {
         "path": "proofs/lib/Lax56Proofs/NumericalBounds.ilean",
-        "bytes": 11248,
-        "sha256": "f137898ce901fd50df19dacc044b411712b96c7418a05979c99c1da26284abac"
+        "bytes": 11094,
+        "sha256": "2c4ed728c1afeaca2127b324fba9a7728271b4b1ff8c632a5b02d45fa7783034"
       },
       {
         "path": "proofs/lib/Lax56Proofs/NumericalBounds.ilean.hash",
         "bytes": 16,
-        "sha256": "10a8372f4186ef56c7377e4501c567e93a0be20377f4460a7dba3d20ed5082b6"
+        "sha256": "30838a5786625633ffcadae889df87794d881b349a0270edab8532be369d8e09"
       },
       {
         "path": "proofs/lib/Lax56Proofs/NumericalBounds.olean",
-        "bytes": 329960,
-        "sha256": "85728d1e1bffba2724439d9c2631d010df321d23ac732cf1cb1cbffdca3b3c36"
+        "bytes": 386960,
+        "sha256": "d0983cdc7f5685928a14f52ad8b346551bec20f6b414581086274ac5d92e51e3"
       },
       {
         "path": "proofs/lib/Lax56Proofs/NumericalBounds.olean.hash",
         "bytes": 16,
-        "sha256": "7fa561536194347edc563ef57f1f50fc57dcafe781a8a18a0db8afb01ad41a0e"
+        "sha256": "73d1534edea0a86ff6cd95d74fe3fd2dd24ee0cf5089148d44c59af72c522ff6"
       },
       {
         "path": "proofs/lib/Lax56Proofs/NumericalBounds.trace",
-        "bytes": 3315,
-        "sha256": "f1938879cfaa151428aaf11f6251d9f1fa983470abdb1ed6179a6d9fe17ab4a7"
+        "bytes": 3071,
+        "sha256": "d063eaae986e4e646c63d898831ee42ee6bc82801153136dc475893ddacc9ed7"
       },
       {
         "path": "proofs/lib/Lax56Proofs/OrderGeometry.ilean",
@@ -1751,7 +2490,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/OrderGeometry.trace",
         "bytes": 2678,
-        "sha256": "af97b1cb5c319df13f032d0b19ead59174253ff74af4babe5778feae848de4f7"
+        "sha256": "b1cf2e7fe8d0c5cde6848af97afbebdc6c93bd5a3861529f1eb1ff97cc7f82da"
       },
       {
         "path": "proofs/lib/Lax56Proofs/Orientation.ilean",
@@ -1776,7 +2515,7 @@
       {
         "path": "proofs/lib/Lax56Proofs/Orientation.trace",
         "bytes": 3730,
-        "sha256": "28498c9891bf5f5648161529303ca35c604b7cae34b4070dbaf3a0046819db15"
+        "sha256": "cd1812df32b41f04e72875420e3fa93197536f9170dbbab2d639520fdd809f52"
       },
       {
         "path": "proofs/lib/Lax56Proofs/PotentialLower.ilean",
@@ -1801,32 +2540,32 @@
       {
         "path": "proofs/lib/Lax56Proofs/PotentialLower.trace",
         "bytes": 2729,
-        "sha256": "d46832a0ad0571eaff274ee15581ec833e3a866fc0bbef476b126e2881fe896b"
+        "sha256": "0f257511976e0b0d37990e2cf032fed335cdfd47b3797654eaae66edb621fd89"
       },
       {
         "path": "proofs/lib/Lax56Proofs/SlidingWindows.ilean",
-        "bytes": 42090,
-        "sha256": "25d29aed7e804f27c29a72aa34e3704d96be1eaf0e9278ff9571c3ff01e4516d"
+        "bytes": 42232,
+        "sha256": "25cd3ca0971bad65143f2bf240c6ce5cc67a9d4ad31cddec1287ce598bf2a273"
       },
       {
         "path": "proofs/lib/Lax56Proofs/SlidingWindows.ilean.hash",
         "bytes": 16,
-        "sha256": "178f73d3d9ef8cca2151ff3ca9bac8287f3bc28c0c2e084556310fc031c2e68f"
+        "sha256": "3e7038db166569741da3c464a5b17b76fbd960064fe6b13cae268ff046a31c77"
       },
       {
         "path": "proofs/lib/Lax56Proofs/SlidingWindows.olean",
-        "bytes": 559264,
-        "sha256": "4710b383239bee34573967692e8942f3cb260ee7ed3f6933d09b844f534507f5"
+        "bytes": 568352,
+        "sha256": "76ed3a9eb94d11a79245de64a3df4b6221fb103cbb42a2f48c76a4062f1ab018"
       },
       {
         "path": "proofs/lib/Lax56Proofs/SlidingWindows.olean.hash",
         "bytes": 16,
-        "sha256": "c832452df5aedb7bbc58e0871eb7f8ce7d2ce2e4d55e3f225911d2a59d2f88bc"
+        "sha256": "18bffcf3728ea5949e26602baea203a23a5468720a1ec8a95c58654bdb0fdb26"
       },
       {
         "path": "proofs/lib/Lax56Proofs/SlidingWindows.trace",
         "bytes": 2739,
-        "sha256": "f36a0fde47aa16a2a5189488639b7ed27eb3350dbf21b5601fe99fc114c4f784"
+        "sha256": "75f8da48316c1706c8518868e38cba48405826ddd08355c527c1a6807096e574"
       },
       {
         "path": "proofs/lib/Lax56Proofs/Telescoping.ilean",
@@ -1852,6 +2591,1006 @@
         "path": "proofs/lib/Lax56Proofs/Telescoping.trace",
         "bytes": 2392,
         "sha256": "db3488863daf7004e91191a267284e0b909c6570d8b4538c068527ed67ba017d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCaps.ilean",
+        "bytes": 19336,
+        "sha256": "45a1e416e91d585ce84b1a7b0dc0ee75e7b80411852dfbb433f6c9a24dad2257"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCaps.ilean.hash",
+        "bytes": 16,
+        "sha256": "31dd0f37ca0d272dfceddde4c9bc6fcc49925feb5704af98e1d92212139cf628"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCaps.olean",
+        "bytes": 395800,
+        "sha256": "5048e0a2167b33ccb88521e9feeea8e4788ca16ebb7c7749dc86f87615190666"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCaps.olean.hash",
+        "bytes": 16,
+        "sha256": "5ce05a7475efb8242a0108f7470d7a9cac9aac4f1e54afaa1dfed237179dd8ef"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCaps.trace",
+        "bytes": 2380,
+        "sha256": "5bd121b615e40dc4e19ef99b9c215db902eee7fc4f258abb88e259208419c151"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCompressedSupport.ilean",
+        "bytes": 25858,
+        "sha256": "541177cf12ff32cf04f292400a4c3b13a2bfa96d65bea0460299ff20f2bbae64"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCompressedSupport.ilean.hash",
+        "bytes": 16,
+        "sha256": "cb3b29a543fc42d781373699cf3433852dabfc78ff8b2ad42eb22cef12414fe1"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCompressedSupport.olean",
+        "bytes": 359152,
+        "sha256": "1cdee67e4d6a182eac79def98bd37fcbb63d13958b77c87302ea6d3043ccda45"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCompressedSupport.olean.hash",
+        "bytes": 16,
+        "sha256": "266be0e2b4730d851db07664499ecff1a132c1e5639a5a527bd21e58cba0ad53"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCompressedSupport.trace",
+        "bytes": 3156,
+        "sha256": "77623ea82693f9278a08dd1d2fe25aee307d0170756722ebf3b5d4cf1c67076d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCompression.ilean",
+        "bytes": 25221,
+        "sha256": "31cca24750bc00f4f564eae12f3e718e8e25b00de2e2db891c28634b2117941d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCompression.ilean.hash",
+        "bytes": 16,
+        "sha256": "465f5e1c5da4ca5c7f3b7d6127eea14495b0a505ee8ac8236256e405478ec3d6"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCompression.olean",
+        "bytes": 452344,
+        "sha256": "83ade5a04100b34cb6bb9f8d74dfa82701ecbeb66806eceae13c354a4a20a57e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCompression.olean.hash",
+        "bytes": 16,
+        "sha256": "887ddc330e071216891c58067918f548d71f5c73bda16e676701579f7526e1ea"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCompression.trace",
+        "bytes": 2271,
+        "sha256": "abc488913406dd30e5e8886cedc686689e68f8afde4cfd447a6f2cfeccbd56f7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrConvexRun.ilean",
+        "bytes": 43003,
+        "sha256": "fe69d9758f32190eefb23c0871f3a34bb8ff4772978b858742200bb68d6191db"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrConvexRun.ilean.hash",
+        "bytes": 16,
+        "sha256": "5e2dfc8c34d3400c8f24b6f5b3db7311a916d7d53782edbdf833edd3f935720f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrConvexRun.olean",
+        "bytes": 2316056,
+        "sha256": "43a55876954c095197a18e721cdaf3266f20b9a3b2ecac7625e384b0bba23932"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrConvexRun.olean.hash",
+        "bytes": 16,
+        "sha256": "a6bba07ff0f98585ce361362d64bad6872fc1ae153c12345c1142defd860963d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrConvexRun.trace",
+        "bytes": 2253,
+        "sha256": "38459b2ae58ee771c0d96f5f70c18d7f36785ffc38372f2cb192d635c386d564"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCounting.ilean",
+        "bytes": 17837,
+        "sha256": "79656ec9747489ea12c7d99171b8d1dc7b6b59e409a6786dbe56c0fd7e3a5e02"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCounting.ilean.hash",
+        "bytes": 16,
+        "sha256": "9a6955caf7f992e6853c886adce38eb3719d57187cf95eda2ea4cf444ed378a8"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCounting.olean",
+        "bytes": 228536,
+        "sha256": "22ad643670837be65f988e17d41fdeb325ad47280f56ec9b7fba87f77d07b3ad"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCounting.olean.hash",
+        "bytes": 16,
+        "sha256": "8a11e5cc618a23245402ea8ea6dd933899bb581f476e0b6ec319d723819582f2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCounting.trace",
+        "bytes": 2635,
+        "sha256": "d3a6f008cd18e3613d183b9860423616875385fb2f41f798da1a297b14d0a14e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCoverage.ilean",
+        "bytes": 64842,
+        "sha256": "ffaee25a4b01a56c2eaa495d7357d6d8256e0a46d27af4b8d2e85b4cc49b5267"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCoverage.ilean.hash",
+        "bytes": 16,
+        "sha256": "c5a93fc757fc8abdd5f9c4d73a1d98442814219c8fceff46816f1960004943a4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCoverage.olean",
+        "bytes": 1701520,
+        "sha256": "a7bacea0b150d46c4edfba9004438caa7b661047459c07923ffc3c562c1ed349"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCoverage.olean.hash",
+        "bytes": 16,
+        "sha256": "1619908dfd0e838163de63ed444120847de471fe37cf6411375d9a60308f734f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCoverage.trace",
+        "bytes": 2436,
+        "sha256": "6674fcbaca228f4763a7e42444e097c64a2b980dd5817cdc169b2c078d30a604"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCoverSetup.ilean",
+        "bytes": 26454,
+        "sha256": "501296f715632f33fa33407ce82902c35b51dfb0103f1261dc296333b5f70204"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCoverSetup.ilean.hash",
+        "bytes": 16,
+        "sha256": "83ee0df10769919bfc6b6ae7bf6874315d9ca0e9045e58ecf8cfac726a549476"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCoverSetup.olean",
+        "bytes": 226056,
+        "sha256": "44e4adb493683016ffe6bbfa4f164b2cf30dbed8682b202307eafca871fc3f09"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCoverSetup.olean.hash",
+        "bytes": 16,
+        "sha256": "be15d41818d57542f24b38309a6b5188f5a6a16d3a8ed5dbb26fbc8249c888ac"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCoverSetup.trace",
+        "bytes": 2593,
+        "sha256": "cef7e6c017b6f8a797278e0d2e5729a70b4e1ca34d80fcfa7afa3cf745639954"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCyclic.ilean",
+        "bytes": 44463,
+        "sha256": "c080377492dc30a6b7261e255b746d4eeffaf3f2aef8c6b53cb1404ad9de5336"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCyclic.ilean.hash",
+        "bytes": 16,
+        "sha256": "2b904f351c1f40c0378c548181131ea3e8d0e03ad7720c067a023aa5cb99f5d4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCyclic.olean",
+        "bytes": 1490320,
+        "sha256": "8896ab6824a3756140e35df751fc09194f32b6f22c88585cfa0d4d7122bb4cd1"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCyclic.olean.hash",
+        "bytes": 16,
+        "sha256": "c597e83795a070b8e6b5db14989aaa0c5e3b8e4699cc5dbeca6a72c6e3d984de"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCyclic.trace",
+        "bytes": 4029,
+        "sha256": "af734991117a77951c581c89f2c4dba5130eb10f0e9e9242a43ac33241a480e9"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCyclicRuns.ilean",
+        "bytes": 17630,
+        "sha256": "145f870278fed073817add5e991fe9e8b62651875abda7784af5315e903ccb1d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCyclicRuns.ilean.hash",
+        "bytes": 16,
+        "sha256": "56299c227520de2253e34a7796bf95d957a917a58b34feffcd7d70ef14aff0fc"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCyclicRuns.olean",
+        "bytes": 379488,
+        "sha256": "1ab5bf1943e8b75338268b7eab4bde827f29a85f6429e15327f2eae1e85045b0"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCyclicRuns.olean.hash",
+        "bytes": 16,
+        "sha256": "e645fc1998d3a52839e0b431183e4b38d9d1fb7e69851502b96412d0ffaa69a7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrCyclicRuns.trace",
+        "bytes": 2255,
+        "sha256": "c1884ba6a0f2b0adc1b9ca092f6039053062ba158a44513c8f6eee7b4c3fca3a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEdgeCaps.ilean",
+        "bytes": 20847,
+        "sha256": "8363f2263791a58988f9e1ea8b6fe34f362f9d8fd8ebcd4b839f4472ad203d2c"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEdgeCaps.ilean.hash",
+        "bytes": 16,
+        "sha256": "5280eb574ebaee0b3b588dca57d6adb5b115b109257b9cf617e50fcec89832ff"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEdgeCaps.olean",
+        "bytes": 1411280,
+        "sha256": "35187203c8c47c55309babc79f1512290847db6ef703660ca1c8e316ca993846"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEdgeCaps.olean.hash",
+        "bytes": 16,
+        "sha256": "8f8fb0889e3d72a6e3a173e6f2c8c388a70684ffc8dc0a6d3d1687e22fcbce0a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEdgeCaps.trace",
+        "bytes": 2249,
+        "sha256": "4cc6b2c59c35312edbf86d798064f53a32c044913795ad5f298f6cf1fd2eef85"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEndpointCompletion.ilean",
+        "bytes": 35089,
+        "sha256": "e2eec67b108544210b0006a0e4a178dc9ae5f3451a0d042838bef8f2ca3e2af1"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEndpointCompletion.ilean.hash",
+        "bytes": 16,
+        "sha256": "fd24b77b6a481b1b2261e51a9f51585098d39cb6037a684db80021f325e487d1"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEndpointCompletion.olean",
+        "bytes": 517960,
+        "sha256": "db5ec5daf0aa9e2e9b2e6e7982bde28b9370ec0829b8bb5e266a71093890dd42"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEndpointCompletion.olean.hash",
+        "bytes": 16,
+        "sha256": "687f5dc4b78acdc50170b77a8c3bccb764c35048efe48135037878a5c6bc8dd4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEndpointCompletion.trace",
+        "bytes": 2507,
+        "sha256": "dca189bb06466e5a5f6e1fa771e0c5e99b6931d4ace40ac673cddf2335db80f3"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEndpointDrop.ilean",
+        "bytes": 47985,
+        "sha256": "a67c516c39f751035ba79014c6c3ffe6350e9ca2374d186a95ab9aadd05cca80"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEndpointDrop.ilean.hash",
+        "bytes": 16,
+        "sha256": "15926536bd7b4e0b20cc9cb016440d7c67a6cd533784fbe607a88b653d457ba2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEndpointDrop.olean",
+        "bytes": 517312,
+        "sha256": "61055f1692e38c78a328c5a8128e16e8169b48280b06938a16451ccf86fedc3c"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEndpointDrop.olean.hash",
+        "bytes": 16,
+        "sha256": "7e5292383c4bc0eebdf72ab39faf1243b08cc606a6b62b878fff4f7e63b66c55"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEndpointDrop.trace",
+        "bytes": 2676,
+        "sha256": "152eaae2919debfe4fc29b85f133aca1ca398050c3b2f9941a604a10f21adf67"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEndpointGeometry.ilean",
+        "bytes": 27517,
+        "sha256": "35c46ecba8e13e388e6a321bbd493901c1424b9383845efae599503418b432aa"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEndpointGeometry.ilean.hash",
+        "bytes": 16,
+        "sha256": "726087e4b258dda00f209b2723f8ac0e6b2cb57a0266984fe2a5c832b87af7f0"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEndpointGeometry.olean",
+        "bytes": 441304,
+        "sha256": "08395711a32be22bff0a71a386a2efde5e5ea35b8dd113438eecb5488c0d9508"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEndpointGeometry.olean.hash",
+        "bytes": 16,
+        "sha256": "c0a91fa0e0e23217de6f6c7ba4314351eeffb565991158bdc174eab06b79b831"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrEndpointGeometry.trace",
+        "bytes": 5125,
+        "sha256": "9aa3290aee175263d8e34f5071d646312674837f683253ec332e1be97a1ac0b3"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrExtension.ilean",
+        "bytes": 37940,
+        "sha256": "b88dde4c9da4fa4a9ff5aa4543822eebb251e42d19c74087c76ad57f562201b2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrExtension.ilean.hash",
+        "bytes": 16,
+        "sha256": "db3a661d25245e535164bf2aea5f941e103cbc4c5f474bd342d6dd43a815b10a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrExtension.olean",
+        "bytes": 1785840,
+        "sha256": "85621cc2ddb64e2d8efe5bbf2c0c0062dc3074b601175309f73dc631a7cbd96a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrExtension.olean.hash",
+        "bytes": 16,
+        "sha256": "f05679b49bea62b1bf22595c51c9d9ce0178c7038677c0f9639158d2c5e63d6a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrExtension.trace",
+        "bytes": 2247,
+        "sha256": "47a2ef76aa45dbd15a5ac50078ab66378cf0f912d5c3d5010b4ef2633399a7cb"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrExtremalRun.ilean",
+        "bytes": 34012,
+        "sha256": "57874261c6bbd23969b85459979c68a1ce6697a818a69d51a5dd6557c535434e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrExtremalRun.ilean.hash",
+        "bytes": 16,
+        "sha256": "381663e964d2dfa41162398f5dd5572066d332d9de656e4aa35c5f412b71c441"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrExtremalRun.olean",
+        "bytes": 819720,
+        "sha256": "a28fc7277770d0319dcbd480aa4245d174c7826d0bd83c2a60ef776b956161b7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrExtremalRun.olean.hash",
+        "bytes": 16,
+        "sha256": "2c94c1fe6c4c6ac641546dbc6b3d748dc0b9c78226d39e5a908a95bfebde12b7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrExtremalRun.trace",
+        "bytes": 2279,
+        "sha256": "f5f3d1b2216dc0503b227926de4a03a27897f56021fac66871cd066825423be5"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrFourLayer.ilean",
+        "bytes": 9932,
+        "sha256": "e790bd2c97fb8e2abc9bfccf172fea3f3d27cff4429d57afc05b087aad53d2c7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrFourLayer.ilean.hash",
+        "bytes": 16,
+        "sha256": "436890d204b5f9afd19daf8a3f5fbb6524e8c083279252fd228591bd739c658b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrFourLayer.olean",
+        "bytes": 223528,
+        "sha256": "b8a472a542faf9a94daefba02f2a795af5b7225813059e9933d6ddb94910e846"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrFourLayer.olean.hash",
+        "bytes": 16,
+        "sha256": "efc4062b5c495d80a3c49fa4b92b1f1e4623e639b8e3bf55d3d19c41d9ee12b8"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrFourLayer.trace",
+        "bytes": 2618,
+        "sha256": "a63bc21ccfbf04280c773ecd67053f3f7ec2cf7f0ae4ff58314350b77af473eb"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrFourLayerReduction.ilean",
+        "bytes": 7833,
+        "sha256": "edb06496238db8a128814b695b4fe45c599142ea25672d04062d210a3e115201"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrFourLayerReduction.ilean.hash",
+        "bytes": 16,
+        "sha256": "36a4db321dd662ef54a798f14dcec8eb875be0e4e256207ba5413e6abba838b5"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrFourLayerReduction.olean",
+        "bytes": 113144,
+        "sha256": "1ead829055aaec29a7f5ede9598c0973bad36a020df56f2064116af1157175f5"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrFourLayerReduction.olean.hash",
+        "bytes": 16,
+        "sha256": "79bea95bc6612a0d39a12277606bf397dcf7880c9ca314a5c7897030570f9ab7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrFourLayerReduction.trace",
+        "bytes": 2336,
+        "sha256": "59f4b87328da0d6479a51f71802d065c66025a84212da703855ca25ff89a7d13"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrLocalSupport.ilean",
+        "bytes": 21449,
+        "sha256": "2e47d453712c6411284339be17eb5a4f335ccebe53442ac75b7b46c644164e6d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrLocalSupport.ilean.hash",
+        "bytes": 16,
+        "sha256": "b981e839baf93c85659353daa1319ab2ad763bf4d02d35954eb9ba7c53ab1a6b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrLocalSupport.olean",
+        "bytes": 640448,
+        "sha256": "622cd89e5115e2b66e381f9d8adca337590f9a7c4cc6bb54904aaa7aca10b3b5"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrLocalSupport.olean.hash",
+        "bytes": 16,
+        "sha256": "9ba21439889a60818a8fb000b940d4626ea166b6ac412bb23358bee5d358ef51"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrLocalSupport.trace",
+        "bytes": 8729,
+        "sha256": "f8fea44c5adad595e5a200ede292ab6597be871be0194feb47544efab76c9e2e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMatching.ilean",
+        "bytes": 40470,
+        "sha256": "b0c1788cc22d794e514ae5981cbf5da69dc47b1282136448bfefb30011ee741b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMatching.ilean.hash",
+        "bytes": 16,
+        "sha256": "3d03dddd937c3c54bff40568c8c2089dd1705b6ce30ae7a5f7a9e46686f01031"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMatching.olean",
+        "bytes": 267368,
+        "sha256": "5437dfd733c7df29dee10e1e3b7146ad3ee4bb21e4d02431e4ff525f3063ff9e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMatching.olean.hash",
+        "bytes": 16,
+        "sha256": "c9268b33fd6429943e25b577c7e6d54df1655169ecee60a1da49043e65acb8f2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMatching.trace",
+        "bytes": 2247,
+        "sha256": "54b4135fac07b3bae4d7cf8cb04247210da3b9b5862cc16e58a0b087730e1082"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMaximum.ilean",
+        "bytes": 9333,
+        "sha256": "c7acae5c45614c1e5b9e015043af20ee5b2398e3e44d10995986ae1fa9fa9fca"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMaximum.ilean.hash",
+        "bytes": 16,
+        "sha256": "b6694e723c7168290a7f1fbd7576668d46c60310f62ce12d431b46ef9a20f062"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMaximum.olean",
+        "bytes": 361920,
+        "sha256": "d84afac3122921773b04a1a1c6c7a0527e494a200ce2024542e5db2c4956d002"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMaximum.olean.hash",
+        "bytes": 16,
+        "sha256": "8c7ff33a28d6df9c76aeb794ed75f9e7f90b4f1df05c3baddd4aca02fd585d05"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMaximum.trace",
+        "bytes": 2208,
+        "sha256": "9377a51510a9aa2eb993e6aa039ff39e2b240c05609e7ae420c38c15ee3353e6"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMissing.ilean",
+        "bytes": 57543,
+        "sha256": "4d2d976915b2d034e3779bc9b17c517bedfcc14e14e06d67883e11626364b40e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMissing.ilean.hash",
+        "bytes": 16,
+        "sha256": "2dd8b98d36ce02e7ee3114b857283a06d27b2de1165c4ef930b4ed426d3f0cc8"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMissing.olean",
+        "bytes": 914088,
+        "sha256": "bb4a0fbc73af29091a3e588d0a62fbcef7d379a403014c5e425dd46f3c452be5"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMissing.olean.hash",
+        "bytes": 16,
+        "sha256": "771183ee5ce6ef9ab3f313ea8aec537b34b710c284956e3f50168a786e3a3a8d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMissing.trace",
+        "bytes": 3558,
+        "sha256": "cd603f1f7990b22fb911740815429dc9c297da5601d4e15d6258983f7cd5238f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMissingExtension.ilean",
+        "bytes": 18821,
+        "sha256": "c6d7b197e1cc5842937e3ab7c3e4fe811999d1b227af214861afbbef2468aa26"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMissingExtension.ilean.hash",
+        "bytes": 16,
+        "sha256": "e44bba5dadf8a22f5f42530fccb7ca0aaa3f3499dea2f35a6f9733dd76c201e2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMissingExtension.olean",
+        "bytes": 185672,
+        "sha256": "0a9d26f12614727828b16389e11ef23e605c814f11bb56965df050e48134c90b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMissingExtension.olean.hash",
+        "bytes": 16,
+        "sha256": "ff4d2aab1343ff61e3df1649b8ced894a921c605c3a8b7f8e0e5cfc70ccf0328"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrMissingExtension.trace",
+        "bytes": 2313,
+        "sha256": "335af56dde6fa6dd12503894a2487671484a7c44ded453454aa4bccf8d6e1a50"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrPolygon.ilean",
+        "bytes": 37762,
+        "sha256": "036733541d7412497fc421f3e44a9fe162789e18589d907746f84408f89b46ab"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrPolygon.ilean.hash",
+        "bytes": 16,
+        "sha256": "4a124526c52664beea2295349a7acfcc8e7a2fb30a1c5291d3acbf65c64eb1b3"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrPolygon.olean",
+        "bytes": 940072,
+        "sha256": "052ec8118e8b7490539c0bf78e41c573959a16134b5e2110766d02ffd468ec16"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrPolygon.olean.hash",
+        "bytes": 16,
+        "sha256": "2eb555d8222edffe238fccd5c6db5d50377e511afa751808f62c530f857a376f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrPolygon.trace",
+        "bytes": 2422,
+        "sha256": "ba36176fc1fc9f3b73808eda755b45c7500b20577883bedd190c6b06d77a6db8"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrPrivateRuns.ilean",
+        "bytes": 24335,
+        "sha256": "7855d55c4b563fee3e05ffe91773174a1925cbb222aeed039791819bd4decb80"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrPrivateRuns.ilean.hash",
+        "bytes": 16,
+        "sha256": "91a64e16e5e5e9698fb6eee59fc6b8a857523733affb0362c6abd868d5ab0770"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrPrivateRuns.olean",
+        "bytes": 278376,
+        "sha256": "84dcc806348ffe2532bc5fdfb9700bd3cc1f1186d490784db5b3bb9c502b4b84"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrPrivateRuns.olean.hash",
+        "bytes": 16,
+        "sha256": "93a2c902c5fbdff443c1330b2133f39815ed1373b41b1740be8a23f8c2b449b2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrPrivateRuns.trace",
+        "bytes": 2275,
+        "sha256": "0461e92f0425a45e18dda327757251f75cff7a7bf67792c3945bd50ef533e961"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrProjective.ilean",
+        "bytes": 35998,
+        "sha256": "6cd31fd57679e2b90ea028201c63479d1170586170b99a1200428e10a9a64653"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrProjective.ilean.hash",
+        "bytes": 16,
+        "sha256": "5e79672686811475d4bc780ddf4e0de71db61c4317e63baa87c5895f63ded4d3"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrProjective.olean",
+        "bytes": 750144,
+        "sha256": "1c8fcea34b507c7145a94c01655b6c1e7cd6da8a26e8d85db1663d342720891f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrProjective.olean.hash",
+        "bytes": 16,
+        "sha256": "12f8daa8304a63bd4119a725b0accf3f2180c2780f1ae1e789706c227a301c6c"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrProjective.trace",
+        "bytes": 2432,
+        "sha256": "2012dec5d329ab4ee4904db345b65bffedf7cd87af78a9c8861b9fe6d95e645b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRadialOrder.ilean",
+        "bytes": 31271,
+        "sha256": "13daf6a9882d7e4e30a0c9f36ca8e1db8656fe0f837ebfc29da6d0bf1b800e14"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRadialOrder.ilean.hash",
+        "bytes": 16,
+        "sha256": "a9cf1f7cbdc3bd8f1b43b5c19bf872a8c5801b54aba5e7dce302d0106c47a450"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRadialOrder.olean",
+        "bytes": 4333200,
+        "sha256": "cfa9b6a80fea2572633d6e59f46781a838328ec25d98ccf24b17a07bd49ce6bf"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRadialOrder.olean.hash",
+        "bytes": 16,
+        "sha256": "07dd3237c00cf9acf26607b5d6f1e529c4d1d6774e42a787b7db00884c7441d4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRadialOrder.trace",
+        "bytes": 2446,
+        "sha256": "346fff3c5902b202f9cd9e61c1fee5e57292deb45d97a6580b3da1e7e4f59503"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrReduction.ilean",
+        "bytes": 14625,
+        "sha256": "530ff428fa664cfc13981ec6a26f234c4de18a8f5bd60cf833698177d62a74dc"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrReduction.ilean.hash",
+        "bytes": 16,
+        "sha256": "1a06760a8311f253b2d526651af474fb1ab333956bb59138e523d2088d475846"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrReduction.olean",
+        "bytes": 115888,
+        "sha256": "20c11b88b3d860302dd118252f14bd42b4e0567c1b6c3dcb306328c6d0632835"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrReduction.olean.hash",
+        "bytes": 16,
+        "sha256": "d6bdf352016a3dd134ebf09024066d23995eb56714e73435acdcca8b9ee87485"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrReduction.trace",
+        "bytes": 2420,
+        "sha256": "292d71d512a2e44369278d4cb4dad7632afeca0591be76f86769bd4b14b333f4"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunInduction.ilean",
+        "bytes": 34749,
+        "sha256": "eb257cb7f3298f43ae56e514d16a1c4f91eb2e2b3b61f62542adc40466585471"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunInduction.ilean.hash",
+        "bytes": 16,
+        "sha256": "878c7106d15eedcffb2f8fba223dc3605bfafeb3a7af7bc344a983de06d4c1f8"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunInduction.olean",
+        "bytes": 363560,
+        "sha256": "e3adb4153a5901da27c8905b8579c5b3d1bd9f88bc40ff904651b27d702e81d2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunInduction.olean.hash",
+        "bytes": 16,
+        "sha256": "5a641567ff969298b26006372cd8778c0e4f3312ad4785e887c3e9914a8b8d26"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunInduction.trace",
+        "bytes": 2485,
+        "sha256": "4a0c50c17a63ac195fe9a1549da2d25250ceb7a7ef1d324f32b8ef998f6708c2"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunReduction.ilean",
+        "bytes": 13556,
+        "sha256": "d6dd650c5dc765841a20b254b349ae1050351b1b7a30feb4f39827c629ec43c5"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunReduction.ilean.hash",
+        "bytes": 16,
+        "sha256": "a3eea726606b3ffc203a619105ab79b5fa179c56bf107d633208772f695b14c5"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunReduction.olean",
+        "bytes": 90208,
+        "sha256": "8b1555b568f04dd4c8b6dae50620fac2dc4ff82f0185ded671364687f90525b7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunReduction.olean.hash",
+        "bytes": 16,
+        "sha256": "7312db593263dd8adbcc10b12900a04f4762c7972ab91477336c43f429087081"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunReduction.trace",
+        "bytes": 2456,
+        "sha256": "ac2a23fc979964a483406a442a773bae3838e17b9e7904853c85069f4d8785f1"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRuns.ilean",
+        "bytes": 24204,
+        "sha256": "0328ecd53a5ce94100a8ffb571f6c05281bd2015f846b6dc3f917a5fa736465a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRuns.ilean.hash",
+        "bytes": 16,
+        "sha256": "3ec7af9a6aec63cfea409a7db75103e32ba2a1a4645c65afd80c4525566d972d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRuns.olean",
+        "bytes": 370360,
+        "sha256": "afc3b9699b40bbcf314d6f5fe1abf3ef65309639dac8abbcc1c13f41a985ff91"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRuns.olean.hash",
+        "bytes": 16,
+        "sha256": "f10dc9427abd78c8d26c1bed912ecdcaf30f1fd9b2ab3c791680c0a0b431cc2e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRuns.trace",
+        "bytes": 2184,
+        "sha256": "d88e47f9d6df77223b6fddb74644138ee9bb25e31276ccf02b1b5cd614e7811f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunSetup.ilean",
+        "bytes": 31069,
+        "sha256": "ebfcc352db54055fff338d509c7b33381bf919368748138a39694fc458b6088d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunSetup.ilean.hash",
+        "bytes": 16,
+        "sha256": "a6efec97486898ac89e14a3c104cd35a8c5e4aff59e682785b65294e578bec3e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunSetup.olean",
+        "bytes": 796208,
+        "sha256": "7281f4c5702dbb168f753d38dbdc17fcec65fad4fdd5c1c502e20443de697490"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunSetup.olean.hash",
+        "bytes": 16,
+        "sha256": "7239fd94158c89f80fb0512e258814655e59a3112f96d31e346fb69dd86441fb"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunSetup.trace",
+        "bytes": 2882,
+        "sha256": "76e513fe2094f7ca70702965a844ec456c45e921b98c2f4168a004a8d8af9c4b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunSupport.ilean",
+        "bytes": 45518,
+        "sha256": "c5739b29cdac7adc3dc4c3789f4365dfa93217d22c4f062c11af6fb2ab0975fc"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunSupport.ilean.hash",
+        "bytes": 16,
+        "sha256": "9a9d572964c5a1c3b6b092c5c0a0b11d8372a0ec4a0568dd2166c6915ae06582"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunSupport.olean",
+        "bytes": 882648,
+        "sha256": "bd103027a40d69e50564f452c6eb7910b353a2937189c5b2cdb9a40a1f102bb8"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunSupport.olean.hash",
+        "bytes": 16,
+        "sha256": "214e6d81ea311e8fc0eedc05d023fa97518045543889c5a48066a8af41b816ca"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrRunSupport.trace",
+        "bytes": 4899,
+        "sha256": "2baefdfdd217641017c729c24d670bbed917852520f887a646181e4c08230b69"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectorArcs.ilean",
+        "bytes": 28802,
+        "sha256": "6e483ef7dc422e39fda14a4aad0ffa24fafd216286e5938eaadba200610c8839"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectorArcs.ilean.hash",
+        "bytes": 16,
+        "sha256": "5dee19b65e9dc88ce35105151a8f61cf595658b74acc3c4106350c4bb104efed"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectorArcs.olean",
+        "bytes": 1114248,
+        "sha256": "5e139502ef70a3f4df10c0502ef2b8f17dc4ecfd9ca162a324042ea4af830356"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectorArcs.olean.hash",
+        "bytes": 16,
+        "sha256": "11623303bed91c91c068e1e9faf5a567cf8dab0553378445ac9725a4c2ebfa21"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectorArcs.trace",
+        "bytes": 2723,
+        "sha256": "bdcc7d64003b71288fde2043a6623c0b770a1e0d9b6d9af25bb2300540c9104a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectorBounds.ilean",
+        "bytes": 29191,
+        "sha256": "1ccf503dc261c6f619660746bb6969f8230706869ffdc13ea7d2357a8cfa1668"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectorBounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "994c69af51183d51209cc3e6b1d350b52d5e287d59b3163cf6d0434637a2938c"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectorBounds.olean",
+        "bytes": 665872,
+        "sha256": "93d3b5e376f94f909a3607b9ac1904f9dab557a48fa82f61d4d07b9ba16f3a05"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectorBounds.olean.hash",
+        "bytes": 16,
+        "sha256": "02e6b9e8b256d244eff368232ea1321143fc11328c1130a2c6419bb69b1690b5"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectorBounds.trace",
+        "bytes": 2440,
+        "sha256": "f0123e414777db6c5f0caf01c2afb203f811662b78abf0f96d8ba3707568a426"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectors.ilean",
+        "bytes": 23863,
+        "sha256": "a2eb8f7b475b81ba127e1098d2f2b7d13d00d853ea8829ab0220fd0e5c91f4cb"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectors.ilean.hash",
+        "bytes": 16,
+        "sha256": "575d2cfeda08f8e0272308afd0203083e6198a05afe1f88f33010060c8bdf57c"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectors.olean",
+        "bytes": 1719432,
+        "sha256": "a469f1e9e818dd79b21ac6466bd0e41f303cadb47ffa4ce13cc5f9a4b3528146"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectors.olean.hash",
+        "bytes": 16,
+        "sha256": "9c7a1c81dcef58687079bb33059abe538a0665e44284985853d9ab2d6850660f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectors.trace",
+        "bytes": 7665,
+        "sha256": "752cafbcd75fa8ec8def3eb3b4a109a45aa838cfde3c8fb89bdc4d8cc2b31d4b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectorSetup.ilean",
+        "bytes": 18624,
+        "sha256": "3b0a39178b6dc06c8763965e54a418212406256e41c3b4eec1940936c3f89009"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectorSetup.ilean.hash",
+        "bytes": 16,
+        "sha256": "3dd8e9994545744f2ed431a40e52e9b9e52cba80d722d0e6d069c1d956ff943b"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectorSetup.olean",
+        "bytes": 197040,
+        "sha256": "b7f4bd894f6c41cd393111918da784350fbc164ef923712b56cf3c361112e611"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectorSetup.olean.hash",
+        "bytes": 16,
+        "sha256": "adb464d3a84939c2bd4bb0c3d9b00bd0a6872fd7ae9a14b00e5c17329aee2e8c"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSectorSetup.trace",
+        "bytes": 2450,
+        "sha256": "9e055db4e0573bc047ab7285c0b3bba24e4e28574e8dd03bd0951d9e63f19940"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSelection.ilean",
+        "bytes": 52657,
+        "sha256": "13cde947f6f350eebafd2a810632dd27c498238022cbd15840dccef8d647d1e1"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSelection.ilean.hash",
+        "bytes": 16,
+        "sha256": "d9adbaddd4bbfd9b9223dec3aa3f199506cea7ddbf2a9c209901748d99eb6c4d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSelection.olean",
+        "bytes": 754536,
+        "sha256": "da7758f1d48eed2ef134a0fd990b6ea8552add2b5864ada41323442c9efc6925"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSelection.olean.hash",
+        "bytes": 16,
+        "sha256": "20ef2e56d6b11c86d5f576fe66f50cb1468672bb320b51f33a7cfd00fc6891f1"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSelection.trace",
+        "bytes": 2463,
+        "sha256": "f13c67acfe772d55f61847d3ae3e6b3cc517482895f8a59cbe99aa16d5760680"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrShortSetup.ilean",
+        "bytes": 28803,
+        "sha256": "1282366c57a5ab6158c2685a504341e369f50a43e8596454f6c2c5e4d2dbf95d"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrShortSetup.ilean.hash",
+        "bytes": 16,
+        "sha256": "c22fce213897d6c5544974630e5c591612bbc031d02358679a428179dbee41b5"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrShortSetup.olean",
+        "bytes": 580184,
+        "sha256": "fcb6edb9adb893c1de0602242f5bbf5afbc7e6b5b04928a27d0f7da7e8fb56a5"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrShortSetup.olean.hash",
+        "bytes": 16,
+        "sha256": "b555daf93534a4ab0bebd51f1697ba368b3065c521ad3af5d3631dd189b4693a"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrShortSetup.trace",
+        "bytes": 2725,
+        "sha256": "2c767e25fe3ea82964ee73b2598cdb34084c0d780a43ebc33e0637beebd8b6d7"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrShortSplice.ilean",
+        "bytes": 49988,
+        "sha256": "8c2fe79e71e35e97f9da454e7dd372b84ff9ff040492481f67f17dfc895df587"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrShortSplice.ilean.hash",
+        "bytes": 16,
+        "sha256": "2d305cf814903ed58f4222b8b1e602b7010eb7b61aa14f46d2b01330db9163f3"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrShortSplice.olean",
+        "bytes": 1164864,
+        "sha256": "3ade9689c3bde75291515f74e128428c55e9846fc3a6492345e97dbccee554cb"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrShortSplice.olean.hash",
+        "bytes": 16,
+        "sha256": "8fb87af212823fbdf97a9b630dbdc9090ea1d419a0a924db7c18f3bd3d4d936e"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrShortSplice.trace",
+        "bytes": 5981,
+        "sha256": "cf8bec71c037595d7fcfa55e21f8aba80b9ca0dedde0f4009b7d548bb234a0f6"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSplice.ilean",
+        "bytes": 24093,
+        "sha256": "fa5de1d0c2006294858a549e12449e83cfb822b9cc8c802bb683843da624aee0"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSplice.ilean.hash",
+        "bytes": 16,
+        "sha256": "985b7f88d1af2884bbdf87b05b09ac38166ec9cbde18c749365ab4d0b4343fc0"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSplice.olean",
+        "bytes": 195896,
+        "sha256": "5974c4971b4f661159f8d9112fb9c80e33bbfe44cc4c3f153787ef75b5a03e3f"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSplice.olean.hash",
+        "bytes": 16,
+        "sha256": "9ce9acf0cfc6da8371e1cc5a4707e6d1ddf05b4f5f2f71b929a4d943b0f5a954"
+      },
+      {
+        "path": "proofs/lib/Lax56Proofs/ValtrSplice.trace",
+        "bytes": 2229,
+        "sha256": "c3c9a18e491f6e5cb052fbe279001206a3250d0d9df9f8bdd5269c70d357eab7"
       },
       {
         "path": "proofs/lib/Lax56Proofs/VertexRemovalStability.ilean",
@@ -1901,32 +3640,32 @@
       {
         "path": "proofs/lib/Lax56Proofs/WeightedPairs.trace",
         "bytes": 2375,
-        "sha256": "ba6afc4627066524794a69b1dbfc3879e04a148dac1d6214517ea87a8605d46e"
+        "sha256": "a461726f12103dbf24e9bd1881cb62043ae022f6bb43bc554aba82679f533181"
       },
       {
         "path": "proofs/lib/Lax56Proofs.ilean",
-        "bytes": 2273,
-        "sha256": "0e29f7ad0fc95b05f7650674f3e958ee4c6b6e5fd1a03991ae41c83bcc602b54"
+        "bytes": 4559,
+        "sha256": "6ddb79b22314b9dd5cf3399a4536bb2dd60d8340f14e26e2d6a23891866cc821"
       },
       {
         "path": "proofs/lib/Lax56Proofs.ilean.hash",
         "bytes": 16,
-        "sha256": "1974a306093f83624aaf26ed5f8854fe110bd5d1c0476ab93a54a821557be64d"
+        "sha256": "4b160e4f0d48062c309b8ac16a58341dc47635c482453294522b9daa9a459d5f"
       },
       {
         "path": "proofs/lib/Lax56Proofs.olean",
-        "bytes": 6272,
-        "sha256": "8ad689f8e8499ab2c41214874613deb59e81c4acd8b30ddb5b3d637acb1bf871"
+        "bytes": 11560,
+        "sha256": "eee5873cd42f0ec6a54195c06020a3bd6667aa075ec9d2c3896e71a1af5620dd"
       },
       {
         "path": "proofs/lib/Lax56Proofs.olean.hash",
         "bytes": 16,
-        "sha256": "86f370228294e0b85fee773950900e54000b4fe1e4ce0e11dd480317107f68ba"
+        "sha256": "be781d9d6d6db6322ceb4e9e6bf0f938ff6574c22f9e638cd36dba8d247b53dc"
       },
       {
         "path": "proofs/lib/Lax56Proofs.trace",
-        "bytes": 9607,
-        "sha256": "f1a88828791005fc896cb8d3b2eac38a9a590c32b7bf159e8ce55fe8bad6afbb"
+        "bytes": 17564,
+        "sha256": "60608913c079a698b6bd71cf19e46cdd28a64480c3605d2b51b9811da1e955f9"
       },
       {
         "path": "proofs/package/lake-manifest.json",
@@ -1940,13 +3679,43 @@
       },
       {
         "path": "proofs/package/Lax56Proofs/AnalyticBounds.lean",
-        "bytes": 12560,
-        "sha256": "b0a34a3da9be576b118e5cce4d844d704aaad9619b2f7ee6a74565dcd3d7be4f"
+        "bytes": 12601,
+        "sha256": "d2d8aaa4e4c3db716f5a6aadd80d56f3e7ec6c488d85832e56dd4a72fe67c546"
       },
       {
         "path": "proofs/package/Lax56Proofs/Blockers.lean",
         "bytes": 3686,
         "sha256": "e6360a23eba92c9a3808238c180283cad6af0ce3687c8936cae9317f13b61adb"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ConvexLayers.lean",
+        "bytes": 12798,
+        "sha256": "0c3b4ca7f7dcac4ff5f22df24257a341011251c31e34dd8fe46354128cc4e4df"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/CupsCaps.lean",
+        "bytes": 7978,
+        "sha256": "68105e14e51c4e757eef54f111411fdd42021acae382848fe74d2ae759e9b0dd"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/CupsCapsGeometry.lean",
+        "bytes": 10827,
+        "sha256": "10c8a51d2706697617c1a2e8e6b59f1607ba0ab4f964c880e622d14fd6e11d76"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/CyclicOrder.lean",
+        "bytes": 11359,
+        "sha256": "33879944831fccd295ef0b28f267753195210648f7ae8b990ef2e87e6127e095"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/EmptyHexagon.lean",
+        "bytes": 819,
+        "sha256": "28b82e0a1ee07e00e3a6db93782f92bc64cf14e148c2f5002b49fe2be94fd54c"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ErdosSzekeres.lean",
+        "bytes": 4609,
+        "sha256": "b17d12975481be145e0a6a546564ed3e49305c41452786105e626f6116e350b7"
       },
       {
         "path": "proofs/package/Lax56Proofs/FiniteIntervals.lean",
@@ -2075,8 +3844,8 @@
       },
       {
         "path": "proofs/package/Lax56Proofs/HKBPlanarFive.lean",
-        "bytes": 22873,
-        "sha256": "f5556879d920b04849d421867bb97acc5a03af6189d36ffd76dc01282fbd8f33"
+        "bytes": 22874,
+        "sha256": "15858ef85efa7f84312685e2ce166027a5721ce7d0065ee38def8aa00f6b1cc0"
       },
       {
         "path": "proofs/package/Lax56Proofs/HKBQuadrilateral.lean",
@@ -2105,23 +3874,23 @@
       },
       {
         "path": "proofs/package/Lax56Proofs/HujterKisfaludiBak.lean",
-        "bytes": 6284,
-        "sha256": "d6c2c9a7aba6b4813e714d8062d029f84eba6fd68b81337ce20ceba2a0b35150"
+        "bytes": 6389,
+        "sha256": "dcdd9dd994d748c5ad558f2880ec1c7a3c8919b11d680cbed3823c1a923fc86c"
       },
       {
         "path": "proofs/package/Lax56Proofs/IntervalDensity.lean",
-        "bytes": 7469,
-        "sha256": "99c91379075ace7c989736b1b98c3ac990b9535b7dc0814ed6f581ff78566367"
+        "bytes": 8127,
+        "sha256": "4666fa232d11654900db3a1a706035c3065a402971879d21698e4da0307627d3"
       },
       {
         "path": "proofs/package/Lax56Proofs/MainTheorem.lean",
-        "bytes": 1041,
-        "sha256": "e19604788f0f7956b95428162abe965216706fdb0ca95336aca77ff2d1caa25d"
+        "bytes": 1051,
+        "sha256": "fd5734b871630405801ab8da0663ddbe22c56110759f6fa13dbd0660018efdbd"
       },
       {
         "path": "proofs/package/Lax56Proofs/NumericalBounds.lean",
-        "bytes": 3571,
-        "sha256": "18679c48fd31b0e8f7ff9b696144499fbe44354ee272eb2fee462770ea0166ab"
+        "bytes": 3689,
+        "sha256": "c6dbba7c062555e819f8bd16a212b0d0eb0d1ab6bee160b99814e1183c2f34ee"
       },
       {
         "path": "proofs/package/Lax56Proofs/OrderGeometry.lean",
@@ -2140,13 +3909,213 @@
       },
       {
         "path": "proofs/package/Lax56Proofs/SlidingWindows.lean",
-        "bytes": 9978,
-        "sha256": "860f9679dd28ab8a910d06d01a9aba09187ad531fe34240625ae66b38ac138c0"
+        "bytes": 10019,
+        "sha256": "9e2d45d0209b0614290625d72067576533bb2ac1ceab3e98f8c3ddfb738fa40d"
       },
       {
         "path": "proofs/package/Lax56Proofs/Telescoping.lean",
         "bytes": 2451,
         "sha256": "e0d0e665ff6f089b53908cb41611d76050f0572d642ecb254760d6b55928e38a"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrCaps.lean",
+        "bytes": 6193,
+        "sha256": "0a1904f98d5f33eade111b3714a2c280f9c3630b3641079d664ea125af15dd13"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrCompressedSupport.lean",
+        "bytes": 13430,
+        "sha256": "1565fdbfedd5deb3508db706086933d66dfd8ddc6686b165456398f44d752bb4"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrCompression.lean",
+        "bytes": 11861,
+        "sha256": "b37e1c842ff04d8a30c470745cd99af9d653b3185e905ec5f48909a3d94c5ef7"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrConvexRun.lean",
+        "bytes": 16072,
+        "sha256": "55979c1eed45a166996994fac8bd6b7a675d9f242680469a9e9c665ebb489079"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrCounting.lean",
+        "bytes": 5343,
+        "sha256": "d5071d96ccab9cd18529123afa37805938927becb492cc3c9ee53e8ee6a409f4"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrCoverage.lean",
+        "bytes": 19823,
+        "sha256": "924348454d04d1bfd1c68449f53e6aceec139bbe6f17dd2b1c71155233157d1f"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrCoverSetup.lean",
+        "bytes": 8606,
+        "sha256": "1e797cdbefd051bea0402fb236b5c3a5863dde6a834c0e820bfade95cdcc47ae"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrCyclic.lean",
+        "bytes": 16774,
+        "sha256": "3531a08589d9350f1295b1ae82ed50f1ef5f9ddf3f86b12c898287fe33a43fd0"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrCyclicRuns.lean",
+        "bytes": 6449,
+        "sha256": "b815f5151174febcf0c3a840c33496960ed8aeb3932afcb1e01856bb7e9e722d"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrEdgeCaps.lean",
+        "bytes": 6847,
+        "sha256": "ae716677c4580ccb38756788a74038297432041bc527d9fbb3cd5cf837ec378f"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrEndpointCompletion.lean",
+        "bytes": 14482,
+        "sha256": "4899d374eab36cf48dfcfd0fcc68dabe98495d4225590c67a2be73530d9eb227"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrEndpointDrop.lean",
+        "bytes": 16653,
+        "sha256": "116e52d95a19f51f9afa946c3dd92b15ced706d3c57a6909a33e62424608a5b9"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrEndpointGeometry.lean",
+        "bytes": 9110,
+        "sha256": "746e984600c372e4678dcc5650f2d57053151c72080dd71db4fc685c457733ec"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrExtension.lean",
+        "bytes": 14739,
+        "sha256": "26fae97af745afddacd836e490fc90afd1972f279d0cb493c9397f70f19a850d"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrExtremalRun.lean",
+        "bytes": 12223,
+        "sha256": "9867c56d5a8c297f9d5a9ef235e219fa3c8223f24f761a0b320dc6ec558d3815"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrFourLayer.lean",
+        "bytes": 3320,
+        "sha256": "61e36880f75be384e867e931f1a232820d72eb84eaaaf40c19a8d774754c4c00"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrFourLayerReduction.lean",
+        "bytes": 2949,
+        "sha256": "5072af261461ad242e32454291f6dd6e01e22c0c5053debdb7c3d664a1ad8938"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrLocalSupport.lean",
+        "bytes": 7562,
+        "sha256": "b5eccf9d03f6b3d62b092532254b98d491ca805cfebe3125f79fd9e058a83e55"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrMatching.lean",
+        "bytes": 12991,
+        "sha256": "beb95d103bfd886af882b14cc3843275cbb86edeb8dde8e90b591b2534c29d61"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrMaximum.lean",
+        "bytes": 6979,
+        "sha256": "f5ddb8b8e5c8cafbe067099c03b2b56902d92f407d64792bc030506fe954d566"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrMissing.lean",
+        "bytes": 17834,
+        "sha256": "2b5a6e3376b5e30e11e603c3a752525c85f39257d9d1625ab6ec62dcf4c77976"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrMissingExtension.lean",
+        "bytes": 6007,
+        "sha256": "543e8aa4da5fcbf085c1736b25c817e5b6780e419555ce45720d8f20a0e456cc"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrPolygon.lean",
+        "bytes": 13419,
+        "sha256": "28389024115379e018f870bc911fb363d730c48e8446c6f28054538c8ed7d7b6"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrPrivateRuns.lean",
+        "bytes": 7596,
+        "sha256": "33e93aa65b1b7cb8ecc67d3c1374fa0cd06ad9b92f9b783802d2a372a5aa59e6"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrProjective.lean",
+        "bytes": 15989,
+        "sha256": "bb10972a848aba7e5400808a48055c748dd148cf553f46605421db2e224bad2c"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrRadialOrder.lean",
+        "bytes": 12136,
+        "sha256": "b37a90cd8539ded0fb6af3d325b4169d5928e3d0976d15759a3b5930aacfeb11"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrReduction.lean",
+        "bytes": 5525,
+        "sha256": "d1ce366b404eeaa9ab00e57388bc58aa0de157e8dada8c7bf326f0182591dc11"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrRunInduction.lean",
+        "bytes": 13014,
+        "sha256": "595828b854379ea356740f21fb960c3e9d716276c7cd609a2b100dad1e194336"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrRunReduction.lean",
+        "bytes": 4029,
+        "sha256": "4f0176667e8c602b74afa03c6d6df37c8c6c85c34f80e7e0901eb7bec82c30cc"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrRuns.lean",
+        "bytes": 7782,
+        "sha256": "468850c0f40f95e1e1abd6aed6e3d853814ed1860d0369ebeaac8b7955a4dbca"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrRunSetup.lean",
+        "bytes": 11880,
+        "sha256": "6f7c3cd9c5eadcc89f56db8c4b0c8884d5304926a3045348cdec53388accdc4d"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrRunSupport.lean",
+        "bytes": 19126,
+        "sha256": "fcca6f45051546fddbcb0c70854f36a172b0e079a531c17675d947ab1c98ac83"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrSectorArcs.lean",
+        "bytes": 10286,
+        "sha256": "0b4a42e679f0147b076bd9095b56a42149e4e1fd5bfe66a2792dc26c215414be"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrSectorBounds.lean",
+        "bytes": 8989,
+        "sha256": "3c3e7e52f10f4cb022771f15738b1b80f0e56b60ce4cdb96b603c25af928e15c"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrSectors.lean",
+        "bytes": 10120,
+        "sha256": "eebab2d693b745bc7685b3a6bf054dfe95336548592193c67f27b250e798e582"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrSectorSetup.lean",
+        "bytes": 5822,
+        "sha256": "83a3e9ecaa6714a533f35f737933a32f446912b77be97b5ecab69b0d38d8bcb5"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrSelection.lean",
+        "bytes": 17705,
+        "sha256": "6fa3e07a2819ff029c788ea7dd0fab94e94cd049415af786959673dc2f6294f1"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrShortSetup.lean",
+        "bytes": 8623,
+        "sha256": "fda61ae1a0dcaf3a9291bcdef05d4f434caf662e0fca40f8028117b716bc4020"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrShortSplice.lean",
+        "bytes": 18824,
+        "sha256": "50a651f7038a549dd68478468311fb90ea8199b52b6de957b57f11fc1749b8e1"
+      },
+      {
+        "path": "proofs/package/Lax56Proofs/ValtrSplice.lean",
+        "bytes": 6988,
+        "sha256": "ab9ee1a51c3a4c300477fce2c01a453ac3bab25756b84f16228c894cb0d19337"
       },
       {
         "path": "proofs/package/Lax56Proofs/VertexRemovalStability.lean",
@@ -2160,8 +4129,8 @@
       },
       {
         "path": "proofs/package/Lax56Proofs.lean",
-        "bytes": 1532,
-        "sha256": "76ccbcb300ffb24e237955e75750ce0111b2e56771afbb96c6308ec2c144fe6e"
+        "bytes": 3128,
+        "sha256": "c2bb582350af925673f1b32d049d5bed4c9f4eab92f054fdd5024578ad9bd6e6"
       },
       {
         "path": "proofs/package/lean-toolchain",
@@ -2169,6 +4138,6 @@
         "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
       }
     ],
-    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:d27607037b5d25223f6ef30ce8f1c52040c9d8f139fa239f247ca362aa6936e3"
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:91b360b01351c5023d25c33c1a478e094cccabdc41649efe34f93a703d558221"
   }
 }
