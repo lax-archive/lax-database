@@ -20,55 +20,1546 @@
           "name": "Aristotle (Harmonic)"
         }
       ],
-      "bibEntries": []
+      "bibEntries": [
+        "@book{Bojanczyk-transducers,\n  author = {Boja{\\'n}czyk, Miko{\\l}aj},\n  title  = {Transducers},\n  note   = {Book in preparation; sources at \\url{https://github.com/bojanczyk/transducer-book}},\n  year   = {2026}\n}\n",
+        "@article{KrohnRhodes1965,\n  author  = {Krohn, Kenneth and Rhodes, John},\n  title   = {Algebraic Theory of Machines. {I}. Prime Decomposition Theorem for Finite Semigroups and Machines},\n  journal = {Transactions of the American Mathematical Society},\n  volume  = {116},\n  pages   = {450--464},\n  year    = {1965},\n  doi     = {10.2307/1994127}\n}\n"
+      ]
     },
-    "abstract": "Part A of the book *Transducers* (M. Bojańczyk), together with the definitions of its introduction: continuous string-to-string functions, Mealy machines, their closure under composition, continuity and decidable equivalence, the Krohn–Rhodes decomposition theorem into reversible and flip-flop machines, map lifting, and the characterisation of aperiodic Mealy machines as compositions of flip-flops.\n"
+    "abstract": "Part A of the book *Transducers* (M. Bojańczyk), together with the definition\nof its introduction, as concepts and proofs. The Lean development is\nAristotle's formalisation of the book, re-presented in the archive's form:\nthe definitions and statements of the book are the concept package, and\nthe original development is the proof package.\n\nThe definition-concepts are continuity (Definition 0.1: the inverse image\nof every regular language is regular), the closure of a family of functions\nunder composition through finite alphabets (the \"composition of primes\"\nidiom of every transducer class of the book), Mealy machines and the\nfunctions they compute, their state transformations, the prime Mealy\nmachines (reversible and flip-flop), map lifting, aperiodicity, and the\nderivatives of a string-to-string function.\n\nThe theorem-concepts are the numbered results of Part A: decidable\nequivalence of Mealy machines in the form of a finite check on inputs of\nlength at most the product of the numbers of states (A.1.2), closure under\ncomposition (A.1.3), continuity (A.1.4), the Krohn–Rhodes theorem that\nevery Mealy machine is a composition of reversible and flip-flop machines\n(A.2.2), its two lemmas on map lifting (A.2.4) and on the state\ntransformation transducer of a pre-automaton (A.2.5), closure of reversible\nmachines under composition (A.2.6), the characterisation of aperiodic Mealy\nfunctions as the compositions of flip-flops (A.2.8, stated as its two\nimplications and their conjunction), aperiodicity as a pumping property\n(A.2.9), the Myhill–Nerode lemma for Mealy machines (A.2.10), and the\nstabilisation condition on the minimal machine (A.2.11). All of them are\nproved.\n\nTwo statements are not the printed ones. Aperiodicity (A.2.7) asks for the\nlast letter of $f(uv^nw)$ as an element of $B + 1$, since with $u = v = w =\n\\varepsilon$ there is no last letter and the printed definition is\nunsatisfiable; and Lemma A.2.11 speaks of *some* machine computing $f$\nrather than of the minimal machine, which it does not construct. The\ndecidability sentence of Theorem A.2.8 is not formalised. The exercises of\nPart A are not part of this submission.\n"
   },
   "requiredByConcepts": [],
   "requiredByProofs": [],
-  "concepts": [],
-  "proofs": [],
+  "concepts": [
+    {
+      "id": "Lax765601.Aperiodicity",
+      "path": "concepts/Lax765601/Aperiodicity.lean",
+      "title": "Aperiodic string-to-string functions",
+      "type": "definition",
+      "description": "A length preserving string-to-string function $f$ is *aperiodic* (Definition\nA.2.7 of *Transducers*) if for all input strings $u, v, w$ the last letter of\n$$f(u v^n w)$$\nis the same for all sufficiently large $n$. Aperiodicity says that the function\ncannot have periodic behaviour: the function on $a^*$ whose last output letter\nsays whether the input has length at least two is aperiodic, while the one whose\nlast letter gives the parity of the length is not. By the arbitrary choice of\n$w$, the last $k$ output letters are eventually fixed as well, for every $k$.\nTheorem A.2.8 shows that the aperiodic functions computed by Mealy machines are\nexactly the compositions of flip-flop machines.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The last letter is taken as an element of `Option B`: the definition asks that the\nsequence `n ↦ (f (u vⁿ w)).getLast?` be eventually constant, \"no letter\" being an\nadmissible constant value. This is a deliberate correction of the printed\ndefinition, which asks for an actual output letter `b`: with `u = v = w = ε` —\nallowed, since the printed side condition \"`uvw` nonempty\" constrains the input,\nand a length preserving function maps `ε` to `ε` — there is no last letter at\nall, so no function would be aperiodic as printed. With the `Option`-valued\nreading the whole of Section A.2.3 goes through. The book's side conditions that\n`f` be length preserving and that `uvw` be nonempty are not used and are dropped.\n`npow v n` is the string `vⁿ`."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.List.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.List.Basic\n\n/-!\n---\ntitle: Aperiodic string-to-string functions\ntype: definition\n---\nA length preserving string-to-string function $f$ is *aperiodic* (Definition\nA.2.7 of *Transducers*) if for all input strings $u, v, w$ the last letter of\n$$f(u v^n w)$$\nis the same for all sufficiently large $n$. Aperiodicity says that the function\ncannot have periodic behaviour: the function on $a^*$ whose last output letter\nsays whether the input has length at least two is aperiodic, while the one whose\nlast letter gives the parity of the length is not. By the arbitrary choice of\n$w$, the last $k$ output letters are eventually fixed as well, for every $k$.\nTheorem A.2.8 shows that the aperiodic functions computed by Mealy machines are\nexactly the compositions of flip-flop machines.\n\n# Formalization notes\n\nThe last letter is taken as an element of `Option B`: the definition asks that the\nsequence `n ↦ (f (u vⁿ w)).getLast?` be eventually constant, \"no letter\" being an\nadmissible constant value. This is a deliberate correction of the printed\ndefinition, which asks for an actual output letter `b`: with `u = v = w = ε` —\nallowed, since the printed side condition \"`uvw` nonempty\" constrains the input,\nand a length preserving function maps `ε` to `ε` — there is no last letter at\nall, so no function would be aperiodic as printed. With the `Option`-valued\nreading the whole of Section A.2.3 goes through. The book's side conditions that\n`f` be length preserving and that `uvw` be nonempty are not used and are dropped.\n`npow v n` is the string `vⁿ`.\n-/\n\nnamespace Lax765601.Aperiodicity\n\n/-- The `n`-fold concatenation `vⁿ` of a string with itself. -/\ndef npow {A : Type} (v : List A) : ℕ → List A\n  | 0 => []\n  | n + 1 => v ++ npow v n\n\n/-- A string-to-string function is aperiodic if for all input strings `u, v, w` the\nlast letter of `f (u vⁿ w)` — as an element of `Option B`, so that \"no letter\" is\nan admissible value — is the same for all sufficiently large `n`. -/\ndef Aperiodic {A B : Type} (f : List A → List B) : Prop :=\n  ∀ u v w : List A, ∃ o : Option B, ∃ N : ℕ, ∀ n ≥ N, (f (u ++ npow v n ++ w)).getLast? = o\n\nend Lax765601.Aperiodicity\n",
+      "statements": []
+    },
+    {
+      "id": "Lax765601.AperiodicityMinimalMachine",
+      "path": "concepts/Lax765601/AperiodicityMinimalMachine.lean",
+      "title": "Aperiodicity through the state transformations of the minimal machine",
+      "type": "theorem",
+      "description": "A function computed by a Mealy machine is aperiodic if and only if its minimal\nMealy machine satisfies the stabilisation condition (*): for every state\ntransformation $\\delta : Q \\to Q$ that arises from some input string, the\nsequence $\\delta^1, \\delta^2, \\ldots$ eventually stabilises on a single state\ntransformation (Lemma A.2.11 of *Transducers*). If any machine computing $f$\nsatisfies (*), then $f$ is aperiodic; conversely, if the minimal machine violates\n(*) for the state transformation of a string $v$, then two powers $\\delta^i \\neq\n\\delta^j$ recur infinitely often, and minimality yields strings $u, w$ for which\nthe last letters of $f(u v^i w)$ and $f(u v^j w)$ differ, contradicting\naperiodicity. This lemma is what the book's decision procedure for aperiodicity\nrests on.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The minimal machine is not constructed. Condition (*) is inherited by the\nminimal machine from any machine that has it, so \"the minimal machine of $f$\nsatisfies (*)\" is equivalent to \"some Mealy machine computing $f$ satisfies (*)\",\nwhich is the form stated: `TransAperiodic M.transFun` is condition (*) for the\npre-automaton underlying `M`. The book's finiteness assumptions on the alphabets\nare not used and are dropped."
+        }
+      ],
+      "imports": [
+        "Lax765601.Aperiodicity",
+        "Lax765601.MealyMachine",
+        "Lax765601.StateTransformations"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax765601.MealyMachine\nimport Lax765601.StateTransformations\nimport Lax765601.Aperiodicity\n\n/-!\n---\ntitle: Aperiodicity through the state transformations of the minimal machine\ntype: theorem\n---\nA function computed by a Mealy machine is aperiodic if and only if its minimal\nMealy machine satisfies the stabilisation condition (*): for every state\ntransformation $\\delta : Q \\to Q$ that arises from some input string, the\nsequence $\\delta^1, \\delta^2, \\ldots$ eventually stabilises on a single state\ntransformation (Lemma A.2.11 of *Transducers*). If any machine computing $f$\nsatisfies (*), then $f$ is aperiodic; conversely, if the minimal machine violates\n(*) for the state transformation of a string $v$, then two powers $\\delta^i \\neq\n\\delta^j$ recur infinitely often, and minimality yields strings $u, w$ for which\nthe last letters of $f(u v^i w)$ and $f(u v^j w)$ differ, contradicting\naperiodicity. This lemma is what the book's decision procedure for aperiodicity\nrests on.\n\n# Formalization notes\n\nThe minimal machine is not constructed. Condition (*) is inherited by the\nminimal machine from any machine that has it, so \"the minimal machine of $f$\nsatisfies (*)\" is equivalent to \"some Mealy machine computing $f$ satisfies (*)\",\nwhich is the form stated: `TransAperiodic M.transFun` is condition (*) for the\npre-automaton underlying `M`. The book's finiteness assumptions on the alphabets\nare not used and are dropped.\n-/\n\nnamespace Lax765601.AperiodicityMinimalMachine\n\nopen Lax765601.MealyMachine Lax765601.StateTransformations Lax765601.Aperiodicity\n\n/-- A Mealy function is aperiodic if and only if some Mealy machine computing it\nsatisfies the stabilisation condition (*) on its state transformations. -/\naxiom aperiodic_iff_transAperiodic {A B : Type} {f : List A → List B} (hf : IsMealy f) :\n    Aperiodic f ↔\n      ∃ (Q : Type) (_ : Finite Q) (M : Mealy A B Q), M.eval = f ∧ TransAperiodic M.transFun\n\nend Lax765601.AperiodicityMinimalMachine\n",
+      "statements": [
+        {
+          "id": "Lax765601.AperiodicityMinimalMachine.aperiodic_iff_transAperiodic",
+          "signature": "aperiodic_iff_transAperiodic : ∀ {A B : Type} {f : List A → List B},\n  Lax765601.MealyMachine.IsMealy f →\n    Iff (Lax765601.Aperiodicity.Aperiodic f)\n      (Exists fun Q =>\n        Exists fun x => Exists fun M => And (Eq M.eval f) (Lax765601.StateTransformations.TransAperiodic M.transFun))",
+          "startLine": 36,
+          "endLine": 40,
+          "doc": "A Mealy function is aperiodic if and only if some Mealy machine computing it\nsatisfies the stabilisation condition (*) on its state transformations."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601.AperiodicMealy",
+      "path": "concepts/Lax765601/AperiodicMealy.lean",
+      "title": "Aperiodic Mealy machines are exactly the compositions of flip-flops",
+      "type": "theorem",
+      "description": "A function computed by a Mealy machine is aperiodic if and only if it is\ncomputed by a composition of flip-flop Mealy machines (Theorem A.2.8 of\n*Transducers*). This answers the question what the class\n$(\\mathrm{Flip\\text{-}flop})^*$ of compositions of one kind of prime is; for the\nother kind, $(\\mathrm{Reversible})^*$ is the class of reversible machines\n(Lemma A.2.6).\n\nThe two implications are separate results, each with its own proof:\n`AperiodicOfFlipFlops` (a composition of flip-flops is aperiodic) and\n`FlipFlopsOfAperiodic` (an aperiodic Mealy function decomposes into flip-flops);\nthis statement is their conjunction.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The theorem in the book ends with the sentence \"moreover, this property can be\ndecided, given a Mealy machine that computes $f$\". That sentence is *not*\nformalised: the characterisation the book's decision procedure rests on, Lemma\nA.2.11, is, but the enumeration of the state transformations arising from input\nstrings that turns it into an algorithm is not written down. Both alphabets are\nassumed finite."
+        }
+      ],
+      "imports": [
+        "Lax765601.Aperiodicity",
+        "Lax765601.PrimeMealyMachines"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax765601.PrimeMealyMachines\nimport Lax765601.Aperiodicity\n\n/-!\n---\ntitle: Aperiodic Mealy machines are exactly the compositions of flip-flops\ntype: theorem\n---\nA function computed by a Mealy machine is aperiodic if and only if it is\ncomputed by a composition of flip-flop Mealy machines (Theorem A.2.8 of\n*Transducers*). This answers the question what the class\n$(\\mathrm{Flip\\text{-}flop})^*$ of compositions of one kind of prime is; for the\nother kind, $(\\mathrm{Reversible})^*$ is the class of reversible machines\n(Lemma A.2.6).\n\nThe two implications are separate results, each with its own proof:\n`AperiodicOfFlipFlops` (a composition of flip-flops is aperiodic) and\n`FlipFlopsOfAperiodic` (an aperiodic Mealy function decomposes into flip-flops);\nthis statement is their conjunction.\n\n# Formalization notes\n\nThe theorem in the book ends with the sentence \"moreover, this property can be\ndecided, given a Mealy machine that computes $f$\". That sentence is *not*\nformalised: the characterisation the book's decision procedure rests on, Lemma\nA.2.11, is, but the enumeration of the state transformations arising from input\nstrings that turns it into an algorithm is not written down. Both alphabets are\nassumed finite.\n-/\n\nnamespace Lax765601.AperiodicMealy\n\nopen Lax765601.MealyMachine Lax765601.CompositionClosure Lax765601.PrimeMealyMachines Lax765601.Aperiodicity\n\n/-- A function computed by a Mealy machine is aperiodic if and only if it is a\ncomposition of flip-flop Mealy machines. -/\naxiom aperiodic_iff_compClosure_flipFlop {A B : Type} [Finite A] [Finite B]\n    {f : List A → List B} (hf : IsMealy f) :\n    Aperiodic f ↔ CompClosure FlipFlopFam A B f\n\nend Lax765601.AperiodicMealy\n",
+      "statements": [
+        {
+          "id": "Lax765601.AperiodicMealy.aperiodic_iff_compClosure_flipFlop",
+          "signature": "aperiodic_iff_compClosure_flipFlop : ∀ {A B : Type} [Finite A] [Finite B] {f : List A → List B},\n  Lax765601.MealyMachine.IsMealy f →\n    Iff (Lax765601.Aperiodicity.Aperiodic f)\n      (Lax765601.CompositionClosure.CompClosure Lax765601.PrimeMealyMachines.FlipFlopFam A B f)",
+          "startLine": 35,
+          "endLine": 39,
+          "doc": "A function computed by a Mealy machine is aperiodic if and only if it is a\ncomposition of flip-flop Mealy machines."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601.AperiodicOfFlipFlops",
+      "path": "concepts/Lax765601/AperiodicOfFlipFlops.lean",
+      "title": "Compositions of flip-flop machines are aperiodic",
+      "type": "theorem",
+      "description": "Every composition of flip-flop Mealy machines computes an aperiodic function:\nthe implication \"composition of flip-flops $\\Rightarrow$ aperiodic\" of Theorem\nA.2.8 of *Transducers*. A single flip-flop is aperiodic, because the last letter\nof $f(u v^n w)$ depends only on the last letter read and on the last letter of\n$u v w$ whose state transformation is a constant, neither of which depends on\n$n$; and aperiodicity is preserved by composition, by the pumping form of\naperiodicity (Claim A.2.9), in which the shifts $k$ of the two functions add up.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The hypothesis is membership in the composition closure `CompClosure FlipFlopFam`\nof the family of flip-flop machines. No finiteness of the alphabets is needed:\nevery member of the closure is a Mealy function, and the argument only uses its\nstate space."
+        }
+      ],
+      "imports": [
+        "Lax765601.Aperiodicity",
+        "Lax765601.PrimeMealyMachines"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax765601.PrimeMealyMachines\nimport Lax765601.Aperiodicity\n\n/-!\n---\ntitle: Compositions of flip-flop machines are aperiodic\ntype: theorem\n---\nEvery composition of flip-flop Mealy machines computes an aperiodic function:\nthe implication \"composition of flip-flops $\\Rightarrow$ aperiodic\" of Theorem\nA.2.8 of *Transducers*. A single flip-flop is aperiodic, because the last letter\nof $f(u v^n w)$ depends only on the last letter read and on the last letter of\n$u v w$ whose state transformation is a constant, neither of which depends on\n$n$; and aperiodicity is preserved by composition, by the pumping form of\naperiodicity (Claim A.2.9), in which the shifts $k$ of the two functions add up.\n\n# Formalization notes\n\nThe hypothesis is membership in the composition closure `CompClosure FlipFlopFam`\nof the family of flip-flop machines. No finiteness of the alphabets is needed:\nevery member of the closure is a Mealy function, and the argument only uses its\nstate space.\n-/\n\nnamespace Lax765601.AperiodicOfFlipFlops\n\nopen Lax765601.CompositionClosure Lax765601.PrimeMealyMachines Lax765601.Aperiodicity\n\n/-- A composition of flip-flop Mealy machines is aperiodic. -/\naxiom aperiodic_of_compClosure_flipFlop {A B : Type} {f : List A → List B}\n    (hf : CompClosure FlipFlopFam A B f) : Aperiodic f\n\nend Lax765601.AperiodicOfFlipFlops\n",
+      "statements": [
+        {
+          "id": "Lax765601.AperiodicOfFlipFlops.aperiodic_of_compClosure_flipFlop",
+          "signature": "aperiodic_of_compClosure_flipFlop : ∀ {A B : Type} {f : List A → List B},\n  Lax765601.CompositionClosure.CompClosure Lax765601.PrimeMealyMachines.FlipFlopFam A B f →\n    Lax765601.Aperiodicity.Aperiodic f",
+          "startLine": 29,
+          "endLine": 31,
+          "doc": "A composition of flip-flop Mealy machines is aperiodic."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601.AperiodicPumping",
+      "path": "concepts/Lax765601/AperiodicPumping.lean",
+      "title": "Aperiodicity as a pumping property",
+      "type": "theorem",
+      "description": "A function $f$ computed by a Mealy machine is aperiodic if and only if for all\ninput strings $u, v, w$ there are output strings $x, y, z$ and a number $k$ such\nthat\n$$f(u v^{n+k} w) = x y^n z \\qquad \\text{for all } n > 0$$\n(Claim A.2.9 of *Transducers*). The right-to-left direction is immediate, since\nthe last letter of $x y^n z$ does not depend on $n$. For the other direction,\naperiodicity fixes the last $|v|$ letters of $f(u v^n)$ for large $n$, so that\nfrom some point on the output ends with repetitions of a fixed string $y$ of\nlength $|v|$, and fixes the last $|w|$ letters of $f(u v^n w)$, which gives $z$.\nThe pumping form is what makes aperiodicity compatible with composition: the\nshift $k$ of $f \\cdot g$ is the sum of the shifts of $f$ and $g$.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "`npow v n` is `vⁿ`. The hypothesis that `f` is computed by a Mealy machine is\nused only in the left-to-right direction; no finiteness of the alphabets is\nneeded."
+        }
+      ],
+      "imports": [
+        "Lax765601.Aperiodicity",
+        "Lax765601.MealyMachine"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax765601.MealyMachine\nimport Lax765601.Aperiodicity\n\n/-!\n---\ntitle: Aperiodicity as a pumping property\ntype: theorem\n---\nA function $f$ computed by a Mealy machine is aperiodic if and only if for all\ninput strings $u, v, w$ there are output strings $x, y, z$ and a number $k$ such\nthat\n$$f(u v^{n+k} w) = x y^n z \\qquad \\text{for all } n > 0$$\n(Claim A.2.9 of *Transducers*). The right-to-left direction is immediate, since\nthe last letter of $x y^n z$ does not depend on $n$. For the other direction,\naperiodicity fixes the last $|v|$ letters of $f(u v^n)$ for large $n$, so that\nfrom some point on the output ends with repetitions of a fixed string $y$ of\nlength $|v|$, and fixes the last $|w|$ letters of $f(u v^n w)$, which gives $z$.\nThe pumping form is what makes aperiodicity compatible with composition: the\nshift $k$ of $f \\cdot g$ is the sum of the shifts of $f$ and $g$.\n\n# Formalization notes\n\n`npow v n` is `vⁿ`. The hypothesis that `f` is computed by a Mealy machine is\nused only in the left-to-right direction; no finiteness of the alphabets is\nneeded.\n-/\n\nnamespace Lax765601.AperiodicPumping\n\nopen Lax765601.MealyMachine Lax765601.Aperiodicity\n\n/-- A Mealy function is aperiodic if and only if it has the pumping property: for\nall `u, v, w` there are `x, y, z` and `k` with `f (u v^(n+k) w) = x yⁿ z` for all\n`n > 0`. -/\naxiom aperiodic_iff_pumping {A B : Type} {f : List A → List B} (hf : IsMealy f) :\n    Aperiodic f ↔\n      ∀ u v w : List A, ∃ (x y z : List B) (k : ℕ), ∀ n > 0,\n        f (u ++ npow v (n + k) ++ w) = x ++ npow y n ++ z\n\nend Lax765601.AperiodicPumping\n",
+      "statements": [
+        {
+          "id": "Lax765601.AperiodicPumping.aperiodic_iff_pumping",
+          "signature": "aperiodic_iff_pumping : ∀ {A B : Type} {f : List A → List B},\n  Lax765601.MealyMachine.IsMealy f →\n    Iff (Lax765601.Aperiodicity.Aperiodic f)\n      (∀ (u v w : List A),\n        Exists fun x =>\n          Exists fun y =>\n            Exists fun z =>\n              Exists fun k =>\n                ∀ (n : Nat),\n                  GT.gt n 0 →\n                    Eq\n                      (f\n                        (instHAppendOfAppend.hAppend\n                          (instHAppendOfAppend.hAppend u (Lax765601.Aperiodicity.npow v (instHAdd.hAdd n k))) w))\n                      (instHAppendOfAppend.hAppend (instHAppendOfAppend.hAppend x (Lax765601.Aperiodicity.npow y n)) z))",
+          "startLine": 32,
+          "endLine": 38,
+          "doc": "A Mealy function is aperiodic if and only if it has the pumping property: for\nall `u, v, w` there are `x, y, z` and `k` with `f (u v^(n+k) w) = x yⁿ z` for all\n`n > 0`."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601.CompositionClosure",
+      "path": "concepts/Lax765601/CompositionClosure.lean",
+      "title": "Closure of a family of functions under composition",
+      "type": "definition",
+      "description": "The transducer classes of the book are described by *decomposition into primes*:\na class is the set of all finite compositions\n$$A_0^* \\xrightarrow{f_1} A_1^* \\xrightarrow{f_2} \\cdots \\xrightarrow{f_n} A_n^*$$\nof functions taken from some family of *prime* functions, with the intermediate\nalphabets finite. The book writes $P^*$ for this closure of a family $P$ under\ncomposition — the Kleene star of the family — as in\n$\\mathrm{Mealy} = (\\mathrm{Reversible} \\cup \\mathrm{Flip\\text{-}flop})^*$, the\nKrohn–Rhodes theorem (Theorem A.2.2). The same idiom defines the rational\nfunctions from their primes (Theorem B.2.6), the regular functions (Definition\nC.0.1) and the polyregular functions (Definition D.0.1).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "A *family* is a predicate on string-to-string functions indexed by the input and\noutput alphabets, `∀ (A B : Type), (List A → List B) → Prop`. The closure\n`CompClosure P` is the least family containing `P`, the identity on every\nalphabet, and closed under composition through a *finite* intermediate alphabet;\nthat finiteness is the constructor's instance argument `[Finite B]`, so that\n\"composition of primes\" never passes through an infinite alphabet. Because the\nclosure is inductively defined, every statement of the form \"every composition of\nprimes has property X\" is proved by induction on the composition tree, and the\ntheorems of the book about a class defined this way are statements about the\nclosure, not about a syntactic list of factors."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.Finite.Defs"
+      ],
+      "sourceText": "import Mathlib.Data.Finite.Defs\n\n/-!\n---\ntitle: Closure of a family of functions under composition\ntype: definition\n---\nThe transducer classes of the book are described by *decomposition into primes*:\na class is the set of all finite compositions\n$$A_0^* \\xrightarrow{f_1} A_1^* \\xrightarrow{f_2} \\cdots \\xrightarrow{f_n} A_n^*$$\nof functions taken from some family of *prime* functions, with the intermediate\nalphabets finite. The book writes $P^*$ for this closure of a family $P$ under\ncomposition — the Kleene star of the family — as in\n$\\mathrm{Mealy} = (\\mathrm{Reversible} \\cup \\mathrm{Flip\\text{-}flop})^*$, the\nKrohn–Rhodes theorem (Theorem A.2.2). The same idiom defines the rational\nfunctions from their primes (Theorem B.2.6), the regular functions (Definition\nC.0.1) and the polyregular functions (Definition D.0.1).\n\n# Formalization notes\n\nA *family* is a predicate on string-to-string functions indexed by the input and\noutput alphabets, `∀ (A B : Type), (List A → List B) → Prop`. The closure\n`CompClosure P` is the least family containing `P`, the identity on every\nalphabet, and closed under composition through a *finite* intermediate alphabet;\nthat finiteness is the constructor's instance argument `[Finite B]`, so that\n\"composition of primes\" never passes through an infinite alphabet. Because the\nclosure is inductively defined, every statement of the form \"every composition of\nprimes has property X\" is proved by induction on the composition tree, and the\ntheorems of the book about a class defined this way are statements about the\nclosure, not about a syntactic list of factors.\n-/\n\nnamespace Lax765601.CompositionClosure\n\n/-- A family of string-to-string functions, indexed by the input and the output\nalphabet. -/\nabbrev Family : Type 1 := ∀ (A B : Type), (List A → List B) → Prop\n\n/-- The closure `P*` of a family `P` under composition: the identity functions, the\nmembers of `P`, and the compositions `g ∘ f` of two members of the closure through\na finite intermediate alphabet. -/\ninductive CompClosure (P : Family) : Family\n  /-- A prime function belongs to the closure. -/\n  | base {A B : Type} {f : List A → List B} : P A B f → CompClosure P A B f\n  /-- The identity on every alphabet belongs to the closure. -/\n  | protected id (A : Type) : CompClosure P A A _root_.id\n  /-- The closure is closed under composition through a finite alphabet. -/\n  | comp {A B C : Type} [Finite B] {f : List A → List B} {g : List B → List C} :\n      CompClosure P A B f → CompClosure P B C g → CompClosure P A C (g ∘ f)\n\n/-- The union of two families. -/\ndef FamUnion (P Q : Family) : Family := fun A B f => P A B f ∨ Q A B f\n\nend Lax765601.CompositionClosure\n",
+      "statements": []
+    },
+    {
+      "id": "Lax765601.Continuity",
+      "path": "concepts/Lax765601/Continuity.lean",
+      "title": "Continuous string-to-string functions",
+      "type": "definition",
+      "description": "A function $f : A^* \\to B^*$ between the sets of strings over two alphabets is\n*continuous* if for every regular language $L \\subseteq B^*$ over the output\nalphabet, the inverse image $f^{-1}(L)$ is a regular language over the input\nalphabet (Definition 0.1 of *Transducers*). Continuity is the compatibility with\nregular languages that every transducer model of the book is required to have:\nfor functions with two possible outputs it is exactly regularity of a language,\nand composing a continuous function with a regular language, seen as a\nstring-to-Boolean function, gives a regular language again.\n\nThe same requirement makes sense for a relation $R \\subseteq A^* \\times B^*$ and\nfor a partial function: the set of input strings that are related to (respectively,\nmapped to) some string of $L$ has to be regular. The relational form is the one\nPart B proves for rational relations, and the partial form the one it proves for\nsubsequential functions.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Strings over an alphabet `A` are `List A`, languages are mathlib's `Language A`\n(a set of strings), and regularity is mathlib's `Language.IsRegular`: recognition\nby a deterministic finite automaton with a finite state set. This dictionary is\nused by every concept of the book and is not repeated.\n\nAlphabets are arbitrary types here. The finiteness of the alphabets, which the\nbook assumes throughout, is an instance hypothesis `[Finite A]` on the statements\nthat need it, so that a definition never carries a hypothesis it does not use. A\npartial function is a function into `Option (List B)`, with `none` for\n\"undefined\"."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Computability.DFA"
+      ],
+      "sourceText": "import Mathlib.Computability.DFA\n\n/-!\n---\ntitle: Continuous string-to-string functions\ntype: definition\n---\nA function $f : A^* \\to B^*$ between the sets of strings over two alphabets is\n*continuous* if for every regular language $L \\subseteq B^*$ over the output\nalphabet, the inverse image $f^{-1}(L)$ is a regular language over the input\nalphabet (Definition 0.1 of *Transducers*). Continuity is the compatibility with\nregular languages that every transducer model of the book is required to have:\nfor functions with two possible outputs it is exactly regularity of a language,\nand composing a continuous function with a regular language, seen as a\nstring-to-Boolean function, gives a regular language again.\n\nThe same requirement makes sense for a relation $R \\subseteq A^* \\times B^*$ and\nfor a partial function: the set of input strings that are related to (respectively,\nmapped to) some string of $L$ has to be regular. The relational form is the one\nPart B proves for rational relations, and the partial form the one it proves for\nsubsequential functions.\n\n# Formalization notes\n\nStrings over an alphabet `A` are `List A`, languages are mathlib's `Language A`\n(a set of strings), and regularity is mathlib's `Language.IsRegular`: recognition\nby a deterministic finite automaton with a finite state set. This dictionary is\nused by every concept of the book and is not repeated.\n\nAlphabets are arbitrary types here. The finiteness of the alphabets, which the\nbook assumes throughout, is an instance hypothesis `[Finite A]` on the statements\nthat need it, so that a definition never carries a hypothesis it does not use. A\npartial function is a function into `Option (List B)`, with `none` for\n\"undefined\".\n-/\n\nnamespace Lax765601.Continuity\n\n/-- A string-to-string function is *continuous* if the inverse image of every\nregular language over the output alphabet is a regular language. -/\ndef Continuous {A B : Type} (f : List A → List B) : Prop :=\n  ∀ L : Language B, L.IsRegular → Language.IsRegular ({w : List A | f w ∈ L} : Language A)\n\n/-- A relation `R ⊆ A* × B*` is continuous if, for every regular language `L` over\nthe output alphabet, the set of input strings related to some string of `L` is\nregular. -/\ndef RelContinuous {A B : Type} (R : List A → List B → Prop) : Prop :=\n  ∀ L : Language B, L.IsRegular →\n    Language.IsRegular ({w : List A | ∃ v, R w v ∧ v ∈ L} : Language A)\n\n/-- A partial function is continuous if, for every regular language `L` over the\noutput alphabet, the set of input strings whose output is defined and belongs to\n`L` is regular. -/\ndef PartialContinuous {A B : Type} (f : List A → Option (List B)) : Prop :=\n  ∀ L : Language B, L.IsRegular →\n    Language.IsRegular ({w : List A | ∃ v, f w = some v ∧ v ∈ L} : Language A)\n\nend Lax765601.Continuity\n",
+      "statements": []
+    },
+    {
+      "id": "Lax765601.Derivatives",
+      "path": "concepts/Lax765601/Derivatives.lean",
+      "title": "Derivatives of a string-to-string function",
+      "type": "definition",
+      "description": "A *derivative* of a length preserving string-to-string function $f : A^* \\to B^*$\nis a function of the form\n$$f(w\\_) \\;:\\; v \\;\\mapsto\\; f(wv) \\text{ with the first } |w| \\text{ letters of the output removed},$$\nfor some input string $w$ (Section A.2.3 of *Transducers*). The derivative is the\noutput that $f$ still produces *after* having read $w$; for a function computed\nby a Mealy machine it is determined by the state reached after reading $w$, which\nis the observation behind the Myhill–Nerode lemma for Mealy machines (Lemma\nA.2.10): a function is computed by a Mealy machine if and only if it is\nletter-to-letter, its $n$-th output letter depends only on the first $n$ input\nletters, and it has finitely many derivatives. The minimal Mealy machine of such\na function has the derivatives as its states.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "`deriv f w v` drops the first `w.length` letters of `f (w ++ v)`. An earlier\nedition of the book wrote `f(w\\_)(v) = f(wv)` without removing the output\nproduced while reading `w`; with that reading even the identity function has\ninfinitely many derivatives and Lemma A.2.10 fails, so the definition above is\nthe one the book now prints and the one its proof uses. No length preservation\nis required of `f` for the definition to make sense."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.List.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.List.Basic\n\n/-!\n---\ntitle: Derivatives of a string-to-string function\ntype: definition\n---\nA *derivative* of a length preserving string-to-string function $f : A^* \\to B^*$\nis a function of the form\n$$f(w\\_) \\;:\\; v \\;\\mapsto\\; f(wv) \\text{ with the first } |w| \\text{ letters of the output removed},$$\nfor some input string $w$ (Section A.2.3 of *Transducers*). The derivative is the\noutput that $f$ still produces *after* having read $w$; for a function computed\nby a Mealy machine it is determined by the state reached after reading $w$, which\nis the observation behind the Myhill–Nerode lemma for Mealy machines (Lemma\nA.2.10): a function is computed by a Mealy machine if and only if it is\nletter-to-letter, its $n$-th output letter depends only on the first $n$ input\nletters, and it has finitely many derivatives. The minimal Mealy machine of such\na function has the derivatives as its states.\n\n# Formalization notes\n\n`deriv f w v` drops the first `w.length` letters of `f (w ++ v)`. An earlier\nedition of the book wrote `f(w\\_)(v) = f(wv)` without removing the output\nproduced while reading `w`; with that reading even the identity function has\ninfinitely many derivatives and Lemma A.2.10 fails, so the definition above is\nthe one the book now prints and the one its proof uses. No length preservation\nis required of `f` for the definition to make sense.\n-/\n\nnamespace Lax765601.Derivatives\n\n/-- The derivative `f(w_)` of `f`: the output `f` produces after having read `w`,\nnamely `v ↦ f (w v)` with the first `|w|` letters of the output removed. -/\ndef deriv {A B : Type} (f : List A → List B) (w : List A) : List A → List B :=\n  fun v => (f (w ++ v)).drop w.length\n\nend Lax765601.Derivatives\n",
+      "statements": []
+    },
+    {
+      "id": "Lax765601.ElementaryProperties",
+      "path": "concepts/Lax765601/ElementaryProperties.lean",
+      "title": "Prefix preservation and length preservation",
+      "type": "definition",
+      "description": "Three elementary properties of a string-to-string function $f : A^* \\to B^*$ that\nthe characterisation theorems of the book are stated with.\n\n* $f$ is *prefix preserving* if $w \\sqsubseteq v$ implies $f(w) \\sqsubseteq f(v)$,\n  where $\\sqsubseteq$ is the prefix order on strings.\n* $f$ is *length preserving*, or *letter-to-letter*, if $|f(w)| = |w|$ for every\n  input string $w$.\n* $f$ is *prefix determined* if the first $n$ output letters depend only on the\n  first $n$ input letters: input strings that agree on their first $n$ letters\n  have outputs that agree on their first $n$ letters.\n\nFor a letter-to-letter function, being prefix determined says exactly that the\n$n$-th output letter depends only on the first $n$ input letters, which is\ncondition (3) of the Myhill–Nerode lemma for Mealy machines (Lemma A.2.10), and\nit is the determinism condition of Theorem B.2.7; prefix preservation and length\npreservation together are the shape of the machine-independent characterisation\nof Mealy machines (Theorem B.4.1).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "`<+:` is mathlib's prefix relation on lists. The three definitions quantify over\nall strings of the input alphabet and carry no finiteness hypothesis."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.List.Infix"
+      ],
+      "sourceText": "import Mathlib.Data.List.Infix\n\n/-!\n---\ntitle: Prefix preservation and length preservation\ntype: definition\n---\nThree elementary properties of a string-to-string function $f : A^* \\to B^*$ that\nthe characterisation theorems of the book are stated with.\n\n* $f$ is *prefix preserving* if $w \\sqsubseteq v$ implies $f(w) \\sqsubseteq f(v)$,\n  where $\\sqsubseteq$ is the prefix order on strings.\n* $f$ is *length preserving*, or *letter-to-letter*, if $|f(w)| = |w|$ for every\n  input string $w$.\n* $f$ is *prefix determined* if the first $n$ output letters depend only on the\n  first $n$ input letters: input strings that agree on their first $n$ letters\n  have outputs that agree on their first $n$ letters.\n\nFor a letter-to-letter function, being prefix determined says exactly that the\n$n$-th output letter depends only on the first $n$ input letters, which is\ncondition (3) of the Myhill–Nerode lemma for Mealy machines (Lemma A.2.10), and\nit is the determinism condition of Theorem B.2.7; prefix preservation and length\npreservation together are the shape of the machine-independent characterisation\nof Mealy machines (Theorem B.4.1).\n\n# Formalization notes\n\n`<+:` is mathlib's prefix relation on lists. The three definitions quantify over\nall strings of the input alphabet and carry no finiteness hypothesis.\n-/\n\nnamespace Lax765601.ElementaryProperties\n\n/-- `f` is prefix preserving: `w ⊑ v` implies `f w ⊑ f v`. -/\ndef PrefixPreserving {A B : Type} (f : List A → List B) : Prop :=\n  ∀ w v : List A, w <+: v → f w <+: f v\n\n/-- `f` is length preserving, i.e. letter-to-letter: the output has the length of\nthe input. -/\ndef LengthPreserving {A B : Type} (f : List A → List B) : Prop :=\n  ∀ w : List A, (f w).length = w.length\n\n/-- `f` is prefix determined: the first `n` output letters depend only on the\nfirst `n` input letters. -/\ndef PrefixDetermined {A B : Type} (f : List A → List B) : Prop :=\n  ∀ (w v : List A) (n : ℕ), w.take n = v.take n → (f w).take n = (f v).take n\n\nend Lax765601.ElementaryProperties\n",
+      "statements": []
+    },
+    {
+      "id": "Lax765601.FlipFlopsOfAperiodic",
+      "path": "concepts/Lax765601/FlipFlopsOfAperiodic.lean",
+      "title": "Aperiodic Mealy machines are compositions of flip-flops",
+      "type": "theorem",
+      "description": "Every aperiodic function computed by a Mealy machine is computed by a\ncomposition of flip-flop Mealy machines: the implication \"aperiodic\n$\\Rightarrow$ composition of flip-flops\" of Theorem A.2.8 of *Transducers*, the\nhard half. By Lemma A.2.11 the function is computed by a machine whose state\ntransformations satisfy the stabilisation condition (*); the proof of the\nKrohn–Rhodes theorem is then run for this machine, and every machine arising in\nthe induction inherits (*), since it only uses state transformations of the\noriginal one, so that no reversible machine with more than one state ever\nappears and every prime in the decomposition is a flip-flop.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The two alphabets are assumed finite, as for the Krohn–Rhodes theorem, whose\nconstruction this statement repeats inside the class of flip-flops. The\nconclusion is membership in `CompClosure FlipFlopFam`."
+        }
+      ],
+      "imports": [
+        "Lax765601.Aperiodicity",
+        "Lax765601.PrimeMealyMachines"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax765601.PrimeMealyMachines\nimport Lax765601.Aperiodicity\n\n/-!\n---\ntitle: Aperiodic Mealy machines are compositions of flip-flops\ntype: theorem\n---\nEvery aperiodic function computed by a Mealy machine is computed by a\ncomposition of flip-flop Mealy machines: the implication \"aperiodic\n$\\Rightarrow$ composition of flip-flops\" of Theorem A.2.8 of *Transducers*, the\nhard half. By Lemma A.2.11 the function is computed by a machine whose state\ntransformations satisfy the stabilisation condition (*); the proof of the\nKrohn–Rhodes theorem is then run for this machine, and every machine arising in\nthe induction inherits (*), since it only uses state transformations of the\noriginal one, so that no reversible machine with more than one state ever\nappears and every prime in the decomposition is a flip-flop.\n\n# Formalization notes\n\nThe two alphabets are assumed finite, as for the Krohn–Rhodes theorem, whose\nconstruction this statement repeats inside the class of flip-flops. The\nconclusion is membership in `CompClosure FlipFlopFam`.\n-/\n\nnamespace Lax765601.FlipFlopsOfAperiodic\n\nopen Lax765601.MealyMachine Lax765601.CompositionClosure Lax765601.PrimeMealyMachines Lax765601.Aperiodicity\n\n/-- An aperiodic function computed by a Mealy machine is a composition of flip-flop\nMealy machines. -/\naxiom compClosure_flipFlop_of_aperiodic {A B : Type} [Finite A] [Finite B]\n    {f : List A → List B} (hf : IsMealy f) (ha : Aperiodic f) :\n    CompClosure FlipFlopFam A B f\n\nend Lax765601.FlipFlopsOfAperiodic\n",
+      "statements": [
+        {
+          "id": "Lax765601.FlipFlopsOfAperiodic.compClosure_flipFlop_of_aperiodic",
+          "signature": "compClosure_flipFlop_of_aperiodic : ∀ {A B : Type} [Finite A] [Finite B] {f : List A → List B},\n  Lax765601.MealyMachine.IsMealy f →\n    Lax765601.Aperiodicity.Aperiodic f →\n      Lax765601.CompositionClosure.CompClosure Lax765601.PrimeMealyMachines.FlipFlopFam A B f",
+          "startLine": 30,
+          "endLine": 34,
+          "doc": "An aperiodic function computed by a Mealy machine is a composition of flip-flop\nMealy machines."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601.KrohnRhodes",
+      "path": "concepts/Lax765601/KrohnRhodes.lean",
+      "title": "The Krohn–Rhodes decomposition theorem",
+      "type": "theorem",
+      "description": "Every Mealy machine $f$ admits a decomposition\n$$f = f_1 \\cdot f_2 \\cdots f_n$$\nin which each Mealy machine $f_1, \\ldots, f_n$ is either reversible or flip-flop\n(Theorem A.2.2 of *Transducers*, the Krohn–Rhodes theorem). No uniqueness is\nclaimed. Since Mealy machines are closed under composition, the class of\nfunctions computed by Mealy machines is exactly the closure under composition of\nthe prime Mealy machines,\n$$\\mathrm{Mealy} = (\\mathrm{Reversible} \\cup \\mathrm{Flip\\text{-}flop})^*.$$\n\nThe proof of the book has two steps: map lifting is compatible with\ndecompositions into primes (Lemma A.2.4), and the state transformation\ntransducer of every pre-automaton is a composition of primes (Lemma A.2.5), by an\ninduction on the number of states and the number of letters whose state\ntransformation is not a permutation; the output of the machine is then recovered\nfrom the state transformations of the prefixes by a delay machine and a\nletter-to-letter homomorphism.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The conclusion is membership in the composition closure of the family of prime\nMealy machines, `CompClosure PrimeMealyFam`, with finite intermediate alphabets\nbuilt into the closure. Both alphabets are assumed finite, as in the book, where\nfiniteness of the input alphabet is what the induction on the number of letters\nuses. The converse inclusion, that a composition of primes is computed by a\nMealy machine, is closure under composition (Theorem A.1.3) and is not part of\nthis statement."
+        }
+      ],
+      "imports": [
+        "Lax765601.PrimeMealyMachines"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax765601.PrimeMealyMachines\n\n/-!\n---\ntitle: The Krohn–Rhodes decomposition theorem\ntype: theorem\n---\nEvery Mealy machine $f$ admits a decomposition\n$$f = f_1 \\cdot f_2 \\cdots f_n$$\nin which each Mealy machine $f_1, \\ldots, f_n$ is either reversible or flip-flop\n(Theorem A.2.2 of *Transducers*, the Krohn–Rhodes theorem). No uniqueness is\nclaimed. Since Mealy machines are closed under composition, the class of\nfunctions computed by Mealy machines is exactly the closure under composition of\nthe prime Mealy machines,\n$$\\mathrm{Mealy} = (\\mathrm{Reversible} \\cup \\mathrm{Flip\\text{-}flop})^*.$$\n\nThe proof of the book has two steps: map lifting is compatible with\ndecompositions into primes (Lemma A.2.4), and the state transformation\ntransducer of every pre-automaton is a composition of primes (Lemma A.2.5), by an\ninduction on the number of states and the number of letters whose state\ntransformation is not a permutation; the output of the machine is then recovered\nfrom the state transformations of the prefixes by a delay machine and a\nletter-to-letter homomorphism.\n\n# Formalization notes\n\nThe conclusion is membership in the composition closure of the family of prime\nMealy machines, `CompClosure PrimeMealyFam`, with finite intermediate alphabets\nbuilt into the closure. Both alphabets are assumed finite, as in the book, where\nfiniteness of the input alphabet is what the induction on the number of letters\nuses. The converse inclusion, that a composition of primes is computed by a\nMealy machine, is closure under composition (Theorem A.1.3) and is not part of\nthis statement.\n-/\n\nnamespace Lax765601.KrohnRhodes\n\nopen Lax765601.MealyMachine Lax765601.CompositionClosure Lax765601.PrimeMealyMachines\n\n/-- Every function computed by a Mealy machine is a composition of reversible and\nflip-flop Mealy machines. -/\naxiom compClosure_primeMealy_of_isMealy {A B : Type} [Finite A] [Finite B]\n    {f : List A → List B} (hf : IsMealy f) : CompClosure PrimeMealyFam A B f\n\nend Lax765601.KrohnRhodes\n",
+      "statements": [
+        {
+          "id": "Lax765601.KrohnRhodes.compClosure_primeMealy_of_isMealy",
+          "signature": "compClosure_primeMealy_of_isMealy : ∀ {A B : Type} [Finite A] [Finite B] {f : List A → List B},\n  Lax765601.MealyMachine.IsMealy f →\n    Lax765601.CompositionClosure.CompClosure Lax765601.PrimeMealyMachines.PrimeMealyFam A B f",
+          "startLine": 40,
+          "endLine": 43,
+          "doc": "Every function computed by a Mealy machine is a composition of reversible and\nflip-flop Mealy machines."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601.MapLifting",
+      "path": "concepts/Lax765601/MapLifting.lean",
+      "title": "Map lifting",
+      "type": "definition",
+      "description": "Let $f : A^* \\to B^*$ be a string-to-string function. Its *map lifting*\n(Definition A.2.3 of *Transducers*) is the function\n$$\\mathsf{map}\\, f : (A + 1)^* \\to (B + 1)^*$$\nover the alphabets extended by a fresh separator letter $\\#$, which applies $f$ to\nevery block of the input delimited by the separator:\n$$w_1 \\# w_2 \\# \\cdots \\# w_n \\quad\\mapsto\\quad f(w_1) \\# f(w_2) \\# \\cdots \\# f(w_n),$$\nwhere the strings $w_1, \\ldots, w_n$ do not use the separator. The map lifting\nis the construction by which a transducer is applied to a list of input strings\nin parallel; it is used many times in the book, first in the proof of the\nKrohn–Rhodes theorem (Lemma A.2.4), and the prime regular functions of Part C\nare map liftings.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The alphabet `A + 1` is `Option A`, the separator being `none`. `splitSep` cuts a\nstring over `Option A` into its maximal separator-free blocks, always producing\none block more than there are separators — the empty string is the one block\n`[]`, and `w #` ends with an empty block — so that `mapLift f` is the\nconcatenation of the images of the blocks with the separator put back between\nthem, exactly as displayed. With this reading the map lifting is defined on\n*every* string over `Option A`, including those beginning or ending with a\nseparator or with consecutive separators, which then delimit empty blocks."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.List.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.List.Basic\n\n/-!\n---\ntitle: Map lifting\ntype: definition\n---\nLet $f : A^* \\to B^*$ be a string-to-string function. Its *map lifting*\n(Definition A.2.3 of *Transducers*) is the function\n$$\\mathsf{map}\\, f : (A + 1)^* \\to (B + 1)^*$$\nover the alphabets extended by a fresh separator letter $\\#$, which applies $f$ to\nevery block of the input delimited by the separator:\n$$w_1 \\# w_2 \\# \\cdots \\# w_n \\quad\\mapsto\\quad f(w_1) \\# f(w_2) \\# \\cdots \\# f(w_n),$$\nwhere the strings $w_1, \\ldots, w_n$ do not use the separator. The map lifting\nis the construction by which a transducer is applied to a list of input strings\nin parallel; it is used many times in the book, first in the proof of the\nKrohn–Rhodes theorem (Lemma A.2.4), and the prime regular functions of Part C\nare map liftings.\n\n# Formalization notes\n\nThe alphabet `A + 1` is `Option A`, the separator being `none`. `splitSep` cuts a\nstring over `Option A` into its maximal separator-free blocks, always producing\none block more than there are separators — the empty string is the one block\n`[]`, and `w #` ends with an empty block — so that `mapLift f` is the\nconcatenation of the images of the blocks with the separator put back between\nthem, exactly as displayed. With this reading the map lifting is defined on\n*every* string over `Option A`, including those beginning or ending with a\nseparator or with consecutive separators, which then delimit empty blocks.\n-/\n\nnamespace Lax765601.MapLifting\n\n/-- Cut a string over `A + 1` (the separator being `none`) into its maximal blocks\nwithout the separator; there is always one block more than there are separators.\n-/\ndef splitSep {A : Type} : List (Option A) → List (List A)\n  | [] => [[]]\n  | none :: w => [] :: splitSep w\n  | some a :: w =>\n      match splitSep w with\n      | [] => [[a]]\n      | u :: us => (a :: u) :: us\n\n/-- The map lifting of `f`: apply `f` to every block delimited by the separator,\n`w₁ # ⋯ # wₙ ↦ f w₁ # ⋯ # f wₙ`. -/\ndef mapLift {A B : Type} (f : List A → List B) (w : List (Option A)) : List (Option B) :=\n  List.intercalate [none] ((splitSep w).map (fun u => (f u).map some))\n\nend Lax765601.MapLifting\n",
+      "statements": []
+    },
+    {
+      "id": "Lax765601.MapLiftingDecomposition",
+      "path": "concepts/Lax765601/MapLiftingDecomposition.lean",
+      "title": "Map lifting preserves decompositions into primes",
+      "type": "theorem",
+      "description": "If a Mealy machine decomposes into prime Mealy machines, then so does its map\nlifting (Lemma A.2.4 of *Transducers*). Since map lifting commutes with\ncomposition, it suffices to lift a single prime. A flip-flop is lifted by\nresetting its state at every separator. A reversible machine needs more care,\nbecause resetting would break reversibility: the book computes, by a reversible\nmachine, the state transformation $\\gamma_w$ of every prefix in the variant\nwhere the separator does nothing, stores the value at the last separator by a\nflip-flop delay machine, and recovers the state transformation of the current\nblock by the cancellation law $\\delta_w = \\gamma_v^{-1} \\cdot \\gamma_{vw}$,\nall of which is a one-state machine's work.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Finiteness of the input alphabet is assumed; the finiteness of the output\nalphabet, which the book assumes globally, is not needed here and is dropped.\nThe map lifting is `MapLifting.mapLift`, over the alphabets `Option A` and\n`Option B`."
+        }
+      ],
+      "imports": [
+        "Lax765601.MapLifting",
+        "Lax765601.PrimeMealyMachines"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax765601.PrimeMealyMachines\nimport Lax765601.MapLifting\n\n/-!\n---\ntitle: Map lifting preserves decompositions into primes\ntype: theorem\n---\nIf a Mealy machine decomposes into prime Mealy machines, then so does its map\nlifting (Lemma A.2.4 of *Transducers*). Since map lifting commutes with\ncomposition, it suffices to lift a single prime. A flip-flop is lifted by\nresetting its state at every separator. A reversible machine needs more care,\nbecause resetting would break reversibility: the book computes, by a reversible\nmachine, the state transformation $\\gamma_w$ of every prefix in the variant\nwhere the separator does nothing, stores the value at the last separator by a\nflip-flop delay machine, and recovers the state transformation of the current\nblock by the cancellation law $\\delta_w = \\gamma_v^{-1} \\cdot \\gamma_{vw}$,\nall of which is a one-state machine's work.\n\n# Formalization notes\n\nFiniteness of the input alphabet is assumed; the finiteness of the output\nalphabet, which the book assumes globally, is not needed here and is dropped.\nThe map lifting is `MapLifting.mapLift`, over the alphabets `Option A` and\n`Option B`.\n-/\n\nnamespace Lax765601.MapLiftingDecomposition\n\nopen Lax765601.CompositionClosure Lax765601.PrimeMealyMachines Lax765601.MapLifting\n\n/-- The map lifting of a composition of prime Mealy machines is a composition of\nprime Mealy machines. -/\naxiom compClosure_mapLift {A B : Type} [Finite A] {f : List A → List B}\n    (hf : CompClosure PrimeMealyFam A B f) :\n    CompClosure PrimeMealyFam (Option A) (Option B) (mapLift f)\n\nend Lax765601.MapLiftingDecomposition\n",
+      "statements": [
+        {
+          "id": "Lax765601.MapLiftingDecomposition.compClosure_mapLift",
+          "signature": "compClosure_mapLift : ∀ {A B : Type} [Finite A] {f : List A → List B},\n  Lax765601.CompositionClosure.CompClosure Lax765601.PrimeMealyMachines.PrimeMealyFam A B f →\n    Lax765601.CompositionClosure.CompClosure Lax765601.PrimeMealyMachines.PrimeMealyFam (Option A) (Option B)\n      (Lax765601.MapLifting.mapLift f)",
+          "startLine": 32,
+          "endLine": 36,
+          "doc": "The map lifting of a composition of prime Mealy machines is a composition of\nprime Mealy machines."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601.MealyComposition",
+      "path": "concepts/Lax765601/MealyComposition.lean",
+      "title": "Mealy machines are closed under composition",
+      "type": "theorem",
+      "description": "If $f : A^* \\to B^*$ and $g : B^* \\to C^*$ are computed by Mealy machines, then\nso is their composition $A^* \\xrightarrow{f} B^* \\xrightarrow{g} C^*$ (Theorem\nA.1.3 of *Transducers*). The proof is a product construction: the composed\nmachine runs both machines in lockstep, feeding each output letter of the first\nto the second, so its state space is the product of the two state spaces.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The book writes the composition as $f \\cdot g$, first $f$ then $g$; in Lean it is\n`g ∘ f`. The intermediate alphabet is required to be finite, as in the closure\nunder composition of `CompositionClosure`; nothing is assumed of the outer\nalphabets."
+        }
+      ],
+      "imports": [
+        "Lax765601.MealyMachine"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax765601.MealyMachine\n\n/-!\n---\ntitle: Mealy machines are closed under composition\ntype: theorem\n---\nIf $f : A^* \\to B^*$ and $g : B^* \\to C^*$ are computed by Mealy machines, then\nso is their composition $A^* \\xrightarrow{f} B^* \\xrightarrow{g} C^*$ (Theorem\nA.1.3 of *Transducers*). The proof is a product construction: the composed\nmachine runs both machines in lockstep, feeding each output letter of the first\nto the second, so its state space is the product of the two state spaces.\n\n# Formalization notes\n\nThe book writes the composition as $f \\cdot g$, first $f$ then $g$; in Lean it is\n`g ∘ f`. The intermediate alphabet is required to be finite, as in the closure\nunder composition of `CompositionClosure`; nothing is assumed of the outer\nalphabets.\n-/\n\nnamespace Lax765601.MealyComposition\n\nopen Lax765601.MealyMachine\n\n/-- The composition of two functions computed by Mealy machines is computed by a\nMealy machine. -/\naxiom isMealy_comp {A B C : Type} [Finite B] {f : List A → List B} {g : List B → List C}\n    (hf : IsMealy f) (hg : IsMealy g) : IsMealy (g ∘ f)\n\nend Lax765601.MealyComposition\n",
+      "statements": [
+        {
+          "id": "Lax765601.MealyComposition.isMealy_comp",
+          "signature": "isMealy_comp : ∀ {A B C : Type} [Finite B] {f : List A → List B} {g : List B → List C},\n  Lax765601.MealyMachine.IsMealy f →\n    Lax765601.MealyMachine.IsMealy g → Lax765601.MealyMachine.IsMealy (Function.comp g f)",
+          "startLine": 26,
+          "endLine": 29,
+          "doc": "The composition of two functions computed by Mealy machines is computed by a\nMealy machine."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601.MealyContinuity",
+      "path": "concepts/Lax765601/MealyContinuity.lean",
+      "title": "Mealy machines are continuous",
+      "type": "theorem",
+      "description": "Every function computed by a Mealy machine is continuous: the inverse image of a\nregular language under it is regular (Theorem A.1.4 of *Transducers*). The book\nderives this from closure under composition through the letter-to-letter lifting\nof a language, which labels every position of a string by whether the prefix\nending there belongs to the language; a direct product construction works just\nas well, and is the one formalised.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Finiteness of the two alphabets is assumed, as everywhere in the book; the\nproduct of the machine with a deterministic automaton for the output language\nrecognises the inverse image."
+        }
+      ],
+      "imports": [
+        "Lax765601.Continuity",
+        "Lax765601.MealyMachine"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax765601.Continuity\nimport Lax765601.MealyMachine\n\n/-!\n---\ntitle: Mealy machines are continuous\ntype: theorem\n---\nEvery function computed by a Mealy machine is continuous: the inverse image of a\nregular language under it is regular (Theorem A.1.4 of *Transducers*). The book\nderives this from closure under composition through the letter-to-letter lifting\nof a language, which labels every position of a string by whether the prefix\nending there belongs to the language; a direct product construction works just\nas well, and is the one formalised.\n\n# Formalization notes\n\nFiniteness of the two alphabets is assumed, as everywhere in the book; the\nproduct of the machine with a deterministic automaton for the output language\nrecognises the inverse image.\n-/\n\nnamespace Lax765601.MealyContinuity\n\nopen Lax765601.Continuity Lax765601.MealyMachine\n\n/-- A function computed by a Mealy machine is continuous. -/\naxiom continuous_of_isMealy {A B : Type} [Finite A] [Finite B] {f : List A → List B}\n    (hf : IsMealy f) : Continuous f\n\nend Lax765601.MealyContinuity\n",
+      "statements": [
+        {
+          "id": "Lax765601.MealyContinuity.continuous_of_isMealy",
+          "signature": "continuous_of_isMealy : ∀ {A B : Type} [Finite A] [Finite B] {f : List A → List B},\n  Lax765601.MealyMachine.IsMealy f → Lax765601.Continuity.Continuous f",
+          "startLine": 27,
+          "endLine": 29,
+          "doc": "A function computed by a Mealy machine is continuous."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601.MealyDerivatives",
+      "path": "concepts/Lax765601/MealyDerivatives.lean",
+      "title": "Myhill–Nerode for Mealy machines",
+      "type": "theorem",
+      "description": "A string-to-string function is computed by a Mealy machine if and only if (1) it\nhas finitely many derivatives, (2) it is letter-to-letter, and (3) its $n$-th\noutput letter depends only on the first $n$ input letters (Lemma A.2.10 of\n*Transducers*). From a machine, the derivative $f(w\\_)$ is determined by the\nstate reached after reading $w$, so there are finitely many. Conversely, the\n*minimal machine* of $f$ has the derivatives as its states, the derivative of the\nempty string as initial state, and the transitions\n$$f(w\\_) \\xrightarrow{a\\,/\\,\\text{last letter of } f(wa)} f(wa\\_),$$\nwhich are well defined because the output letter and the target depend only on\nthe derivative $f(w\\_)$ and not on $w$.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Condition (3) is `PrefixDetermined f`, \"the first `n` output letters depend only\non the first `n` input letters\", which for a letter-to-letter function says\nexactly that the `n`-th output letter depends only on the first `n` input\nletters. The set of derivatives is the range of `deriv f`, and its finiteness is\nmathlib's `Set.Finite`. No finiteness of the alphabets is assumed: the states of\nthe minimal machine are the derivatives, whatever the alphabets."
+        }
+      ],
+      "imports": [
+        "Lax765601.Derivatives",
+        "Lax765601.ElementaryProperties",
+        "Lax765601.MealyMachine"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Set.Finite.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.Set.Finite.Basic\nimport Lax765601.MealyMachine\nimport Lax765601.ElementaryProperties\nimport Lax765601.Derivatives\n\n/-!\n---\ntitle: Myhill–Nerode for Mealy machines\ntype: theorem\n---\nA string-to-string function is computed by a Mealy machine if and only if (1) it\nhas finitely many derivatives, (2) it is letter-to-letter, and (3) its $n$-th\noutput letter depends only on the first $n$ input letters (Lemma A.2.10 of\n*Transducers*). From a machine, the derivative $f(w\\_)$ is determined by the\nstate reached after reading $w$, so there are finitely many. Conversely, the\n*minimal machine* of $f$ has the derivatives as its states, the derivative of the\nempty string as initial state, and the transitions\n$$f(w\\_) \\xrightarrow{a\\,/\\,\\text{last letter of } f(wa)} f(wa\\_),$$\nwhich are well defined because the output letter and the target depend only on\nthe derivative $f(w\\_)$ and not on $w$.\n\n# Formalization notes\n\nCondition (3) is `PrefixDetermined f`, \"the first `n` output letters depend only\non the first `n` input letters\", which for a letter-to-letter function says\nexactly that the `n`-th output letter depends only on the first `n` input\nletters. The set of derivatives is the range of `deriv f`, and its finiteness is\nmathlib's `Set.Finite`. No finiteness of the alphabets is assumed: the states of\nthe minimal machine are the derivatives, whatever the alphabets.\n-/\n\nnamespace Lax765601.MealyDerivatives\n\nopen Lax765601.MealyMachine Lax765601.ElementaryProperties Lax765601.Derivatives\n\n/-- A function is computed by a Mealy machine if and only if it has finitely many\nderivatives, is letter-to-letter, and its first `n` output letters depend only on\nits first `n` input letters. -/\naxiom isMealy_iff {A B : Type} (f : List A → List B) :\n    IsMealy f ↔ (Set.range (deriv f)).Finite ∧ LengthPreserving f ∧ PrefixDetermined f\n\nend Lax765601.MealyDerivatives\n",
+      "statements": [
+        {
+          "id": "Lax765601.MealyDerivatives.isMealy_iff",
+          "signature": "isMealy_iff : ∀ {A B : Type} (f : List A → List B),\n  Iff (Lax765601.MealyMachine.IsMealy f)\n    (And (Set.range (Lax765601.Derivatives.deriv f)).Finite\n      (And (Lax765601.ElementaryProperties.LengthPreserving f) (Lax765601.ElementaryProperties.PrefixDetermined f)))",
+          "startLine": 36,
+          "endLine": 40,
+          "doc": "A function is computed by a Mealy machine if and only if it has finitely many\nderivatives, is letter-to-letter, and its first `n` output letters depend only on\nits first `n` input letters."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601.MealyEquivalenceBound",
+      "path": "concepts/Lax765601/MealyEquivalenceBound.lean",
+      "title": "Decidable equivalence of Mealy machines",
+      "type": "theorem",
+      "description": "The equivalence problem for Mealy machines — do two given machines compute the\nsame function? — is decidable (Theorem A.1.2 of *Transducers*). The book reduces\nit to the equivalence of regular languages: a letter-to-letter function is\ndetermined by the languages \"the last output letter is $b$\", one for each output\nletter $b$, and each of them is recognised by the automaton underlying the\nmachine. In the form stated here, two Mealy machines with $n_1$ and $n_2$ states\nare equivalent if and only if they agree on all input strings of length at most\n$n_1 n_2$ — a finite check, since the alphabet is finite.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Decidability is expressed by its mathematical content, the finite check, rather\nthan by a decision procedure on encodings of machines: the product of the numbers\nof states bounds the length of a shortest input on which two inequivalent\nmachines differ, because a pair of runs that repeats a pair of states can be\nshortened by cutting out the loop. `Nat.card Q` is the number of states of a\nfinite state space. The statement holds over any input alphabet, finite or not;\nfiniteness of the alphabet is what makes the check a finite one."
+        }
+      ],
+      "imports": [
+        "Lax765601.MealyMachine"
+      ],
+      "mathlibImports": [
+        "Mathlib.SetTheory.Cardinal.Finite"
+      ],
+      "sourceText": "import Mathlib.SetTheory.Cardinal.Finite\nimport Lax765601.MealyMachine\n\n/-!\n---\ntitle: Decidable equivalence of Mealy machines\ntype: theorem\n---\nThe equivalence problem for Mealy machines — do two given machines compute the\nsame function? — is decidable (Theorem A.1.2 of *Transducers*). The book reduces\nit to the equivalence of regular languages: a letter-to-letter function is\ndetermined by the languages \"the last output letter is $b$\", one for each output\nletter $b$, and each of them is recognised by the automaton underlying the\nmachine. In the form stated here, two Mealy machines with $n_1$ and $n_2$ states\nare equivalent if and only if they agree on all input strings of length at most\n$n_1 n_2$ — a finite check, since the alphabet is finite.\n\n# Formalization notes\n\nDecidability is expressed by its mathematical content, the finite check, rather\nthan by a decision procedure on encodings of machines: the product of the numbers\nof states bounds the length of a shortest input on which two inequivalent\nmachines differ, because a pair of runs that repeats a pair of states can be\nshortened by cutting out the loop. `Nat.card Q` is the number of states of a\nfinite state space. The statement holds over any input alphabet, finite or not;\nfiniteness of the alphabet is what makes the check a finite one.\n-/\n\nnamespace Lax765601.MealyEquivalenceBound\n\nopen Lax765601.MealyMachine\n\n/-- Two Mealy machines are equivalent if and only if they agree on every input\nstring of length at most the product of their numbers of states. -/\naxiom eval_eq_iff_short {A B Q₁ Q₂ : Type} [Finite Q₁] [Finite Q₂]\n    (M : Mealy A B Q₁) (N : Mealy A B Q₂) :\n    M.eval = N.eval ↔\n      ∀ w : List A, w.length ≤ Nat.card Q₁ * Nat.card Q₂ → M.eval w = N.eval w\n\nend Lax765601.MealyEquivalenceBound\n",
+      "statements": [
+        {
+          "id": "Lax765601.MealyEquivalenceBound.eval_eq_iff_short",
+          "signature": "eval_eq_iff_short : ∀ {A B Q₁ Q₂ : Type} [Finite Q₁] [Finite Q₂] (M : Lax765601.MealyMachine.Mealy A B Q₁)\n  (N : Lax765601.MealyMachine.Mealy A B Q₂),\n  Iff (Eq M.eval N.eval)\n    (∀ (w : List A), instLENat.le w.length (instHMul.hMul (Nat.card Q₁) (Nat.card Q₂)) → Eq (M.eval w) (N.eval w))",
+          "startLine": 33,
+          "endLine": 38,
+          "doc": "Two Mealy machines are equivalent if and only if they agree on every input\nstring of length at most the product of their numbers of states."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601.MealyMachine",
+      "path": "concepts/Lax765601/MealyMachine.lean",
+      "title": "Mealy machines",
+      "type": "definition",
+      "description": "A *Mealy machine* is a deterministic finite automaton whose transitions are\nlabelled by output letters, and which has no accepting states, since its purpose\nis to produce an output string rather than to accept or reject. Formally\n(Definition A.1.1 of *Transducers*), it consists of an input alphabet $A$, an\noutput alphabet $B$, a state space $Q$, an initial state $q_0 \\in Q$ and a\ntransition function\n$$\\delta : Q \\times A \\to Q \\times B.$$\nIts semantics is the function $f : A^* \\to B^*$ obtained by running the\nunderlying automaton on the input string and labelling each position by the\noutput letter of the corresponding transition; it is a *letter-to-letter*\nfunction, the output having the same length as the input. A function is\n*computed by a Mealy machine* if it is the semantics of a Mealy machine with a\nfinite state space.\n\nThe *state transformation* of an input letter $a$ is the map $Q \\to Q$ describing\nhow reading $a$ updates the state, the output being ignored; the underlying\n*pre-automaton* of the machine is the family of these maps, i.e. a deterministic\nautomaton without initial and accepting states (Section A.2).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "`Mealy A B Q` carries the initial state and the transition function; the three\nalphabets are the type parameters. Finiteness of the state space is not part of\nthe structure — it is where it belongs, in `IsMealy`, which asks for *some*\nfinite state space `Q` and some machine over it. Alphabets are arbitrary types;\nthe finiteness the book assumes globally is a hypothesis of the statements that\nneed it.\n\n`run` is the output produced from a given state, defined by recursion on the\ninput string, and `eval` is the run from the initial state. Nothing else is\nderivable from these and is omitted; the dfa obtained by forgetting outputs is\n`transFun`."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.Finite.Defs"
+      ],
+      "sourceText": "import Mathlib.Data.Finite.Defs\n\n/-!\n---\ntitle: Mealy machines\ntype: definition\n---\nA *Mealy machine* is a deterministic finite automaton whose transitions are\nlabelled by output letters, and which has no accepting states, since its purpose\nis to produce an output string rather than to accept or reject. Formally\n(Definition A.1.1 of *Transducers*), it consists of an input alphabet $A$, an\noutput alphabet $B$, a state space $Q$, an initial state $q_0 \\in Q$ and a\ntransition function\n$$\\delta : Q \\times A \\to Q \\times B.$$\nIts semantics is the function $f : A^* \\to B^*$ obtained by running the\nunderlying automaton on the input string and labelling each position by the\noutput letter of the corresponding transition; it is a *letter-to-letter*\nfunction, the output having the same length as the input. A function is\n*computed by a Mealy machine* if it is the semantics of a Mealy machine with a\nfinite state space.\n\nThe *state transformation* of an input letter $a$ is the map $Q \\to Q$ describing\nhow reading $a$ updates the state, the output being ignored; the underlying\n*pre-automaton* of the machine is the family of these maps, i.e. a deterministic\nautomaton without initial and accepting states (Section A.2).\n\n# Formalization notes\n\n`Mealy A B Q` carries the initial state and the transition function; the three\nalphabets are the type parameters. Finiteness of the state space is not part of\nthe structure — it is where it belongs, in `IsMealy`, which asks for *some*\nfinite state space `Q` and some machine over it. Alphabets are arbitrary types;\nthe finiteness the book assumes globally is a hypothesis of the statements that\nneed it.\n\n`run` is the output produced from a given state, defined by recursion on the\ninput string, and `eval` is the run from the initial state. Nothing else is\nderivable from these and is omitted; the dfa obtained by forgetting outputs is\n`transFun`.\n-/\n\nnamespace Lax765601.MealyMachine\n\n/-- A Mealy machine with input alphabet `A`, output alphabet `B` and state space\n`Q`: an initial state and a transition function `Q × A → Q × B`. -/\nstructure Mealy (A B Q : Type) where\n  /-- The initial state. -/\n  init : Q\n  /-- The transition function: a source state and an input letter determine a\n  target state and an output letter. -/\n  step : Q → A → Q × B\n\nnamespace Mealy\n\nvariable {A B Q : Type}\n\n/-- The output produced by the machine on an input string, when started in a\ngiven state. -/\ndef run (M : Mealy A B Q) : Q → List A → List B\n  | _, [] => []\n  | q, a :: w => (M.step q a).2 :: M.run (M.step q a).1 w\n\n/-- The semantics of a Mealy machine: the output produced from the initial state.\n-/\ndef eval (M : Mealy A B Q) (w : List A) : List B := M.run M.init w\n\n/-- The state transformation of an input letter: how reading the letter updates\nthe state. -/\ndef letterTrans (M : Mealy A B Q) (a : A) : Q → Q := fun q => (M.step q a).1\n\n/-- The underlying pre-automaton: the transition function with the output letters\nforgotten. -/\ndef transFun (M : Mealy A B Q) : Q → A → Q := fun q a => (M.step q a).1\n\nend Mealy\n\n/-- A string-to-string function is computed by a Mealy machine if it is the\nsemantics of a Mealy machine with a finite state space. -/\ndef IsMealy {A B : Type} (f : List A → List B) : Prop :=\n  ∃ (Q : Type) (_ : Finite Q) (M : Mealy A B Q), M.eval = f\n\nend Lax765601.MealyMachine\n",
+      "statements": []
+    },
+    {
+      "id": "Lax765601.PrimeMealyMachines",
+      "path": "concepts/Lax765601/PrimeMealyMachines.lean",
+      "title": "Prime Mealy machines: reversible and flip-flop",
+      "type": "definition",
+      "description": "The *prime Mealy machines* are defined in terms of the state transformations of\ntheir letters (Definition A.2.1 of *Transducers*). There are two kinds.\n\n* *Reversible* machines: the state transformation of every letter is a\n  permutation of the state space.\n* *Flip-flop* machines: the state transformation of every letter is either the\n  identity or a constant, all states being mapped to the same one.\n\nA one-state machine is both. The machine outputting $abab\\cdots$ on $a^n$ is\nreversible; the delay machine, which shifts the input one position to the right,\nis a flip-flop. Since composing permutations gives a permutation and composing\nconstants gives a constant, nothing changes if the definition is phrased for the\nstate transformations of input strings rather than of letters.\n\nThe Krohn–Rhodes theorem (Theorem A.2.2) says that every Mealy machine is a\ncomposition of prime Mealy machines; Theorem A.2.8 characterises the compositions\nof flip-flops alone.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "`Reversible` and `FlipFlop` are properties of a machine. The families that the\ncomposition closure is taken over are families of *functions* (as in\n`CompositionClosure`), so a function is a prime if it is computed by some prime\nmachine with a finite state space: `PrimeMealyFam` collects the reversible and\nthe flip-flop functions, and `FlipFlopFam` the flip-flop ones alone, for\nTheorem A.2.8. Bijectivity is mathlib's `Function.Bijective`."
+        }
+      ],
+      "imports": [
+        "Lax765601.CompositionClosure",
+        "Lax765601.MealyMachine"
+      ],
+      "mathlibImports": [
+        "Mathlib.Logic.Function.Defs"
+      ],
+      "sourceText": "import Mathlib.Logic.Function.Defs\nimport Lax765601.MealyMachine\nimport Lax765601.CompositionClosure\n\n/-!\n---\ntitle: Prime Mealy machines: reversible and flip-flop\ntype: definition\n---\nThe *prime Mealy machines* are defined in terms of the state transformations of\ntheir letters (Definition A.2.1 of *Transducers*). There are two kinds.\n\n* *Reversible* machines: the state transformation of every letter is a\n  permutation of the state space.\n* *Flip-flop* machines: the state transformation of every letter is either the\n  identity or a constant, all states being mapped to the same one.\n\nA one-state machine is both. The machine outputting $abab\\cdots$ on $a^n$ is\nreversible; the delay machine, which shifts the input one position to the right,\nis a flip-flop. Since composing permutations gives a permutation and composing\nconstants gives a constant, nothing changes if the definition is phrased for the\nstate transformations of input strings rather than of letters.\n\nThe Krohn–Rhodes theorem (Theorem A.2.2) says that every Mealy machine is a\ncomposition of prime Mealy machines; Theorem A.2.8 characterises the compositions\nof flip-flops alone.\n\n# Formalization notes\n\n`Reversible` and `FlipFlop` are properties of a machine. The families that the\ncomposition closure is taken over are families of *functions* (as in\n`CompositionClosure`), so a function is a prime if it is computed by some prime\nmachine with a finite state space: `PrimeMealyFam` collects the reversible and\nthe flip-flop functions, and `FlipFlopFam` the flip-flop ones alone, for\nTheorem A.2.8. Bijectivity is mathlib's `Function.Bijective`.\n-/\n\nnamespace Lax765601.PrimeMealyMachines\n\nopen Lax765601.MealyMachine Lax765601.CompositionClosure\n\n/-- A Mealy machine is reversible if the state transformation of every letter is a\npermutation of the state space. -/\ndef Reversible {A B Q : Type} (M : Mealy A B Q) : Prop :=\n  ∀ a : A, Function.Bijective (M.letterTrans a)\n\n/-- A Mealy machine is a flip-flop if the state transformation of every letter is\nthe identity or a constant. -/\ndef FlipFlop {A B Q : Type} (M : Mealy A B Q) : Prop :=\n  ∀ a : A, M.letterTrans a = id ∨ ∃ q₀ : Q, ∀ q : Q, M.letterTrans a q = q₀\n\n/-- A function is computed by a reversible Mealy machine with a finite state\nspace. -/\ndef IsReversibleMealy {A B : Type} (f : List A → List B) : Prop :=\n  ∃ (Q : Type) (_ : Finite Q) (M : Mealy A B Q), M.eval = f ∧ Reversible M\n\n/-- A function is computed by a flip-flop Mealy machine with a finite state\nspace. -/\ndef IsFlipFlopMealy {A B : Type} (f : List A → List B) : Prop :=\n  ∃ (Q : Type) (_ : Finite Q) (M : Mealy A B Q), M.eval = f ∧ FlipFlop M\n\n/-- The family of prime Mealy machines: the functions computed by a reversible or\nby a flip-flop machine. -/\ndef PrimeMealyFam : Family := fun _ _ f => IsReversibleMealy f ∨ IsFlipFlopMealy f\n\n/-- The family of flip-flop Mealy machines. -/\ndef FlipFlopFam : Family := fun _ _ f => IsFlipFlopMealy f\n\nend Lax765601.PrimeMealyMachines\n",
+      "statements": []
+    },
+    {
+      "id": "Lax765601.ReversibleComposition",
+      "path": "concepts/Lax765601/ReversibleComposition.lean",
+      "title": "Reversible Mealy machines are closed under composition",
+      "type": "theorem",
+      "description": "The composition of two functions computed by reversible Mealy machines is\ncomputed by a reversible Mealy machine (Lemma A.2.6 of *Transducers*). Hence the\nclass $(\\mathrm{Reversible})^*$ of compositions of reversible machines is just\nthe class of reversible machines: the product machine of the composition\n(Theorem A.1.3) is reversible, since the state transformation of a letter in it\nis a permutation in each coordinate.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "As for closure under composition of Mealy machines, the intermediate alphabet is\nassumed finite."
+        }
+      ],
+      "imports": [
+        "Lax765601.PrimeMealyMachines"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax765601.PrimeMealyMachines\n\n/-!\n---\ntitle: Reversible Mealy machines are closed under composition\ntype: theorem\n---\nThe composition of two functions computed by reversible Mealy machines is\ncomputed by a reversible Mealy machine (Lemma A.2.6 of *Transducers*). Hence the\nclass $(\\mathrm{Reversible})^*$ of compositions of reversible machines is just\nthe class of reversible machines: the product machine of the composition\n(Theorem A.1.3) is reversible, since the state transformation of a letter in it\nis a permutation in each coordinate.\n\n# Formalization notes\n\nAs for closure under composition of Mealy machines, the intermediate alphabet is\nassumed finite.\n-/\n\nnamespace Lax765601.ReversibleComposition\n\nopen Lax765601.PrimeMealyMachines\n\n/-- The composition of two reversible Mealy machines is a reversible Mealy\nmachine. -/\naxiom isReversibleMealy_comp {A B C : Type} [Finite B]\n    {f : List A → List B} {g : List B → List C}\n    (hf : IsReversibleMealy f) (hg : IsReversibleMealy g) : IsReversibleMealy (g ∘ f)\n\nend Lax765601.ReversibleComposition\n",
+      "statements": [
+        {
+          "id": "Lax765601.ReversibleComposition.isReversibleMealy_comp",
+          "signature": "isReversibleMealy_comp : ∀ {A B C : Type} [Finite B] {f : List A → List B} {g : List B → List C},\n  Lax765601.PrimeMealyMachines.IsReversibleMealy f →\n    Lax765601.PrimeMealyMachines.IsReversibleMealy g →\n      Lax765601.PrimeMealyMachines.IsReversibleMealy (Function.comp g f)",
+          "startLine": 25,
+          "endLine": 29,
+          "doc": "The composition of two reversible Mealy machines is a reversible Mealy\nmachine."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601.StateTransformationDecomposition",
+      "path": "concepts/Lax765601/StateTransformationDecomposition.lean",
+      "title": "The state transformation transducer is a composition of primes",
+      "type": "theorem",
+      "description": "For every pre-automaton, its state transformation transducer — the Mealy\nmachine whose $n$-th output letter is the state transformation of the first $n$\ninput letters — is a composition of prime Mealy machines (Lemma A.2.5 of\n*Transducers*, the main lemma in the proof of the Krohn–Rhodes theorem).\n\nThe book proves it by induction on the number of states and, for a tie, on the\nnumber of letters whose state transformation is not a permutation. A\npre-automaton all of whose letters are permutations is reversible as it stands.\nOtherwise one fixes a letter $a$ whose state transformation has a proper image\n$P \\subset Q$, decomposes the input into its first $a$-block, the middle\n$a$-blocks and the $a$-free suffix, and computes the three state\ntransformations in five stages: the map lifting of the induction hypothesis for\nthe alphabet without $a$ (Lemma A.2.4) handles the $a$-free pieces, two\nflip-flops distribute the state transformations of the blocks, the induction\nhypothesis for the smaller state space $P$ handles the middle part, and a\nletter-to-letter homomorphism assembles the result.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The pre-automaton is its transition function `δ : Q → A → Q`, and the transducer\nis `StateTransformations.stateTransTransducer δ`, of type\n`Mealy A (Q → Q) (Q → Q)`; the conclusion is membership of its semantics in the\ncomposition closure of the primes. Both the alphabet and the state space are\nassumed finite, the two induction parameters. The formal induction keeps the\ninput alphabet fixed and makes the letter `a` act as the identity instead of\nremoving it, which measures the second parameter by the number of\nnon-permutation letters."
+        }
+      ],
+      "imports": [
+        "Lax765601.PrimeMealyMachines",
+        "Lax765601.StateTransformations"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax765601.PrimeMealyMachines\nimport Lax765601.StateTransformations\n\n/-!\n---\ntitle: The state transformation transducer is a composition of primes\ntype: theorem\n---\nFor every pre-automaton, its state transformation transducer — the Mealy\nmachine whose $n$-th output letter is the state transformation of the first $n$\ninput letters — is a composition of prime Mealy machines (Lemma A.2.5 of\n*Transducers*, the main lemma in the proof of the Krohn–Rhodes theorem).\n\nThe book proves it by induction on the number of states and, for a tie, on the\nnumber of letters whose state transformation is not a permutation. A\npre-automaton all of whose letters are permutations is reversible as it stands.\nOtherwise one fixes a letter $a$ whose state transformation has a proper image\n$P \\subset Q$, decomposes the input into its first $a$-block, the middle\n$a$-blocks and the $a$-free suffix, and computes the three state\ntransformations in five stages: the map lifting of the induction hypothesis for\nthe alphabet without $a$ (Lemma A.2.4) handles the $a$-free pieces, two\nflip-flops distribute the state transformations of the blocks, the induction\nhypothesis for the smaller state space $P$ handles the middle part, and a\nletter-to-letter homomorphism assembles the result.\n\n# Formalization notes\n\nThe pre-automaton is its transition function `δ : Q → A → Q`, and the transducer\nis `StateTransformations.stateTransTransducer δ`, of type\n`Mealy A (Q → Q) (Q → Q)`; the conclusion is membership of its semantics in the\ncomposition closure of the primes. Both the alphabet and the state space are\nassumed finite, the two induction parameters. The formal induction keeps the\ninput alphabet fixed and makes the letter `a` act as the identity instead of\nremoving it, which measures the second parameter by the number of\nnon-permutation letters.\n-/\n\nnamespace Lax765601.StateTransformationDecomposition\n\nopen Lax765601.MealyMachine Lax765601.CompositionClosure Lax765601.PrimeMealyMachines\n  Lax765601.StateTransformations\n\n/-- The state transformation transducer of a finite pre-automaton over a finite\nalphabet is a composition of prime Mealy machines. -/\naxiom compClosure_stateTransTransducer {A Q : Type} [Finite A] [Finite Q] (δ : Q → A → Q) :\n    CompClosure PrimeMealyFam A (Q → Q) (stateTransTransducer δ).eval\n\nend Lax765601.StateTransformationDecomposition\n",
+      "statements": [
+        {
+          "id": "Lax765601.StateTransformationDecomposition.compClosure_stateTransTransducer",
+          "signature": "compClosure_stateTransTransducer : ∀ {A Q : Type} [Finite A] [Finite Q] (δ : Q → A → Q),\n  Lax765601.CompositionClosure.CompClosure Lax765601.PrimeMealyMachines.PrimeMealyFam A (Q → Q)\n    (Lax765601.StateTransformations.stateTransTransducer δ).eval",
+          "startLine": 43,
+          "endLine": 46,
+          "doc": "The state transformation transducer of a finite pre-automaton over a finite\nalphabet is a composition of prime Mealy machines."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601.StateTransformations",
+      "path": "concepts/Lax765601/StateTransformations.lean",
+      "title": "State transformations of a pre-automaton",
+      "type": "definition",
+      "description": "A *pre-automaton* is a deterministic finite automaton without designated initial\nand accepting states: an input alphabet $A$, a state space $Q$ and a family of\n*state transformations* $\\delta_a : Q \\to Q$, one for each letter $a \\in A$\n(Section A.2 of *Transducers*). The state transformation $\\delta_w$ of an input\nstring $w$ is the composition of the state transformations of its letters, in\nthe order in which they are read.\n\nThe *state transformation transducer* of a pre-automaton is the Mealy machine of\ntype $A^* \\to (Q \\to Q)^*$ whose $n$-th output letter is the state\ntransformation of the first $n$ input letters. It is the object that the proof of\nthe Krohn–Rhodes theorem decomposes (Lemma A.2.5).\n\nA pre-automaton satisfies the *stabilisation condition* (*) of Lemma A.2.11 if\nfor every state transformation $\\delta$ that arises from some input string, the\nsequence of powers $\\delta^1, \\delta^2, \\ldots$ eventually stabilises on a single\nstate transformation. This is the condition on a minimal Mealy machine that\ncharacterises aperiodicity.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "A pre-automaton is just its transition function `δ : Q → A → Q`; no structure is\nintroduced. `strTrans δ w` is the state transformation of the string `w`, a\nleft fold of `δ` along `w`, so that the letters act in reading order. The\ntransition function of the state transformation transducer stores the state\ntransformation of the prefix read so far as its state and outputs it after every\nletter, as the book describes; its state space `Q → Q` is finite when `Q` is.\n`f^[n]` is the `n`-th iterate of `f`."
+        }
+      ],
+      "imports": [
+        "Lax765601.MealyMachine"
+      ],
+      "mathlibImports": [
+        "Mathlib.Logic.Function.Iterate"
+      ],
+      "sourceText": "import Mathlib.Logic.Function.Iterate\nimport Lax765601.MealyMachine\n\n/-!\n---\ntitle: State transformations of a pre-automaton\ntype: definition\n---\nA *pre-automaton* is a deterministic finite automaton without designated initial\nand accepting states: an input alphabet $A$, a state space $Q$ and a family of\n*state transformations* $\\delta_a : Q \\to Q$, one for each letter $a \\in A$\n(Section A.2 of *Transducers*). The state transformation $\\delta_w$ of an input\nstring $w$ is the composition of the state transformations of its letters, in\nthe order in which they are read.\n\nThe *state transformation transducer* of a pre-automaton is the Mealy machine of\ntype $A^* \\to (Q \\to Q)^*$ whose $n$-th output letter is the state\ntransformation of the first $n$ input letters. It is the object that the proof of\nthe Krohn–Rhodes theorem decomposes (Lemma A.2.5).\n\nA pre-automaton satisfies the *stabilisation condition* (*) of Lemma A.2.11 if\nfor every state transformation $\\delta$ that arises from some input string, the\nsequence of powers $\\delta^1, \\delta^2, \\ldots$ eventually stabilises on a single\nstate transformation. This is the condition on a minimal Mealy machine that\ncharacterises aperiodicity.\n\n# Formalization notes\n\nA pre-automaton is just its transition function `δ : Q → A → Q`; no structure is\nintroduced. `strTrans δ w` is the state transformation of the string `w`, a\nleft fold of `δ` along `w`, so that the letters act in reading order. The\ntransition function of the state transformation transducer stores the state\ntransformation of the prefix read so far as its state and outputs it after every\nletter, as the book describes; its state space `Q → Q` is finite when `Q` is.\n`f^[n]` is the `n`-th iterate of `f`.\n-/\n\nnamespace Lax765601.StateTransformations\n\nopen Lax765601.MealyMachine\n\n/-- The state transformation of an input string, for the pre-automaton `δ`: the\nletters act one after the other, in reading order. -/\ndef strTrans {A Q : Type} (δ : Q → A → Q) (w : List A) : Q → Q := fun q => w.foldl δ q\n\n/-- The stabilisation condition (*) of Lemma A.2.11: for every state\ntransformation `δ_w` arising from an input string, the sequence of its powers\n`δ_w¹, δ_w², …` eventually stabilises. -/\ndef TransAperiodic {A Q : Type} (δ : Q → A → Q) : Prop :=\n  ∀ w : List A, ∃ N : ℕ, ∀ n ≥ N, (strTrans δ w)^[n] = (strTrans δ w)^[N]\n\n/-- The state transformation transducer of a pre-automaton: the Mealy machine\nwhose `n`-th output letter is the state transformation of the first `n` input\nletters. -/\ndef stateTransTransducer {A Q : Type} (δ : Q → A → Q) : Mealy A (Q → Q) (Q → Q) where\n  init := id\n  step := fun t a => (fun q => δ (t q) a, fun q => δ (t q) a)\n\nend Lax765601.StateTransformations\n",
+      "statements": []
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax765601Proofs.Results.aperiodic_iff_compClosure_flipFlop",
+      "path": "proofs/Lax765601Proofs/Results.lean",
+      "conclusion": "Lax765601.AperiodicMealy.aperiodic_iff_compClosure_flipFlop",
+      "assumptions": [
+        "Lax765601.AperiodicOfFlipFlops.aperiodic_of_compClosure_flipFlop",
+        "Lax765601.FlipFlopsOfAperiodic.compClosure_flipFlop_of_aperiodic"
+      ],
+      "description": "Theorem A.2.8 as a biconditional, glued from its two halves: the statements\n`FlipFlopsOfAperiodic` and `AperiodicOfFlipFlops` are its assumptions."
+    },
+    {
+      "id": "Lax765601Proofs.Results.aperiodic_iff_pumping",
+      "path": "proofs/Lax765601Proofs/Results.lean",
+      "conclusion": "Lax765601.AperiodicPumping.aperiodic_iff_pumping",
+      "assumptions": [],
+      "description": "Aperiodicity of a Mealy function is the pumping property of Claim A.2.9. The\nsource proves the pumping property from the stabilisation condition of Lemma\nA.2.11 (`Transducers.transStabilises_pumping`) and the converse directly.",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "Claim A.2.9 of *Transducers*; Lean proof by Aristotle\n(`Transducers.aperiodic_iff_pumping`)."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601Proofs.Results.aperiodic_iff_transAperiodic",
+      "path": "proofs/Lax765601Proofs/Results.lean",
+      "conclusion": "Lax765601.AperiodicityMinimalMachine.aperiodic_iff_transAperiodic",
+      "assumptions": [],
+      "description": "A Mealy function is aperiodic if and only if some machine computing it satisfies\nthe stabilisation condition (*) (Lemma A.2.11). The source constructs the\nminimal machine on the derivatives and shows that aperiodicity makes its\nstate transformations stabilise; conversely (*) gives the pumping property.",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "Lemma A.2.11 of *Transducers*; Lean proof by Aristotle\n(`Transducers.aperiodic_iff_transStabilises`)."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601Proofs.Results.aperiodic_of_compClosure_flipFlop",
+      "path": "proofs/Lax765601Proofs/Results.lean",
+      "conclusion": "Lax765601.AperiodicOfFlipFlops.aperiodic_of_compClosure_flipFlop",
+      "assumptions": [],
+      "description": "A composition of flip-flops is aperiodic (the easy half of Theorem A.2.8): a\nflip-flop satisfies the stabilisation condition, hence the pumping property of\nClaim A.2.9, and the pumping property is preserved by composition.",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "Theorem A.2.8 of *Transducers*, right-to-left; Lean proof by Aristotle\n(`Transducers.flipflop_composition_aperiodic`)."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601Proofs.Results.compClosure_flipFlop_of_aperiodic",
+      "path": "proofs/Lax765601Proofs/Results.lean",
+      "conclusion": "Lax765601.FlipFlopsOfAperiodic.compClosure_flipFlop_of_aperiodic",
+      "assumptions": [],
+      "description": "An aperiodic Mealy function is a composition of flip-flops (the hard half of\nTheorem A.2.8): by Lemma A.2.11 some machine computing it satisfies the\nstabilisation condition (*), and the Krohn–Rhodes construction run for that\nmachine only produces flip-flops (`Transducers.krohn_rhodes_flipFlop`, from\n`RequestProject/PartA/StateTransAperiodic.lean`).",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "Theorem A.2.8 of *Transducers*, left-to-right; Lean proof by Aristotle\n(`Transducers.aperiodic_iff_flipflop_composition`)."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601Proofs.Results.compClosure_mapLift",
+      "path": "proofs/Lax765601Proofs/Results.lean",
+      "conclusion": "Lax765601.MapLiftingDecomposition.compClosure_mapLift",
+      "assumptions": [],
+      "description": "Map lifting preserves decompositions into primes (Lemma A.2.4): the source proves\nit for a single prime — a flip-flop is reset at the separator, a reversible\nmachine goes through the cancellation law of the book — and extends it along the\ncomposition tree.",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "Lemma A.2.4 of *Transducers*; Lean proof by Aristotle\n(`Transducers.mapLift_prime_decomposition`, `RequestProject/PartA/MapLift.lean`)."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601Proofs.Results.compClosure_primeMealy_of_isMealy",
+      "path": "proofs/Lax765601Proofs/Results.lean",
+      "conclusion": "Lax765601.KrohnRhodes.compClosure_primeMealy_of_isMealy",
+      "assumptions": [],
+      "description": "The Krohn–Rhodes theorem (Theorem A.2.2): every Mealy machine is a composition\nof reversible and flip-flop machines.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "The source follows the book: the state transformations of the prefixes of the\ninput are computed by a composition of primes (Lemma A.2.5,\n`Transducers.stateTransTransducer_prime_decomposition`, an induction on the\nnumber of states and on the number of letters whose state transformation is not\na permutation, the letter `a` of the induction step being made to act as the\nidentity rather than removed from the alphabet), they are paired with the input\nletters, and the output is produced by a flip-flop delay machine. The bridge\ntransports the family of primes and the composition closure\n(`compClosure_iff`)."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Theorem A.2.2 of *Transducers* (the Krohn–Rhodes theorem, in the form the book\nproves); Lean proof by Aristotle (`Transducers.krohn_rhodes`,\n`RequestProject/PartA/StateTrans.lean`)."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601Proofs.Results.compClosure_stateTransTransducer",
+      "path": "proofs/Lax765601Proofs/Results.lean",
+      "conclusion": "Lax765601.StateTransformationDecomposition.compClosure_stateTransTransducer",
+      "assumptions": [],
+      "description": "The state transformation transducer of a pre-automaton is a composition of\nprimes (Lemma A.2.5): the induction of the book on the number of states and,\nfor a tie, on the number of letters whose state transformation is not a\npermutation, with the tripartite decomposition of the input into the first\n`a`-block, the middle blocks and the `a`-free suffix.",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "Lemma A.2.5 of *Transducers*; Lean proof by Aristotle\n(`Transducers.stateTransTransducer_prime_decomposition`,\n`RequestProject/PartA/StateTrans.lean`)."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601Proofs.Results.continuous_of_isMealy",
+      "path": "proofs/Lax765601Proofs/Results.lean",
+      "conclusion": "Lax765601.MealyContinuity.continuous_of_isMealy",
+      "assumptions": [],
+      "description": "Mealy machines are continuous (Theorem A.1.4): the product of the machine with a\ndeterministic automaton for the output language recognises the inverse image\n(`Transducers.Mealy.dfaComp` in the source).",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "Theorem A.1.4 of *Transducers*; Lean proof by Aristotle\n(`Transducers.mealy_continuous`)."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601Proofs.Results.eval_eq_iff_short",
+      "path": "proofs/Lax765601Proofs/Results.lean",
+      "conclusion": "Lax765601.MealyEquivalenceBound.eval_eq_iff_short",
+      "assumptions": [],
+      "description": "Two Mealy machines are equivalent if and only if they agree on all inputs of\nlength at most the product of their numbers of states (Theorem A.1.2).",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "The source theorem `Transducers.mealy_equiv_iff_bounded` proves the finite\ncheck for `Fintype` state spaces and `Fintype.card`: a pair of runs of the two\nmachines that repeats a pair of states can be shortened by cutting out the loop\nwithout removing a disagreement, so a shortest disagreeing input has length at\nmost `|Q₁|·|Q₂|`. The bridge moves between the concept machine and the source\nmachine (`eval_toSrc`) and between `Nat.card` and `Fintype.card`."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Theorem A.1.2 of *Transducers* (M. Bojańczyk); the Lean proof is Aristotle's,\nin `RequestProject/PartA/Statements.lean`."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601Proofs.Results.isMealy_comp",
+      "path": "proofs/Lax765601Proofs/Results.lean",
+      "conclusion": "Lax765601.MealyComposition.isMealy_comp",
+      "assumptions": [],
+      "description": "Mealy machines are closed under composition (Theorem A.1.3), by the product\nconstruction `Transducers.Mealy.compose` of the source, transported through\n`isMealy_iff`.",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "Theorem A.1.3 of *Transducers*; Lean proof by Aristotle\n(`Transducers.mealy_comp`)."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601Proofs.Results.isMealy_iff_derivatives",
+      "path": "proofs/Lax765601Proofs/Results.lean",
+      "conclusion": "Lax765601.MealyDerivatives.isMealy_iff",
+      "assumptions": [],
+      "description": "The Myhill–Nerode lemma for Mealy machines (Lemma A.2.10). From a machine, the\nderivative after `w` is the run from the state reached after `w`; conversely the\nsource builds the minimal machine `Transducers.derivMealy` on the finitely many\nderivatives, its transition from `f(w_)` on `a` outputting the first letter of\n`f(w_)(a)` and moving to `f(wa_)`.",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "Lemma A.2.10 of *Transducers*; Lean proof by Aristotle\n(`Transducers.myhill_nerode_mealy`)."
+        }
+      ]
+    },
+    {
+      "id": "Lax765601Proofs.Results.isReversibleMealy_comp",
+      "path": "proofs/Lax765601Proofs/Results.lean",
+      "conclusion": "Lax765601.ReversibleComposition.isReversibleMealy_comp",
+      "assumptions": [],
+      "description": "Reversible Mealy machines are closed under composition (Lemma A.2.6): the\nproduct machine is reversible in each coordinate.",
+      "sections": [
+        {
+          "title": "Attribution",
+          "markdown": "Lemma A.2.6 of *Transducers*; Lean proof by Aristotle\n(`Transducers.reversible_comp`)."
+        }
+      ]
+    }
+  ],
   "capture": {
     "formatVersion": 1,
-    "digest": "984dfb9c759aba58663b4c504901a19bab85d11b32eeebf0d977fbf7b0f74f0a",
-    "sourceCommit": "17701b2a8ab43f87b1ff31d558a7aa94cc3d0957",
+    "digest": "878283884d8033acec21365554fd9d326cc0fc7a3ef7547ee115321aacdf558b",
+    "sourceCommit": "cf8ade7b9a07bf575705db4ddc28bd90b2c6cb74",
     "leanToolchain": "leanprover/lean4:v4.30.0",
     "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
     "files": [
       {
+        "path": "concepts/ir/Lax765601/Aperiodicity.c",
+        "bytes": 3549,
+        "sha256": "ceb8d00f6e7ed92542b775b217ab0d5701182bad18250e4b71dbed88e66f83b3"
+      },
+      {
+        "path": "concepts/ir/Lax765601/Aperiodicity.c.hash",
+        "bytes": 16,
+        "sha256": "43a9a363ac92f959e6c14aacc6b8fdbe6005ad9b6711bf0b2d12b629b8cd9362"
+      },
+      {
+        "path": "concepts/ir/Lax765601/AperiodicityMinimalMachine.c",
+        "bytes": 1866,
+        "sha256": "8bd3d6e82350f0b9d33b9d5321fb1f7dc7c24be89671bc3859c7a46384942b8f"
+      },
+      {
+        "path": "concepts/ir/Lax765601/AperiodicityMinimalMachine.c.hash",
+        "bytes": 16,
+        "sha256": "a70d74c7afa54494247d9e9b45898b2eaae821b9f21d93e8d4d49a3e39053d2a"
+      },
+      {
+        "path": "concepts/ir/Lax765601/AperiodicMealy.c",
+        "bytes": 1599,
+        "sha256": "1a08416c2f447e1d0109118ded6eebc44192eeb545bc9b589dbe8b68ed764d8e"
+      },
+      {
+        "path": "concepts/ir/Lax765601/AperiodicMealy.c.hash",
+        "bytes": 16,
+        "sha256": "ff81e2e3a4dc92d26ce44b40e4002f8bb8151573b8a9ee73820d5ec8705529a9"
+      },
+      {
+        "path": "concepts/ir/Lax765601/AperiodicOfFlipFlops.c",
+        "bytes": 1611,
+        "sha256": "a5933bf66fef777df9ee6c7c02c051ad863eb2db6b11dd574890ed318656ce4b"
+      },
+      {
+        "path": "concepts/ir/Lax765601/AperiodicOfFlipFlops.c.hash",
+        "bytes": 16,
+        "sha256": "867945e55d86a993cbc038ef0f892fb86089b45d6f0b7c285707cf4387d92ead"
+      },
+      {
+        "path": "concepts/ir/Lax765601/AperiodicPumping.c",
+        "bytes": 1585,
+        "sha256": "804202377e10a1264a18813ea3d37344145f2dc936d6d6f655d209313760ba21"
+      },
+      {
+        "path": "concepts/ir/Lax765601/AperiodicPumping.c.hash",
+        "bytes": 16,
+        "sha256": "cbbda1c53c6e29c54ed1ad6088b164e281af18a11b4a8158a0bd91a4dd7e4543"
+      },
+      {
+        "path": "concepts/ir/Lax765601/CompositionClosure.c",
+        "bytes": 1354,
+        "sha256": "7ed90401fc7fffeac4364ef2dc301fdf428ae148f682346c66e4775970625e80"
+      },
+      {
+        "path": "concepts/ir/Lax765601/CompositionClosure.c.hash",
+        "bytes": 16,
+        "sha256": "3a992e96ddd003bceda9b8a1889b2f3dc95b6ac823881f1bff555f93a7f1f583"
+      },
+      {
+        "path": "concepts/ir/Lax765601/Continuity.c",
+        "bytes": 1341,
+        "sha256": "02d86fe44b7b8b43a543bc5756f465a09fed62768920ebc1b0df3b3ad2c19cd4"
+      },
+      {
+        "path": "concepts/ir/Lax765601/Continuity.c.hash",
+        "bytes": 16,
+        "sha256": "29fcb9c0b67e6eccebac54740f85ed9003403312ed45fa1de6c22cd69fbafc11"
+      },
+      {
+        "path": "concepts/ir/Lax765601/Derivatives.c",
+        "bytes": 2574,
+        "sha256": "2171c443e8e4cf636a600eade5cca65d1ae04ba69318b3976e18047b23b496d4"
+      },
+      {
+        "path": "concepts/ir/Lax765601/Derivatives.c.hash",
+        "bytes": 16,
+        "sha256": "9dd04ab26cc44b659d343d5fb4111a735301888afe5d3e21004166b588c4a19a"
+      },
+      {
+        "path": "concepts/ir/Lax765601/ElementaryProperties.c",
+        "bytes": 1355,
+        "sha256": "2b87a4f010fd4c1941b7e87fe5703f123c384b2c05f061eadf814dc813289088"
+      },
+      {
+        "path": "concepts/ir/Lax765601/ElementaryProperties.c.hash",
+        "bytes": 16,
+        "sha256": "35fa386056092b29424db060a67928d57b91b50a6cd911ee1918b731dd91e50a"
+      },
+      {
+        "path": "concepts/ir/Lax765601/FlipFlopsOfAperiodic.c",
+        "bytes": 1611,
+        "sha256": "e2267cf37d2feaf4aed9cdbbc32f2542b58787069e977b9b7fb3466bf9b46f70"
+      },
+      {
+        "path": "concepts/ir/Lax765601/FlipFlopsOfAperiodic.c.hash",
+        "bytes": 16,
+        "sha256": "5b87bf014c042c40cd1d1bf0ff6f968f29787d60dc2eb9ec7ec32c6d526391e5"
+      },
+      {
+        "path": "concepts/ir/Lax765601/KrohnRhodes.c",
+        "bytes": 1356,
+        "sha256": "b4cc3646483695304d7b62bd9707a7bd5cf54f0fbe15eb0a4d59632fdc43da7c"
+      },
+      {
+        "path": "concepts/ir/Lax765601/KrohnRhodes.c.hash",
+        "bytes": 16,
+        "sha256": "75120b71feef4b2894cae130e51ac4c3878bb9259974c14f048efc26c2abd11f"
+      },
+      {
+        "path": "concepts/ir/Lax765601/MapLifting.c",
+        "bytes": 12322,
+        "sha256": "1797476b7e6216b3b1d6fe872e148acfbdb2eaf82745bf0c47708825884a311d"
+      },
+      {
+        "path": "concepts/ir/Lax765601/MapLifting.c.hash",
+        "bytes": 16,
+        "sha256": "dcb27501bdaa15976e09084169a5a09f5c3a2b47ed17ca7eda6c8c72a8804785"
+      },
+      {
+        "path": "concepts/ir/Lax765601/MapLiftingDecomposition.c",
+        "bytes": 1611,
+        "sha256": "7ff70195231e591f8efa5523f776071f8b88ca3aaa645ece1cf9e829aed6ec2a"
+      },
+      {
+        "path": "concepts/ir/Lax765601/MapLiftingDecomposition.c.hash",
+        "bytes": 16,
+        "sha256": "f4d23601bbce5a09befbf93260f11cb4c2981ed7829d0c5825e367357a59a871"
+      },
+      {
+        "path": "concepts/ir/Lax765601/MealyComposition.c",
+        "bytes": 1348,
+        "sha256": "b068fedafff3fa52757e0cad6b9a3a058f348aacf9a5a1ca21a7a5536844b73d"
+      },
+      {
+        "path": "concepts/ir/Lax765601/MealyComposition.c.hash",
+        "bytes": 16,
+        "sha256": "84c26a9bc3ccb51581f131799afa2bf487bba6ea9815e687d21965ed3c5dd817"
+      },
+      {
+        "path": "concepts/ir/Lax765601/MealyContinuity.c",
+        "bytes": 1577,
+        "sha256": "70d4435086d5403020139be2ecf7cb0e419a6a18885a590d88c44665dfdf893e"
+      },
+      {
+        "path": "concepts/ir/Lax765601/MealyContinuity.c.hash",
+        "bytes": 16,
+        "sha256": "a198d0324c6e270c60a91c83be09334b3941a92b58d7ed30c0d6304a5947cef4"
+      },
+      {
+        "path": "concepts/ir/Lax765601/MealyDerivatives.c",
+        "bytes": 2097,
+        "sha256": "e94b19fbc9136baff823f032ad6d4c707ad507b557976a5b8760eeb8b79fdd9d"
+      },
+      {
+        "path": "concepts/ir/Lax765601/MealyDerivatives.c.hash",
+        "bytes": 16,
+        "sha256": "4ec4a2fb7a68a6f73aa8d6f20f3bb8d00874455874ced78b526745f399679671"
+      },
+      {
+        "path": "concepts/ir/Lax765601/MealyEquivalenceBound.c",
+        "bytes": 1624,
+        "sha256": "fdbc7e3db7336be172ee836ec0567da78e4cbb1b23dfebaef15582a4ae63c739"
+      },
+      {
+        "path": "concepts/ir/Lax765601/MealyEquivalenceBound.c.hash",
+        "bytes": 16,
+        "sha256": "29c1c957edf7e6d821dfbae473c1c9b6658b12d49e74aa8692a7631bd23e416b"
+      },
+      {
+        "path": "concepts/ir/Lax765601/MealyMachine.c",
+        "bytes": 7013,
+        "sha256": "81407f4b570c75cbe231eebc983b90650bd7ede0b1af28c14edd556d31faab8f"
+      },
+      {
+        "path": "concepts/ir/Lax765601/MealyMachine.c.hash",
+        "bytes": 16,
+        "sha256": "48d5aec5daed5cb00baa873cd27552d4e76b25eefcb33b1ba12291e9c38430ee"
+      },
+      {
+        "path": "concepts/ir/Lax765601/PrimeMealyMachines.c",
+        "bytes": 1855,
+        "sha256": "a5aece5ab441c3ff426ab04607a273411aecbbc00a302ecb7ea5992588fc2ab6"
+      },
+      {
+        "path": "concepts/ir/Lax765601/PrimeMealyMachines.c.hash",
+        "bytes": 16,
+        "sha256": "e1128d6d4a364ab21fa667687f4e9482f9fa681d406763f5b3171cdd57c30221"
+      },
+      {
+        "path": "concepts/ir/Lax765601/ReversibleComposition.c",
+        "bytes": 1376,
+        "sha256": "838276b5d3db370597034944fe07e7b400e2429f1d72dc565ededc868d038148"
+      },
+      {
+        "path": "concepts/ir/Lax765601/ReversibleComposition.c.hash",
+        "bytes": 16,
+        "sha256": "0fb1d8b62e6a9f98729f5ab50e030439708b97e6dde7e19c05de83c8865fa053"
+      },
+      {
+        "path": "concepts/ir/Lax765601/StateTransformationDecomposition.c",
+        "bytes": 1659,
+        "sha256": "466b2dfb2fe5db2f9e95113cf9b4bf4e97c197c8c8cfdedd8230f67295249b4c"
+      },
+      {
+        "path": "concepts/ir/Lax765601/StateTransformationDecomposition.c.hash",
+        "bytes": 16,
+        "sha256": "84323bb912a85479d0e520898eef020e869cdf95188b9333182b8d48f3ba8f60"
+      },
+      {
+        "path": "concepts/ir/Lax765601/StateTransformations.c",
+        "bytes": 8000,
+        "sha256": "f1093331533e3f674b3fe60ebbb397749afddcfef780b7fb3295f54b4b91ef20"
+      },
+      {
+        "path": "concepts/ir/Lax765601/StateTransformations.c.hash",
+        "bytes": 16,
+        "sha256": "ac2f4d82b3bdd1f61cb897b3a528feca5175718c981365cc2a2dcd1c2534a45c"
+      },
+      {
         "path": "concepts/ir/Lax765601.c",
-        "bytes": 1077,
-        "sha256": "64451fef89edfb39ee261c014c61b8ef2f7739a2e78a671c249a3d973235dd1f"
+        "bytes": 6645,
+        "sha256": "aee4994d845d394255dacc321d36922e84855a5437c3980c243041fd2ceccd2c"
       },
       {
         "path": "concepts/ir/Lax765601.c.hash",
         "bytes": 16,
-        "sha256": "d4d67a0f75bfb934d559af6e1c160dd0f6fad8f48c041aa9c0f402334e92ed31"
+        "sha256": "29c052280a2997bcf9e559d21a58b1258a89a49db7569b59e1649c37d13239d7"
+      },
+      {
+        "path": "concepts/lib/Lax765601/Aperiodicity.ilean",
+        "bytes": 1358,
+        "sha256": "e00f9f990da13b99a99665be376a43128899110b96f30574f5d45ad01af508f8"
+      },
+      {
+        "path": "concepts/lib/Lax765601/Aperiodicity.ilean.hash",
+        "bytes": 16,
+        "sha256": "9c88e1eae2e782e209a229a9f8d2ed7c89ea964f1b076a3f04bb1ed2010c8ae7"
+      },
+      {
+        "path": "concepts/lib/Lax765601/Aperiodicity.olean",
+        "bytes": 30352,
+        "sha256": "bf38ab1e059e258f6f3eb4dc3e1cd36115ffb75eff34b0b5198ece59a45953b2"
+      },
+      {
+        "path": "concepts/lib/Lax765601/Aperiodicity.olean.hash",
+        "bytes": 16,
+        "sha256": "f249083728c759c0ff99fef6eb119d27402c621721e89dfe66debbededef8287"
+      },
+      {
+        "path": "concepts/lib/Lax765601/Aperiodicity.trace",
+        "bytes": 2323,
+        "sha256": "23148e27a102d0300c46fb8b7e512376abc3a7228318661f1c79db715e27df86"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicityMinimalMachine.ilean",
+        "bytes": 2230,
+        "sha256": "02803b3414c75b6394d282e6279ca3e9236594bfa2b4bf1c0bca1d567110035d"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicityMinimalMachine.ilean.hash",
+        "bytes": 16,
+        "sha256": "060fe1d2aa47edb9bd8abbd4768970573bbede2f036ea480dc29e0461d3fb623"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicityMinimalMachine.olean",
+        "bytes": 10056,
+        "sha256": "3624a225947ab2941597adb8f529a55a48cd58501ec0a2ca789928a1135260b6"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicityMinimalMachine.olean.hash",
+        "bytes": 16,
+        "sha256": "e4705388f3722cfc98b331c4d3d49a168d68f1bcbbf5bba8c1a94feebe7b3a37"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicityMinimalMachine.trace",
+        "bytes": 2775,
+        "sha256": "cc8afd270b373de0916e13cefd85ecdfe8e899b61d02f3b9047d5d90fddc9e2f"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicMealy.ilean",
+        "bytes": 1777,
+        "sha256": "acb4cffc3d624bb3ef9212e933fe366efc94565c90a5c5370342894665a1b809"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicMealy.ilean.hash",
+        "bytes": 16,
+        "sha256": "bb4b7b562aa5a420beb192338ec76a4e501762aa27558e2f5dc57812b835d488"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicMealy.olean",
+        "bytes": 8008,
+        "sha256": "ffa9303bb6dc489f1bf33eeda5b81627332461f7b405c60246f66594b7835501"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicMealy.olean.hash",
+        "bytes": 16,
+        "sha256": "dcc5ac3759590026c62ca938457e60fa668244fb5a6d5c01ab4e82c7b4205880"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicMealy.trace",
+        "bytes": 2512,
+        "sha256": "bf30e5511b41d0d5f4b8d53e9947323b18a1f548e3a23cc0f501b252bd57d5cb"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicOfFlipFlops.ilean",
+        "bytes": 1391,
+        "sha256": "7626faa749034f72f69db55ab8283a145d561b7fd79ba08c4118bf8c362c87df"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicOfFlipFlops.ilean.hash",
+        "bytes": 16,
+        "sha256": "e4c601154b120a0dc718eeb1565c21a7a45d600abd566b7df11d00c4c5828251"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicOfFlipFlops.olean",
+        "bytes": 6368,
+        "sha256": "4708c5fdef97b8b98e5d22ef7d67b606a46f03dc130d6da199f3e8028153d836"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicOfFlipFlops.olean.hash",
+        "bytes": 16,
+        "sha256": "e9eb1ab288de49d0d48b0299a75d64a6571f5886c59170e08f916a20e73dd18b"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicOfFlipFlops.trace",
+        "bytes": 2560,
+        "sha256": "544af20cd8e6d730e11907258c464c7679bc0e3b2a7703d6c9c5a0c1253a3373"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicPumping.ilean",
+        "bytes": 1553,
+        "sha256": "1a6e4794820f8aa279cf2cbcf54604c3910ffc95b19aafe45844ac43b21345c6"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicPumping.ilean.hash",
+        "bytes": 16,
+        "sha256": "61520214a5faad22ace3db778808f164863c36ed196312102864a6bece7ceff9"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicPumping.olean",
+        "bytes": 12448,
+        "sha256": "e4e87db0f99fa83b629c8432b05eb79701273152a3fc5cc259f458a653250402"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicPumping.olean.hash",
+        "bytes": 16,
+        "sha256": "59873431ccd60250e10977166c47c06bdb16c79e647ef32e3ff1f6309bef252e"
+      },
+      {
+        "path": "concepts/lib/Lax765601/AperiodicPumping.trace",
+        "bytes": 2516,
+        "sha256": "fb7916aa72a42782cfcb1f2e92e8a27799ddc2350d97952f5fb8f6e91c19e6de"
+      },
+      {
+        "path": "concepts/lib/Lax765601/CompositionClosure.ilean",
+        "bytes": 2685,
+        "sha256": "92eabc474bda0d040164da53b41f76064d36a64502c1e62c8a348dfac2ef4dbb"
+      },
+      {
+        "path": "concepts/lib/Lax765601/CompositionClosure.ilean.hash",
+        "bytes": 16,
+        "sha256": "d806a829a2d3eee9f40f8ebb6c227a79e259cd8e3c33ff383b1ae59eae24b59b"
+      },
+      {
+        "path": "concepts/lib/Lax765601/CompositionClosure.olean",
+        "bytes": 54664,
+        "sha256": "e8bd64d36c2e47b60ab60dd622466e99bdc0c7e3d235278b7ced74fa61383b90"
+      },
+      {
+        "path": "concepts/lib/Lax765601/CompositionClosure.olean.hash",
+        "bytes": 16,
+        "sha256": "5f0ae7149b514bca00b04bfd4dea3a2f9b8a9cbfe97c7a831317561740d69c07"
+      },
+      {
+        "path": "concepts/lib/Lax765601/CompositionClosure.trace",
+        "bytes": 2373,
+        "sha256": "6047474278250f0391c0fe9668b4049fc1598c1f5d75f0845c84c39e42c2c65e"
+      },
+      {
+        "path": "concepts/lib/Lax765601/Continuity.ilean",
+        "bytes": 2351,
+        "sha256": "b1ac2b02fb93ae4473ca836d4a385204fb236f7c587d19763af91fcad213e00c"
+      },
+      {
+        "path": "concepts/lib/Lax765601/Continuity.ilean.hash",
+        "bytes": 16,
+        "sha256": "905f9975c7589af1bbd606f922fcd8efe457072922bab56cafd07c1bdf5f85cf"
+      },
+      {
+        "path": "concepts/lib/Lax765601/Continuity.olean",
+        "bytes": 13400,
+        "sha256": "1faa25037d2147ddca5b8f555a77c8dbd195957fd32ab36aaf85a9de6cbd5b88"
+      },
+      {
+        "path": "concepts/lib/Lax765601/Continuity.olean.hash",
+        "bytes": 16,
+        "sha256": "1842fbf3a4132efbb61dfcec8a2b97588046f59bbdd0138e0784cb249028c508"
+      },
+      {
+        "path": "concepts/lib/Lax765601/Continuity.trace",
+        "bytes": 2311,
+        "sha256": "37e50cd81860eeed3793c0f172eefd81f71cf72896a864d1665cd51e112755c9"
+      },
+      {
+        "path": "concepts/lib/Lax765601/Derivatives.ilean",
+        "bytes": 880,
+        "sha256": "fa91441e4c47ebea09ed50189d47bce1d169504cac1200a45de8911cec80c49e"
+      },
+      {
+        "path": "concepts/lib/Lax765601/Derivatives.ilean.hash",
+        "bytes": 16,
+        "sha256": "f053eacbf291e77a94b0d1e0e6d86a6c94d373d5acae9133c255987acce8959d"
+      },
+      {
+        "path": "concepts/lib/Lax765601/Derivatives.olean",
+        "bytes": 15464,
+        "sha256": "b85d9c28b414d51df954f83e46f69d27f0f12e9ab719808879278affb62c8bdf"
+      },
+      {
+        "path": "concepts/lib/Lax765601/Derivatives.olean.hash",
+        "bytes": 16,
+        "sha256": "4606038a7be4d5ead54569b6c60a5f95660e432498e2fc43a93a556a4b8f7c3e"
+      },
+      {
+        "path": "concepts/lib/Lax765601/Derivatives.trace",
+        "bytes": 2315,
+        "sha256": "78bd0ab5e69e9cf7e797eebcfc203de4f5f8283b2868ca6a0b6007cdfe6d6594"
+      },
+      {
+        "path": "concepts/lib/Lax765601/ElementaryProperties.ilean",
+        "bytes": 2185,
+        "sha256": "0e7edf5e9bdb98288d986353f039dee687f8f6d3d0f8bed8f429d3558b00a1b0"
+      },
+      {
+        "path": "concepts/lib/Lax765601/ElementaryProperties.ilean.hash",
+        "bytes": 16,
+        "sha256": "56aeca060de9d0e348651ddf9b4bdc465991ec7b6503ad81f9b65fe6a40dac9b"
+      },
+      {
+        "path": "concepts/lib/Lax765601/ElementaryProperties.olean",
+        "bytes": 10584,
+        "sha256": "82b4eb2171c5da4718e357502036a36c1086a7dd1acd1daa6dfaf177ef6cb560"
+      },
+      {
+        "path": "concepts/lib/Lax765601/ElementaryProperties.olean.hash",
+        "bytes": 16,
+        "sha256": "c25bd6cb97382e9f5e32cbaaa08620433bd612b993c80db3d0f70e1f35aed204"
+      },
+      {
+        "path": "concepts/lib/Lax765601/ElementaryProperties.trace",
+        "bytes": 2387,
+        "sha256": "060b27c17595d5fc85a83a495d9423719e69e586bd1817bd1a41c00cdf240c48"
+      },
+      {
+        "path": "concepts/lib/Lax765601/FlipFlopsOfAperiodic.ilean",
+        "bytes": 1844,
+        "sha256": "0636ea755e112d7b7243c08aadb08c1e49260142a4a7c2b2bf7c96aad5f713a3"
+      },
+      {
+        "path": "concepts/lib/Lax765601/FlipFlopsOfAperiodic.ilean.hash",
+        "bytes": 16,
+        "sha256": "0af41b7b9893f1cd82ce3a1a96093185c94502c023d51d98ca60cc0e52ae2468"
+      },
+      {
+        "path": "concepts/lib/Lax765601/FlipFlopsOfAperiodic.olean",
+        "bytes": 7576,
+        "sha256": "4383a2ed1f501aaa214c23dce68bb9b737ad75ddf652db1debead0aac697853b"
+      },
+      {
+        "path": "concepts/lib/Lax765601/FlipFlopsOfAperiodic.olean.hash",
+        "bytes": 16,
+        "sha256": "fbb0f9fe9cd9620417e974f779ae1e5a4c60484de7f208c5d61f50e993f3d382"
+      },
+      {
+        "path": "concepts/lib/Lax765601/FlipFlopsOfAperiodic.trace",
+        "bytes": 2560,
+        "sha256": "74c0563c3e0b8fd3b25c30f8ab58f9e6e69b2b77d37535700f724fcf295e3bad"
+      },
+      {
+        "path": "concepts/lib/Lax765601/KrohnRhodes.ilean",
+        "bytes": 1494,
+        "sha256": "1e6cc7c48e4cd9c97288e1195501a489df42eb5644522893ab6803ae9bc931df"
+      },
+      {
+        "path": "concepts/lib/Lax765601/KrohnRhodes.ilean.hash",
+        "bytes": 16,
+        "sha256": "ab9d4b13599f82063654ea108b6eb8dd28946ed1560c35c84b88ce7fc9ef45db"
+      },
+      {
+        "path": "concepts/lib/Lax765601/KrohnRhodes.olean",
+        "bytes": 7672,
+        "sha256": "b54341cb54860b80fb5a12d4f3b05b84487d84b9d36005c1cd4f32f6c590178b"
+      },
+      {
+        "path": "concepts/lib/Lax765601/KrohnRhodes.olean.hash",
+        "bytes": 16,
+        "sha256": "3b9308be906b1b66221f8430384611efef655958bfeb5076557d73ae41264152"
+      },
+      {
+        "path": "concepts/lib/Lax765601/KrohnRhodes.trace",
+        "bytes": 2325,
+        "sha256": "37073adc5f2dbd7e1a7234294772c05dc3435469b3da20e051c164186934873b"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MapLifting.ilean",
+        "bytes": 1918,
+        "sha256": "bd09f2cde72c28548f07d3d05fad760a2b744416dfb11fe9c6569d0a06738dc2"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MapLifting.ilean.hash",
+        "bytes": 16,
+        "sha256": "fdda8ca1a5a01cf3a2bde44d9028375af527c04d3473febd0ff7155776a87c0d"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MapLifting.olean",
+        "bytes": 61192,
+        "sha256": "d4fc18d3bc39204f0f25d5fe0e317767e8a1cbeb507597667e182b7442260c4b"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MapLifting.olean.hash",
+        "bytes": 16,
+        "sha256": "d3ec1d9f8b4472679c0c4b77bb295559a72c5b79b37bbc9905c27e2c48221161"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MapLifting.trace",
+        "bytes": 2307,
+        "sha256": "35433c1e240659e774d083a340fb5a0f8046bd1ce33547b3651042a0341e431d"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MapLiftingDecomposition.ilean",
+        "bytes": 1830,
+        "sha256": "bfeebc77b1e3df26dcc40c2f147d40edf9a405e4067b7db7e031cebc6650db6d"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MapLiftingDecomposition.ilean.hash",
+        "bytes": 16,
+        "sha256": "f2acc8d47a7a067f5782ac003d923b981b158f9fba7652a2701167c932db1368"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MapLiftingDecomposition.olean",
+        "bytes": 7384,
+        "sha256": "744de43f7e4176d0982a1a2814c6fc874e3434d445c34dfc16d62a38462ac215"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MapLiftingDecomposition.olean.hash",
+        "bytes": 16,
+        "sha256": "83988fba94b888e0f5b3f35fb2c631094fe4f6250b525e78e84da7b73e8ddb37"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MapLiftingDecomposition.trace",
+        "bytes": 2580,
+        "sha256": "a12d16bf58094e2a491555e820e13cdba4bae450e228d7bd92ce5cd3c2453427"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyComposition.ilean",
+        "bytes": 1127,
+        "sha256": "59ed48d529e20d3ed6a341a6c21e410e383f0cebf7a3d00c0544897627137a1b"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyComposition.ilean.hash",
+        "bytes": 16,
+        "sha256": "78a5f53deebb2a9070fa8d56536e5f13ee4718ba9749990a9d7a7b8e28fb6a4f"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyComposition.olean",
+        "bytes": 7448,
+        "sha256": "5c73dab81a536c95e222de05d7adc3fe7e5530dc7d1f7944128521ec29d632d0"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyComposition.olean.hash",
+        "bytes": 16,
+        "sha256": "6052bb6d8a9d769db4f7a4db55e153c0d703f5d4b4adf97cbe9289abead37d18"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyComposition.trace",
+        "bytes": 2353,
+        "sha256": "c6c2a44a7219b2dc89376b903638279fbf56a77688e14785ef6e1751750e7f65"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyContinuity.ilean",
+        "bytes": 1244,
+        "sha256": "eab287a3cd2f394e7421364f15491033f6ea863b4549d1acb29951eef8d1e3c3"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyContinuity.ilean.hash",
+        "bytes": 16,
+        "sha256": "fe95886498acf89343a480e370e2be45df428356188fe8ffed6de9f0c14de6c8"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyContinuity.olean",
+        "bytes": 6800,
+        "sha256": "e2a5d84349f4e5251ccd4b896e364038d78830838d3b6b69ef250f0a0409531b"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyContinuity.olean.hash",
+        "bytes": 16,
+        "sha256": "239dc0fce5108165946a49e638f1c2b4c245ac6047d7b3017b042e99e6892a15"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyContinuity.trace",
+        "bytes": 2504,
+        "sha256": "3d97e9d3f7526883f22d1066df0c57f467086017c3a49c31bd69d53ba322a913"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyDerivatives.ilean",
+        "bytes": 1766,
+        "sha256": "f769dfa7d969180cc3b2f57f088b2c540f395d0d24fde694c22e0785356eefe1"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyDerivatives.ilean.hash",
+        "bytes": 16,
+        "sha256": "b48ac547db2b4005e0345ebb02f92ad2011556be7908247abc2fe07cb6655340"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyDerivatives.olean",
+        "bytes": 8608,
+        "sha256": "fc2b225805818df6ff76dedc3de386c02276d1fb744b37f1389422cdb35cd37e"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyDerivatives.olean.hash",
+        "bytes": 16,
+        "sha256": "00094df1d8b401b4cf0b45e0efc2208d23398895193496d1a03ded2d02953862"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyDerivatives.trace",
+        "bytes": 2870,
+        "sha256": "9d27528c35477a24e0820bd048fec3135368f7dc6c6482c7f9a158dea33c8457"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyEquivalenceBound.ilean",
+        "bytes": 1877,
+        "sha256": "bcdc97ad93556d521af2f029fd758a1c61759c53ea9475fa5ca32a422cd01d95"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyEquivalenceBound.ilean.hash",
+        "bytes": 16,
+        "sha256": "a2b873002e7a740c56ff8b5a994240750d2cad580c70830b64037f8069aa28be"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyEquivalenceBound.olean",
+        "bytes": 11160,
+        "sha256": "7875bcd1087fca2f86a4b94929933122a3bb850e63ba23da50021b40dfc2b2bb"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyEquivalenceBound.olean.hash",
+        "bytes": 16,
+        "sha256": "2657540cf5da9d48f1c42189cc4112b6efe9fde8f29d5ad2e7b532e484fb3b94"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyEquivalenceBound.trace",
+        "bytes": 2578,
+        "sha256": "a0240753434e22d8221209fc1c5992b84bb35694644650da5f8a0999674ebc55"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyMachine.ilean",
+        "bytes": 3111,
+        "sha256": "e241929d7c70c07a73f872e7405c5639eafd62303c27478aea873716f416127e"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyMachine.ilean.hash",
+        "bytes": 16,
+        "sha256": "06e2c5ddb7f28b01b0d639aa7b917e90a8cd4b72a2a1c0937b14b7a31d92ab0d"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyMachine.olean",
+        "bytes": 92864,
+        "sha256": "4a754c032f7240666f4bf4e9ec9f1c77748aac8fa72233a719b2aebed2a23bd0"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyMachine.olean.hash",
+        "bytes": 16,
+        "sha256": "a15aa39336709cfd9ba1d77ce29f689dfa256bb237cfc47d9287a4835e6815d6"
+      },
+      {
+        "path": "concepts/lib/Lax765601/MealyMachine.trace",
+        "bytes": 2325,
+        "sha256": "fcf030844f97e94737dc34125696bcd6c2f469a12a21ee885b4f2f3ea44d54a7"
+      },
+      {
+        "path": "concepts/lib/Lax765601/PrimeMealyMachines.ilean",
+        "bytes": 3782,
+        "sha256": "7119841f8549264a5ca7db21f0cb8bb2e559aae4f07f1efa3cf5fd9c823489bc"
+      },
+      {
+        "path": "concepts/lib/Lax765601/PrimeMealyMachines.ilean.hash",
+        "bytes": 16,
+        "sha256": "866c3c8c28af707f84e2c0a44f8376909174b3b68e11df7b8b5eaa637f85ac4f"
+      },
+      {
+        "path": "concepts/lib/Lax765601/PrimeMealyMachines.olean",
+        "bytes": 16816,
+        "sha256": "343938789c5fb4e56bb6a598674373ed815abe652d098b38e428419fb9c3d1eb"
+      },
+      {
+        "path": "concepts/lib/Lax765601/PrimeMealyMachines.olean.hash",
+        "bytes": 16,
+        "sha256": "511aeefe7df25f4a8bee2398ba07ec3f703fa0cb591f3a92bb4520ef09fece23"
+      },
+      {
+        "path": "concepts/lib/Lax765601/PrimeMealyMachines.trace",
+        "bytes": 2717,
+        "sha256": "d84b0ec3227c21e43defc064b621152f04b6bc6c922d89d236f212b4459aafee"
+      },
+      {
+        "path": "concepts/lib/Lax765601/ReversibleComposition.ilean",
+        "bytes": 1329,
+        "sha256": "dd2c563932955969559c4b2b20d982fc2f96b5e3a8304310b0984acb8a713c87"
+      },
+      {
+        "path": "concepts/lib/Lax765601/ReversibleComposition.ilean.hash",
+        "bytes": 16,
+        "sha256": "ca7364e1cd40f1c0e2de13ef7bd13710ca66398f227e04f0b3ab2198acb7c6c4"
+      },
+      {
+        "path": "concepts/lib/Lax765601/ReversibleComposition.olean",
+        "bytes": 7368,
+        "sha256": "f8826eacd66baad3b0b23f6b67bc93043cab1d0f5f7a9039f6dc918e604dc4b9"
+      },
+      {
+        "path": "concepts/lib/Lax765601/ReversibleComposition.olean.hash",
+        "bytes": 16,
+        "sha256": "90ddda0f23073f032bb268760e0a05f3ab40819dc99508406cd97ddffa871047"
+      },
+      {
+        "path": "concepts/lib/Lax765601/ReversibleComposition.trace",
+        "bytes": 2405,
+        "sha256": "68942632fb2d683609c19da3da672d6a8f503d199f52826406b69be84ec33ebd"
+      },
+      {
+        "path": "concepts/lib/Lax765601/StateTransformationDecomposition.ilean",
+        "bytes": 1765,
+        "sha256": "b2e0dc35b5d2d836d504dbe3d88fcb51d2868176570ad84334f5fb83a3dfdca1"
+      },
+      {
+        "path": "concepts/lib/Lax765601/StateTransformationDecomposition.ilean.hash",
+        "bytes": 16,
+        "sha256": "64292712225bfad81d676be8446ad40897599a762e98c32f7965adc85ed5be8e"
+      },
+      {
+        "path": "concepts/lib/Lax765601/StateTransformationDecomposition.olean",
+        "bytes": 8184,
+        "sha256": "4a3f6b4e7642f5657131abf56f85e813365eb38906ca16380731c96f60bcb70d"
+      },
+      {
+        "path": "concepts/lib/Lax765601/StateTransformationDecomposition.olean.hash",
+        "bytes": 16,
+        "sha256": "650c3a860a75030a27a16592993844787688b13b07e4c4e5f3e42824725a7ba8"
+      },
+      {
+        "path": "concepts/lib/Lax765601/StateTransformationDecomposition.trace",
+        "bytes": 2684,
+        "sha256": "45272d0fd17e95e6a0969e66d234f9105480d00124afbe2650919801a86abd1e"
+      },
+      {
+        "path": "concepts/lib/Lax765601/StateTransformations.ilean",
+        "bytes": 2167,
+        "sha256": "092536478420816df2c474eaabe5f7d33d7808bdff6e48434fac9d29f05cd0a6"
+      },
+      {
+        "path": "concepts/lib/Lax765601/StateTransformations.ilean.hash",
+        "bytes": 16,
+        "sha256": "4b1b2702e5df6d99b8236a95172515324dec098e35a2a2ce82b9908b52de9a4a"
+      },
+      {
+        "path": "concepts/lib/Lax765601/StateTransformations.olean",
+        "bytes": 33792,
+        "sha256": "e131f183d9e93c98c24d6006c46d6533bdd319fdefddae5c849a2508bb9d5984"
+      },
+      {
+        "path": "concepts/lib/Lax765601/StateTransformations.olean.hash",
+        "bytes": 16,
+        "sha256": "85d0fff52bba0998c0d2347e561eaa281b560434a32b53db92708e303c19992d"
+      },
+      {
+        "path": "concepts/lib/Lax765601/StateTransformations.trace",
+        "bytes": 2564,
+        "sha256": "dadea1922311a44806fc6ade07b048e81a14d49f1b8d6fa8ce167958c14a6153"
       },
       {
         "path": "concepts/lib/Lax765601.ilean",
-        "bytes": 80,
-        "sha256": "f7fbc6e6673931bc3dd9b96f6d20d9cf955f2a6b13e89d2f5b821f56c29170a9"
+        "bytes": 1187,
+        "sha256": "69512f44a7c0ed439711823f63fd93b848d6e7aff8be930d85a4af7eacf4cf05"
       },
       {
         "path": "concepts/lib/Lax765601.ilean.hash",
         "bytes": 16,
-        "sha256": "2df771ddb738e8d25a2b2f5e4a2be276290763cba26d38a8e900b3fa0d390d0c"
+        "sha256": "bbddc8c0c35f433ed09df9ac0c7b68007555ad67e506b471e351502495bb8eb5"
       },
       {
         "path": "concepts/lib/Lax765601.olean",
-        "bytes": 1200,
-        "sha256": "6b5e16252f7a924ada5faa433c5126213009991367eb4e0f8246c7373a7e4b65"
+        "bytes": 3832,
+        "sha256": "5eed0a7e19823b846533893df9bc615767a3a0a98f3a26fe4a00ab5c95f921db"
       },
       {
         "path": "concepts/lib/Lax765601.olean.hash",
         "bytes": 16,
-        "sha256": "23b89deda7a7a1f96db55f3535747424b3e35b1ecfc0aff41a7cbf61e98615f1"
+        "sha256": "f231f6ae01838ad8af2e66e4ede11f10df7c3386feff07131f8152ec5485679e"
       },
       {
         "path": "concepts/lib/Lax765601.trace",
-        "bytes": 2070,
-        "sha256": "48517ed7c609c8274e42be6d470e0c351ddd1272875c4028285e7e2b3c713406"
+        "bytes": 5900,
+        "sha256": "39f88504b9fb60cb72fa07baea20f27d3993c841b925e23e9048218574f6edfa"
       },
       {
         "path": "concepts/package/lake-manifest.json",
@@ -81,9 +1572,119 @@
         "sha256": "a9f3990d7fafa02726f8a6e3a86496b53feefed251d769f29f0feedcd12a205d"
       },
       {
+        "path": "concepts/package/Lax765601/Aperiodicity.lean",
+        "bytes": 2211,
+        "sha256": "c0ac9b71069fa9cd161426b9383dcc27644ce23493a532e6079f053dc7bb5e75"
+      },
+      {
+        "path": "concepts/package/Lax765601/AperiodicityMinimalMachine.lean",
+        "bytes": 1976,
+        "sha256": "271f05ade1357f4d8cc771dfd6bf02e921d6bc0c60404796f49a9b40cc875514"
+      },
+      {
+        "path": "concepts/package/Lax765601/AperiodicMealy.lean",
+        "bytes": 1705,
+        "sha256": "02e224a7c34ce6cf846da80a2ed99dba9f8701e38439a8f10d406083059b2439"
+      },
+      {
+        "path": "concepts/package/Lax765601/AperiodicOfFlipFlops.lean",
+        "bytes": 1341,
+        "sha256": "f9f0fbe64747f47c4b3d6c924f117d3cca4c4feade14e4e00eaf5f4f70ae4071"
+      },
+      {
+        "path": "concepts/package/Lax765601/AperiodicPumping.lean",
+        "bytes": 1613,
+        "sha256": "36888ddbd349ac695797fc95f56e3129c63cb3aa1cfa13d8fbacf12dae85aac2"
+      },
+      {
+        "path": "concepts/package/Lax765601/CompositionClosure.lean",
+        "bytes": 2714,
+        "sha256": "dbe453b74119b4b2bbc0e5aadc24a3bd652f0cee46c489bb025b3c1d72d143d5"
+      },
+      {
+        "path": "concepts/package/Lax765601/Continuity.lean",
+        "bytes": 2830,
+        "sha256": "66d7d524af68f0641fbe9f9679b34c8fa3875546a68a6408f61b4e7db22c528a"
+      },
+      {
+        "path": "concepts/package/Lax765601/Derivatives.lean",
+        "bytes": 1731,
+        "sha256": "0f3409480b5e2edcdeff8365d9d47223881af19384aa0c9dc6216006bb4de9a3"
+      },
+      {
+        "path": "concepts/package/Lax765601/ElementaryProperties.lean",
+        "bytes": 2039,
+        "sha256": "6abc5a746af482b55e238632f9becdd0e23634b9454fa8d61dfb99ccc5bd9cd4"
+      },
+      {
+        "path": "concepts/package/Lax765601/FlipFlopsOfAperiodic.lean",
+        "bytes": 1518,
+        "sha256": "e1c55803c06ae944cada2a75240a74d94f543fc1819b388619313552b1f19475"
+      },
+      {
+        "path": "concepts/package/Lax765601/KrohnRhodes.lean",
+        "bytes": 2017,
+        "sha256": "74052f51ffad7d4ead5a5ed5f1342de9e7166ffb521ff1bbc63148f83ceb0823"
+      },
+      {
+        "path": "concepts/package/Lax765601/MapLifting.lean",
+        "bytes": 2181,
+        "sha256": "f21350e8a04180700db022004c7761bf6694c9d07285d721312f1b40565185af"
+      },
+      {
+        "path": "concepts/package/Lax765601/MapLiftingDecomposition.lean",
+        "bytes": 1606,
+        "sha256": "030e9fedb7c184974809f7f89d36112ba8c50dec41f155ea56314333fe539626"
+      },
+      {
+        "path": "concepts/package/Lax765601/MealyComposition.lean",
+        "bytes": 1122,
+        "sha256": "4ece67d9e1dd7e187dd6f5bd48618ee0e4164ce42e971c0eca5875dacecf40d2"
+      },
+      {
+        "path": "concepts/package/Lax765601/MealyContinuity.lean",
+        "bytes": 1069,
+        "sha256": "88215f65765a711dd4c339527822abd62620f95a3ff07834de7d95ffa372af5b"
+      },
+      {
+        "path": "concepts/package/Lax765601/MealyDerivatives.lean",
+        "bytes": 1896,
+        "sha256": "512bccd1903267c39affee1dbe983ef454cff89c3e30ca71728683e175ab0ceb"
+      },
+      {
+        "path": "concepts/package/Lax765601/MealyEquivalenceBound.lean",
+        "bytes": 1816,
+        "sha256": "b42341b72edb192a6143e288f1eef561f68dc9f4695c5d4be23081d8cf7a30fa"
+      },
+      {
+        "path": "concepts/package/Lax765601/MealyMachine.lean",
+        "bytes": 3368,
+        "sha256": "6bcbbca26480cbf2e7fedde7f146195a120cba25db8567143287dbed77a95cf5"
+      },
+      {
+        "path": "concepts/package/Lax765601/PrimeMealyMachines.lean",
+        "bytes": 3008,
+        "sha256": "d2210339368a8adc1301af94de87c7f32b195322ce294c59181e956120296257"
+      },
+      {
+        "path": "concepts/package/Lax765601/ReversibleComposition.lean",
+        "bytes": 1071,
+        "sha256": "aea8760c2ff25ac92cbc4d5bee4eda3cf62c3a29f888ecc48fb7a1ce4e0d2cb7"
+      },
+      {
+        "path": "concepts/package/Lax765601/StateTransformationDecomposition.lean",
+        "bytes": 2382,
+        "sha256": "bff6b0cf3ab3b8b5325d6494af28c277d367e2c2114de5f6c5ca8973df70e9b1"
+      },
+      {
+        "path": "concepts/package/Lax765601/StateTransformations.lean",
+        "bytes": 2769,
+        "sha256": "0274b88ed4c4b3383012c5b1f22eb88dc52e7ea58e0d29f0378303e2e3af7f5a"
+      },
+      {
         "path": "concepts/package/Lax765601.lean",
-        "bytes": 0,
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        "bytes": 778,
+        "sha256": "0cb49ab88a9de7ecaf326cc635410bef469232ef47c872506a5ad60eb564c01e"
       },
       {
         "path": "concepts/package/lean-toolchain",
@@ -91,39 +1692,424 @@
         "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
       },
       {
+        "path": "proofs/ir/Lax765601Proofs/Bridge.c",
+        "bytes": 20350,
+        "sha256": "c69217b14ee2096f95138ca40f715df2ee962a3e541363fa916fbea84810fac6"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Bridge.c.hash",
+        "bytes": 16,
+        "sha256": "9422a4e6eabe1d5cf154c48fbed101beda8f019fb6e13b8b250742d9df46b623"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Results.c",
+        "bytes": 4726,
+        "sha256": "e37f7a97c915a9747036dab8f4a91b1ac76c2d41c539f0ab537d7f6a9f97dac7"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Results.c.hash",
+        "bytes": 16,
+        "sha256": "8b6f0aaa55513a951753bbbe3f757b3ecbc481e677bbb34d32da01801c69264d"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/Common/Aux.c",
+        "bytes": 1419,
+        "sha256": "3713a741104900a77db335db6b51a91ffe5285852443bc7e3cce53b53ea87beb"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/Common/Aux.c.hash",
+        "bytes": 16,
+        "sha256": "33d2d35107741ecb2775008858c61ad668cd84507872165d2a93014682cda787"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/Common/Basic.c",
+        "bytes": 17674,
+        "sha256": "465d5a07e00e4f6daf3a3c6dd84df3a41820f4514f66a26469147feccbc5df15"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/Common/Basic.c.hash",
+        "bytes": 16,
+        "sha256": "93a506d28120ab9a530221a3ce47ca44f073214db9f3ae47165fd25b2fc652ad"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/PartA/FlipFlopClosure.c",
+        "bytes": 1444,
+        "sha256": "c2f8660253bbcc50e2002771f431795483df4e2c30e86bfa2f8f360e937d6cf9"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/PartA/FlipFlopClosure.c.hash",
+        "bytes": 16,
+        "sha256": "656be1aa1ad43d778868c2d66cd2d5864169957e14fb695f49ea350bf7ebacf6"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/PartA/MapLift.c",
+        "bytes": 28720,
+        "sha256": "a2828e92944f0c3b59f249da7e61c78d6c52f92570023c1deb23d50441fbe7bf"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/PartA/MapLift.c.hash",
+        "bytes": 16,
+        "sha256": "bc51e17cf1816839e61e3dace7a6d6aa4f5276764bed1d0384fb81f0aa983f70"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/PartA/MealyBasic.c",
+        "bytes": 21189,
+        "sha256": "e562e69d19b769eff253a02ea8504f8f6363b2a4b2b2e1e9515b7e629421c3df"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/PartA/MealyBasic.c.hash",
+        "bytes": 16,
+        "sha256": "50f1e8006637760bb67d5d3d7d7159af14e936903e26cec8fdfaf2ae62ce494d"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/PartA/PrimeClosure.c",
+        "bytes": 17814,
+        "sha256": "39e2b229d090e3c8ddab7c1ed30e03b8e3c2d7f2c60dac93e7353a720f1eb6b9"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/PartA/PrimeClosure.c.hash",
+        "bytes": 16,
+        "sha256": "9f843ac8c3d0c851d810f24b05cb579a32deeb8fc847a3329eaf6a9838af98a2"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/PartA/Statements.c",
+        "bytes": 12981,
+        "sha256": "67e5b870e7047a97690a54b9a00957c064d7ca95b1c9c93382b67e4c0806b1ee"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/PartA/Statements.c.hash",
+        "bytes": 16,
+        "sha256": "ea9cfc419c33f74a1624e7b5be66a53ae40f7e055a941c55c50bb9ead68b717a"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/PartA/StateTrans.c",
+        "bytes": 106320,
+        "sha256": "405c56bcc7e86ebf31868167822969849decbed977c9c7bd2c757136c8fed400"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/PartA/StateTrans.c.hash",
+        "bytes": 16,
+        "sha256": "fc37b06b157bdc9a9c9f10f6553b5fe30b9872d3bc89a617b8112ce116ccd9f5"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/PartA/StateTransAperiodic.c",
+        "bytes": 1776,
+        "sha256": "f56f3bc3bef90dba207ae37434d4fa520c98b3e89c23590d4071b3c5bb90eefd"
+      },
+      {
+        "path": "proofs/ir/Lax765601Proofs/Source/PartA/StateTransAperiodic.c.hash",
+        "bytes": 16,
+        "sha256": "bec0e61b4861227da3b237413684e0963b122841815acf9276b4ed6fcfc0ff05"
+      },
+      {
         "path": "proofs/ir/Lax765601Proofs.c",
-        "bytes": 1095,
-        "sha256": "9166689bef4c8c7cc8d9379c06417bdc56bbca1bc795ffd83acac401e263e6b2"
+        "bytes": 4305,
+        "sha256": "6b80eaf76913eda440bfc9e5998039aeb23929ac2cb6240a4c3c22765893a8e7"
       },
       {
         "path": "proofs/ir/Lax765601Proofs.c.hash",
         "bytes": 16,
-        "sha256": "87b7baa7f24590a25b13103b83e755d88cfb847cf15c2fa1c75b186a5a5f2612"
+        "sha256": "efe5da3fb4a76e64427c9ed96925fc01ae7f6e1a5dcb4942684a6df1262d6e56"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Bridge.ilean",
+        "bytes": 17448,
+        "sha256": "8a360bc07c841f2eb9e9b2c332cd7ecac93e447a236274c82a54d406f07b2bb5"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Bridge.ilean.hash",
+        "bytes": 16,
+        "sha256": "58132d556a3b7fb75463d6b551f89160317d5f002015c444b5fe3070a5c3be30"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Bridge.olean",
+        "bytes": 252776,
+        "sha256": "0d97cb8b61946d83ca1042c8e9c4efb97da56b329517a8695958ba02da276d67"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Bridge.olean.hash",
+        "bytes": 16,
+        "sha256": "d63906c461ab2482e2aa018bd0863994372a88172d7fcb5c6ecf0606a292ce00"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Bridge.trace",
+        "bytes": 3944,
+        "sha256": "9bfaf0075e6bafe5506e7e82cc422e79bde04b8d15e18b30703578dda862d1ec"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Results.ilean",
+        "bytes": 23424,
+        "sha256": "845fddd84ff7d9e732021cf16697109db9255c1a8c8569c39eed6b32e427029b"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Results.ilean.hash",
+        "bytes": 16,
+        "sha256": "59f59cb7bbb99dd99e55bc154dc62eca32b1acae3aef839182a937fd82f50e1c"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Results.olean",
+        "bytes": 115744,
+        "sha256": "5af691e669176c23d580f731e1e04eb1777112999a3c2901393e389eb0f637cb"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Results.olean.hash",
+        "bytes": 16,
+        "sha256": "fe97a431013d8763ec7f52491be85b8a3412bba76e68ad8ac1effb2e7c8a1332"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Results.trace",
+        "bytes": 4723,
+        "sha256": "c55880ab16705991ce6ebb7d409cf501b945d9478cec0be2ea1c76e7eaf0f114"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/Common/Aux.ilean",
+        "bytes": 13557,
+        "sha256": "b02156d2e54587064e8021ee695cf6aa3244ea1bb0ea516dae6f5e29536c7c26"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/Common/Aux.ilean.hash",
+        "bytes": 16,
+        "sha256": "3787edaed894a1943ced68e897adeee23c387cffc7d19b932a1b30600467d02b"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/Common/Aux.olean",
+        "bytes": 124912,
+        "sha256": "200a48e38b76a3a36c66a990a478d6cc1b842b9665016fe58376bd83d298d710"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/Common/Aux.olean.hash",
+        "bytes": 16,
+        "sha256": "32572d1b0fa46f3185c367fb4f3854573b29caf3c10fcccea20964d38ac2aa52"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/Common/Aux.trace",
+        "bytes": 2905,
+        "sha256": "2a5647f9977862b09d1c216679e4e46cc512b337ff01746d3c1ce2e9cede0ba0"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/Common/Basic.ilean",
+        "bytes": 14238,
+        "sha256": "22704e18cbd34a8315a50a22230e8fce06e78ba6bb9cfc6deb568db75632ccf6"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/Common/Basic.ilean.hash",
+        "bytes": 16,
+        "sha256": "82f68fb15d3360bf6b7da45550183b3bcc35c5211acffcf76e06363b93cd14a1"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/Common/Basic.olean",
+        "bytes": 211456,
+        "sha256": "b08f4bb0fbbb2b3ac476df2604d7d9e29ce94e7eeb41b57f44a76168f95040a1"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/Common/Basic.olean.hash",
+        "bytes": 16,
+        "sha256": "73aa22f5978354c409a645ed1052a6490a52508b1610098eedeeb0d54122147f"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/Common/Basic.trace",
+        "bytes": 2453,
+        "sha256": "51868a4cc09d8b549f71b346779ed8f2c97e6320a37109e48a8ecd44844e95fc"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/FlipFlopClosure.ilean",
+        "bytes": 16528,
+        "sha256": "289f5191f70a7dd53bd9a66768608940fa620e76d3f90a99c9b76a39b530f18a"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/FlipFlopClosure.ilean.hash",
+        "bytes": 16,
+        "sha256": "f9653649708daa26027bbb934dd963a885cc48054fbbe3341e59e05a48fe6d27"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/FlipFlopClosure.olean",
+        "bytes": 103136,
+        "sha256": "d7bafabf2005dc02093fbaf8ac05ddf30588aa50abd61ad32f97e3f1ed141dd9"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/FlipFlopClosure.olean.hash",
+        "bytes": 16,
+        "sha256": "2d4dac48c52caebd78986dc27286723acc1720fb4033769d7795290d61cfdb4d"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/FlipFlopClosure.trace",
+        "bytes": 2604,
+        "sha256": "42b1d0852a9fe34e5c6227a986ef54ed3228aa7479cca5e9c7fe0a7ef63a6c36"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/MapLift.ilean",
+        "bytes": 52889,
+        "sha256": "1fc15360df508897518de204e86068c9c34b1668bb7b4df8818e52d9f5d828de"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/MapLift.ilean.hash",
+        "bytes": 16,
+        "sha256": "07c4a3e12e508404073aafc02b9c0020d6ffca256283466e3451b89effc3708a"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/MapLift.olean",
+        "bytes": 507736,
+        "sha256": "a82bf8c6893b1b7577e331997969dc460f71d94da4b711a66fd11d413995ba94"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/MapLift.olean.hash",
+        "bytes": 16,
+        "sha256": "5a3b2104d4ea6b47d59f4bca3c318d7f9d536e908203cde0902329046603a6dc"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/MapLift.trace",
+        "bytes": 2547,
+        "sha256": "3054de232cc083fb9274936f769f4d8136518cde467d0bae5fee8e918dd4d185"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/MealyBasic.ilean",
+        "bytes": 24783,
+        "sha256": "23457604796062f6e17d6e6188d0a18878629b6157bc6662daaf29d830364c34"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/MealyBasic.ilean.hash",
+        "bytes": 16,
+        "sha256": "65396f273f621e5a6b437b9fe54b3817ce3ba403866110e7c93f714613f3b032"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/MealyBasic.olean",
+        "bytes": 225368,
+        "sha256": "812df783e9435a2730e6b6b49e4f2ce3388de694f88383d40a0bd1b7dde35f4c"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/MealyBasic.olean.hash",
+        "bytes": 16,
+        "sha256": "5e3587ac171624895ec9c85a2832e48d5c562132826fd9fdc8b06b3e8916ad09"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/MealyBasic.trace",
+        "bytes": 2559,
+        "sha256": "8c7970c85c72d43f3c14e4a29b4164b2de8fe5e822982045e542b640ca61a366"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/PrimeClosure.ilean",
+        "bytes": 26902,
+        "sha256": "389c278ac4933cb77057396a26b8e72f13ce1d473aecc5f75a0917cb41cbc8c6"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/PrimeClosure.ilean.hash",
+        "bytes": 16,
+        "sha256": "eb51e11eea3a923e687ecd00edee7cf467945d62e0b9c8209a5b0678dbf7535e"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/PrimeClosure.olean",
+        "bytes": 212040,
+        "sha256": "046d821329012f8de65385675fcdcc30ad09e8baabec7246e47a52ecbd8057a3"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/PrimeClosure.olean.hash",
+        "bytes": 16,
+        "sha256": "d8a80eb85521f42898482c332d516e0b84c42e80a4ee83adcb3d35b9a4375f93"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/PrimeClosure.trace",
+        "bytes": 2586,
+        "sha256": "679cecef5e10c94ef4cb46f35c61da1448438adf4cae9f69ed2405888d729644"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/Statements.ilean",
+        "bytes": 93944,
+        "sha256": "d26cae54994a9bf60bf546389b8165bbecdef82466da2d4530f182b421c23a07"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/Statements.ilean.hash",
+        "bytes": 16,
+        "sha256": "64906b40e7ca0df1812e53d86ee29d9332b4af94b3c1d797a479838501240e22"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/Statements.olean",
+        "bytes": 904848,
+        "sha256": "2b45edd07d2f5edca5395fc9307b65184604daaffb088bc3c3f2f86eca5674a8"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/Statements.olean.hash",
+        "bytes": 16,
+        "sha256": "fafa2ec4a2f125aa7ceff869f33f47f702298e94ed0ca019be04a7b55fbd9444"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/Statements.trace",
+        "bytes": 3592,
+        "sha256": "86f0daa9c196f28e322256625429a01c4e3600fa09b0b448706c297efd5fefb4"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/StateTrans.ilean",
+        "bytes": 98459,
+        "sha256": "549fc322ab04b051f888e10a01dc3af68c0b4c0df2b2c9aa34b5404b4a848b21"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/StateTrans.ilean.hash",
+        "bytes": 16,
+        "sha256": "83e6e36d30a4d334315e1d7836fb6af07ac28c66686f691e3d2dd9ccc71bb5ba"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/StateTrans.olean",
+        "bytes": 987264,
+        "sha256": "d26eb164a862e31a3c8b9aa01b3ad583397be54fc048c9489de10d8726251adc"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/StateTrans.olean.hash",
+        "bytes": 16,
+        "sha256": "9bb7e24ff33026801d3e7af932b0cdb0cd8a93c2ac831b45ccc763f6e9303dba"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/StateTrans.trace",
+        "bytes": 2962,
+        "sha256": "2deae71bea077c0ae7000562afaaf83c95122c8316511080c0fdf4258640ae9e"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/StateTransAperiodic.ilean",
+        "bytes": 35769,
+        "sha256": "c316fad6ae110e172de1928baeef2669203800b457304dce9c22786af2497731"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/StateTransAperiodic.ilean.hash",
+        "bytes": 16,
+        "sha256": "cf9d6f7837f9594a4043b6a682ef26cae0bae2d6d9f1d0da01746a915d12610b"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/StateTransAperiodic.olean",
+        "bytes": 222248,
+        "sha256": "8f26ff737a2f0817759f7c52ad2142727b8d01c9d4adfe064c83ec341fe63d61"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/StateTransAperiodic.olean.hash",
+        "bytes": 16,
+        "sha256": "f3761f283032264916fa5faf12fa3a2a92e8266a867c985db2e9b27d6c35fc87"
+      },
+      {
+        "path": "proofs/lib/Lax765601Proofs/Source/PartA/StateTransAperiodic.trace",
+        "bytes": 3268,
+        "sha256": "bcc62e8550f1d25fb57b2609f3d9fd04e52122bb8d55c14a349db61fca8c268e"
       },
       {
         "path": "proofs/lib/Lax765601Proofs.ilean",
-        "bytes": 86,
-        "sha256": "12b0d0fcb241ed7b79bb0464db4a26d8fd55e7dbfd2bab58348d4ca2c134094a"
+        "bytes": 737,
+        "sha256": "8aff91f75192e6c73f65c3ec41a88b65c3c8f0fb26a46bc5bcd0b37484dc28ab"
       },
       {
         "path": "proofs/lib/Lax765601Proofs.ilean.hash",
         "bytes": 16,
-        "sha256": "7e1a1bedc5a2a60571e7e1cfaffd01732cd63dfd2aca19155c0167e441875bfe"
+        "sha256": "9f9f536c1db549c06ba3eaab289844ebebeef548bfc97d637b02c82da14f66b7"
       },
       {
         "path": "proofs/lib/Lax765601Proofs.olean",
-        "bytes": 1200,
-        "sha256": "72b4fbd4600fcfab03ee1e61a0f0883e78f220a302dd45bd48b0274750bcad4f"
+        "bytes": 2648,
+        "sha256": "52fcd5e96a2da2a9b93d725bb8e9e78ea221140fdb7149054f0af2fe242cc3aa"
       },
       {
         "path": "proofs/lib/Lax765601Proofs.olean.hash",
         "bytes": 16,
-        "sha256": "a7634535c7c9aad88dc70ffacd69826ac78336e82aaa517264c6eb6f3bbb75b2"
+        "sha256": "5281c6c2159d48d66668e5bc9023df66f8c5e54921f88dca89d8de63b3535638"
       },
       {
         "path": "proofs/lib/Lax765601Proofs.trace",
-        "bytes": 2188,
-        "sha256": "f8448fb2c9761b6fcb0b46a3bee7f04653f618d9dfdf907a2c9125432eaa6cd2"
+        "bytes": 4348,
+        "sha256": "d28608f35a2342abdadd773da8bb9e6122ac242d62c8b2751f3038f79dd21d6d"
       },
       {
         "path": "proofs/package/lake-manifest.json",
@@ -136,9 +2122,64 @@
         "sha256": "53be22ada5ab38a098c048019fa92ea26a6f25b018c05151ba8f466af417e288"
       },
       {
+        "path": "proofs/package/Lax765601Proofs/Bridge.lean",
+        "bytes": 4665,
+        "sha256": "be312e506ff9f3427b7b4e19c2a26112dcfba974c37f1ac3ae87a67ae5ccde72"
+      },
+      {
+        "path": "proofs/package/Lax765601Proofs/Results.lean",
+        "bytes": 12011,
+        "sha256": "bd73a3e35832484fb241bbed20abbd9a06b7727cf08d35746d0a8b7163f8148b"
+      },
+      {
+        "path": "proofs/package/Lax765601Proofs/Source/Common/Aux.lean",
+        "bytes": 4718,
+        "sha256": "593c6fca1f3e727a047792e36b7cbfca0661da4a6f0f90fc915449e36bed5803"
+      },
+      {
+        "path": "proofs/package/Lax765601Proofs/Source/Common/Basic.lean",
+        "bytes": 6980,
+        "sha256": "fe13231618328026c20543682ae45a4eed645e841dc4e23004d8a4e106b2c270"
+      },
+      {
+        "path": "proofs/package/Lax765601Proofs/Source/PartA/FlipFlopClosure.lean",
+        "bytes": 5146,
+        "sha256": "daf9fe0c6e419099464db7a07c84f64d148962a9e76ef0e5413390f6433aeef7"
+      },
+      {
+        "path": "proofs/package/Lax765601Proofs/Source/PartA/MapLift.lean",
+        "bytes": 15473,
+        "sha256": "00fde3b258b92c9a2314c3596304b7ef8b543cdd4d6068ed37ca1770521e05b5"
+      },
+      {
+        "path": "proofs/package/Lax765601Proofs/Source/PartA/MealyBasic.lean",
+        "bytes": 7426,
+        "sha256": "3ab2ff30b590041236b5f5a3cbd7b77ef3162b4c37ffab8e35dcd4c2cba70be4"
+      },
+      {
+        "path": "proofs/package/Lax765601Proofs/Source/PartA/PrimeClosure.lean",
+        "bytes": 8070,
+        "sha256": "c8843b6c55f43f0a58cafa91f29eccb6084509a4746afb69d4711c575941a1d6"
+      },
+      {
+        "path": "proofs/package/Lax765601Proofs/Source/PartA/Statements.lean",
+        "bytes": 36157,
+        "sha256": "8c8f64a5e9c09c97e861d644a9c59754e477e8393138df01cfd24ba620f8f9bb"
+      },
+      {
+        "path": "proofs/package/Lax765601Proofs/Source/PartA/StateTrans.lean",
+        "bytes": 29519,
+        "sha256": "c819372f9a6e09a0e3ee13fd892fb365a1f02d4bfc793e9a4a039bc46a6fe49c"
+      },
+      {
+        "path": "proofs/package/Lax765601Proofs/Source/PartA/StateTransAperiodic.lean",
+        "bytes": 11131,
+        "sha256": "cf401acab0628e44c44e4d5259080368fb731e03c6d4d3710c3139d9fa7d40e4"
+      },
+      {
         "path": "proofs/package/Lax765601Proofs.lean",
-        "bytes": 0,
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        "bytes": 487,
+        "sha256": "a7580ffec067151624ea95d8c29c6edd30554b4fcb427e2fc82234a8ea8e7193"
       },
       {
         "path": "proofs/package/lean-toolchain",
@@ -146,6 +2187,6 @@
         "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
       }
     ],
-    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:984dfb9c759aba58663b4c504901a19bab85d11b32eeebf0d977fbf7b0f74f0a"
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:878283884d8033acec21365554fd9d326cc0fc7a3ef7547ee115321aacdf558b"
   }
 }
