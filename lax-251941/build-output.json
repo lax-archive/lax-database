@@ -20,55 +20,702 @@
           "name": "Aristotle (Harmonic)"
         }
       ],
-      "bibEntries": []
+      "bibEntries": [
+        "@book{Sipser2013,\n  author    = {Sipser, Michael},\n  title     = {Introduction to the Theory of Computation},\n  edition   = {3rd},\n  publisher = {Cengage Learning},\n  year      = {2013}\n}\n",
+        "@article{Post1946,\n  author  = {Post, Emil L.},\n  title   = {A Variant of a Recursively Unsolvable Problem},\n  journal = {Bulletin of the American Mathematical Society},\n  volume  = {52},\n  number  = {4},\n  pages   = {264--268},\n  year    = {1946},\n  doi     = {10.1090/S0002-9904-1946-08555-9}\n}\n",
+        "@book{Bojanczyk-transducers,\n  author = {Boja{\\'n}czyk, Miko{\\l}aj},\n  title  = {Transducers},\n  note   = {Book in preparation; sources at \\url{https://github.com/bojanczyk/transducer-book}},\n  year   = {2026}\n}\n"
+      ]
     },
-    "abstract": "The Post correspondence problem is undecidable: no computable function decides, given a finite list of pairs of strings over the natural numbers, whether some nonempty sequence of indices makes the two concatenations equal. The proof follows Sipser's *Introduction to the Theory of Computation*: the acceptance problem for machines is undecidable by diagonalisation (Theorem 4.11, over mathlib's partial recursive programs), every partial recursive function is simulated by a single-tape Turing machine, and a decision procedure for the Post correspondence problem would decide acceptance through the computation-history reduction (Theorem 5.15). This is the result that the book *Transducers* (M. Bojańczyk) takes as given for the undecidability of equivalence of rational relations.\n"
+    "abstract": "The Post correspondence problem is undecidable: no algorithm decides whether\na finite collection of dominos, each carrying a top and a bottom string,\nadmits a nonempty sequence of dominos whose top and bottom strings coincide.\nThis submission puts Sipser's proof on the archive, following Sections 4.2\nand 5.2 of *Introduction to the Theory of Computation*, in the form the book\n*Transducers* (M. Bojańczyk) takes as given for the undecidability of\nequivalence of rational relations.\n\nThree definition-concepts: the acceptance problem $A_{TM}$ for machines,\nwith mathlib's partial recursive programs as the machines (they supply the\nuniversal machine and the programmability that the diagonalisation needs);\nsingle-tape Turing machines as Sipser presents them, with configurations as\nstrings and steps as local rewritings; and the Post correspondence problem,\nin the domino form and in the index form over lists of pairs of strings.\n\nSix theorem-concepts, all proved: $A_{TM}$ is undecidable (Theorem 4.11, by\ndiagonalisation); every partial recursive function is computed by a\nsingle-tape Turing machine, in the sense that a fixed machine accepts the\nunary encoding of $n$ exactly when the function is defined at $n$ (the\nTuring-completeness that links the two machine models, by compiling through\ncounter machines); the acceptance problem for Turing machines is\nundecidable; a decision procedure for the Post correspondence problem would\ndecide it (Theorem 5.15, the computation-history reduction through the\nmodified problem and the $\\star$ trick, with the construction proved\nprimitive recursive); and the Post correspondence problem is undecidable, in\nthe domino form (glued from the two preceding statements) and in the index\nform. Decidability is mathlib's `ComputablePred` throughout.\n"
   },
   "requiredByConcepts": [],
   "requiredByProofs": [],
-  "concepts": [],
-  "proofs": [],
+  "concepts": [
+    {
+      "id": "Lax251941.Acceptance",
+      "path": "concepts/Lax251941/Acceptance.lean",
+      "title": "The acceptance problem for machines",
+      "type": "definition",
+      "description": "Following Sipser's *Introduction to the Theory of Computation*, Section 4.2, a\n*machine* $M$ run on an input $w$ either accepts, rejects, or loops; $M$\n*recognises* the language $A$ if it accepts exactly the words of $A$, and\n*decides* $A$ if moreover it halts on every input, accepting or rejecting. A\nlanguage is *Turing-recognisable* if some machine recognises it and *decidable*\nif some machine decides it. The *acceptance problem* is the language\n$$A_{TM} = \\{\\langle M, w\\rangle \\mid M \\text{ is a machine and } M \\text{ accepts } w\\},$$\nwhere $\\langle M, w \\rangle$ encodes a machine together with an input word.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Sipser's argument is about an arbitrary universal model of computation; the\nmachines here are mathlib's partial recursive programs `Nat.Partrec.Code`, which\nsupply exactly the two ingredients his proof needs — a universal machine\n(`Nat.Partrec.Code.eval_part`: evaluation is itself computable) and the ability\nto program every partial recursive function as a machine\n(`Nat.Partrec.Code.exists_code`). Inputs and outputs are natural numbers, which\nplay the role of strings; a machine *accepts* by halting with output `1` and\n*rejects* by halting with output `0`, so that accepting, rejecting and looping\nare the three mutually exclusive outcomes of Sipser's definition. The pair\n$\\langle M, w\\rangle$ is the Cantor pairing of the code of `M` (mathlib's\n`Encodable.encode`, under which the programs are `Denumerable`) with `w`.\nTuring machines in the literal sense, with a tape, appear in `TuringMachines`;\nthey are where the reduction to the Post correspondence problem lives."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Computability.PartrecCode"
+      ],
+      "sourceText": "import Mathlib.Computability.PartrecCode\n\n/-!\n---\ntitle: The acceptance problem for machines\ntype: definition\n---\nFollowing Sipser's *Introduction to the Theory of Computation*, Section 4.2, a\n*machine* $M$ run on an input $w$ either accepts, rejects, or loops; $M$\n*recognises* the language $A$ if it accepts exactly the words of $A$, and\n*decides* $A$ if moreover it halts on every input, accepting or rejecting. A\nlanguage is *Turing-recognisable* if some machine recognises it and *decidable*\nif some machine decides it. The *acceptance problem* is the language\n$$A_{TM} = \\{\\langle M, w\\rangle \\mid M \\text{ is a machine and } M \\text{ accepts } w\\},$$\nwhere $\\langle M, w \\rangle$ encodes a machine together with an input word.\n\n# Formalization notes\n\nSipser's argument is about an arbitrary universal model of computation; the\nmachines here are mathlib's partial recursive programs `Nat.Partrec.Code`, which\nsupply exactly the two ingredients his proof needs — a universal machine\n(`Nat.Partrec.Code.eval_part`: evaluation is itself computable) and the ability\nto program every partial recursive function as a machine\n(`Nat.Partrec.Code.exists_code`). Inputs and outputs are natural numbers, which\nplay the role of strings; a machine *accepts* by halting with output `1` and\n*rejects* by halting with output `0`, so that accepting, rejecting and looping\nare the three mutually exclusive outcomes of Sipser's definition. The pair\n$\\langle M, w\\rangle$ is the Cantor pairing of the code of `M` (mathlib's\n`Encodable.encode`, under which the programs are `Denumerable`) with `w`.\nTuring machines in the literal sense, with a tape, appear in `TuringMachines`;\nthey are where the reduction to the Post correspondence problem lives.\n-/\n\nnamespace Lax251941.Acceptance\n\n/-- A machine: a partial recursive program. -/\nabbrev Machine := Nat.Partrec.Code\n\n/-- `M` accepts `w` if it halts on `w` with output `1`. -/\ndef Accepts (M : Machine) (w : ℕ) : Prop := M.eval w = Part.some 1\n\n/-- `M` rejects `w` if it halts on `w` with output `0`. -/\ndef Rejects (M : Machine) (w : ℕ) : Prop := M.eval w = Part.some 0\n\n/-- A machine is a decider if it accepts or rejects every input, i.e. never loops.\n-/\ndef IsDecider (M : Machine) : Prop := ∀ w, Accepts M w ∨ Rejects M w\n\n/-- `M` recognises the language `A` if it accepts exactly the words of `A`. -/\ndef Recognizes (M : Machine) (A : Set ℕ) : Prop := ∀ w, w ∈ A ↔ Accepts M w\n\n/-- `M` decides `A` if it is a decider that recognises `A`. -/\ndef Decides (M : Machine) (A : Set ℕ) : Prop := IsDecider M ∧ Recognizes M A\n\n/-- A language is Turing-recognisable if some machine recognises it. -/\ndef TuringRecognizable (A : Set ℕ) : Prop := ∃ M, Recognizes M A\n\n/-- A language is decidable if some machine decides it. -/\ndef TuringDecidable (A : Set ℕ) : Prop := ∃ M, Decides M A\n\n/-- The acceptance problem `A_TM`: the pairs `⟨M, w⟩`, encoded by Cantor pairing\nof the code of `M` with `w`, such that `M` accepts `w`. -/\ndef ATM : Set ℕ := {n | Accepts (Denumerable.ofNat Machine n.unpair.1) n.unpair.2}\n\nend Lax251941.Acceptance\n",
+      "statements": []
+    },
+    {
+      "id": "Lax251941.AcceptanceUndecidable",
+      "path": "concepts/Lax251941/AcceptanceUndecidable.lean",
+      "title": "The acceptance problem is undecidable",
+      "type": "theorem",
+      "description": "No machine decides the acceptance problem $A_{TM}$ (Sipser, Theorem 4.11). The\nproof is the diagonalisation argument: a decider $H$ for $A_{TM}$ would give a\nmachine $D$ that, on the description $\\langle N\\rangle$ of a machine $N$, runs\n$H$ on $\\langle N, \\langle N\\rangle\\rangle$ and answers the opposite; running $D$\non its own description is then a contradiction.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The statement is `¬ TuringDecidable ATM` for the machines and the language of\n`Acceptance`. It is equivalent to the membership predicate of `ATM` not being\nmathlib's `ComputablePred`, decidability of a language and computability of its\nmembership predicate being the same thing for these machines."
+        }
+      ],
+      "imports": [
+        "Lax251941.Acceptance"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax251941.Acceptance\n\n/-!\n---\ntitle: The acceptance problem is undecidable\ntype: theorem\n---\nNo machine decides the acceptance problem $A_{TM}$ (Sipser, Theorem 4.11). The\nproof is the diagonalisation argument: a decider $H$ for $A_{TM}$ would give a\nmachine $D$ that, on the description $\\langle N\\rangle$ of a machine $N$, runs\n$H$ on $\\langle N, \\langle N\\rangle\\rangle$ and answers the opposite; running $D$\non its own description is then a contradiction.\n\n# Formalization notes\n\nThe statement is `¬ TuringDecidable ATM` for the machines and the language of\n`Acceptance`. It is equivalent to the membership predicate of `ATM` not being\nmathlib's `ComputablePred`, decidability of a language and computability of its\nmembership predicate being the same thing for these machines.\n-/\n\nnamespace Lax251941.AcceptanceUndecidable\n\nopen Lax251941.Acceptance\n\n/-- Sipser's Theorem 4.11: the acceptance problem is undecidable. -/\naxiom not_turingDecidable_ATM : ¬ TuringDecidable ATM\n\nend Lax251941.AcceptanceUndecidable\n",
+      "statements": [
+        {
+          "id": "Lax251941.AcceptanceUndecidable.not_turingDecidable_ATM",
+          "signature": "not_turingDecidable_ATM : Not (Lax251941.Acceptance.TuringDecidable Lax251941.Acceptance.ATM)",
+          "startLine": 26,
+          "endLine": 27,
+          "doc": "Sipser's Theorem 4.11: the acceptance problem is undecidable."
+        }
+      ]
+    },
+    {
+      "id": "Lax251941.PostCorrespondence",
+      "path": "concepts/Lax251941/PostCorrespondence.lean",
+      "title": "The Post correspondence problem",
+      "type": "definition",
+      "description": "An instance of the *Post correspondence problem* is a finite collection of\n*dominos* $[t / b]$, each carrying a top string $t$ and a bottom string $b$ over\nsome alphabet. A *match* is a nonempty sequence of dominos from the collection,\nrepetitions allowed, such that reading off the top strings gives the same string\nas reading off the bottom strings. The problem asks whether a given instance has\na match (Sipser, Section 5.2; Post 1946).\n\nThe same problem in *index form*, as the book *Transducers* uses it: an\ninstance is a finite list of pairs of strings $(u_1, v_1), \\ldots, (u_n, v_n)$\nover the alphabet $\\mathbb{N}$, and it is solvable if some nonempty sequence of\nindices $i_1 \\cdots i_k$ satisfies\n$$u_{i_1} \\cdots u_{i_k} = v_{i_1} \\cdots v_{i_k}.$$",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "`Inst α` is a list of dominos over any alphabet `α`; `IsMatch P s` says that the\nnonempty list `s` of dominos, each belonging to `P`, has equal top and bottom\nstrings, and `HasMatch P` that some match exists. `Solvable` is the index form\nover `ℕ`: `conc ws idx` concatenates the strings of `ws` selected by the indices\n(an index out of range selects the empty string, but the definition requires\nevery index to be in range). The two forms carry the same information — choose\nan index for each domino, or read a domino off each index — and both are stated\nas undecidable."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.List.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.List.Basic\n\n/-!\n---\ntitle: The Post correspondence problem\ntype: definition\n---\nAn instance of the *Post correspondence problem* is a finite collection of\n*dominos* $[t / b]$, each carrying a top string $t$ and a bottom string $b$ over\nsome alphabet. A *match* is a nonempty sequence of dominos from the collection,\nrepetitions allowed, such that reading off the top strings gives the same string\nas reading off the bottom strings. The problem asks whether a given instance has\na match (Sipser, Section 5.2; Post 1946).\n\nThe same problem in *index form*, as the book *Transducers* uses it: an\ninstance is a finite list of pairs of strings $(u_1, v_1), \\ldots, (u_n, v_n)$\nover the alphabet $\\mathbb{N}$, and it is solvable if some nonempty sequence of\nindices $i_1 \\cdots i_k$ satisfies\n$$u_{i_1} \\cdots u_{i_k} = v_{i_1} \\cdots v_{i_k}.$$\n\n# Formalization notes\n\n`Inst α` is a list of dominos over any alphabet `α`; `IsMatch P s` says that the\nnonempty list `s` of dominos, each belonging to `P`, has equal top and bottom\nstrings, and `HasMatch P` that some match exists. `Solvable` is the index form\nover `ℕ`: `conc ws idx` concatenates the strings of `ws` selected by the indices\n(an index out of range selects the empty string, but the definition requires\nevery index to be in range). The two forms carry the same information — choose\nan index for each domino, or read a domino off each index — and both are stated\nas undecidable.\n-/\n\nnamespace Lax251941.PostCorrespondence\n\n/-- A domino: a top string and a bottom string. -/\nabbrev Domino (α : Type*) := List α × List α\n\n/-- An instance of the Post correspondence problem: a finite list of dominos. -/\nabbrev Inst (α : Type*) := List (Domino α)\n\n/-- The string read off the top halves of a sequence of dominos. -/\ndef topStr {α : Type*} (s : List (Domino α)) : List α := (s.map Prod.fst).flatten\n\n/-- The string read off the bottom halves of a sequence of dominos. -/\ndef botStr {α : Type*} (s : List (Domino α)) : List α := (s.map Prod.snd).flatten\n\n/-- `s` is a match of the instance `P`: a nonempty sequence of dominos of `P`\nwhose top string equals its bottom string. -/\ndef IsMatch {α : Type*} (P : Inst α) (s : List (Domino α)) : Prop :=\n  s ≠ [] ∧ (∀ d ∈ s, d ∈ P) ∧ topStr s = botStr s\n\n/-- The instance `P` has a match. -/\ndef HasMatch {α : Type*} (P : Inst α) : Prop := ∃ s, IsMatch P s\n\n/-- An instance in index form: a finite list of pairs of strings over `ℕ`. -/\nabbrev Instance := List (List ℕ × List ℕ)\n\n/-- The concatenation of the strings of `ws` selected by a list of indices. -/\ndef conc (ws : List (List ℕ)) (idx : List ℕ) : List ℕ :=\n  (idx.map (fun i => ws.getD i [])).flatten\n\n/-- An instance is solvable if some nonempty sequence of indices makes the two\nconcatenations equal. -/\ndef Solvable (P : Instance) : Prop :=\n  ∃ idx : List ℕ, idx ≠ [] ∧ (∀ i ∈ idx, i < P.length) ∧\n    conc (P.map Prod.fst) idx = conc (P.map Prod.snd) idx\n\nend Lax251941.PostCorrespondence\n",
+      "statements": []
+    },
+    {
+      "id": "Lax251941.PostCorrespondenceIndexUndecidable",
+      "path": "concepts/Lax251941/PostCorrespondenceIndexUndecidable.lean",
+      "title": "The Post correspondence problem in index form is undecidable",
+      "type": "theorem",
+      "description": "No algorithm decides, given a finite list of pairs of strings over $\\mathbb{N}$,\nwhether some nonempty sequence of indices makes the two concatenations equal.\nThis is the undecidability of the Post correspondence problem in the index form\nused by the book *Transducers*, where it is the source of the undecidability of\nequivalence of rational relations (Theorem B.1.6). A list of dominos taken from\nan instance and a list of positions in the instance carry the same information,\nso the index form is the domino form `PostCorrespondenceUndecidable` restated.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "`Solvable` is the index form of `PostCorrespondence`; decidability is mathlib's\n`ComputablePred` on lists of pairs of lists of natural numbers."
+        }
+      ],
+      "imports": [
+        "Lax251941.PostCorrespondence"
+      ],
+      "mathlibImports": [
+        "Mathlib.Computability.Halting"
+      ],
+      "sourceText": "import Mathlib.Computability.Halting\nimport Lax251941.PostCorrespondence\n\n/-!\n---\ntitle: The Post correspondence problem in index form is undecidable\ntype: theorem\n---\nNo algorithm decides, given a finite list of pairs of strings over $\\mathbb{N}$,\nwhether some nonempty sequence of indices makes the two concatenations equal.\nThis is the undecidability of the Post correspondence problem in the index form\nused by the book *Transducers*, where it is the source of the undecidability of\nequivalence of rational relations (Theorem B.1.6). A list of dominos taken from\nan instance and a list of positions in the instance carry the same information,\nso the index form is the domino form `PostCorrespondenceUndecidable` restated.\n\n# Formalization notes\n\n`Solvable` is the index form of `PostCorrespondence`; decidability is mathlib's\n`ComputablePred` on lists of pairs of lists of natural numbers.\n-/\n\nnamespace Lax251941.PostCorrespondenceIndexUndecidable\n\nopen Lax251941.PostCorrespondence\n\n/-- The Post correspondence problem in index form is undecidable. -/\naxiom not_computablePred_solvable : ¬ ComputablePred Solvable\n\nend Lax251941.PostCorrespondenceIndexUndecidable\n",
+      "statements": [
+        {
+          "id": "Lax251941.PostCorrespondenceIndexUndecidable.not_computablePred_solvable",
+          "signature": "not_computablePred_solvable : Not (ComputablePred Lax251941.PostCorrespondence.Solvable)",
+          "startLine": 27,
+          "endLine": 28,
+          "doc": "The Post correspondence problem in index form is undecidable."
+        }
+      ]
+    },
+    {
+      "id": "Lax251941.PostCorrespondenceReduction",
+      "path": "concepts/Lax251941/PostCorrespondenceReduction.lean",
+      "title": "The acceptance problem reduces to the Post correspondence problem",
+      "type": "theorem",
+      "description": "If the Post correspondence problem were decidable, then the acceptance problem\nfor Turing machines would be decidable as well (Sipser, Theorem 5.15, as a\nmany-one reduction). From a machine $M$ and an input $w$ one constructs, by\nSipser's seven kinds of dominos, an instance whose matches are exactly the\naccepting computation histories of $M$ on $w$ — the strings\n$\\#\\,C_1\\,\\#\\,C_2\\,\\#\\cdots\\#\\,C_k\\,\\#$ of consecutive configurations from\n$q_0 w$ to a configuration in the accept state, each obtained from the previous\none by a step of the machine; the passage through the modified problem, in\nwhich a match must start with the first domino, is the $\\star$ trick. The\nconstruction is effective, indeed primitive recursive, which is the part of the\nargument that the textbook takes for granted.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Both problems are stated over the alphabet `ℕ` with mathlib's\n`ComputablePred`: Sipser's instance is built over the alphabet `Sym` of\nconfigurations and histories, and the proof transports it to `ℕ` along an\ninjective encoding of `Sym`, which preserves and reflects the existence of a\nmatch."
+        }
+      ],
+      "imports": [
+        "Lax251941.PostCorrespondence",
+        "Lax251941.TuringMachines"
+      ],
+      "mathlibImports": [
+        "Mathlib.Computability.Halting"
+      ],
+      "sourceText": "import Mathlib.Computability.Halting\nimport Lax251941.TuringMachines\nimport Lax251941.PostCorrespondence\n\n/-!\n---\ntitle: The acceptance problem reduces to the Post correspondence problem\ntype: theorem\n---\nIf the Post correspondence problem were decidable, then the acceptance problem\nfor Turing machines would be decidable as well (Sipser, Theorem 5.15, as a\nmany-one reduction). From a machine $M$ and an input $w$ one constructs, by\nSipser's seven kinds of dominos, an instance whose matches are exactly the\naccepting computation histories of $M$ on $w$ — the strings\n$\\#\\,C_1\\,\\#\\,C_2\\,\\#\\cdots\\#\\,C_k\\,\\#$ of consecutive configurations from\n$q_0 w$ to a configuration in the accept state, each obtained from the previous\none by a step of the machine; the passage through the modified problem, in\nwhich a match must start with the first domino, is the $\\star$ trick. The\nconstruction is effective, indeed primitive recursive, which is the part of the\nargument that the textbook takes for granted.\n\n# Formalization notes\n\nBoth problems are stated over the alphabet `ℕ` with mathlib's\n`ComputablePred`: Sipser's instance is built over the alphabet `Sym` of\nconfigurations and histories, and the proof transports it to `ℕ` along an\ninjective encoding of `Sym`, which preserves and reflects the existence of a\nmatch.\n-/\n\nnamespace Lax251941.PostCorrespondenceReduction\n\nopen Lax251941.TuringMachines Lax251941.PostCorrespondence\n\n/-- A decision procedure for the Post correspondence problem would decide the\nacceptance problem for Turing machines. -/\naxiom computablePred_accepts_of_hasMatch\n    (h : ComputablePred fun P : Inst ℕ => HasMatch P) :\n    ComputablePred fun p : TM × List ℕ => p.1.Accepts p.2\n\nend Lax251941.PostCorrespondenceReduction\n",
+      "statements": [
+        {
+          "id": "Lax251941.PostCorrespondenceReduction.computablePred_accepts_of_hasMatch",
+          "signature": "computablePred_accepts_of_hasMatch : (ComputablePred fun P => Lax251941.PostCorrespondence.HasMatch P) → ComputablePred fun p => p.fst.Accepts p.snd",
+          "startLine": 35,
+          "endLine": 39,
+          "doc": "A decision procedure for the Post correspondence problem would decide the\nacceptance problem for Turing machines."
+        }
+      ]
+    },
+    {
+      "id": "Lax251941.PostCorrespondenceUndecidable",
+      "path": "concepts/Lax251941/PostCorrespondenceUndecidable.lean",
+      "title": "The Post correspondence problem is undecidable",
+      "type": "theorem",
+      "description": "No algorithm decides whether an instance of the Post correspondence problem has\na match (Post 1946; Sipser, Theorem 5.15). It follows from the reduction of\nthe acceptance problem for Turing machines to the Post correspondence problem\n(`PostCorrespondenceReduction`) and the undecidability of that acceptance\nproblem (`TapeAcceptanceUndecidable`).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Stated for instances over the alphabet `ℕ`, in the domino form `HasMatch`, with\nmathlib's `ComputablePred`. The index form the book *Transducers* uses is\n`PostCorrespondenceIndexUndecidable`."
+        }
+      ],
+      "imports": [
+        "Lax251941.PostCorrespondence"
+      ],
+      "mathlibImports": [
+        "Mathlib.Computability.Halting"
+      ],
+      "sourceText": "import Mathlib.Computability.Halting\nimport Lax251941.PostCorrespondence\n\n/-!\n---\ntitle: The Post correspondence problem is undecidable\ntype: theorem\n---\nNo algorithm decides whether an instance of the Post correspondence problem has\na match (Post 1946; Sipser, Theorem 5.15). It follows from the reduction of\nthe acceptance problem for Turing machines to the Post correspondence problem\n(`PostCorrespondenceReduction`) and the undecidability of that acceptance\nproblem (`TapeAcceptanceUndecidable`).\n\n# Formalization notes\n\nStated for instances over the alphabet `ℕ`, in the domino form `HasMatch`, with\nmathlib's `ComputablePred`. The index form the book *Transducers* uses is\n`PostCorrespondenceIndexUndecidable`.\n-/\n\nnamespace Lax251941.PostCorrespondenceUndecidable\n\nopen Lax251941.PostCorrespondence\n\n/-- The Post correspondence problem over `ℕ` is undecidable. -/\naxiom not_computablePred_hasMatch : ¬ ComputablePred fun P : Inst ℕ => HasMatch P\n\nend Lax251941.PostCorrespondenceUndecidable\n",
+      "statements": [
+        {
+          "id": "Lax251941.PostCorrespondenceUndecidable.not_computablePred_hasMatch",
+          "signature": "not_computablePred_hasMatch : Not (ComputablePred fun P => Lax251941.PostCorrespondence.HasMatch P)",
+          "startLine": 26,
+          "endLine": 27,
+          "doc": "The Post correspondence problem over `ℕ` is undecidable."
+        }
+      ]
+    },
+    {
+      "id": "Lax251941.TapeAcceptanceUndecidable",
+      "path": "concepts/Lax251941/TapeAcceptanceUndecidable.lean",
+      "title": "The acceptance problem for Turing machines is undecidable",
+      "type": "theorem",
+      "description": "No algorithm decides, given a single-tape Turing machine $M$ and an input word\n$w$, whether $M$ accepts $w$. This is Sipser's Theorem 4.11 for the tape\nmachines of Section 5.2: a decision procedure for their acceptance problem\nwould, through the Turing-completeness of the tape machines\n(`TuringCompleteness`), decide the acceptance problem $A_{TM}$ of\n`Acceptance`, which the diagonalisation argument rules out. One simulation\nsuffices, since a decision procedure is uniform in the machine: the machine\nsimulating a fixed universal function is held fixed and only its input varies.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Decidability of a problem on pairs `(M, w)` is mathlib's `ComputablePred` on the\ntype `TM × List ℕ`, with machines encoded by their tables (the `Primcodable`\ninstance of `TuringMachines`)."
+        }
+      ],
+      "imports": [
+        "Lax251941.TuringMachines"
+      ],
+      "mathlibImports": [
+        "Mathlib.Computability.Halting"
+      ],
+      "sourceText": "import Mathlib.Computability.Halting\nimport Lax251941.TuringMachines\n\n/-!\n---\ntitle: The acceptance problem for Turing machines is undecidable\ntype: theorem\n---\nNo algorithm decides, given a single-tape Turing machine $M$ and an input word\n$w$, whether $M$ accepts $w$. This is Sipser's Theorem 4.11 for the tape\nmachines of Section 5.2: a decision procedure for their acceptance problem\nwould, through the Turing-completeness of the tape machines\n(`TuringCompleteness`), decide the acceptance problem $A_{TM}$ of\n`Acceptance`, which the diagonalisation argument rules out. One simulation\nsuffices, since a decision procedure is uniform in the machine: the machine\nsimulating a fixed universal function is held fixed and only its input varies.\n\n# Formalization notes\n\nDecidability of a problem on pairs `(M, w)` is mathlib's `ComputablePred` on the\ntype `TM × List ℕ`, with machines encoded by their tables (the `Primcodable`\ninstance of `TuringMachines`).\n-/\n\nnamespace Lax251941.TapeAcceptanceUndecidable\n\nopen Lax251941.TuringMachines\n\n/-- The acceptance problem for single-tape Turing machines is undecidable. -/\naxiom not_computablePred_accepts :\n    ¬ ComputablePred fun p : TM × List ℕ => p.1.Accepts p.2\n\nend Lax251941.TapeAcceptanceUndecidable\n",
+      "statements": [
+        {
+          "id": "Lax251941.TapeAcceptanceUndecidable.not_computablePred_accepts",
+          "signature": "not_computablePred_accepts : Not (ComputablePred fun p => p.fst.Accepts p.snd)",
+          "startLine": 29,
+          "endLine": 31,
+          "doc": "The acceptance problem for single-tape Turing machines is undecidable."
+        }
+      ]
+    },
+    {
+      "id": "Lax251941.TuringCompleteness",
+      "path": "concepts/Lax251941/TuringCompleteness.lean",
+      "title": "Every partial recursive function is computed by a Turing machine",
+      "type": "theorem",
+      "description": "For every partial recursive function $f : \\mathbb{N} \\rightharpoonup \\mathbb{N}$\nthere is a single-tape Turing machine which, on the unary encoding of $n$,\nreaches its accept state exactly when $f(n)$ is defined. This is the\nTuring-completeness of the string-rewriting machines of `TuringMachines`, in\nthe form in which it links Sipser's two sections: the diagonalisation of\nSection 4.2 is carried out for partial recursive programs, the reduction of\nSection 5.2 for tape machines, and this theorem is what makes the acceptance\nproblem of the latter as hard as that of the former.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The unary encoding of `n` is the word `mk :: replicate n c` for two tape symbols\n`mk` (a marker) and `c` (a counter cell) chosen by the theorem together with\nthe machine. `Partrec` is mathlib's class of partial recursive functions\n`ℕ →. ℕ`. The proof compiles the function to a counter-machine program and the\nprogram to a tape machine; the compiled machine is deterministic, although the\nmodel allows nondeterminism."
+        }
+      ],
+      "imports": [
+        "Lax251941.TuringMachines"
+      ],
+      "mathlibImports": [
+        "Mathlib.Computability.Partrec"
+      ],
+      "sourceText": "import Mathlib.Computability.Partrec\nimport Lax251941.TuringMachines\n\n/-!\n---\ntitle: Every partial recursive function is computed by a Turing machine\ntype: theorem\n---\nFor every partial recursive function $f : \\mathbb{N} \\rightharpoonup \\mathbb{N}$\nthere is a single-tape Turing machine which, on the unary encoding of $n$,\nreaches its accept state exactly when $f(n)$ is defined. This is the\nTuring-completeness of the string-rewriting machines of `TuringMachines`, in\nthe form in which it links Sipser's two sections: the diagonalisation of\nSection 4.2 is carried out for partial recursive programs, the reduction of\nSection 5.2 for tape machines, and this theorem is what makes the acceptance\nproblem of the latter as hard as that of the former.\n\n# Formalization notes\n\nThe unary encoding of `n` is the word `mk :: replicate n c` for two tape symbols\n`mk` (a marker) and `c` (a counter cell) chosen by the theorem together with\nthe machine. `Partrec` is mathlib's class of partial recursive functions\n`ℕ →. ℕ`. The proof compiles the function to a counter-machine program and the\nprogram to a tape machine; the compiled machine is deterministic, although the\nmodel allows nondeterminism.\n-/\n\nnamespace Lax251941.TuringCompleteness\n\nopen Lax251941.TuringMachines\n\n/-- For every partial recursive `f` there is a tape machine, with a marker symbol\nand a counter symbol, that accepts the unary encoding of `n` exactly when `f n` is\ndefined. -/\naxiom exists_tm_accepts_iff_dom (f : ℕ →. ℕ) (hf : Partrec f) :\n    ∃ (M : TM) (mk c : ℕ), ∀ n : ℕ, M.Accepts (mk :: List.replicate n c) ↔ (f n).Dom\n\nend Lax251941.TuringCompleteness\n",
+      "statements": [
+        {
+          "id": "Lax251941.TuringCompleteness.exists_tm_accepts_iff_dom",
+          "signature": "exists_tm_accepts_iff_dom : ∀ (f : PFun Nat Nat),\n  Partrec f →\n    Exists fun M =>\n      Exists fun mk => Exists fun c => ∀ (n : Nat), Iff (M.Accepts (List.cons mk (List.replicate n c))) (f n).Dom",
+          "startLine": 32,
+          "endLine": 36,
+          "doc": "For every partial recursive `f` there is a tape machine, with a marker symbol\nand a counter symbol, that accepts the unary encoding of `n` exactly when `f n` is\ndefined."
+        }
+      ]
+    },
+    {
+      "id": "Lax251941.TuringMachines",
+      "path": "concepts/Lax251941/TuringMachines.lean",
+      "title": "Single-tape Turing machines as string rewriting",
+      "type": "definition",
+      "description": "A (possibly nondeterministic) single-tape Turing machine, presented as in\nSipser's *Introduction to the Theory of Computation*, Section 5.2: a finite\ntransition table with entries $\\delta(q, a) = (r, b, \\mathrm{dir})$, a start\nstate and an accept state. A *configuration* is a string $u\\,q\\,v$ over tape\nsymbols and states, where $u$ and $v$ are the tape contents to the left and to\nthe right of the head and $q$ is the current state, and one step of the machine\nrewrites the configuration string locally around the state symbol:\n$q\\,a \\to b\\,r$ for a move to the right, and $c\\,q\\,a \\to r\\,c\\,b$ for a move to\nthe left, which is possible only if there is a symbol $c$ to the left of the\nhead; a blank may be appended at the right-hand end, standing for the\ninfinitely many blanks that a written configuration suppresses. The machine\n*accepts* the input $w$ if some configuration containing the accept state is\nreachable from the starting configuration $q_0\\,w$.\n\nThis is the combinatorial shape that the reduction to the Post correspondence\nproblem manipulates, so it is what the machine *is* here: a *string rewriting\nsystem* — an alphabet, a finite list of rules $u \\to v$ applied in arbitrary\ncontext, and a list of symbols that may be appended on the right — whose rules\nare read off the transition table.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Tape symbols and states are natural numbers, `0` being the blank. The alphabet\n`Sym` in which configurations are written also carries the four auxiliary\nsymbols of Sipser's reduction (`#`, the start marker, `∗`, `◇`); they play no\nrole in the definition of the machine and are here only so that computation\nhistories and configurations are strings over one and the same alphabet.\n\nThe tape symbols and the states of a machine are the finitely many that its\ntable, its two distinguished states and the input mention. A move to the left\nneeds the symbol to the left of the head, so there is one left rule per tape\nsymbol `c`; the machine never moves its head off the left end. `Reaches` is\nthe reflexive transitive closure of the one-step relation. The `Primcodable`\ninstance encodes a machine by its table and its two states, so that decision\nproblems about machines can be stated with mathlib's `ComputablePred`."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Computability.Primrec.List",
+        "Mathlib.Logic.Relation"
+      ],
+      "sourceText": "import Mathlib.Computability.Primrec.List\nimport Mathlib.Logic.Relation\n\n/-!\n---\ntitle: Single-tape Turing machines as string rewriting\ntype: definition\n---\nA (possibly nondeterministic) single-tape Turing machine, presented as in\nSipser's *Introduction to the Theory of Computation*, Section 5.2: a finite\ntransition table with entries $\\delta(q, a) = (r, b, \\mathrm{dir})$, a start\nstate and an accept state. A *configuration* is a string $u\\,q\\,v$ over tape\nsymbols and states, where $u$ and $v$ are the tape contents to the left and to\nthe right of the head and $q$ is the current state, and one step of the machine\nrewrites the configuration string locally around the state symbol:\n$q\\,a \\to b\\,r$ for a move to the right, and $c\\,q\\,a \\to r\\,c\\,b$ for a move to\nthe left, which is possible only if there is a symbol $c$ to the left of the\nhead; a blank may be appended at the right-hand end, standing for the\ninfinitely many blanks that a written configuration suppresses. The machine\n*accepts* the input $w$ if some configuration containing the accept state is\nreachable from the starting configuration $q_0\\,w$.\n\nThis is the combinatorial shape that the reduction to the Post correspondence\nproblem manipulates, so it is what the machine *is* here: a *string rewriting\nsystem* — an alphabet, a finite list of rules $u \\to v$ applied in arbitrary\ncontext, and a list of symbols that may be appended on the right — whose rules\nare read off the transition table.\n\n# Formalization notes\n\nTape symbols and states are natural numbers, `0` being the blank. The alphabet\n`Sym` in which configurations are written also carries the four auxiliary\nsymbols of Sipser's reduction (`#`, the start marker, `∗`, `◇`); they play no\nrole in the definition of the machine and are here only so that computation\nhistories and configurations are strings over one and the same alphabet.\n\nThe tape symbols and the states of a machine are the finitely many that its\ntable, its two distinguished states and the input mention. A move to the left\nneeds the symbol to the left of the head, so there is one left rule per tape\nsymbol `c`; the machine never moves its head off the left end. `Reaches` is\nthe reflexive transitive closure of the one-step relation. The `Primcodable`\ninstance encodes a machine by its table and its two states, so that decision\nproblems about machines can be stated with mathlib's `ComputablePred`.\n-/\n\nnamespace Lax251941.TuringMachines\n\n/-- The symbols in which configurations of a Turing machine, and the strings of\nSipser's reduction, are written. -/\ninductive Sym where\n  /-- A tape symbol; `Sym.tape 0` is the blank. -/\n  | tape : ℕ → Sym\n  /-- A state of the machine. -/\n  | state : ℕ → Sym\n  /-- The separator `#` between consecutive configurations of a history. -/\n  | hash : Sym\n  /-- The marker opening a computation history. -/\n  | start : Sym\n  /-- The auxiliary symbol `∗` of the reduction. -/\n  | star : Sym\n  /-- The auxiliary symbol `◇` of the reduction. -/\n  | diamond : Sym\n  deriving DecidableEq, Repr\n\n/-- A string rewriting system: an alphabet, a finite list of rewriting rules\n`u → v` applied in arbitrary context, and a list of symbols that may be appended\nat the right end of a string. -/\nstructure SRS (α : Type*) where\n  /-- The alphabet. -/\n  alphabet : List α\n  /-- The rewriting rules `u → v`. -/\n  rules : List (List α × List α)\n  /-- Symbols that may be appended at the right-hand end of a string. -/\n  ext : List α\n\n/-- One application of a rule, in a context `l _ r`. -/\ninductive StepRule {α : Type*} (rules : List (List α × List α)) : List α → List α → Prop\n  | mk (l u v r : List α) : (u, v) ∈ rules → StepRule rules (l ++ u ++ r) (l ++ v ++ r)\n\n/-- One step of a rewriting system: a rule application, or appending one of the\ndesignated symbols on the right. -/\ninductive Step {α : Type*} (S : SRS α) : List α → List α → Prop\n  | rule {a b : List α} : StepRule S.rules a b → Step S a b\n  | ext {c : List α} {x : α} : x ∈ S.ext → Step S c (c ++ [x])\n\n/-- Reachability: the reflexive transitive closure of `Step`. -/\ndef Reaches {α : Type*} (S : SRS α) : List α → List α → Prop := Relation.ReflTransGen (Step S)\n\n/-- A single-tape Turing machine: a transition table whose entry `(q, a, r, b, dir)`\nmeans `δ(q, a) = (r, b, dir)`, `dir = true` being a move to the right and\n`dir = false` a move to the left, together with a start state and an accept\nstate. -/\nstructure TM where\n  /-- The transition table. -/\n  trans : List (ℕ × ℕ × ℕ × ℕ × Bool)\n  /-- The start state. -/\n  q0 : ℕ\n  /-- The accept state. -/\n  qacc : ℕ\n\nnamespace TM\n\nvariable (M : TM) (w : List ℕ)\n\n/-- The tape symbols of a machine run on `w`: the blank, the letters of `w`, and\nthe symbols read or written by the table. -/\ndef tapeSyms : List ℕ :=\n  0 :: (w ++ M.trans.map (fun x => x.2.1) ++ M.trans.map (fun x => x.2.2.2.1))\n\n/-- The states of a machine: the start state, the accept state and the states of\nthe table. -/\ndef states : List ℕ :=\n  M.q0 :: M.qacc :: (M.trans.map (fun x => x.1) ++ M.trans.map (fun x => x.2.2.1))\n\n/-- The alphabet in which the configurations of a run on `w` are written. -/\ndef alphabet : List Sym :=\n  (M.tapeSyms w).map Sym.tape ++ M.states.map Sym.state\n\n/-- The rewriting rules `q a → b r` of the moves to the right. -/\ndef rightRules : List (List Sym × List Sym) :=\n  M.trans.filterMap fun x =>\n    if x.2.2.2.2 then\n      some ([Sym.state x.1, Sym.tape x.2.1], [Sym.tape x.2.2.2.1, Sym.state x.2.2.1])\n    else none\n\n/-- The rewriting rules `c q a → r c b` of the moves to the left, one for every\ntape symbol `c` to the left of the head. -/\ndef leftRules : List (List Sym × List Sym) :=\n  (M.tapeSyms w).flatMap fun c =>\n    M.trans.filterMap fun x =>\n      if x.2.2.2.2 then none\n      else some ([Sym.tape c, Sym.state x.1, Sym.tape x.2.1],\n        [Sym.state x.2.2.1, Sym.tape c, Sym.tape x.2.2.2.1])\n\n/-- The rewriting rules describing the single steps of the machine. -/\ndef transRules : List (List Sym × List Sym) := M.rightRules ++ M.leftRules w\n\n/-- The rewriting system of the machine on the input `w`: its step rules, with a\nblank appendable on the right. -/\ndef machineSRS : SRS Sym where\n  alphabet := M.alphabet w\n  rules := M.transRules w\n  ext := [Sym.tape 0]\n\n/-- The starting configuration `q₀ w`. -/\ndef startCfg : List Sym := Sym.state M.q0 :: w.map Sym.tape\n\n/-- The machine accepts `w` if a configuration containing the accept state is\nreachable from the starting configuration. -/\ndef Accepts : Prop :=\n  ∃ C, Reaches (M.machineSRS w) (M.startCfg w) C ∧ Sym.state M.qacc ∈ C\n\nend TM\n\n/-- A machine is encoded by its transition table and its two distinguished states.\n-/\ndef tmEquiv : TM ≃ List (ℕ × ℕ × ℕ × ℕ × Bool) × ℕ × ℕ where\n  toFun M := (M.trans, M.q0, M.qacc)\n  invFun x := ⟨x.1, x.2.1, x.2.2⟩\n  left_inv := by rintro ⟨t, a, b⟩; rfl\n  right_inv := by rintro ⟨t, a, b⟩; rfl\n\ninstance : Primcodable TM := Primcodable.ofEquiv _ tmEquiv\n\nend Lax251941.TuringMachines\n",
+      "statements": []
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax251941Proofs.Results.computablePred_accepts_of_hasMatch",
+      "path": "proofs/Lax251941Proofs/Results.lean",
+      "conclusion": "Lax251941.PostCorrespondenceReduction.computablePred_accepts_of_hasMatch",
+      "assumptions": [],
+      "description": "Sipser's Theorem 5.15 as a many-one reduction: a decision procedure for the\nPost correspondence problem over `ℕ` decides the acceptance problem for Turing\nmachines.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "The source builds Sipser's instance `sipserPCP M w` over the alphabet `Sym` of\nconfigurations, proves that its matches are exactly the accepting computation\nhistories (`PCP.hasMatch_sipserPCP_iff`, through the modified problem and the\n`⋆` trick, `PCP/SRtoMPCP.lean` and `PCP/StarTrick.lean`), and that the\nconstruction is primitive recursive (`PCP/Computable.lean`);\n`PCP.computablyDecidable_acceptance_of_pcp` is the reduction. The concept\nstates both problems over `ℕ`: the bridge moves the given decision procedure\nfrom `ℕ` to `Sym` along the injective encoding of `Sym`, which preserves and\nreflects matches (`computablyDecidable_hasMatch_sym`), and the resulting\nprocedure for the source's machines to the concept's\n(`computablePred_accepts_iff`)."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Sipser, Theorem 5.15 (Section 5.2); Lean proof by Aristotle\n(`RequestProject/PCP/`)."
+        }
+      ]
+    },
+    {
+      "id": "Lax251941Proofs.Results.exists_tm_accepts_iff_dom",
+      "path": "proofs/Lax251941Proofs/Results.lean",
+      "conclusion": "Lax251941.TuringCompleteness.exists_tm_accepts_iff_dom",
+      "assumptions": [],
+      "description": "Every partial recursive function is computed, in the accept-iff-defined sense on\nunary inputs, by a single-tape Turing machine.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "The source compiles the function, presented through mathlib's `Nat.Partrec'`,\nto a counter-machine program (`Sim/Compile.lean`), and the program to a tape\nmachine that walks over a tape of cells holding the counters\n(`Sim/Simulate.lean`); `PCP.Sim.exists_tape_machine` assembles the two. The\nconcept's machine is the source's machine transported by `ofSrc`, and\nacceptance is transported by `accepts_iff`."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Lean development by Aristotle (`RequestProject/Sim/`); the statement is the\nTuring-completeness of Sipser's machines in the form the reduction needs."
+        }
+      ]
+    },
+    {
+      "id": "Lax251941Proofs.Results.not_computablePred_accepts",
+      "path": "proofs/Lax251941Proofs/Results.lean",
+      "conclusion": "Lax251941.TapeAcceptanceUndecidable.not_computablePred_accepts",
+      "assumptions": [],
+      "description": "The acceptance problem for single-tape Turing machines is undecidable.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "A decision procedure for the tape machines would decide `A_TM`: the partial\nfunction whose domain is `A_TM` is partial recursive, so by Turing-completeness\none fixed tape machine accepts the unary encoding of `n` exactly when\n`n ∈ A_TM`, and the decision procedure applied to that machine and the unary\ninputs decides `A_TM` (`Acceptance.tm_acceptance_not_computablyDecidable`).\nThe bridge `computablePred_accepts_iff` moves between the concept's machines\nand the source's."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Sipser, Theorem 4.11 for the tape machines of Section 5.2; Lean proof by\nAristotle (`RequestProject/Acceptance/Bridge.lean`)."
+        }
+      ]
+    },
+    {
+      "id": "Lax251941Proofs.Results.not_computablePred_hasMatch",
+      "path": "proofs/Lax251941Proofs/Results.lean",
+      "conclusion": "Lax251941.PostCorrespondenceUndecidable.not_computablePred_hasMatch",
+      "assumptions": [
+        "Lax251941.PostCorrespondenceReduction.computablePred_accepts_of_hasMatch",
+        "Lax251941.TapeAcceptanceUndecidable.not_computablePred_accepts"
+      ],
+      "description": "The Post correspondence problem over `ℕ` is undecidable: glued from the\nreduction and the undecidability of acceptance for tape machines, taken as\nassumptions."
+    },
+    {
+      "id": "Lax251941Proofs.Results.not_computablePred_solvable",
+      "path": "proofs/Lax251941Proofs/Results.lean",
+      "conclusion": "Lax251941.PostCorrespondenceIndexUndecidable.not_computablePred_solvable",
+      "assumptions": [],
+      "description": "The Post correspondence problem in index form is undecidable.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "The source proves it from the domino form over `Sym`\n(`Acceptance.hasMatch_not_computablyDecidable`), passing between dominos and\nindices (`PCPIndex.solvable_iff_hasMatch`) and along the primitive recursive\ninjection of `Sym` into `ℕ` (`PCPIndex.solvable_mapInst_iff`,\n`PCPIndex.primrec_mapInst`); the concept's `Solvable` is the source's."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Lean proof by Aristotle (`RequestProject/PCP/Index.lean`); the index form is\nthe one the book *Transducers* consumes."
+        }
+      ]
+    },
+    {
+      "id": "Lax251941Proofs.Results.not_turingDecidable_ATM",
+      "path": "proofs/Lax251941Proofs/Results.lean",
+      "conclusion": "Lax251941.AcceptanceUndecidable.not_turingDecidable_ATM",
+      "assumptions": [],
+      "description": "The acceptance problem `A_TM` is undecidable (Sipser, Theorem 4.11).",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Diagonalisation, as in the textbook: a decider `H` for `A_TM` yields, by\nprogramming (`Nat.Partrec.Code.exists_code`), a machine `D` that accepts the\ncode of a machine `N` exactly when `N` does not accept its own code\n(`Acceptance.exists_flip_machine` in the source); `D` on its own code is a\ncontradiction (`Acceptance.no_diagonal_machine`). The concept's definitions of\nmachines, acceptance and `A_TM` are the source's, so the source theorem is the\nstatement."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Sipser, *Introduction to the Theory of Computation*, Theorem 4.11; Lean proof\nby Aristotle (`Acceptance.atm_not_turingDecidable`)."
+        }
+      ]
+    }
+  ],
   "capture": {
     "formatVersion": 1,
-    "digest": "66a81528ea2cc2f3626d82c4454fb6a839bd8afd4173cf03dcdebacad02b8cd8",
-    "sourceCommit": "17701b2a8ab43f87b1ff31d558a7aa94cc3d0957",
+    "digest": "51843dec49fd0c57b5e250f72826a9bc26363a3cbc17a72f22fd54476239fc7a",
+    "sourceCommit": "9680c6e19881cd2003af818af67ed92d9597f52e",
     "leanToolchain": "leanprover/lean4:v4.30.0",
     "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
     "files": [
       {
+        "path": "concepts/ir/Lax251941/Acceptance.c",
+        "bytes": 1365,
+        "sha256": "f6293ad5fbef46b3631cb1a8e9f645d8c8191fe80004ad150a25aedaceb3b32a"
+      },
+      {
+        "path": "concepts/ir/Lax251941/Acceptance.c.hash",
+        "bytes": 16,
+        "sha256": "53fb67d3e5d69bd4372cbbee9cf21e86b0e8a3cdd695706cd386330d9a3fc3d3"
+      },
+      {
+        "path": "concepts/ir/Lax251941/AcceptanceUndecidable.c",
+        "bytes": 1352,
+        "sha256": "9faa8b46ca93dded29f1c1f5087a00db0b8a9c573ae8170ed0c5a2f88c823918"
+      },
+      {
+        "path": "concepts/ir/Lax251941/AcceptanceUndecidable.c.hash",
+        "bytes": 16,
+        "sha256": "a53380a46310decc16f2cb5ea5dbde2e6c4db7b9d5a71a6b990432fc090b9974"
+      },
+      {
+        "path": "concepts/ir/Lax251941/PostCorrespondence.c",
+        "bytes": 14692,
+        "sha256": "b58ab9e342455ce7796455c6cd513f08db28cab385ef3119304be75a0791e859"
+      },
+      {
+        "path": "concepts/ir/Lax251941/PostCorrespondence.c.hash",
+        "bytes": 16,
+        "sha256": "26e81da507c48f978dfd78c058f362c8533f2c6faf74ead31a43d4f5ca96ee82"
+      },
+      {
+        "path": "concepts/ir/Lax251941/PostCorrespondenceIndexUndecidable.c",
+        "bytes": 1656,
+        "sha256": "8408b9da122397374f1a23127d8d4f1e4e019ab5e54136e614bc32ff7079ade8"
+      },
+      {
+        "path": "concepts/ir/Lax251941/PostCorrespondenceIndexUndecidable.c.hash",
+        "bytes": 16,
+        "sha256": "a40fae4b58ab3afe17f5d2de3c0ef94633b5af2fcdb1dfdef2ddb40c70dbd187"
+      },
+      {
+        "path": "concepts/ir/Lax251941/PostCorrespondenceReduction.c",
+        "bytes": 1885,
+        "sha256": "8e0fdd3860aa18eb9d670c45e4ee555246e169906a88c73d3618efeb4d1d44a2"
+      },
+      {
+        "path": "concepts/ir/Lax251941/PostCorrespondenceReduction.c.hash",
+        "bytes": 16,
+        "sha256": "64accd1b1e319a644c197195ee1a78b73a765b5b06904898ced38c879463ad65"
+      },
+      {
+        "path": "concepts/ir/Lax251941/PostCorrespondenceUndecidable.c",
+        "bytes": 1646,
+        "sha256": "42e62c09b6b5e9187bfb8662249b75d8b33a64119e3b6b192c23fb882b91a24f"
+      },
+      {
+        "path": "concepts/ir/Lax251941/PostCorrespondenceUndecidable.c.hash",
+        "bytes": 16,
+        "sha256": "436f978787d7162264914f03bedba4473a1bb42d041c3ee63e8d702a7c35fabd"
+      },
+      {
+        "path": "concepts/ir/Lax251941/TapeAcceptanceUndecidable.c",
+        "bytes": 1626,
+        "sha256": "bd6c665be4ece2f8adcf442426764d2bbda7c2dacc725ff1c6f96cad4f5fbb97"
+      },
+      {
+        "path": "concepts/ir/Lax251941/TapeAcceptanceUndecidable.c.hash",
+        "bytes": 16,
+        "sha256": "ff231d5e2e6bd34de73e1580659ea55c942a4535733dae04b8b98148fbf2dad2"
+      },
+      {
+        "path": "concepts/ir/Lax251941/TuringCompleteness.c",
+        "bytes": 1612,
+        "sha256": "f5a7b26d60469ac953164983b0fb3fac05839a73deaf95300648454fa680300c"
+      },
+      {
+        "path": "concepts/ir/Lax251941/TuringCompleteness.c.hash",
+        "bytes": 16,
+        "sha256": "6899ce6399da946f33f5bb88181201eb38a7c6be7589fdf9bfe46c1ed22032d8"
+      },
+      {
+        "path": "concepts/ir/Lax251941/TuringMachines.c",
+        "bytes": 80851,
+        "sha256": "b9efa13f0321d486e5dc3cbb33b1875e1862bd61d50687538d1899f0ebf58029"
+      },
+      {
+        "path": "concepts/ir/Lax251941/TuringMachines.c.hash",
+        "bytes": 16,
+        "sha256": "65d2b3f2880c3eb4a8b7639c1e9b809d3480da68d8a8d285b0ead67f235d494f"
+      },
+      {
         "path": "concepts/ir/Lax251941.c",
-        "bytes": 1077,
-        "sha256": "4cc01ffda1d63825ba2976a3d133322b2f1b92e2552f7fb96bd69705a0e322e8"
+        "bytes": 3474,
+        "sha256": "0e6b3313c11639e35835799fc979bc094f1b3b3b2f71bf9585f6316c7bfb823a"
       },
       {
         "path": "concepts/ir/Lax251941.c.hash",
         "bytes": 16,
-        "sha256": "4e18c5ef039cdae1b3d720870dd244eb24fce924989a87f8ce9485feedff7013"
+        "sha256": "7306419b4c1c3c38cbc561c5382a82e35deef2fc90dbcba54ac2d5b0ac0299ab"
+      },
+      {
+        "path": "concepts/lib/Lax251941/Acceptance.ilean",
+        "bytes": 4297,
+        "sha256": "6d50f1725437c39b9cf912cc49d2f50ce979598b31cbabf6315963e4b9764790"
+      },
+      {
+        "path": "concepts/lib/Lax251941/Acceptance.ilean.hash",
+        "bytes": 16,
+        "sha256": "7d89cbad4381525aa0333a3a6b2c3c331e7b5dd62dde3579982caf749012fc1d"
+      },
+      {
+        "path": "concepts/lib/Lax251941/Acceptance.olean",
+        "bytes": 18344,
+        "sha256": "584156b4430e7387e9d429ddedfe3698ff888583388bcabef72a5dff3b79257c"
+      },
+      {
+        "path": "concepts/lib/Lax251941/Acceptance.olean.hash",
+        "bytes": 16,
+        "sha256": "cfa216b7ab040ec12ffc808648bed7a80d249b7988889b7a988d5cacb67e66f9"
+      },
+      {
+        "path": "concepts/lib/Lax251941/Acceptance.trace",
+        "bytes": 2364,
+        "sha256": "a451abd857f0fad447fe940e811f5444743668844c2377323eca9a43f2113c26"
+      },
+      {
+        "path": "concepts/lib/Lax251941/AcceptanceUndecidable.ilean",
+        "bytes": 816,
+        "sha256": "fda234aff6242a9b649557cdd1c1c1afda13802cdcd15379c047334a181dd471"
+      },
+      {
+        "path": "concepts/lib/Lax251941/AcceptanceUndecidable.ilean.hash",
+        "bytes": 16,
+        "sha256": "75d428d0b618c1ebb7dfa0fe031a792576f5983cc7b6cc70a61d649e1b338f67"
+      },
+      {
+        "path": "concepts/lib/Lax251941/AcceptanceUndecidable.olean",
+        "bytes": 5336,
+        "sha256": "d5fa5c3f43c2013f91322dbbb961b7dd98f815f63c11b38aef22d178ef330487"
+      },
+      {
+        "path": "concepts/lib/Lax251941/AcceptanceUndecidable.olean.hash",
+        "bytes": 16,
+        "sha256": "d338ff639fb1f6112f15076b0494fea3e0d2578577f04599dfca05cdd9bbdc23"
+      },
+      {
+        "path": "concepts/lib/Lax251941/AcceptanceUndecidable.trace",
+        "bytes": 2417,
+        "sha256": "15743d50c7124544bfb0d42d1389e5b4daaa42961c0c57ebde2617ada306d685"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondence.ilean",
+        "bytes": 5128,
+        "sha256": "1f09867499b20e1b9db2c61b32e8ba7685b9a78d3d622c98b22f05a589d3bbf7"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondence.ilean.hash",
+        "bytes": 16,
+        "sha256": "f4663819a55a2dcffea397c00b2d35ed7e0906bc2fe8d75323886405fe194dc9"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondence.olean",
+        "bytes": 56632,
+        "sha256": "99cc9b6b1d5dd62b35a4f4f31850ff03543c2e2b5827a4dc703081b062d2c013"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondence.olean.hash",
+        "bytes": 16,
+        "sha256": "078bd095280a6a90c7f1356e77f5928fcb6d3e951d8527404982e23cfa309702"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondence.trace",
+        "bytes": 2399,
+        "sha256": "2bf4b8f8472d570b0da4486e95a7cfe74ba3fa75aa43e4e0ddd06598afabf3e2"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondenceIndexUndecidable.ilean",
+        "bytes": 990,
+        "sha256": "b08020f5d43dac0e5af296fb760e939191e863d6e538f6e4b7b6c54e835c7227"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondenceIndexUndecidable.ilean.hash",
+        "bytes": 16,
+        "sha256": "8eb8adf3b007cde9271b06d968899d15d65adfdaf33269ab52bed435a0b5a47e"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondenceIndexUndecidable.olean",
+        "bytes": 7224,
+        "sha256": "c3f3fff89a79a6e586f28c75303948f3716f02e03c8e2e4dfa82e34b2ed9a42c"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondenceIndexUndecidable.olean.hash",
+        "bytes": 16,
+        "sha256": "c1e042a8ebe615754a6198504f329c1ea6695a5c3535a02d8d4ed27eaec6c85c"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondenceIndexUndecidable.trace",
+        "bytes": 2717,
+        "sha256": "269d67de95b97a7f73fcd09758b59437f1d84df6d29b2f5c8fea4ff75b57b024"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondenceReduction.ilean",
+        "bytes": 2519,
+        "sha256": "b1983da75b277ab8316841bf2e57666777993e113d0840b5b61abe45e9e7e970"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondenceReduction.ilean.hash",
+        "bytes": 16,
+        "sha256": "8ba81266d19bcb2d554cb426f53f300f6c27f7a06f1bbcee68aba921ed4a15b0"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondenceReduction.olean",
+        "bytes": 9448,
+        "sha256": "5c66358217e8ad2f884c6bdfdf75c5d6a29cd40e20c134e4b7183ad4a22bdb8a"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondenceReduction.olean.hash",
+        "bytes": 16,
+        "sha256": "784e71016470ccb4097791cca513824dfad3059dcf77101b290cd864ceab4b57"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondenceReduction.trace",
+        "bytes": 2825,
+        "sha256": "a06eaa2f966ffeda65b668a670172bd868e202ee6c35e207e611abb04980872a"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondenceUndecidable.ilean",
+        "bytes": 1329,
+        "sha256": "7fd1b30919d27835d3fa009e16d803f4bf03887548cd2476b6d135a446a1c832"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondenceUndecidable.ilean.hash",
+        "bytes": 16,
+        "sha256": "4d7f2584c43313c414e1454ec2f5957d8baab52b6349b7439a8e2181d6a2e3fa"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondenceUndecidable.olean",
+        "bytes": 7408,
+        "sha256": "401768aca2f3fb6bafde4f513b30361a399888661fec5f9d0314fe531d184880"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondenceUndecidable.olean.hash",
+        "bytes": 16,
+        "sha256": "78b6fb1d3cbf5418aa334bfa03a04d7f4d0c56d9f0a5599b597cdc0df12dae9d"
+      },
+      {
+        "path": "concepts/lib/Lax251941/PostCorrespondenceUndecidable.trace",
+        "bytes": 2674,
+        "sha256": "17320914203e00f660b4f405c79de49ce0689b88256960c72caebc37d4c30551"
+      },
+      {
+        "path": "concepts/lib/Lax251941/TapeAcceptanceUndecidable.ilean",
+        "bytes": 1753,
+        "sha256": "e77874db0ea2a2fa44edb216d1f3661c601cd2acbad98e3daf53434e58e8bc0d"
+      },
+      {
+        "path": "concepts/lib/Lax251941/TapeAcceptanceUndecidable.ilean.hash",
+        "bytes": 16,
+        "sha256": "0106f564d03291496c1fe50dad13552124213d14026b789ea067fe861a82027c"
+      },
+      {
+        "path": "concepts/lib/Lax251941/TapeAcceptanceUndecidable.olean",
+        "bytes": 8104,
+        "sha256": "13e4f20a11485effb9c4dea75ce95fd4ec8caf093e7ed6bb149060e8880a8c1c"
+      },
+      {
+        "path": "concepts/lib/Lax251941/TapeAcceptanceUndecidable.olean.hash",
+        "bytes": 16,
+        "sha256": "d5321ac78da984d7403a518d48da11034e3940e0315dd90a7e3ea5f1e285f484"
+      },
+      {
+        "path": "concepts/lib/Lax251941/TapeAcceptanceUndecidable.trace",
+        "bytes": 2634,
+        "sha256": "c7c266cf7caf1e024fe8152f389a654f0db39bea73a85226f6a0e989d1285662"
+      },
+      {
+        "path": "concepts/lib/Lax251941/TuringCompleteness.ilean",
+        "bytes": 1738,
+        "sha256": "3924a1446477acd63bd74d69e395955ff71eb566fb9f5de82e698b58ec377a5f"
+      },
+      {
+        "path": "concepts/lib/Lax251941/TuringCompleteness.ilean.hash",
+        "bytes": 16,
+        "sha256": "cb6644e2a1b9bd4d8cd014024baa699e06450dea3fc96b04e7cf6c1cec393f82"
+      },
+      {
+        "path": "concepts/lib/Lax251941/TuringCompleteness.olean",
+        "bytes": 9304,
+        "sha256": "bc0514e4ea68862b8d8f4c97cc8c710ae27f372c3b2eda6bd7305bfcb3bf9aa1"
+      },
+      {
+        "path": "concepts/lib/Lax251941/TuringCompleteness.olean.hash",
+        "bytes": 16,
+        "sha256": "346a513a2bd1eb9354d27b639675e1b8c41db88b6afbf155144084b9f8a8a5b1"
+      },
+      {
+        "path": "concepts/lib/Lax251941/TuringCompleteness.trace",
+        "bytes": 2578,
+        "sha256": "ecff01fea6e0d4a97b507b1b8c75d9188907554f9da7cf18cb8b651f5b715109"
+      },
+      {
+        "path": "concepts/lib/Lax251941/TuringMachines.ilean",
+        "bytes": 17535,
+        "sha256": "7957501593acab4873476abcae7f29376b2959011de66919898cd12b6cd91876"
+      },
+      {
+        "path": "concepts/lib/Lax251941/TuringMachines.ilean.hash",
+        "bytes": 16,
+        "sha256": "43fe1c21d0444cebc49295a69d565668faaa26c7be5c84690438f5e84dc1863d"
+      },
+      {
+        "path": "concepts/lib/Lax251941/TuringMachines.olean",
+        "bytes": 417904,
+        "sha256": "229242917ef548988f85f0df9b1bf22ca5c62da1b269ad347dc4b5a2c6520200"
+      },
+      {
+        "path": "concepts/lib/Lax251941/TuringMachines.olean.hash",
+        "bytes": 16,
+        "sha256": "e229a0310bb1ee1a2bb497a51532fdf0693772f1d8c7d717accc99d3e2aeec9b"
+      },
+      {
+        "path": "concepts/lib/Lax251941/TuringMachines.trace",
+        "bytes": 2561,
+        "sha256": "c816b03937edffdad5290fe0fe192f80f13f47394190a381e1582a914b447d08"
       },
       {
         "path": "concepts/lib/Lax251941.ilean",
-        "bytes": 80,
-        "sha256": "924823264fc145483abb84b613de9e6afae9b4a62d10417173ed0a9ad6b71f96"
+        "bytes": 572,
+        "sha256": "6ea415f9d2eb718fe5ea09b1eb1ce065889eae74ba95cb0305f3bf2dac9b449c"
       },
       {
         "path": "concepts/lib/Lax251941.ilean.hash",
         "bytes": 16,
-        "sha256": "f540d507a9d5dacd93b0454ad433c5729072cbb5cd1c0cad6f406b1e444e0c90"
+        "sha256": "3cc21ccce6311eb08f78e25ad88bcb4d7992e8322875350234ab9fd9cd1e92c8"
       },
       {
         "path": "concepts/lib/Lax251941.olean",
-        "bytes": 1200,
-        "sha256": "518796f8f6ca36331ca27cb0e86ccb733f1b7b92cfb2a9f7b9dffd238184906f"
+        "bytes": 2336,
+        "sha256": "74d2c38a95d8261005d063435594167daa442d75971475dcea85ed2117cf33fb"
       },
       {
         "path": "concepts/lib/Lax251941.olean.hash",
         "bytes": 16,
-        "sha256": "4a922da437f26669a800180e0ae1bf6320fc0b21e5c8d4ca934ac641f8c78ffb"
+        "sha256": "3ad2855c8627ef2d81cf288513bc4f9098d3569a12046b5720528db13b7630de"
       },
       {
         "path": "concepts/lib/Lax251941.trace",
-        "bytes": 2101,
-        "sha256": "1b44954a73c9f700300c5a7280201df7a3db34743326ad41720a61d5b02fe448"
+        "bytes": 3761,
+        "sha256": "27358827d9f3900117253204495e8778eab87fdd85d613af8a7b79c7771ec11a"
       },
       {
         "path": "concepts/package/lake-manifest.json",
@@ -81,9 +728,54 @@
         "sha256": "9b8ce00a0cb57aef09046865a0cb8773a5d44306c3ed81ea7efe45ed83f12457"
       },
       {
+        "path": "concepts/package/Lax251941/Acceptance.lean",
+        "bytes": 3102,
+        "sha256": "e7c95e1c149cd1cc4ef48152cdf966510f354b83014e7ac1784cdab4da5ba186"
+      },
+      {
+        "path": "concepts/package/Lax251941/AcceptanceUndecidable.lean",
+        "bytes": 1025,
+        "sha256": "915cb282095ed48b499bf9483cedf8f2114b6214bbbc3686f020e3d1343a9009"
+      },
+      {
+        "path": "concepts/package/Lax251941/PostCorrespondence.lean",
+        "bytes": 3032,
+        "sha256": "6280e88ae6ee300ea7509ba12a5eebaf2482db1a2abc56d4bd3b18034d7f2e87"
+      },
+      {
+        "path": "concepts/package/Lax251941/PostCorrespondenceIndexUndecidable.lean",
+        "bytes": 1171,
+        "sha256": "e81fb0cf275ea919145bf19c588a4277c68c7a1e1756cac9050e18bf5a4801fb"
+      },
+      {
+        "path": "concepts/package/Lax251941/PostCorrespondenceReduction.lean",
+        "bytes": 1759,
+        "sha256": "335ff0852e09d33224279310d149f69cfa359a3441a6dc3a1f27b45422fec113"
+      },
+      {
+        "path": "concepts/package/Lax251941/PostCorrespondenceUndecidable.lean",
+        "bytes": 1005,
+        "sha256": "2cc0324f9cf6d01d0c2148eeec2c039c7b1439505e5be1ab811a88594253b090"
+      },
+      {
+        "path": "concepts/package/Lax251941/TapeAcceptanceUndecidable.lean",
+        "bytes": 1260,
+        "sha256": "5d1a6588615cb2c8e59443081cc2d9c73fc65659587680aadc6f65c7277550f5"
+      },
+      {
+        "path": "concepts/package/Lax251941/TuringCompleteness.lean",
+        "bytes": 1648,
+        "sha256": "56b63dddf91294568cf05a79455f852f37a59c91a27e9234c17fceedca699df6"
+      },
+      {
+        "path": "concepts/package/Lax251941/TuringMachines.lean",
+        "bytes": 7082,
+        "sha256": "1c09da119e4132250df9b446dc2384a52a500dbbff84469b8425ead6243b7809"
+      },
+      {
         "path": "concepts/package/Lax251941.lean",
-        "bytes": 0,
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        "bytes": 358,
+        "sha256": "e1dc756ebd6806da9889c0974fa71f9534f5cbc3a0abbef979fc1a9191869d25"
       },
       {
         "path": "concepts/package/lean-toolchain",
@@ -91,39 +783,949 @@
         "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
       },
       {
+        "path": "proofs/ir/Lax251941Proofs/Bridge.c",
+        "bytes": 6594,
+        "sha256": "fa8f20557bc002621b5416c5c635994944afcc6d1c8cee11e1abb18c6b245883"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Bridge.c.hash",
+        "bytes": 16,
+        "sha256": "efd08216431bc34483b1168ce48973e087ad5474f803692061ad78c47552f0d4"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Results.c",
+        "bytes": 3028,
+        "sha256": "7a143c678f6c241643bda36daf880d2fca0a849b78d355bf1f263b22f9a48bb6"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Results.c.hash",
+        "bytes": 16,
+        "sha256": "c904e3165e68b0739adb5d5201cc1f171f07063e3811d43232775d0e940d1d88"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Acceptance/Basic.c",
+        "bytes": 2045,
+        "sha256": "15b155493d07d2dcce563023e3b514dd4b80354e9d6703f5205fab4086b38b8d"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Acceptance/Basic.c.hash",
+        "bytes": 16,
+        "sha256": "506b750e7766591c7eb7aeb670c126b27b1b05b9318ef8d906c334c241e5bc09"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Acceptance/Bridge.c",
+        "bytes": 2033,
+        "sha256": "ac5062fd0e141415087389ee374abfda81e28b7da706f09ccde2c60a4913fc1e"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Acceptance/Bridge.c.hash",
+        "bytes": 16,
+        "sha256": "9ff0d6f5a9e3ee4c54bad007933ce60a012bdac263559aed9e69fcdf289acbe5"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PartB/PCPRed.c",
+        "bytes": 5505,
+        "sha256": "b78531f37e81b2c51a8bd70a1424346cff4e936b21a9506cdbd904d4762eddc4"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PartB/PCPRed.c.hash",
+        "bytes": 16,
+        "sha256": "cf1645cc404b5d877370b379095c971c385ca0d0aed5826fd1a1eefbccc53e15"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/Basic.c",
+        "bytes": 8536,
+        "sha256": "7643a4af479b0c55c66f22b932d5267e99046840765c10b51429dbfa9f7f549c"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/Basic.c.hash",
+        "bytes": 16,
+        "sha256": "bc4737a025b3d698aa78ac0b9ecf6f5956e5fc00d46bfbc0748686655b358482"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/Computable.c",
+        "bytes": 34422,
+        "sha256": "a17b62581097f5b3fbc1b52eaab3252aa18f14eba2d815deaf8804267ec04207"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/Computable.c.hash",
+        "bytes": 16,
+        "sha256": "814cb59a4c3956729460279720df41fa40da55018f98d630f3bfd7889ed5dbf8"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/Examples.c",
+        "bytes": 2808,
+        "sha256": "deadeac60c7b82d4ec502efbe93ec73ffda18a084f7112fd7b860b82b21c779f"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/Examples.c.hash",
+        "bytes": 16,
+        "sha256": "46f7ed9c62ab96332d8d72a1c5b72a188611122b3caf8e51a18f212cba277d66"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/Index.c",
+        "bytes": 12697,
+        "sha256": "ce913d5ab8d2fc5391da16c33bea41ad234440dd0250837c64458b1c26ccf3ec"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/Index.c.hash",
+        "bytes": 16,
+        "sha256": "df7be18ac5be5ca36f16137628a119aad5feaed4cb7bd2f7336f364188944e55"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/Reduction.c",
+        "bytes": 3590,
+        "sha256": "9a7e9cd71f53160cd95bffc3e354deb61fda640e14ea5f0d63c4a072faa2e845"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/Reduction.c.hash",
+        "bytes": 16,
+        "sha256": "1b221ab9c03b4608f2f93df3225782e5226e117d59462da070fd9ba9eacd302a"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/Rewriting.c",
+        "bytes": 1416,
+        "sha256": "c25875518dcebff15c3ce403ba8906d24bde00b6828b847cd65e12ad405cb941"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/Rewriting.c.hash",
+        "bytes": 16,
+        "sha256": "2f801480d8f82b7ca93d943a722a3bfc26fd9fa2433066a547ab685f418b5250"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/SRtoMPCP.c",
+        "bytes": 12971,
+        "sha256": "e68491ec621da923f5afde738b4662984ab5d41971251ea5f927efa48f2b1ea4"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/SRtoMPCP.c.hash",
+        "bytes": 16,
+        "sha256": "da3e7b653b5b38fd974476a9e4a9045d7580f4421235e91cd30382ca38531cbe"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/StarTrick.c",
+        "bytes": 24491,
+        "sha256": "5a756aca04139db24d094ad23db6934b8bc3fd0ac212636e50a1f78f07d26208"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/StarTrick.c.hash",
+        "bytes": 16,
+        "sha256": "c083490dc3bb2a2613dd26f197daced8097c92ded96acc5f7bac9abb764bcc61"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/TuringMachine.c",
+        "bytes": 20855,
+        "sha256": "fb72ebaf4644288c1e7dc48481a61f7ee62cb4d43be8155ee14462a83dff46e2"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/TuringMachine.c.hash",
+        "bytes": 16,
+        "sha256": "0ac89f450c37b27f81c90ce07644f061d57d9531675ea262e023fe8081fc84d3"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/Undecidable.c",
+        "bytes": 1435,
+        "sha256": "84d49ba0e990e09d54c917c8938e83be18c2e1aa8e552b0610ce5afa1f89c860"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/PCP/Undecidable.c.hash",
+        "bytes": 16,
+        "sha256": "1961970f5b99ad871ccc39e675cca604b5f2af9ece96ef66bb345b186987c66a"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Compile.c",
+        "bytes": 3265,
+        "sha256": "8ae887bc4728771e21652233d282d9baac5be29ff829554a898446e3d15c3560"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Compile.c.hash",
+        "bytes": 16,
+        "sha256": "cb5498d7141a8fe92e97049ab4b9cc19ba428821203942a596b31ff43365b65c"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Config.c",
+        "bytes": 48752,
+        "sha256": "bba18fda68e1da09f68fc6445bf06fe49c4c69b0e17e132c135c71157de4fa1e"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Config.c.hash",
+        "bytes": 16,
+        "sha256": "8bef40d824f196d1225b77a38d185e6605a0f45414bfc4cf3dc0e81b5f1d47b8"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Counter.c",
+        "bytes": 52860,
+        "sha256": "f511bc4562456fa79390c49b9d739768f5256816f32ce23ed9304dbbf4f5e6ae"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Counter.c.hash",
+        "bytes": 16,
+        "sha256": "dab9767fb5138272d70298932ec07d670089b7a4e71155b553a90d9428fd2c30"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Impl.c",
+        "bytes": 3433,
+        "sha256": "c5f8ea77a4b82caf672fcee0370548946797b0a83e1474b9dcdded0275fdb237"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Impl.c.hash",
+        "bytes": 16,
+        "sha256": "73f5ee07f47b7aecc825d6f2e6f358e1fd5780e47c8f81bf6acccc44ab2bfc44"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Macro.c",
+        "bytes": 10958,
+        "sha256": "bb8989b8e328076b1417e78d4d6b8f70093f4a69d6e1e746a8a4c9251e6feddf"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Macro.c.hash",
+        "bytes": 16,
+        "sha256": "fa034eadfa028aff6cdc588d4f3ffda1eeca90c5e00c4f5f03539c21e3d94475"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Rfind.c",
+        "bytes": 6980,
+        "sha256": "275db420840d6ecfcd04bb0a2a121279146b453bdecef92293ba8196dab8cb34"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Rfind.c.hash",
+        "bytes": 16,
+        "sha256": "e0184951292ee160e94ed814725f89c3aabba5c1867fd7750a3d1c3fae525aaf"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Simulate.c",
+        "bytes": 4210,
+        "sha256": "c89ef9ff0677bfcb78d654a629b65782ff3df166d374c93c4d655952e65e28e6"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Simulate.c.hash",
+        "bytes": 16,
+        "sha256": "09a24e65b54520f8507c6080151e986f19c49385e9bd0c100b3e30499caacdd8"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Table.c",
+        "bytes": 18870,
+        "sha256": "c75f914e930efc4eeacf8cf7f8949a0c7ba5dd3a3f77d9a38718569c1d9fb61f"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Table.c.hash",
+        "bytes": 16,
+        "sha256": "54a76982ed324e1e1432dfd8de8e51bad7b3aa1f25d44d011ecc3bc9fd6288c7"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Tape.c",
+        "bytes": 3398,
+        "sha256": "99b4a0ebfd6d60c967333c8faf8ce8a3c575ff7c0d0a8c1a0087cb2c451edc05"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Tape.c.hash",
+        "bytes": 16,
+        "sha256": "ee6e1d0febbb22271b6601cbe0d1ef14232e3e0033590c08dfdefa081135f09e"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Universal.c",
+        "bytes": 1713,
+        "sha256": "b9fd998f73a2f077760b767e18c36ebb593d86e4f4bc51363b79ce9b3111f6ee"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Universal.c.hash",
+        "bytes": 16,
+        "sha256": "ce6d1dceef73c65f0a6bc1cc020526ec7c71f2e40ae3456f029efb74e38eeb33"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Walk.c",
+        "bytes": 1409,
+        "sha256": "cc5f591a90e4f995999fc7530e206dd60ddacdbec0f6861700de6f0569b689bb"
+      },
+      {
+        "path": "proofs/ir/Lax251941Proofs/Source/Sim/Walk.c.hash",
+        "bytes": 16,
+        "sha256": "86f69e9259f9396dd48eecb2524876dbe95626b6ec5151ea64d7e0885d9d7afc"
+      },
+      {
         "path": "proofs/ir/Lax251941Proofs.c",
-        "bytes": 1095,
-        "sha256": "e879a97d2a89cdabf5b624ed39f0b2fb38cde1eff87ec108da0742e9d868ea07"
+        "bytes": 8484,
+        "sha256": "758ad55c851dc6248256a8083eead1eaef1c554c8d8bc6a9dcb106d6ab658dd0"
       },
       {
         "path": "proofs/ir/Lax251941Proofs.c.hash",
         "bytes": 16,
-        "sha256": "f83f7ca338b5a9983dd40196b5a1a48273f6ffacd091ff84c758989970776230"
+        "sha256": "3a072dec92007acd47519ee5df13839895acea8f0bc738635ef1c152ce8d68e0"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Bridge.ilean",
+        "bytes": 23696,
+        "sha256": "13a2d4d3ff02e08590c00b69fbf283d731227a9baa547adfcedc6a90eb90a44b"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Bridge.ilean.hash",
+        "bytes": 16,
+        "sha256": "1eccc54ee524c87291ec0bcd92cbd0a9e4d551b58d8394d707eabf70b29ff551"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Bridge.olean",
+        "bytes": 130152,
+        "sha256": "c5bb2d33a37a5435d66fdf9657dbb50800d710fd87a069a4eef971799895a780"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Bridge.olean.hash",
+        "bytes": 16,
+        "sha256": "e7d8a73434caea6249421e808420f20e73ddde4f24404550b18c416155c88365"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Bridge.trace",
+        "bytes": 3149,
+        "sha256": "46058ce57556e09b3236024e4d475953b4ef8ddc7a16419a6257b746e2f8d115"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Results.ilean",
+        "bytes": 8545,
+        "sha256": "615564c5a94ac31bd44f177d545ff8b407286eb16eb1ebd95870184ba156a8cd"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Results.ilean.hash",
+        "bytes": 16,
+        "sha256": "fc248d93fd267fb4bec9b982d235158fce2e9613f5661b63f2e769bdd27e81a7"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Results.olean",
+        "bytes": 34264,
+        "sha256": "83a5841cff9b05bc7386e03f4db40b3353b5250e6bc226cea61098c5a2a9f516"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Results.olean.hash",
+        "bytes": 16,
+        "sha256": "a2214d59aeb3452df2d9f99468bea2f66805137d76597501baf7c5d0ee2fda3a"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Results.trace",
+        "bytes": 3606,
+        "sha256": "ae8a84496d9ddc524629063d7a4076d349b3d231ac1da5656651b0e1e370927a"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Acceptance/Basic.ilean",
+        "bytes": 36309,
+        "sha256": "d5ac147a37c7b4ebeb49d3c012b64ac23d8e5cb430b4ac1e5bdcc103453fc9b3"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Acceptance/Basic.ilean.hash",
+        "bytes": 16,
+        "sha256": "5312a8e027b9d5a1bd4a6d25f23e80a634fe33707c91414af294e1d81d919187"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Acceptance/Basic.olean",
+        "bytes": 172824,
+        "sha256": "834c78196740c8eb1269121b9f3564e043c35dc825d386cfcdac6ef8227fa6ad"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Acceptance/Basic.olean.hash",
+        "bytes": 16,
+        "sha256": "dc9d84c358c8f8b29291f19aa50a65c49aaa7fd0b7375534dc00173e1e5de56b"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Acceptance/Basic.trace",
+        "bytes": 2918,
+        "sha256": "49c81a3ad9c2360decdd62796fa6fac36b7011009dbfc954ac9bb121bc7d4a96"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Acceptance/Bridge.ilean",
+        "bytes": 14671,
+        "sha256": "8073024620e4ae5128b92e173982418c37ddd820c380f15909ba5172fafe8821"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Acceptance/Bridge.ilean.hash",
+        "bytes": 16,
+        "sha256": "6d86b620dc4baf9dad2b342324feb28e3b9275c4b48fda855474876f4e3b0b54"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Acceptance/Bridge.olean",
+        "bytes": 70216,
+        "sha256": "34a6cbbb2282ed72765c6c529e58c7b5190ccbe64ca6899b3e36ced8ecbae6ec"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Acceptance/Bridge.olean.hash",
+        "bytes": 16,
+        "sha256": "52999043b2870d1d707de1aed58b1afc39adbe56a5635ad053d06eaa7c73036b"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Acceptance/Bridge.trace",
+        "bytes": 3011,
+        "sha256": "ae418f10803e25f3704020a3818eac1335c5f250b82612a21e5efab8edb0b946"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PartB/PCPRed.ilean",
+        "bytes": 4222,
+        "sha256": "c4726a6a3f4bece2b20b6cae1c111acbd277e01356d1864d6f671183d4617d44"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PartB/PCPRed.ilean.hash",
+        "bytes": 16,
+        "sha256": "a1e8f7905fddc16bf846b4162e9f5a1182f1616c348a7dc7da8883145ea7578f"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PartB/PCPRed.olean",
+        "bytes": 29792,
+        "sha256": "dbc88943663c3c0ea9657a59c148f74a7a65c6d1162959fe249a14587a0a90ee"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PartB/PCPRed.olean.hash",
+        "bytes": 16,
+        "sha256": "0f8fe4a8d3d755e3487193cb645eac2bf5334e05dffac49c98c6f3edaf04489f"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PartB/PCPRed.trace",
+        "bytes": 2485,
+        "sha256": "c00c4682739a7f80c01a361c49cf822ea3a3235e4670dea9cb58f4f9f0daae9c"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Basic.ilean",
+        "bytes": 5913,
+        "sha256": "e89cab1f190256a8af4d073b16d224ee4e8fe64277c991ca5d26573629d26c7c"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Basic.ilean.hash",
+        "bytes": 16,
+        "sha256": "44f35c5bbe726c5d50b53b220ec1b1f33c4a2389c67e6287b805e83993d0d538"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Basic.olean",
+        "bytes": 53328,
+        "sha256": "5a0653ca69703a2b4f64f57011cd75a7f8bc29f216c772ebdfeb3e656121cce3"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Basic.olean.hash",
+        "bytes": 16,
+        "sha256": "11d47dd6a16171873249900e8de8c7b8ea0de8bb1dd6543f915bddca67c442bc"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Basic.trace",
+        "bytes": 2461,
+        "sha256": "97f4d18fc2359c8bde2087fe8c21dd1b86f572bcf879cd8c287517c2d796d61a"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Computable.ilean",
+        "bytes": 64013,
+        "sha256": "c809eeffc389a605cae97d1f8503b158790734dc59735a4eb9679aec0a376882"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Computable.ilean.hash",
+        "bytes": 16,
+        "sha256": "63552270516a9f4ea4e9c295fd7d25c163023915f5aab933accf0676e5548f6c"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Computable.olean",
+        "bytes": 325816,
+        "sha256": "14e491352b9562a29f97bf85ea63ae6fe3512aa5292ba93fdf576230eef627a8"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Computable.olean.hash",
+        "bytes": 16,
+        "sha256": "bae34915987efd44b625d0af90fa8593d86384ca5e1169c5a1f96c03aa86db60"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Computable.trace",
+        "bytes": 2577,
+        "sha256": "12ed3c3aa2343e558f22d8851be67d7d56ae2e1c105f1ee6b1d79f4f271be8c8"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Examples.ilean",
+        "bytes": 11000,
+        "sha256": "67fc51b745d22e8bb4e22d49cafc7cab37ae2f5af26caa0700a81305f38d0c05"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Examples.ilean.hash",
+        "bytes": 16,
+        "sha256": "f68c26a139e134f03707dcaba2b5d0978b197638f7904b1c36440fdb4608a92c"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Examples.olean",
+        "bytes": 84032,
+        "sha256": "18779b88a9c7a974cfda06ae23d3a84a62471a71330a4e78d47f767d4955c674"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Examples.olean.hash",
+        "bytes": 16,
+        "sha256": "ad02c4073bf8f3a1e2a1123a1469c6b415b624ce5deac9aadb1eaf8172d6dbc4"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Examples.trace",
+        "bytes": 2561,
+        "sha256": "bdbc7f858efebe52fa188a74313676530b86c4f33b864c6c8d64707421520392"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Index.ilean",
+        "bytes": 25136,
+        "sha256": "ff779ff137c2affa9879a5ac7908ece46134a908728c6d95b2ae8f4e8fd14a44"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Index.ilean.hash",
+        "bytes": 16,
+        "sha256": "7be3346be672324e58ff4cc745c7dbd7a3e7446c5d3ace7998e8730438591fb0"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Index.olean",
+        "bytes": 241896,
+        "sha256": "74a6be10c036f21781749043ba9f6ff418c2f89683b43192a6913ee6df6df6c4"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Index.olean.hash",
+        "bytes": 16,
+        "sha256": "a3af3ffca0668d052ae400bbecc10b044fee21e8ac532157c23efd0b7b452001"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Index.trace",
+        "bytes": 2743,
+        "sha256": "edd79567fcb9bf2236dc6cf080cc8d2dcf9105dd91d08588616dcaa9ad489a74"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Reduction.ilean",
+        "bytes": 13810,
+        "sha256": "a3d69ab8628f572ffcb1edf9ac191019d61937b2bf62defd048bf5722fb7b299"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Reduction.ilean.hash",
+        "bytes": 16,
+        "sha256": "61e34c48784bd7887857b4f76e5c2de33ffc6822af361915984f9414df368729"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Reduction.olean",
+        "bytes": 74640,
+        "sha256": "3c8267879837af51d43a37a922bccdf8d58f3aad7c545c206a001ed20262c7e2"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Reduction.olean.hash",
+        "bytes": 16,
+        "sha256": "363344d54dbeddff8463ac181ae8d8e5ffae0fbe81ad78187c66e8f2e28e14d9"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Reduction.trace",
+        "bytes": 2577,
+        "sha256": "710d2d8ac730d749dd1758e9b9f15a5984fcc16b687b5b67d9f2e92fb301dd59"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Rewriting.ilean",
+        "bytes": 18715,
+        "sha256": "5d177f9426e73ebdd11d1b643af4da65abe944a64ef0b5ab907225b9a78862f1"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Rewriting.ilean.hash",
+        "bytes": 16,
+        "sha256": "971a2eb3a84787443810029cdab4cae58a50f1920ffd9f9b8e996f4a286f4343"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Rewriting.olean",
+        "bytes": 246288,
+        "sha256": "d4e44eae1817826aa612174449b3318938b5dd1c899eb5c747dc7942c9dcdd37"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Rewriting.olean.hash",
+        "bytes": 16,
+        "sha256": "8f20b8b60a99cf75091ee104fa3fe919954492b2ef31419c3fa1329060e385ec"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Rewriting.trace",
+        "bytes": 2561,
+        "sha256": "90e51b8f589c82505970f35c509c0e375cde50fd3531b2d9e3cfd0712ad5e2d9"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/SRtoMPCP.ilean",
+        "bytes": 34427,
+        "sha256": "7984d2108905e8102ab0b305459fb199d6d8ef3c0e3bfecea692b0ca4e036086"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/SRtoMPCP.ilean.hash",
+        "bytes": 16,
+        "sha256": "b2a8b1b78f7a32e47e6ec855a1ddd120b0f240aabfb964036ac2b5faf36f4dab"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/SRtoMPCP.olean",
+        "bytes": 608560,
+        "sha256": "400347150c19ebc9ddf9bf7f472f8f3e40f4a6391411ab5240e4ad5fd49e485a"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/SRtoMPCP.olean.hash",
+        "bytes": 16,
+        "sha256": "5fae7484e4c250630ba7b2bde7807d3a82622f5665b6c6062c2f4620b77655fd"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/SRtoMPCP.trace",
+        "bytes": 2561,
+        "sha256": "af863fe0420f08d9510edc3e7fd321e739db6c72a893466d6fc291203de899a7"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/StarTrick.ilean",
+        "bytes": 37116,
+        "sha256": "5cbb53fee20889e4473ce987f3680e59ad811df07c99c92ef5cbd08719f8ad7e"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/StarTrick.ilean.hash",
+        "bytes": 16,
+        "sha256": "40f6373e037b7520326c975c4de4f976058538e6aea1efb2daaca181fe1a3454"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/StarTrick.olean",
+        "bytes": 686496,
+        "sha256": "3c89c0e0ac81d2e6c99caebffc031d970804977dfeea73e6a828960be4c7ac08"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/StarTrick.olean.hash",
+        "bytes": 16,
+        "sha256": "4b62c5bc0aad3dfff265a8accd80361cee7e6f1bcec4463dcfdd940ae480f75d"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/StarTrick.trace",
+        "bytes": 2561,
+        "sha256": "53af8f4e96cd752879604763c43ccbf6998319df091addaf726522f96c33f049"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/TuringMachine.ilean",
+        "bytes": 50870,
+        "sha256": "60f38cebb69639b398bced3251a8bc7342ebb5170a76b59c2886518d69346e58"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/TuringMachine.ilean.hash",
+        "bytes": 16,
+        "sha256": "eac121fc5b112e6c77b1e1ef4df8c719670a551499671dfa8792710c092e3305"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/TuringMachine.olean",
+        "bytes": 411096,
+        "sha256": "23c3102c9fc639e9bdd27386f1dd8a12ce38ddfb2966a4a38905654df457fc78"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/TuringMachine.olean.hash",
+        "bytes": 16,
+        "sha256": "27dc424ce7873f354d3beabb0b20efb16addc990e241d8d66a7af388d05df45b"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/TuringMachine.trace",
+        "bytes": 2966,
+        "sha256": "71a5bf0182613dc788beaae55d529132b987300d5e27e16685cf9607d04fccdb"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Undecidable.ilean",
+        "bytes": 4754,
+        "sha256": "23330d82581d75165d64780049b6fad30f7e9bbb8b31c76bf7f53695b4a42319"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Undecidable.ilean.hash",
+        "bytes": 16,
+        "sha256": "4133bb466811235ac47819b6d1d5861e15cec16f86f90b4499a3a34c4e9f2649"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Undecidable.olean",
+        "bytes": 20496,
+        "sha256": "32e7e24ef2aa46ca93ed35514f7610721f724fa06f6b9b8501ca8f8684a5de46"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Undecidable.olean.hash",
+        "bytes": 16,
+        "sha256": "f3447be290a3f388949e3d90958c87ad627acf92cf09c45bdd4f17182931319d"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/PCP/Undecidable.trace",
+        "bytes": 2587,
+        "sha256": "37f83accd76d526c9c5c900d0b4df2b701e812cc0ac24d10186d1868375ea8db"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Compile.ilean",
+        "bytes": 54784,
+        "sha256": "f1129380aefe003d3df574c72b8b3365c81f29eda63e1ecd1bf17535f04dffde"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Compile.ilean.hash",
+        "bytes": 16,
+        "sha256": "08f70dd128c97ddff8303299c908582e6b39d31af7b7e5b0fb84f4aa4df384fc"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Compile.olean",
+        "bytes": 3032024,
+        "sha256": "5ece38a50641194aef70e12ef83522f5f68c77a065fd937ad99c50af501ffe26"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Compile.olean.hash",
+        "bytes": 16,
+        "sha256": "62a15a27cebe96da037d79aa5a7a65918d0ef1f2d16373476c3e99cde9234cd6"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Compile.trace",
+        "bytes": 2911,
+        "sha256": "fc345afe08bc179f4982ca27faa10fefd9c6eb356f51103d25cf7b335a5c7721"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Config.ilean",
+        "bytes": 66369,
+        "sha256": "10b3e0015e34539b779bab6bd9d26b29f6d64fcf5035f1be679fc6b29458ca19"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Config.ilean.hash",
+        "bytes": 16,
+        "sha256": "384d7469440f439ca6506e82dad9c3aa1c97629701646aebd505f3767010fd2a"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Config.olean",
+        "bytes": 886624,
+        "sha256": "bb295b0935dc6b437813fe628d388e18c981d05e4290af169c74bd47551edc16"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Config.olean.hash",
+        "bytes": 16,
+        "sha256": "8f2e2699c62f60ad48ce41249f11d05a4fe49b0ea8b63b70289861f7bec723dd"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Config.trace",
+        "bytes": 2545,
+        "sha256": "59bdae09331487bb2756bd6a012e21dc776036a74160dc674cfce7243269168e"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Counter.ilean",
+        "bytes": 42258,
+        "sha256": "cbefccb60dd6ad62eff73c54e9b305dd239397d32842e260f7234327f94b462c"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Counter.ilean.hash",
+        "bytes": 16,
+        "sha256": "6b9524b41e4c590ca1872b9880f29821d3b225fe4cae1466a83b2467a8343410"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Counter.olean",
+        "bytes": 956368,
+        "sha256": "6bd52966bbfb6e2a465600566f0122255c80a144b089488b87ad02d7a1f02e97"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Counter.olean.hash",
+        "bytes": 16,
+        "sha256": "a4fd99730bf24016bcb2e99b7b256d73d8d5dee62b76dda1fcd3754d9d35cd30"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Counter.trace",
+        "bytes": 2545,
+        "sha256": "14a1b3d1557b486d0b5350331a9568e7d80d542cc93a06e1f2de51c0ad43618e"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Impl.ilean",
+        "bytes": 19945,
+        "sha256": "9d89d646c01a1165f093a4c038c0e8b883de9c8eafcf2f2aec26b08316fe2f5e"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Impl.ilean.hash",
+        "bytes": 16,
+        "sha256": "c79c9d2d6c7e9f53710e1840768c3e1cb3a67f5e82216fa39797137862f79808"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Impl.olean",
+        "bytes": 340008,
+        "sha256": "efbd608122b6f8987087dd04394d65ed8571cc721a941a91c860ebeed785b942"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Impl.olean.hash",
+        "bytes": 16,
+        "sha256": "710b2e475bd79eb5f877fdfddd7dc785d7471d2e2e526c74c45eab0836b25ff0"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Impl.trace",
+        "bytes": 2525,
+        "sha256": "9fa0a2e1783fd1f0c618f7abf9d00f143f06aeb8a53511cd2ac5fdc7462ed511"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Macro.ilean",
+        "bytes": 26057,
+        "sha256": "06eb38c9be87fc365d3113234c93b901640a3683b2012d99255e1aa6b4752d69"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Macro.ilean.hash",
+        "bytes": 16,
+        "sha256": "6322ab994b8825c8c12153f36938961254222c0bf7cf1b0c7223e5ccfedec870"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Macro.olean",
+        "bytes": 1175240,
+        "sha256": "f4d2f06d067043c26f5a77a17b48e2d1786ec72cf23396b7406608ee03f851fa"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Macro.olean.hash",
+        "bytes": 16,
+        "sha256": "4345d8b0d88d201ed178558604a728056f261e5f78ac6fbef4fdff54fe76e6f1"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Macro.trace",
+        "bytes": 2527,
+        "sha256": "7565676891277bbc691912bc0ecf2b106e0ec5e4da8d28073fcae2b6f8922c83"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Rfind.ilean",
+        "bytes": 24510,
+        "sha256": "c17de0c9f8799f370beacd4f59b7a407242261023b3e61de9c68b8f0c8a02ff8"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Rfind.ilean.hash",
+        "bytes": 16,
+        "sha256": "f8eca1fd8ce517a29c98ca412252dbc2cee20dc5a9cb4241c419a303e6c11235"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Rfind.olean",
+        "bytes": 1528032,
+        "sha256": "f93caabfdc505322dc20815f0e651b7ed53353f38f87482bd76ca18ee490d9f4"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Rfind.olean.hash",
+        "bytes": 16,
+        "sha256": "a3b1bd6b22c55ca8d435c39306a91327795e916b9400d96d1ea28d51eaa4390b"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Rfind.trace",
+        "bytes": 2533,
+        "sha256": "6a6823ddb41c5677d8f1374e20c6c5d26085c2ead2207ab1cd65bbe6163b19c0"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Simulate.ilean",
+        "bytes": 80449,
+        "sha256": "040b4a6d762eb932127155f930bc09d27c73a7c9e98d6a3a4635f31541530fd4"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Simulate.ilean.hash",
+        "bytes": 16,
+        "sha256": "a3077c465821aee0f09fdf6ef16a40e9b06bca10a810e5fcf8c197d538549266"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Simulate.olean",
+        "bytes": 1268704,
+        "sha256": "d08d6077e9e8cf64b8c510811a117135867eeb69dd3a027359dc5acbd5f662db"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Simulate.olean.hash",
+        "bytes": 16,
+        "sha256": "dc98563147a52b3ff22283f185f388754b5c2ff7dd79f7c44f157058427668f6"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Simulate.trace",
+        "bytes": 2732,
+        "sha256": "5b9b4cabdfb58ce1c10a7ea4ddc73d58a4f7abc7399343f81c1b3f888e21648d"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Table.ilean",
+        "bytes": 55543,
+        "sha256": "f82aee5efe43f792cb6c5bf00eb626190581d5227910f866a73800823c6e9693"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Table.ilean.hash",
+        "bytes": 16,
+        "sha256": "8f2bb3ab7ca1fda351d3181955bdda6df8e6d3d39ddd5fcdfb15f040bc307788"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Table.olean",
+        "bytes": 608944,
+        "sha256": "57d2c6e536febcf1545502fa9258f23b43e8efe5468a623c04be919d8f950a1a"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Table.olean.hash",
+        "bytes": 16,
+        "sha256": "f77cb429f9078cd3469cae2ab421966b82d15c4c6a0675409c3a0e496f0aefeb"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Table.trace",
+        "bytes": 2714,
+        "sha256": "b6f9a0dee496da570edc932e0cbce8e2c428f9d62628d74eb2872fa39b1a7435"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Tape.ilean",
+        "bytes": 22116,
+        "sha256": "b9c843bce5683fd140492565dc059ab2f0726362cdb5476d4da66ce297228d90"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Tape.ilean.hash",
+        "bytes": 16,
+        "sha256": "08027ecddd7f1da16b0e6ad4313a6a040b7033a1871c44b988aece60dca0b2eb"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Tape.olean",
+        "bytes": 300856,
+        "sha256": "25a3e5e4e1206e974784e733757808053d16968a83e6c75e6e0e4abdeeb1ed7f"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Tape.olean.hash",
+        "bytes": 16,
+        "sha256": "087e55bf2be9d179f3b07ab7367081ca256556db028f9cae491c4e44953a0c11"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Tape.trace",
+        "bytes": 2521,
+        "sha256": "7a6c67747edf3cd44843a229d652274494bb926614072c390e3fcc2782bd8927"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Universal.ilean",
+        "bytes": 10125,
+        "sha256": "824b6fba397269f3530c7f18fdbf26c48f457770d549dce8b4e3b502c80a074c"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Universal.ilean.hash",
+        "bytes": 16,
+        "sha256": "92bb6de3255b24ca1d72121390418bae1f946d6a03d67240f2ca5c9396f4bfd5"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Universal.olean",
+        "bytes": 137280,
+        "sha256": "44f921f9c97570c1361274199811654128a58ae31a9493bf26525dff1c743024"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Universal.olean.hash",
+        "bytes": 16,
+        "sha256": "7c0c4d56b71740d2c470688e9d9a56cbde83c8a38fe9c034958f5f2a2a128984"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Universal.trace",
+        "bytes": 2765,
+        "sha256": "3257db933385b35475ab1dbb0368bcd2f5a267be9a8f62ca5571e02f5384ae40"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Walk.ilean",
+        "bytes": 9627,
+        "sha256": "1941edcd6b3e2279d86bd396ae4114a96a8d6841099c95644aaa1b235e7863da"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Walk.ilean.hash",
+        "bytes": 16,
+        "sha256": "f7fa1615c3abcc18fe610ea10ffa86df4a547a8683f2b0fa0564f61a4331ef31"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Walk.olean",
+        "bytes": 112288,
+        "sha256": "3ab1cfcfb93fa14aa2bf83b1f13b6e00069963dbd5aed32826af8aa97f0c082b"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Walk.olean.hash",
+        "bytes": 16,
+        "sha256": "c0cf02309f0b98832bfcff939bedf1103c6ef48abbac01f69e0ec67a8c8dba90"
+      },
+      {
+        "path": "proofs/lib/Lax251941Proofs/Source/Sim/Walk.trace",
+        "bytes": 2523,
+        "sha256": "5b96be22ddb65fbf391db4751a213a4529f9ad6fb24bbcc2350dd62c614562e4"
       },
       {
         "path": "proofs/lib/Lax251941Proofs.ilean",
-        "bytes": 86,
-        "sha256": "d45249e0f082260847f704ace9ed9d68fcb305d6a1d3d3850621c123ac73223c"
+        "bytes": 1560,
+        "sha256": "815a23ae0bed9d98b5f0290d990af89ad4f7040776f328ddb6970d7a16f61b93"
       },
       {
         "path": "proofs/lib/Lax251941Proofs.ilean.hash",
         "bytes": 16,
-        "sha256": "81e6c53bb30a47d09f5a13332c3704fe98f8193f847c165472fffc53ed2d0348"
+        "sha256": "e743404d8853e15bb149395f44c45792397c8701d09efe87d0bbcf3192f1ac59"
       },
       {
         "path": "proofs/lib/Lax251941Proofs.olean",
-        "bytes": 1200,
-        "sha256": "75e875af9ae3f8821497c54f953d8e11173e5b975cd892397ddcd46f6ccf8361"
+        "bytes": 4304,
+        "sha256": "96e153af8552fe49ca166dd0a32b5fdd2637c5e16ce7226756858f209f19d8ed"
       },
       {
         "path": "proofs/lib/Lax251941Proofs.olean.hash",
         "bytes": 16,
-        "sha256": "dc911f2d81932d02725816eebd0640ff2bf3a60343985f6efed8dd9eca74d6d2"
+        "sha256": "22b99d398feb49c6f1d04cf094da546e6bb53e6704216e3b3e47cd1c7c4374a6"
       },
       {
         "path": "proofs/lib/Lax251941Proofs.trace",
-        "bytes": 2220,
-        "sha256": "5b822a965c4454410dab9ace66662342c537353043469fa1068625f6e85eb56d"
+        "bytes": 7193,
+        "sha256": "47b169e9aca9a87f71b27647102489f0e0ad4818f3858e34879f1b1bfe8d7226"
       },
       {
         "path": "proofs/package/lake-manifest.json",
@@ -136,9 +1738,139 @@
         "sha256": "5206d3b3a5144ed6852b1a6470f59ef739aa72e07f38dc0d9f03f188d92742af"
       },
       {
+        "path": "proofs/package/Lax251941Proofs/Bridge.lean",
+        "bytes": 5804,
+        "sha256": "134d32123429f12cd52af7bed154c960d32d863cca4a21a1c83a9635920fea03"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Results.lean",
+        "bytes": 6301,
+        "sha256": "a831fadd7b6ef5c3abd5b464e27450d7a0dbb9768db99cf4222f7eff3b5ffe0f"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/Acceptance/Basic.lean",
+        "bytes": 12241,
+        "sha256": "1622c6e8c86b571717d6917603897273465c92fcbc156adf9eb4e943c42b207f"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/Acceptance/Bridge.lean",
+        "bytes": 4301,
+        "sha256": "62f2b2b7a5b87d1fdb31897bedd35fb0ab81a900602fa4276ed0224afdaf3aec"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/PartB/PCPRed.lean",
+        "bytes": 1413,
+        "sha256": "d84fdec6f130e7d50c68d95f6692b87d6e1dfc84e890a00c0583c346d3147efc"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/PCP/Basic.lean",
+        "bytes": 2591,
+        "sha256": "fdea8b86c561589fef408ef2a69af6a146188efc56898f95bdef8c671013874a"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/PCP/Computable.lean",
+        "bytes": 12805,
+        "sha256": "d220e76ea41607c1f9a8d8eee474014131d1993805d65d5eb91c71647b3537d2"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/PCP/Examples.lean",
+        "bytes": 2921,
+        "sha256": "c489a0bff047e5bfda9e89ec49f3dbc4dad3f7a4ca650dc47703acf4ff1dc545"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/PCP/Index.lean",
+        "bytes": 8702,
+        "sha256": "bf23512d5951d93d46e1e2103b47d09ece4dc84db1c587454586b803d031a2d4"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/PCP/Reduction.lean",
+        "bytes": 3520,
+        "sha256": "852d0ddf9d2b492a460ee2c1b07dfab11d0bf7c6c61fc4532b1cd17d47ecf8b3"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/PCP/Rewriting.lean",
+        "bytes": 7464,
+        "sha256": "fc5dcf17a703ec74e5fe6fce07936a85219eb37fe8b46ead21cdb11f661768c4"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/PCP/SRtoMPCP.lean",
+        "bytes": 18308,
+        "sha256": "be940b4d330f294076edb21c208bf55b38d40a4df43e8e196da9e2362f131151"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/PCP/StarTrick.lean",
+        "bytes": 18471,
+        "sha256": "9878473c7ad58fd53bf2887c259f4db9beda761fbc2d31a5a65c54e197d89692"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/PCP/TuringMachine.lean",
+        "bytes": 18941,
+        "sha256": "84a3fb9da83a4516f912c7682cc85302447ee83cb54e65a2f66fc6a55a78b7d9"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/PCP/Undecidable.lean",
+        "bytes": 2389,
+        "sha256": "f74e3d6b301e057a3ff60e0ec22cc27cfbf096cf4594c33b1d28875828d30e71"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/Sim/Compile.lean",
+        "bytes": 35116,
+        "sha256": "a745e017c4edc497b2308b7d1818836e48ee6e9833742988ada57bd72764e9b5"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/Sim/Config.lean",
+        "bytes": 22796,
+        "sha256": "41219444b85b1c1d5b931ff59204a771bf07f89ada4f16f39f4160e429b4f487"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/Sim/Counter.lean",
+        "bytes": 17244,
+        "sha256": "5e92dc10960abefc98f1786aeb5341a436eb6a9327b68a331293ba13097d04e3"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/Sim/Impl.lean",
+        "bytes": 6673,
+        "sha256": "6f3c3dbc0bf7f4e571e69dc5629370373e02e8f2a6f78c087030f2a6e5f41441"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/Sim/Macro.lean",
+        "bytes": 13195,
+        "sha256": "ac4f44795adcc2912fab6a43a95bec6ac9a5039527887543d393afb9483290fd"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/Sim/Rfind.lean",
+        "bytes": 18812,
+        "sha256": "8466c5660971df3628d6155bbe77371e9d5fc5a3a44abfe3c2cbd37405d92840"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/Sim/Simulate.lean",
+        "bytes": 27194,
+        "sha256": "efd13aa7dff677cd675021273af499d91834ee9ec510d2f4024f1b1ee0b397b3"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/Sim/Table.lean",
+        "bytes": 16945,
+        "sha256": "fb8f711f0964402c19de30faab56d19fb0c1b03b9d3fc77a47ad214dcff99e4e"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/Sim/Tape.lean",
+        "bytes": 6752,
+        "sha256": "3de0ef5e89a14d5bd689ecaf0764edbe2caea44e1cd0fbfe5bb9a5d25ed36db4"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/Sim/Universal.lean",
+        "bytes": 2950,
+        "sha256": "a9873754a1a2ee49cd29eb8a20d4307c2509654a5970c30bf53c90b9f04a1aae"
+      },
+      {
+        "path": "proofs/package/Lax251941Proofs/Source/Sim/Walk.lean",
+        "bytes": 3542,
+        "sha256": "2b8fe0c7f9f945d247020248357cc6e7f9627076744003f58b542414d91826b3"
+      },
+      {
         "path": "proofs/package/Lax251941Proofs.lean",
-        "bytes": 0,
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        "bytes": 1085,
+        "sha256": "7cee6ffed43cd42ce2aae22a5edcdb72ac2365cd6a7a852797f10c8a8c7a7cf0"
       },
       {
         "path": "proofs/package/lean-toolchain",
@@ -146,6 +1878,6 @@
         "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
       }
     ],
-    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:66a81528ea2cc2f3626d82c4454fb6a839bd8afd4173cf03dcdebacad02b8cd8"
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:51843dec49fd0c57b5e250f72826a9bc26363a3cbc17a72f22fd54476239fc7a"
   }
 }
