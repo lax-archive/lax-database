@@ -47,12 +47,12 @@
       "path": "concepts/Lax60/BatchFramework.lean",
       "title": "Admissible batches and last-assignment schedules",
       "type": "definition",
-      "description": "A batch consists of a finite set of vertices and a proposed teaching set for\neach vertex.  It is admissible at radius one when the teaching sets are\npositive and uniformly bounded, separate every pair inside the batch, and\neach batch vertex certifies itself against every distinct concept outside the\nbatch.\n\nA finite schedule records, for each vertex, the last batch containing it.\nRetaining the corresponding teaching sets defines its final assignment.",
+      "description": "This framework is defined only for positive teaching sets.  A batch consists\nof a finite set of vertices and a proposed positive teaching set for each\nvertex.  It is admissible at radius one when the teaching sets are uniformly\nbounded, separate every pair inside the batch, and each batch vertex certifies\nitself against every distinct concept outside the batch.\n\nA finite schedule records, for each vertex, the last batch containing it.\nRetaining the corresponding teaching sets defines its final assignment.",
       "imports": [
         "Lax60.TeachingMaps"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax60.TeachingMaps\n\n/-!\n---\ntitle: Admissible batches and last-assignment schedules\ntype: definition\n---\nA batch consists of a finite set of vertices and a proposed teaching set for\neach vertex.  It is admissible at radius one when the teaching sets are\npositive and uniformly bounded, separate every pair inside the batch, and\neach batch vertex certifies itself against every distinct concept outside the\nbatch.\n\nA finite schedule records, for each vertex, the last batch containing it.\nRetaining the corresponding teaching sets defines its final assignment.\n-/\n\nnamespace Lax60.BatchFramework\n\nopen Lax60.TeachingMaps\n\nuniverse u\n\n/-- A finite batch of vertices together with proposed teaching sets. -/\nstructure BatchAssignment {V : Type u} (G : SimpleGraph V) where\n  /-- The vertices assigned in this batch. -/\n  vertices : Finset V\n  /-- A total map whose values on `vertices` are the batch assignments. -/\n  teaching : TeachingMap V 1\n\n/-- The three admissibility conditions from the batch construction. -/\ndef IsAdmissible {V : Type u} (G : SimpleGraph V) (d : ℕ)\n    (B : BatchAssignment G) : Prop :=\n  (∀ ⦃v x : V⦄, v ∈ B.vertices → x ∈ B.teaching v →\n    x ∈ closedBall G 1 v) ∧\n  (∀ v : V, v ∈ B.vertices → (B.teaching v).card ≤ d) ∧\n  (∀ ⦃v w : V⦄, v ∈ B.vertices → w ∈ B.vertices →\n    DistinctConcepts G 1 v w → Separates G 1 B.teaching v w) ∧\n  (∀ ⦃v x : V⦄, v ∈ B.vertices → x ∉ B.vertices →\n    DistinctConcepts G 1 v x →\n      ∃ y ∈ B.teaching v, y ∉ closedBall G 1 x)\n\n/--\nA finite batch schedule with an explicit, verified last batch for each\nvertex.  Carrying the last index as data keeps the final assignment readable.\n-/\nstructure BatchSchedule {V : Type u} (G : SimpleGraph V) where\n  /-- Number of batches in the schedule. -/\n  batchCount : ℕ\n  /-- The batches, in chronological order. -/\n  batch : Fin batchCount → BatchAssignment G\n  /-- The last batch containing each vertex. -/\n  last : V → Fin batchCount\n  /-- Every vertex belongs to its selected last batch. -/\n  mem_last : ∀ v : V, v ∈ (batch (last v)).vertices\n  /-- No later batch contains the vertex. -/\n  last_is_last :\n    ∀ (v : V) (i : Fin batchCount), v ∈ (batch i).vertices → i ≤ last v\n\n/-- The final map obtained by retaining each vertex's last assignment. -/\ndef BatchSchedule.finalTeaching {V : Type u} {G : SimpleGraph V}\n    (S : BatchSchedule G) : TeachingMap V 1 :=\n  fun v => (S.batch (S.last v)).teaching v\n\nend Lax60.BatchFramework\n",
+      "sourceText": "import Lax60.TeachingMaps\n\n/-!\n---\ntitle: Admissible batches and last-assignment schedules\ntype: definition\n---\nThis framework is defined only for positive teaching sets.  A batch consists\nof a finite set of vertices and a proposed positive teaching set for each\nvertex.  It is admissible at radius one when the teaching sets are uniformly\nbounded, separate every pair inside the batch, and each batch vertex certifies\nitself against every distinct concept outside the batch.\n\nA finite schedule records, for each vertex, the last batch containing it.\nRetaining the corresponding teaching sets defines its final assignment.\n-/\n\nnamespace Lax60.BatchFramework\n\nopen Lax60.TeachingMaps\n\nuniverse u\n\n/-- A finite batch of vertices together with proposed positive teaching sets. -/\nstructure BatchAssignment {V : Type u} (G : SimpleGraph V) where\n  /-- The vertices assigned in this batch. -/\n  vertices : Finset V\n  /-- A total map whose values on `vertices` are the proposed positive assignments. -/\n  teaching : TeachingMap V 1\n\n/-- The positive-teaching-set admissibility conditions from the batch construction. -/\ndef IsAdmissible {V : Type u} (G : SimpleGraph V) (d : ℕ)\n    (B : BatchAssignment G) : Prop :=\n  (∀ ⦃v x : V⦄, v ∈ B.vertices → x ∈ B.teaching v →\n    x ∈ closedBall G 1 v) ∧\n  (∀ v : V, v ∈ B.vertices → (B.teaching v).card ≤ d) ∧\n  (∀ ⦃v w : V⦄, v ∈ B.vertices → w ∈ B.vertices →\n    DistinctConcepts G 1 v w → Separates G 1 B.teaching v w) ∧\n  (∀ ⦃v x : V⦄, v ∈ B.vertices → x ∉ B.vertices →\n    DistinctConcepts G 1 v x →\n      ∃ y ∈ B.teaching v, y ∉ closedBall G 1 x)\n\n/--\nA finite positive-teaching-set batch schedule with an explicit, verified last\nbatch for each vertex.  Carrying the last index as data keeps the final\nassignment readable.\n-/\nstructure BatchSchedule {V : Type u} (G : SimpleGraph V) where\n  /-- Number of batches in the schedule. -/\n  batchCount : ℕ\n  /-- The batches, in chronological order. -/\n  batch : Fin batchCount → BatchAssignment G\n  /-- The last batch containing each vertex. -/\n  last : V → Fin batchCount\n  /-- Every vertex belongs to its selected last batch. -/\n  mem_last : ∀ v : V, v ∈ (batch (last v)).vertices\n  /-- No later batch contains the vertex. -/\n  last_is_last :\n    ∀ (v : V) (i : Fin batchCount), v ∈ (batch i).vertices → i ≤ last v\n\n/-- The final map obtained by retaining each vertex's last positive assignment. -/\ndef BatchSchedule.finalTeaching {V : Type u} {G : SimpleGraph V}\n    (S : BatchSchedule G) : TeachingMap V 1 :=\n  fun v => (S.batch (S.last v)).teaching v\n\nend Lax60.BatchFramework\n",
       "statements": []
     },
     {
@@ -422,8 +422,8 @@
   ],
   "capture": {
     "formatVersion": 1,
-    "digest": "2f376d339476c614089ad7f4f3d8be4274b627e2aae12645ec70cad69c4cf542",
-    "sourceCommit": "d07f4ba590781bdbbcfa12f2a3b944e55b2cf81c",
+    "digest": "2f24bc7686d7649f37ccbf3dc7d04492c13096e10219163a600e2980c6e45b0d",
+    "sourceCommit": "13489c08b05d25107d370046a580c881b23aa606",
     "leanToolchain": "leanprover/lean4:v4.30.0",
     "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
     "files": [
@@ -615,27 +615,27 @@
       {
         "path": "concepts/lib/Lax60/BatchFramework.ilean",
         "bytes": 4775,
-        "sha256": "b71c4fbcc86fbf37f5566dcf2d7262a5e6015b54711c73176082e8e3074ca40b"
+        "sha256": "daba6551f2ac2864f0f8ea896ec7f05a9ff799ee36b9966f620cba85087e1655"
       },
       {
         "path": "concepts/lib/Lax60/BatchFramework.ilean.hash",
         "bytes": 16,
-        "sha256": "786d350533eed44828cbe74c92b596cc1f08e2d9a3ecc3f53ecea1f2c5f7f3ce"
+        "sha256": "9fefe7af4d55c9130bb939fd0ac90690f9550afe1743b9e8a282e75b57c06c4f"
       },
       {
         "path": "concepts/lib/Lax60/BatchFramework.olean",
-        "bytes": 124632,
-        "sha256": "1e024f73fd62190870ad07e1001093ab59f2f5cb706eff80067421e69ff0952e"
+        "bytes": 124752,
+        "sha256": "924859b84710b154b07e9ce004b7a6120ef32d0b5351172349608a82320dc121"
       },
       {
         "path": "concepts/lib/Lax60/BatchFramework.olean.hash",
         "bytes": 16,
-        "sha256": "34e5512558a000cdcdc1d30abfc471c579cc1b5f2e3fd466da7b886e1cab0415"
+        "sha256": "9a417e4a45e975a8bb8b053d0f4339591ea1b40c887a8e990b6973ed15dc1ad3"
       },
       {
         "path": "concepts/lib/Lax60/BatchFramework.trace",
         "bytes": 2230,
-        "sha256": "6e1553994384e79a158e553e8400e1de10b5e20fa7a223ef23bf06cd20f9f1dd"
+        "sha256": "8bbf4e0ab26cb500d40cdb8f94e5afa701767730551cbaf9e5778b542f49281f"
       },
       {
         "path": "concepts/lib/Lax60/BatchReassignment.ilean",
@@ -660,7 +660,7 @@
       {
         "path": "concepts/lib/Lax60/BatchReassignment.trace",
         "bytes": 2267,
-        "sha256": "8b6fa2ca45bfd58eed6212c7279a84905725c74b5232958ad1b3c3033e60ce97"
+        "sha256": "2c8b958b1adc48737e26cf1010e5ecdbc43ffcebbe1878bb0d47fe800f8fdf53"
       },
       {
         "path": "concepts/lib/Lax60/DominatorCount.ilean",
@@ -910,7 +910,7 @@
       {
         "path": "concepts/lib/Lax60/PlanarVertexBatch.trace",
         "bytes": 2621,
-        "sha256": "41fe42710e43fc644a3162b408d9673236f717b09a7ef2fc107ec5588c9c5b56"
+        "sha256": "d90faa0933775bd3c11adc85217b5034d9efa31339ef31daa89bd2c1a5d2d9bc"
       },
       {
         "path": "concepts/lib/Lax60/SmallDegreeBatch.ilean",
@@ -935,7 +935,7 @@
       {
         "path": "concepts/lib/Lax60/SmallDegreeBatch.trace",
         "bytes": 2774,
-        "sha256": "acc91c4b0e2ccfd7c2151f5e348fb3f1401f4991729d3c3381488820199fd821"
+        "sha256": "9545dd9954bcdb7b7debb8304ac1a707f4bab69894f03ef622f6876dfa8d3d2e"
       },
       {
         "path": "concepts/lib/Lax60/TeachingMaps.ilean",
@@ -985,7 +985,7 @@
       {
         "path": "concepts/lib/Lax60.trace",
         "bytes": 4366,
-        "sha256": "2b36163f6250c51bc2939c7ff48f113b646a6ff8846afc8ec2151ad606e1f7a0"
+        "sha256": "836e8a0764403730c180fa5084e2891ee64401c9732e3c18247974745c6310bc"
       },
       {
         "path": "concepts/package/lake-manifest.json",
@@ -1004,8 +1004,8 @@
       },
       {
         "path": "concepts/package/Lax60/BatchFramework.lean",
-        "bytes": 2531,
-        "sha256": "a9fc33c13cf09bdd512c16a5378667fb2cb5a63b958c25ae2420579d831574bd"
+        "bytes": 2655,
+        "sha256": "3d00c7a48311c2671261abe1c8d7c947bafaa07ab323cb80340431d4da40e546"
       },
       {
         "path": "concepts/package/Lax60/BatchReassignment.lean",
@@ -1400,7 +1400,7 @@
       {
         "path": "proofs/lib/Lax60Proofs/BatchReassignment.trace",
         "bytes": 2390,
-        "sha256": "12999f463f79b590aa43d21fcb02822fff4c8f49f2652fefbb651e849a48b91f"
+        "sha256": "d73b7a90193286fa92c3edafb29fd47b6dd2196836e065c4ce43e9bd45ec37b6"
       },
       {
         "path": "proofs/lib/Lax60Proofs/CenterSet.ilean",
@@ -1800,7 +1800,7 @@
       {
         "path": "proofs/lib/Lax60Proofs/PlanarBound.trace",
         "bytes": 2973,
-        "sha256": "df481de183efcf67f9050b0056ebf7c7656befa128b858e3d4d648e66cdd41a3"
+        "sha256": "c58ccd286fa5b874e094390511407cb5b17c1bb50325df6a6e79bcded78421f4"
       },
       {
         "path": "proofs/lib/Lax60Proofs/PlanarSharpness.ilean",
@@ -1875,7 +1875,7 @@
       {
         "path": "proofs/lib/Lax60Proofs/PlanarVertexBatch.trace",
         "bytes": 3249,
-        "sha256": "536c4a41b76ea17b8f236f4c2823f13bc317de10bcd0797635469b318eef3630"
+        "sha256": "cc0c190cf24744410caa64702487610190ec171fbca179680d0054572bbfd770"
       },
       {
         "path": "proofs/lib/Lax60Proofs/PositiveSeparation.ilean",
@@ -1925,7 +1925,7 @@
       {
         "path": "proofs/lib/Lax60Proofs/SmallDegreeBatch.trace",
         "bytes": 2380,
-        "sha256": "f093d3278654df303642adc8b4b20535971a585acaa937b22bd4560fb1b4f701"
+        "sha256": "daa9464ee70a38265beea364405d31db5a0f7dcaa7ae07430dab887da873fd35"
       },
       {
         "path": "proofs/lib/Lax60Proofs/TwinReduction.ilean",
@@ -2025,7 +2025,7 @@
       {
         "path": "proofs/lib/Lax60Proofs.trace",
         "bytes": 6730,
-        "sha256": "25ffabbef64925d2ac7af62cb1da67112a307677a299e27571419ed6f4de6880"
+        "sha256": "28c2c29a60636bc6c041c649d0954b9f11f81f1ccae2e5f007da0bc617fce940"
       },
       {
         "path": "proofs/package/lake-manifest.json",
@@ -2178,6 +2178,6 @@
         "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
       }
     ],
-    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:2f376d339476c614089ad7f4f3d8be4274b627e2aae12645ec70cad69c4cf542"
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:2f24bc7686d7649f37ccbf3dc7d04492c13096e10219163a600e2980c6e45b0d"
   }
 }
