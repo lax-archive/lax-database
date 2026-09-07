@@ -20,70 +20,1460 @@
           "name": "Aristotle (Harmonic)"
         }
       ],
-      "bibEntries": []
+      "bibEntries": [
+        "@misc{Bojanczyk2018polyregular,\n  author        = {Boja{\\'n}czyk, Miko{\\l}aj},\n  title         = {Polyregular Functions},\n  year          = {2018},\n  eprint        = {1810.08760},\n  archivePrefix = {arXiv}\n}\n",
+        "@article{MiloSuciuVianu2003,\n  author  = {Milo, Tova and Suciu, Dan and Vianu, Victor},\n  title   = {Typechecking for {XML} Transformers},\n  journal = {Journal of Computer and System Sciences},\n  volume  = {66},\n  number  = {1},\n  pages   = {66--97},\n  year    = {2003},\n  doi     = {10.1016/S0022-0000(02)00030-2}\n}\n",
+        "@article{EngelfrietManeth2002,\n  author  = {Engelfriet, Joost and Maneth, Sebastian},\n  title   = {Two-Way Finite State Transducers with Nested Pebbles},\n  journal = {Mathematical Foundations of Computer Science (MFCS 2002), Lecture Notes in Computer Science},\n  volume  = {2420},\n  pages   = {234--244},\n  year    = {2002},\n  doi     = {10.1007/3-540-45687-2_19}\n}\n",
+        "@book{Bojanczyk-transducers,\n  author = {Boja{\\'n}czyk, Miko{\\l}aj},\n  title  = {Transducers},\n  note   = {Book in preparation; sources at \\url{https://github.com/bojanczyk/transducer-book}},\n  year   = {2026}\n}\n"
+      ]
     },
-    "abstract": "Part D of the book *Transducers* (M. Bojańczyk): polyregular functions as compositions of regular functions with marked squaring, for-transducers and their prenex normal form, pebble transducers, and the equivalence of the three models.\n"
+    "abstract": "Part D of the book *Transducers* (M. Bojańczyk) as concepts and proofs: the\npolyregular functions, the top of the transducer ladder, with their two\nmachine models. The Lean development is Aristotle's formalisation of the\nbook, re-presented in the archive's form; it requires the submissions for\nParts A and C §1–3 (concepts) and for Part C §4 (proofs).\n\nThe definition-concepts are marked squaring, the polyregular functions as\ncompositions of regular functions and marked squaring (D.0.1),\nfor-transducers with their prenex form (D.1.2), pebble transducers, the\nstring representation of pairs of pebble configurations with balanced runs,\nand the children of a configuration with the string representation of child\nconfiguration graphs.\n\nThe theorem-concepts are continuity of polyregular functions (D.0.2), the\nequivalence of for-transducers with polyregular functions (D.1.1, as two\nimplications and their conjunction), the prenex normal form (D.1.3), closure\nof for-transducers under composition (D.1.4), continuity of pebble\ntransducers (D.2.1), the regularity of reachability and of balanced\nreachability between configurations (D.2.2, D.2.3, stated as regular\nlanguages of encodings rather than as mso formulas), the equivalence of\npebble transducers with for-transducers (D.2.4, split), and the three\nresults on the children of a configuration (D.2.5–D.2.7). All are proved.\nThe exercises are not part of this submission.\n"
   },
-  "requiredByConcepts": [],
+  "requiredByConcepts": [
+    "Lax765601",
+    "Lax916827"
+  ],
   "requiredByProofs": [],
-  "concepts": [],
+  "concepts": [
+    {
+      "id": "Lax194892.BalancedRunReachability",
+      "path": "concepts/Lax194892/BalancedRunReachability.lean",
+      "title": "Balanced runs between configurations are regular",
+      "type": "theorem",
+      "description": "For every height $\\ell \\in \\{1, \\ldots, k\\}$, the existence of a *balanced\nrun* between two configurations $(x, y_1)$ and $(x, y_2)$ of height $\\ell$ —\nsharing the stack $x$ of the lower $\\ell - 1$ pebbles, with $y_i$ the state\nand the position of the top pebble — is mso-definable (Claim D.2.3 of\n*Transducers*): during a balanced run the pebble at height $\\ell$ is never\npopped, although it may be moved.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "As for Lemma D.2.2, the mso formula is replaced by a regular language of\nencodings of the pair of configurations, correct on genuine encodings; the two\nstacks are `x ++ [p₁]` and `x ++ [p₂]` with `x` of length `ℓ - 1`."
+        }
+      ],
+      "imports": [
+        "Lax194892.PebbleConfigurationEncoding"
+      ],
+      "mathlibImports": [
+        "Mathlib.Computability.DFA"
+      ],
+      "sourceText": "import Mathlib.Computability.DFA\nimport Lax194892.PebbleConfigurationEncoding\n\n/-!\n---\ntitle: Balanced runs between configurations are regular\ntype: theorem\n---\nFor every height $\\ell \\in \\{1, \\ldots, k\\}$, the existence of a *balanced\nrun* between two configurations $(x, y_1)$ and $(x, y_2)$ of height $\\ell$ —\nsharing the stack $x$ of the lower $\\ell - 1$ pebbles, with $y_i$ the state\nand the position of the top pebble — is mso-definable (Claim D.2.3 of\n*Transducers*): during a balanced run the pebble at height $\\ell$ is never\npopped, although it may be moved.\n\n# Formalization notes\n\nAs for Lemma D.2.2, the mso formula is replaced by a regular language of\nencodings of the pair of configurations, correct on genuine encodings; the two\nstacks are `x ++ [p₁]` and `x ++ [p₂]` with `x` of length `ℓ - 1`.\n-/\n\nnamespace Lax194892.BalancedRunReachability\n\nopen Lax194892.PebbleTransducers Lax194892.PebbleConfigurationEncoding\n\n/-- The encodings of pairs of configurations of height `ℓ` connected by a balanced\nrun form a regular language. -/\naxiom exists_regular_balancedLang {A B Q : Type} {k : ℕ} [Finite A] [Finite Q]\n    (M : Pebble A B Q k) (ℓ : ℕ) (hℓ1 : 1 ≤ ℓ) (hℓk : ℓ ≤ k) :\n    ∃ L : Language (PairLetter A Q k), L.IsRegular ∧\n      ∀ (q₁ q₂ : Q) (x : List ℕ) (p₁ p₂ : ℕ) (w : List A),\n        (∀ p ∈ x, p ≤ w.length) → p₁ ≤ w.length → p₂ ≤ w.length → x.length = ℓ - 1 →\n        (pairEnc q₁ q₂ (x ++ [p₁]) (x ++ [p₂]) w ∈ L ↔\n          BalancedRun M w ℓ (PebbleCfg.conf q₁ (x ++ [p₁])) (PebbleCfg.conf q₂ (x ++ [p₂])))\n\nend Lax194892.BalancedRunReachability\n",
+      "statements": [
+        {
+          "id": "Lax194892.BalancedRunReachability.exists_regular_balancedLang",
+          "signature": "exists_regular_balancedLang : ∀ {A B Q : Type} {k : Nat} [Finite A] [Finite Q] (M : Lax194892.PebbleTransducers.Pebble A B Q k) (ℓ : Nat),\n  instLENat.le 1 ℓ →\n    instLENat.le ℓ k →\n      Exists fun L =>\n        And L.IsRegular\n          (∀ (q₁ q₂ : Q) (x : List Nat) (p₁ p₂ : Nat) (w : List A),\n            (∀ (p : Nat), List.instMembership.mem x p → instLENat.le p w.length) →\n              instLENat.le p₁ w.length →\n                instLENat.le p₂ w.length →\n                  Eq x.length (instHSub.hSub ℓ 1) →\n                    Iff\n                      (Language.instMembershipList.mem L\n                        (Lax194892.PebbleConfigurationEncoding.pairEnc q₁ q₂\n                          (instHAppendOfAppend.hAppend x (List.cons p₁ List.nil))\n                          (instHAppendOfAppend.hAppend x (List.cons p₂ List.nil)) w))\n                      (Lax194892.PebbleConfigurationEncoding.BalancedRun M w ℓ\n                        (Lax194892.PebbleTransducers.PebbleCfg.conf q₁\n                          (instHAppendOfAppend.hAppend x (List.cons p₁ List.nil)))\n                        (Lax194892.PebbleTransducers.PebbleCfg.conf q₂\n                          (instHAppendOfAppend.hAppend x (List.cons p₂ List.nil)))))",
+          "startLine": 27,
+          "endLine": 35,
+          "doc": "The encodings of pairs of configurations of height `ℓ` connected by a balanced\nrun form a regular language."
+        }
+      ]
+    },
+    {
+      "id": "Lax194892.ChildConfigurationGraphs",
+      "path": "concepts/Lax194892/ChildConfigurationGraphs.lean",
+      "title": "Children of a configuration and child configuration graphs",
+      "type": "definition",
+      "description": "Section D.2 of *Transducers* organises a run of a pebble transducer as a\ntree: the *children* of a configuration of height $\\ell$ are the configurations\nof height $\\ell + 1$ that the run visits after it before coming back down to\nheight $\\ell$; between two consecutive children the run stays above height\n$\\ell + 1$. The children are described by the *child configuration graph*: a\ndirected graph whose vertices are pairs of a state and a gap — the position of\nthe moving pebble $\\ell + 1$ — with an edge for the run between two consecutive\nchildren, annotated with the input string and the positions of the fixed\npebbles $1, \\ldots, \\ell$. Like a configuration, a child configuration graph is\nrepresented as a string over a fixed finite alphabet with one letter per gap of\nthe input, and the *output* of the graph is the concatenation of the string\nrepresentations of the children in order of execution. Lemma D.2.5 and Claims\nD.2.6–D.2.7 say that a for-transducer computes the graph from the configuration\nand the children from the graph.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "A child is the vertex `(q, p)` standing for the configuration whose stack is\nthe parent's with the gap `p` on top (`cfgOf`); `FirstChild` and `NextChild` are\nruns that stay strictly above the children's height (`StrictAbove`, a run of at\nleast one step whose intermediate configurations have height at least `h`),\nand `IsChildSeq M w q st ch m` says that `ch 0, …, ch m` is the list of the\nchildren of `(q, st)`. `confEnc` is the string representation of a single\nconfiguration (the shape of `PebbleConfigurationEncoding`, for one\nconfiguration). A letter of the child configuration graph carries the input\nletter, the fixed pebbles of the gap, the index of the moving pebble, which\nstates are the first child in this column, and for every state the outgoing\nand the incoming edge of the vertex, the latter redundant but what makes the\nrepresentation locally checkable (`Chk`). `cgOfChildren` is the representation\nof the graph of a configuration with children `ch`, and `CGOutIs u v` says\nthat `v` is the concatenation of the children's representations read off the\ngraph `u` (`CGPath`); a string determines at most one such `v`."
+        }
+      ],
+      "imports": [
+        "Lax194892.PebbleConfigurationEncoding"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Finite.Defs",
+        "Mathlib.Data.Nat.Find"
+      ],
+      "sourceText": "import Mathlib.Data.Nat.Find\nimport Mathlib.Data.Finite.Defs\nimport Lax194892.PebbleConfigurationEncoding\n\n/-!\n---\ntitle: Children of a configuration and child configuration graphs\ntype: definition\n---\nSection D.2 of *Transducers* organises a run of a pebble transducer as a\ntree: the *children* of a configuration of height $\\ell$ are the configurations\nof height $\\ell + 1$ that the run visits after it before coming back down to\nheight $\\ell$; between two consecutive children the run stays above height\n$\\ell + 1$. The children are described by the *child configuration graph*: a\ndirected graph whose vertices are pairs of a state and a gap — the position of\nthe moving pebble $\\ell + 1$ — with an edge for the run between two consecutive\nchildren, annotated with the input string and the positions of the fixed\npebbles $1, \\ldots, \\ell$. Like a configuration, a child configuration graph is\nrepresented as a string over a fixed finite alphabet with one letter per gap of\nthe input, and the *output* of the graph is the concatenation of the string\nrepresentations of the children in order of execution. Lemma D.2.5 and Claims\nD.2.6–D.2.7 say that a for-transducer computes the graph from the configuration\nand the children from the graph.\n\n# Formalization notes\n\nA child is the vertex `(q, p)` standing for the configuration whose stack is\nthe parent's with the gap `p` on top (`cfgOf`); `FirstChild` and `NextChild` are\nruns that stay strictly above the children's height (`StrictAbove`, a run of at\nleast one step whose intermediate configurations have height at least `h`),\nand `IsChildSeq M w q st ch m` says that `ch 0, …, ch m` is the list of the\nchildren of `(q, st)`. `confEnc` is the string representation of a single\nconfiguration (the shape of `PebbleConfigurationEncoding`, for one\nconfiguration). A letter of the child configuration graph carries the input\nletter, the fixed pebbles of the gap, the index of the moving pebble, which\nstates are the first child in this column, and for every state the outgoing\nand the incoming edge of the vertex, the latter redundant but what makes the\nrepresentation locally checkable (`Chk`). `cgOfChildren` is the representation\nof the graph of a configuration with children `ch`, and `CGOutIs u v` says\nthat `v` is the concatenation of the children's representations read off the\ngraph `u` (`CGPath`); a string determines at most one such `v`.\n-/\n\nnamespace Lax194892.ChildConfigurationGraphs\n\nopen Lax194892.PebbleTransducers Lax194892.PebbleConfigurationEncoding\n\n-- ## The children of a configuration\n\n/-- The stack has height at least `h`; the halting vertex has no height. -/\ndef HeightGe {Q : Type} (h : ℕ) : PebbleCfg Q → Prop\n  | PebbleCfg.conf _ st => h ≤ st.length\n  | PebbleCfg.halt => False\n\n/-- A run of at least one step whose intermediate configurations have height at\nleast `h`. -/\ninductive StrictAbove {A B Q : Type} {k : ℕ} (M : Pebble A B Q k) (w : List A) (h : ℕ) :\n    PebbleCfg Q → PebbleCfg Q → Prop\n  /-- A single step. -/\n  | one {c c' : PebbleCfg Q} {o : List B} : M.stepCfg w c = some (o, c') → StrictAbove M w h c c'\n  /-- A step to a configuration of height at least `h`, followed by such a run. -/\n  | cons {c c' c'' : PebbleCfg Q} {o : List B} : M.stepCfg w c = some (o, c') → HeightGe h c' →\n      StrictAbove M w h c' c'' → StrictAbove M w h c c''\n\n/-- A vertex of a child configuration graph: a state and a gap. -/\nabbrev Vtx (Q : Type) := Q × ℕ\n\n/-- The configuration of the child `v` of a configuration with stack `st`: the\nmoving pebble sits on top. -/\ndef cfgOf {Q : Type} (st : List ℕ) (v : Vtx Q) : PebbleCfg Q := PebbleCfg.conf v.1 (st ++ [v.2])\n\n/-- `v'` is the child following the child `v`: the run from `v` first returns to\nthe children's height at `v'`. -/\ndef NextChild {A B Q : Type} {k : ℕ} (M : Pebble A B Q k) (w : List A) (st : List ℕ)\n    (v v' : Vtx Q) : Prop :=\n  StrictAbove M w (st.length + 2) (cfgOf st v) (cfgOf st v')\n\n/-- `v` is the first child of the configuration `(q, st)`. -/\ndef FirstChild {A B Q : Type} {k : ℕ} (M : Pebble A B Q k) (w : List A) (q : Q) (st : List ℕ)\n    (v : Vtx Q) : Prop :=\n  StrictAbove M w (st.length + 2) (PebbleCfg.conf q st) (cfgOf st v)\n\n/-- `ch 0, …, ch m` is the list of the children of `(q, st)`, in order of\nexecution. -/\nstructure IsChildSeq {A B Q : Type} {k : ℕ} (M : Pebble A B Q k) (w : List A) (q : Q)\n    (st : List ℕ) (ch : ℕ → Vtx Q) (m : ℕ) : Prop where\n  /-- The list starts with the first child. -/\n  first : FirstChild M w q st (ch 0)\n  /-- Each child is followed by the next one. -/\n  next : ∀ t < m, NextChild M w st (ch t) (ch (t + 1))\n  /-- The last child has no successor. -/\n  stop : ∀ v, ¬ NextChild M w st (ch m) v\n\n-- ## String representations\n\n/-- A letter of the representation of a configuration: the state, the input letter\nfollowing the gap, and the pebbles in the gap. -/\nabbrev ConfLetter (A Q : Type) (k : ℕ) := Q × Option A × (Fin k → Bool)\n\n/-- The string representation of the configuration `(q, st)` of `w`: one letter per\ngap. -/\ndef confEnc {A Q : Type} {k : ℕ} (q : Q) (st : List ℕ) (w : List A) : List (ConfLetter A Q k) :=\n  (List.range (w.length + 1)).map fun p => (q, w[p]?, ann k st p)\n\n/-- The direction of an edge: inside the column, one column right, one column left. -/\nabbrev Dir := Option Bool\n\n/-- The column that the direction `d` leads to from the column `p`. -/\ndef dest (p : ℕ) : Dir → Option ℕ\n  | none => some p\n  | some true => some (p + 1)\n  | some false => if p = 0 then none else some (p - 1)\n\n/-- The direction from the column `a` to the adjacent column `b`. -/\ndef dirOf (a b : ℕ) : Dir := if b = a then none else if a < b then some true else some false\n\n/-- A letter of the representation of a child configuration graph: one gap of the\ninput, with the input letter, the fixed pebbles, the index of the moving pebble,\nthe states that are the first child in this column, and the outgoing and\nincoming edges of the vertices of this column. -/\nstructure CGLetter (A Q : Type) (k : ℕ) where\n  /-- The input letter following this gap, absent for the last gap. -/\n  lett : Option A\n  /-- The fixed pebbles sitting in this gap. -/\n  peb : Fin k → Bool\n  /-- The index of the moving pebble. -/\n  nid : Fin k\n  /-- The states `q` for which `(q, this column)` is the first child. -/\n  src : Q → Bool\n  /-- The outgoing edge of `(q, this column)`. -/\n  nxt : Q → Option (Q × Dir)\n  /-- The incoming edge of `(q, this column)`. -/\n  prv : Q → Option (Q × Dir)\n\nopen scoped Classical in\n/-- The index at which `v` occurs among the first `m` children, if any. -/\nnoncomputable def idxAt {Q : Type} (ch : ℕ → Vtx Q) (m : ℕ) (v : Vtx Q) : Option ℕ :=\n  if h : ∃ t, t < m ∧ ch t = v then some (Nat.find h) else none\n\nopen scoped Classical in\n/-- The index `t < m` such that `v` is the child following `ch t`, if any. -/\nnoncomputable def idxSuccAt {Q : Type} (ch : ℕ → Vtx Q) (m : ℕ) (v : Vtx Q) : Option ℕ :=\n  if h : ∃ t, t < m ∧ ch (t + 1) = v then some (Nat.find h) else none\n\nopen scoped Classical in\n/-- The representation of the child configuration graph whose children are\n`ch 0, …, ch m`, over an input with `n + 1` gaps carrying the letters `lett` and\nthe fixed pebbles `peb`, the moving pebble having the index `nid`. -/\nnoncomputable def cgOfPath {A Q : Type} {k : ℕ} (lett : ℕ → Option A) (peb : ℕ → Fin k → Bool)\n    (nid : Fin k) (n : ℕ) (ch : ℕ → Vtx Q) (m : ℕ) : List (CGLetter A Q k) :=\n  (List.range (n + 1)).map fun j =>\n    { lett := lett j\n      peb := peb j\n      nid := nid\n      src := fun q' => decide ((q', j) = ch 0)\n      nxt := fun q' => (idxAt ch m (q', j)).map fun t => ((ch (t + 1)).1, dirOf j (ch (t + 1)).2)\n      prv := fun q' => (idxSuccAt ch m (q', j)).map fun t => ((ch t).1, dirOf (ch t).2 j) }\n\n/-- The representation of the child configuration graph of a configuration of `w`\nwith stack `st`, moving pebble `nid` and children `ch 0, …, ch m`. -/\nnoncomputable def cgOfChildren {A Q : Type} {k : ℕ} (w : List A) (st : List ℕ) (nid : Fin k)\n    (ch : ℕ → Vtx Q) (m : ℕ) : List (CGLetter A Q k) :=\n  cgOfPath (fun j => w[j]?) (fun j => ann k st j) nid w.length ch m\n\n-- ## Reading the children off a represented graph\n\n/-- The vertex that the edge out of `v` leads to, if any. -/\ndef succOf {A Q : Type} {k : ℕ} (u : List (CGLetter A Q k)) (v : Vtx Q) : Option (Vtx Q) :=\n  (u[v.2]?).bind fun c => (c.nxt v.1).bind fun x => (dest v.2 x.2).map fun p' => (x.1, p')\n\n/-- `v` is marked as the first child. -/\ndef IsSrc {A Q : Type} {k : ℕ} (u : List (CGLetter A Q k)) (v : Vtx Q) : Prop :=\n  ∃ c, u[v.2]? = some c ∧ c.src v.1 = true\n\n/-- The representation of the child that the vertex `v` stands for: the state of\n`v`, the input letters and the fixed pebbles of the graph, and the moving pebble\nin the column of `v`. -/\ndef confAt {A Q : Type} {k : ℕ} (u : List (CGLetter A Q k)) (v : Vtx Q) :\n    List (ConfLetter A Q k) :=\n  u.mapIdx fun j c => (v.1, c.lett, fun i => c.peb i || (decide (i = c.nid) && decide (v.2 = j)))\n\n/-- The letter to the left of the gap `i`. -/\ndef leftLet {A Q : Type} {k : ℕ} (u : List (CGLetter A Q k)) (i : ℕ) : Option (CGLetter A Q k) :=\n  if i = 0 then none else u[i - 1]?\n\nopen Classical in\n/-- The local consistency test on two adjacent letters: every edge recorded by\n`nxt` between or inside their columns is recorded by `prv` at its target, and a\nvertex marked as the first child has no incoming edge. -/\nnoncomputable def pairOK {A Q : Type} {k : ℕ} (a b : Option (CGLetter A Q k)) : Bool := decide (\n  (∀ q q' : Q, ∀ ca cb, a = some ca → b = some cb → ca.nxt q = some (q', some true) →\n      cb.prv q' = some (q, some true)) ∧\n  (∀ q q' : Q, ∀ ca cb, a = some ca → b = some cb → cb.nxt q = some (q', some false) →\n      ca.prv q' = some (q, some false)) ∧\n  (∀ q q' : Q, ∀ cb, b = some cb → cb.nxt q = some (q', none) → cb.prv q' = some (q, none)) ∧\n  (∀ q : Q, ∀ cb, b = some cb → cb.src q = true → cb.prv q = none))\n\n/-- The string is locally consistent at every gap. -/\ndef Chk {A Q : Type} {k : ℕ} (u : List (CGLetter A Q k)) : Prop :=\n  ∀ i ≤ u.length, pairOK (leftLet u i) u[i]? = true\n\n/-- `p 0, …, p m` is the run of children described by the locally consistent\nstring `u`: `p 0` is the unique first child, each `p (t+1)` is reached from `p t`\nby the recorded edge, and `p m` has no outgoing edge. -/\nstructure CGPath {A Q : Type} {k : ℕ} (u : List (CGLetter A Q k)) (m : ℕ) (p : ℕ → Vtx Q) :\n    Prop where\n  /-- The string is locally consistent. -/\n  chk : Chk u\n  /-- `p 0` is the unique vertex marked as the first child. -/\n  srcEq : ∀ v, IsSrc u v ↔ v = p 0\n  /-- Every vertex of the run sits in a real column. -/\n  inRange : ∀ t ≤ m, (u[(p t).2]?).isSome\n  /-- Consecutive children are joined by the recorded edge. -/\n  step : ∀ t < m, succOf u (p t) = some (p (t + 1))\n  /-- The last child has no outgoing edge. -/\n  last : succOf u (p m) = none\n\n/-- The concatenation of the representations of the children, in order. -/\ndef cgOut {A Q : Type} {k : ℕ} (u : List (CGLetter A Q k)) (m : ℕ) (p : ℕ → Vtx Q) :\n    List (ConfLetter A Q k) :=\n  ((List.range (m + 1)).map fun t => confAt u (p t)).flatten\n\n/-- `v` is the string representation of the children of the configuration whose\nchild configuration graph `u` represents. -/\ndef CGOutIs {A Q : Type} {k : ℕ} (u : List (CGLetter A Q k)) (v : List (ConfLetter A Q k)) :\n    Prop :=\n  ∃ m p, CGPath u m p ∧ v = cgOut u m p\n\nend Lax194892.ChildConfigurationGraphs\n",
+      "statements": []
+    },
+    {
+      "id": "Lax194892.ChildGraphOfConfiguration",
+      "path": "concepts/Lax194892/ChildGraphOfConfiguration.lean",
+      "title": "A for-transducer produces the child configuration graph",
+      "type": "theorem",
+      "description": "There is a for-transducer which inputs the string representation of a\nconfiguration and outputs the string representation of its child configuration\ngraph (Claim D.2.6 of *Transducers*). Each letter of the graph is a Boolean\ncombination of regular properties of the configuration with one marked gap —\nwhether a given pair of children in adjacent columns is joined by a balanced\nrun (Claim D.2.3) — so the graph is computed by a rational function, hence by a\nfor-transducer.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "As for Lemma D.2.5 the stack is required to have fewer than `k` pebbles, and\nthe index `nid` of the moving pebble, recorded in the output alphabet, is the\nheight of the stack. The input alphabet and the state space are assumed\nfinite."
+        }
+      ],
+      "imports": [
+        "Lax194892.ChildConfigurationGraphs",
+        "Lax194892.ForTransducers"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax194892.ForTransducers\nimport Lax194892.ChildConfigurationGraphs\n\n/-!\n---\ntitle: A for-transducer produces the child configuration graph\ntype: theorem\n---\nThere is a for-transducer which inputs the string representation of a\nconfiguration and outputs the string representation of its child configuration\ngraph (Claim D.2.6 of *Transducers*). Each letter of the graph is a Boolean\ncombination of regular properties of the configuration with one marked gap —\nwhether a given pair of children in adjacent columns is joined by a balanced\nrun (Claim D.2.3) — so the graph is computed by a rational function, hence by a\nfor-transducer.\n\n# Formalization notes\n\nAs for Lemma D.2.5 the stack is required to have fewer than `k` pebbles, and\nthe index `nid` of the moving pebble, recorded in the output alphabet, is the\nheight of the stack. The input alphabet and the state space are assumed\nfinite.\n-/\n\nnamespace Lax194892.ChildGraphOfConfiguration\n\nopen Lax194892.PebbleTransducers Lax194892.PebbleConfigurationEncoding\n  Lax194892.ChildConfigurationGraphs Lax194892.ForTransducers\n\n/-- A for-transducer maps the representation of a configuration to the\nrepresentation of its child configuration graph. -/\naxiom exists_forTransducer_childGraph {A B Q : Type} [Finite A] [Finite Q] {k : ℕ}\n    (M : Pebble A B Q k) :\n    ∃ f : List (ConfLetter A Q k) → List (CGLetter A Q k), IsForTransducer f ∧\n      ∀ (q₀ : Q) (st : List ℕ) (w : List A) (ch : ℕ → Vtx Q) (m : ℕ) (nid : Fin k),\n        (∀ p, p ∈ st → p ≤ w.length) → st.length < k → (nid : ℕ) = st.length →\n        IsChildSeq M w q₀ st ch m →\n        f (confEnc q₀ st w) = cgOfChildren w st nid ch m\n\nend Lax194892.ChildGraphOfConfiguration\n",
+      "statements": [
+        {
+          "id": "Lax194892.ChildGraphOfConfiguration.exists_forTransducer_childGraph",
+          "signature": "exists_forTransducer_childGraph : ∀ {A B Q : Type} [Finite A] [Finite Q] {k : Nat} (M : Lax194892.PebbleTransducers.Pebble A B Q k),\n  Exists fun f =>\n    And (Lax194892.ForTransducers.IsForTransducer f)\n      (∀ (q₀ : Q) (st : List Nat) (w : List A) (ch : Nat → Lax194892.ChildConfigurationGraphs.Vtx Q) (m : Nat)\n        (nid : Fin k),\n        (∀ (p : Nat), List.instMembership.mem st p → instLENat.le p w.length) →\n          instLTNat.lt st.length k →\n            Eq nid.val st.length →\n              Lax194892.ChildConfigurationGraphs.IsChildSeq M w q₀ st ch m →\n                Eq (f (Lax194892.ChildConfigurationGraphs.confEnc q₀ st w))\n                  (Lax194892.ChildConfigurationGraphs.cgOfChildren w st nid ch m))",
+          "startLine": 30,
+          "endLine": 38,
+          "doc": "A for-transducer maps the representation of a configuration to the\nrepresentation of its child configuration graph."
+        }
+      ]
+    },
+    {
+      "id": "Lax194892.ChildrenOfChildGraph",
+      "path": "concepts/Lax194892/ChildrenOfChildGraph.lean",
+      "title": "A for-transducer reads the children off a child configuration graph",
+      "type": "theorem",
+      "description": "There is a for-transducer which inputs the string representation of a child\nconfiguration graph and outputs the concatenation of the string representations\nof the corresponding child configurations (Claim D.2.7 of *Transducers*). A\ntwo-pebble transducer walks along the path of the graph, one pebble marking the\ncurrent child and the other printing its representation, and pebble transducers\nare for-transducers (Theorem D.2.4); the book instead proceeds by induction on\nthe width of the graph, as for snake graphs.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The output is characterised by `CGOutIs`, which determines it; the\nfor-transducer is required to agree with it on every string that represents a\nrun of children. The input alphabet and the state space are assumed finite."
+        }
+      ],
+      "imports": [
+        "Lax194892.ChildConfigurationGraphs",
+        "Lax194892.ForTransducers"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax194892.ForTransducers\nimport Lax194892.ChildConfigurationGraphs\n\n/-!\n---\ntitle: A for-transducer reads the children off a child configuration graph\ntype: theorem\n---\nThere is a for-transducer which inputs the string representation of a child\nconfiguration graph and outputs the concatenation of the string representations\nof the corresponding child configurations (Claim D.2.7 of *Transducers*). A\ntwo-pebble transducer walks along the path of the graph, one pebble marking the\ncurrent child and the other printing its representation, and pebble transducers\nare for-transducers (Theorem D.2.4); the book instead proceeds by induction on\nthe width of the graph, as for snake graphs.\n\n# Formalization notes\n\nThe output is characterised by `CGOutIs`, which determines it; the\nfor-transducer is required to agree with it on every string that represents a\nrun of children. The input alphabet and the state space are assumed finite.\n-/\n\nnamespace Lax194892.ChildrenOfChildGraph\n\nopen Lax194892.ChildConfigurationGraphs Lax194892.ForTransducers\n\n/-- A for-transducer maps the representation of a child configuration graph to the\nconcatenation of the representations of the children. -/\naxiom exists_forTransducer_cgOut {A Q : Type} [Finite A] [Finite Q] (k : ℕ) :\n    ∃ f : List (CGLetter A Q k) → List (ConfLetter A Q k),\n      IsForTransducer f ∧ ∀ u v, CGOutIs u v → f u = v\n\nend Lax194892.ChildrenOfChildGraph\n",
+      "statements": [
+        {
+          "id": "Lax194892.ChildrenOfChildGraph.exists_forTransducer_cgOut",
+          "signature": "exists_forTransducer_cgOut : ∀ {A Q : Type} [Finite A] [Finite Q] (k : Nat),\n  Exists fun f =>\n    And (Lax194892.ForTransducers.IsForTransducer f)\n      (∀ (u : List (Lax194892.ChildConfigurationGraphs.CGLetter A Q k))\n        (v : List (Lax194892.ChildConfigurationGraphs.ConfLetter A Q k)),\n        Lax194892.ChildConfigurationGraphs.CGOutIs u v → Eq (f u) v)",
+          "startLine": 28,
+          "endLine": 32,
+          "doc": "A for-transducer maps the representation of a child configuration graph to the\nconcatenation of the representations of the children."
+        }
+      ]
+    },
+    {
+      "id": "Lax194892.ChildrenOfConfiguration",
+      "path": "concepts/Lax194892/ChildrenOfConfiguration.lean",
+      "title": "A for-transducer produces the children of a configuration",
+      "type": "theorem",
+      "description": "For every $k$-pebble transducer there is a for-transducer which inputs the\nstring representation of a configuration and outputs all children of that\nconfiguration, as the concatenation of their string representations in order\nof execution (Lemma D.2.5 of *Transducers*). It is the composition of Claims\nD.2.6 and D.2.7: from the configuration to its child configuration graph, and\nfrom the graph to the children.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The book does not state the hypothesis that the stack of the input\nconfiguration has fewer than `k` pebbles, but its proof begins with exactly that\ncase distinction (\"if `ℓ = k` there is nothing to do\"), so the statement\ncarries it; the children are given as a child sequence `ch 0, …, ch m`, and the\noutput is the concatenation of their representations. The input alphabet and\nthe state space are assumed finite."
+        }
+      ],
+      "imports": [
+        "Lax194892.ChildConfigurationGraphs",
+        "Lax194892.ForTransducers"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax194892.ForTransducers\nimport Lax194892.ChildConfigurationGraphs\n\n/-!\n---\ntitle: A for-transducer produces the children of a configuration\ntype: theorem\n---\nFor every $k$-pebble transducer there is a for-transducer which inputs the\nstring representation of a configuration and outputs all children of that\nconfiguration, as the concatenation of their string representations in order\nof execution (Lemma D.2.5 of *Transducers*). It is the composition of Claims\nD.2.6 and D.2.7: from the configuration to its child configuration graph, and\nfrom the graph to the children.\n\n# Formalization notes\n\nThe book does not state the hypothesis that the stack of the input\nconfiguration has fewer than `k` pebbles, but its proof begins with exactly that\ncase distinction (\"if `ℓ = k` there is nothing to do\"), so the statement\ncarries it; the children are given as a child sequence `ch 0, …, ch m`, and the\noutput is the concatenation of their representations. The input alphabet and\nthe state space are assumed finite.\n-/\n\nnamespace Lax194892.ChildrenOfConfiguration\n\nopen Lax194892.PebbleTransducers Lax194892.PebbleConfigurationEncoding\n  Lax194892.ChildConfigurationGraphs Lax194892.ForTransducers\n\n/-- A for-transducer maps the representation of a configuration to the\nconcatenation of the representations of its children. -/\naxiom exists_forTransducer_children {A B Q : Type} [Finite A] [Finite Q] {k : ℕ}\n    (M : Pebble A B Q k) :\n    ∃ f : List (ConfLetter A Q k) → List (ConfLetter A Q k), IsForTransducer f ∧\n      ∀ (q₀ : Q) (st : List ℕ) (w : List A) (ch : ℕ → Vtx Q) (m : ℕ),\n        (∀ p, p ∈ st → p ≤ w.length) → st.length < k →\n        IsChildSeq M w q₀ st ch m →\n        f (confEnc q₀ st w)\n          = ((List.range (m + 1)).map fun t => confEnc (ch t).1 (st ++ [(ch t).2]) w).flatten\n\nend Lax194892.ChildrenOfConfiguration\n",
+      "statements": [
+        {
+          "id": "Lax194892.ChildrenOfConfiguration.exists_forTransducer_children",
+          "signature": "exists_forTransducer_children : ∀ {A B Q : Type} [Finite A] [Finite Q] {k : Nat} (M : Lax194892.PebbleTransducers.Pebble A B Q k),\n  Exists fun f =>\n    And (Lax194892.ForTransducers.IsForTransducer f)\n      (∀ (q₀ : Q) (st : List Nat) (w : List A) (ch : Nat → Lax194892.ChildConfigurationGraphs.Vtx Q) (m : Nat),\n        (∀ (p : Nat), List.instMembership.mem st p → instLENat.le p w.length) →\n          instLTNat.lt st.length k →\n            Lax194892.ChildConfigurationGraphs.IsChildSeq M w q₀ st ch m →\n              Eq (f (Lax194892.ChildConfigurationGraphs.confEnc q₀ st w))\n                (List.map\n                    (fun t =>\n                      Lax194892.ChildConfigurationGraphs.confEnc (ch t).fst\n                        (instHAppendOfAppend.hAppend st (List.cons (ch t).snd List.nil)) w)\n                    (List.range (instHAdd.hAdd m 1))).flatten)",
+          "startLine": 31,
+          "endLine": 40,
+          "doc": "A for-transducer maps the representation of a configuration to the\nconcatenation of the representations of its children."
+        }
+      ]
+    },
+    {
+      "id": "Lax194892.ForComposition",
+      "path": "concepts/Lax194892/ForComposition.lean",
+      "title": "For-transducers are closed under composition",
+      "type": "theorem",
+      "description": "The functions computed by for-transducers are closed under composition\n(Lemma D.1.4 of *Transducers*). The second program is run on the output of the\nfirst, in prenex form: an output position of the first program is a tuple of\nloop variables of its prenex form, so a loop of the second program over output\npositions becomes a block of loops over input positions, and its tests on\noutput letters become the loop-free body of the first program.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Stated over any alphabets."
+        }
+      ],
+      "imports": [
+        "Lax194892.ForTransducers"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax194892.ForTransducers\n\n/-!\n---\ntitle: For-transducers are closed under composition\ntype: theorem\n---\nThe functions computed by for-transducers are closed under composition\n(Lemma D.1.4 of *Transducers*). The second program is run on the output of the\nfirst, in prenex form: an output position of the first program is a tuple of\nloop variables of its prenex form, so a loop of the second program over output\npositions becomes a block of loops over input positions, and its tests on\noutput letters become the loop-free body of the first program.\n\n# Formalization notes\n\nStated over any alphabets.\n-/\n\nnamespace Lax194892.ForComposition\n\nopen Lax194892.ForTransducers\n\n/-- The composition of two functions computed by for-transducers is computed by a\nfor-transducer. -/\naxiom isForTransducer_comp {A B C : Type} {f : List A → List B} {g : List B → List C}\n    (hf : IsForTransducer f) (hg : IsForTransducer g) : IsForTransducer (g ∘ f)\n\nend Lax194892.ForComposition\n",
+      "statements": [
+        {
+          "id": "Lax194892.ForComposition.isForTransducer_comp",
+          "signature": "isForTransducer_comp : ∀ {A B C : Type} {f : List A → List B} {g : List B → List C},\n  Lax194892.ForTransducers.IsForTransducer f →\n    Lax194892.ForTransducers.IsForTransducer g → Lax194892.ForTransducers.IsForTransducer (Function.comp g f)",
+          "startLine": 24,
+          "endLine": 27,
+          "doc": "The composition of two functions computed by for-transducers is computed by a\nfor-transducer."
+        }
+      ]
+    },
+    {
+      "id": "Lax194892.ForIffPolyregular",
+      "path": "concepts/Lax194892/ForIffPolyregular.lean",
+      "title": "For-transducers compute exactly the polyregular functions",
+      "type": "theorem",
+      "description": "A string-to-string function is polyregular if and only if it is computed by a\nfor-transducer (Theorem D.1.1 of *Transducers*). The two implications are the\nseparate statements `ForOfPolyregular` and `PolyregularOfFor`; this statement\nis their conjunction.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Both alphabets are assumed finite."
+        }
+      ],
+      "imports": [
+        "Lax194892.ForTransducers",
+        "Lax194892.PolyregularFunctions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax194892.PolyregularFunctions\nimport Lax194892.ForTransducers\n\n/-!\n---\ntitle: For-transducers compute exactly the polyregular functions\ntype: theorem\n---\nA string-to-string function is polyregular if and only if it is computed by a\nfor-transducer (Theorem D.1.1 of *Transducers*). The two implications are the\nseparate statements `ForOfPolyregular` and `PolyregularOfFor`; this statement\nis their conjunction.\n\n# Formalization notes\n\nBoth alphabets are assumed finite.\n-/\n\nnamespace Lax194892.ForIffPolyregular\n\nopen Lax194892.PolyregularFunctions Lax194892.ForTransducers\n\n/-- A function is polyregular if and only if a for-transducer computes it. -/\naxiom isPolyregular_iff_isForTransducer {A B : Type} [Finite A] [Finite B]\n    (f : List A → List B) : IsPolyregular f ↔ IsForTransducer f\n\nend Lax194892.ForIffPolyregular\n",
+      "statements": [
+        {
+          "id": "Lax194892.ForIffPolyregular.isPolyregular_iff_isForTransducer",
+          "signature": "isPolyregular_iff_isForTransducer : ∀ {A B : Type} [Finite A] [Finite B] (f : List A → List B),\n  Iff (Lax194892.PolyregularFunctions.IsPolyregular f) (Lax194892.ForTransducers.IsForTransducer f)",
+          "startLine": 23,
+          "endLine": 25,
+          "doc": "A function is polyregular if and only if a for-transducer computes it."
+        }
+      ]
+    },
+    {
+      "id": "Lax194892.ForOfPebble",
+      "path": "concepts/Lax194892/ForOfPebble.lean",
+      "title": "Pebble transducers are computed by for-transducers",
+      "type": "theorem",
+      "description": "Every function computed by a pebble transducer is computed by a\nfor-transducer (Theorem D.2.4 of *Transducers*, the implication from pebble to\nfor-transducer). The run is organised as a tree of configurations; the\nchildren of a configuration are produced by a for-transducer (Lemma D.2.5), and\niterating this over the height of the stack, with the output letters read off\nthe leaves, gives a polyregular function, hence a for-transducer.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Both alphabets are assumed finite, as in the book. The formal proof goes through\npolyregularity by an induction on the number of pebbles rather than through\nLemma D.2.5."
+        }
+      ],
+      "imports": [
+        "Lax194892.ForTransducers",
+        "Lax194892.PebbleTransducers"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax194892.PebbleTransducers\nimport Lax194892.ForTransducers\n\n/-!\n---\ntitle: Pebble transducers are computed by for-transducers\ntype: theorem\n---\nEvery function computed by a pebble transducer is computed by a\nfor-transducer (Theorem D.2.4 of *Transducers*, the implication from pebble to\nfor-transducer). The run is organised as a tree of configurations; the\nchildren of a configuration are produced by a for-transducer (Lemma D.2.5), and\niterating this over the height of the stack, with the output letters read off\nthe leaves, gives a polyregular function, hence a for-transducer.\n\n# Formalization notes\n\nBoth alphabets are assumed finite, as in the book. The formal proof goes through\npolyregularity by an induction on the number of pebbles rather than through\nLemma D.2.5.\n-/\n\nnamespace Lax194892.ForOfPebble\n\nopen Lax194892.PebbleTransducers Lax194892.ForTransducers\n\n/-- A function computed by a pebble transducer is computed by a for-transducer. -/\naxiom isForTransducer_of_isPebbleTransducer {A B : Type} [Finite A] [Finite B]\n    {f : List A → List B} (hf : IsPebbleTransducer f) : IsForTransducer f\n\nend Lax194892.ForOfPebble\n",
+      "statements": [
+        {
+          "id": "Lax194892.ForOfPebble.isForTransducer_of_isPebbleTransducer",
+          "signature": "isForTransducer_of_isPebbleTransducer : ∀ {A B : Type} [Finite A] [Finite B] {f : List A → List B},\n  Lax194892.PebbleTransducers.IsPebbleTransducer f → Lax194892.ForTransducers.IsForTransducer f",
+          "startLine": 27,
+          "endLine": 29,
+          "doc": "A function computed by a pebble transducer is computed by a for-transducer."
+        }
+      ]
+    },
+    {
+      "id": "Lax194892.ForOfPolyregular",
+      "path": "concepts/Lax194892/ForOfPolyregular.lean",
+      "title": "Polyregular functions are computed by for-transducers",
+      "type": "theorem",
+      "description": "Every polyregular function is computed by a for-transducer (Theorem D.1.1 of\n*Transducers*, the implication from polyregular to for-transducer): marked\nsquaring is two nested loops, a regular function is computed by a two-way\ntransducer whose run a for-transducer replays, and for-transducers are closed\nunder composition (Lemma D.1.4).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Both alphabets are assumed finite, as in the book."
+        }
+      ],
+      "imports": [
+        "Lax194892.ForTransducers",
+        "Lax194892.PolyregularFunctions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax194892.PolyregularFunctions\nimport Lax194892.ForTransducers\n\n/-!\n---\ntitle: Polyregular functions are computed by for-transducers\ntype: theorem\n---\nEvery polyregular function is computed by a for-transducer (Theorem D.1.1 of\n*Transducers*, the implication from polyregular to for-transducer): marked\nsquaring is two nested loops, a regular function is computed by a two-way\ntransducer whose run a for-transducer replays, and for-transducers are closed\nunder composition (Lemma D.1.4).\n\n# Formalization notes\n\nBoth alphabets are assumed finite, as in the book.\n-/\n\nnamespace Lax194892.ForOfPolyregular\n\nopen Lax194892.PolyregularFunctions Lax194892.ForTransducers\n\n/-- A polyregular function is computed by a for-transducer. -/\naxiom isForTransducer_of_isPolyregular {A B : Type} [Finite A] [Finite B]\n    {f : List A → List B} (hf : IsPolyregular f) : IsForTransducer f\n\nend Lax194892.ForOfPolyregular\n",
+      "statements": [
+        {
+          "id": "Lax194892.ForOfPolyregular.isForTransducer_of_isPolyregular",
+          "signature": "isForTransducer_of_isPolyregular : ∀ {A B : Type} [Finite A] [Finite B] {f : List A → List B},\n  Lax194892.PolyregularFunctions.IsPolyregular f → Lax194892.ForTransducers.IsForTransducer f",
+          "startLine": 24,
+          "endLine": 26,
+          "doc": "A polyregular function is computed by a for-transducer."
+        }
+      ]
+    },
+    {
+      "id": "Lax194892.ForTransducers",
+      "path": "concepts/Lax194892/ForTransducers.lean",
+      "title": "For-transducers",
+      "type": "definition",
+      "description": "A *for-transducer* (Section D.1 of *Transducers*) is an imperative program\nwith `for` loops ranging over the positions of the input string, in increasing\nor decreasing order. It has position variables, bound by the loops and read\nonly, and Boolean variables, initially false and assignable; its tests compare\npositions (`x == y`, `x <= y`), read the letter at a position (`w[x] == a`) and\nread Boolean variables, with Boolean connectives; and its statements are\n`output(b)`, assignment to a Boolean variable, sequential composition,\nconditionals and loops. The output of a run is the concatenation of the output\nletters produced. A for-transducer is in *prenex form* (Definition D.1.2) if it\nis a block of nested loops whose body is loop-free and produces at most one\noutput letter per iteration, followed by a loop-free epilogue. For-transducers\ncompute exactly the polyregular functions (Theorem D.1.1).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Variables of both kinds are named by natural numbers; a valuation of the\nposition variables is `ℕ → ℕ` and of the Boolean variables `ℕ → Bool`. `exec`\nruns a program from a valuation and returns the final Boolean valuation and the\noutput; `eval P w` is the output from the all-zero valuations. `loop true x P`\nranges over the positions in increasing order, `loop false x P` in decreasing\norder."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.List.Basic",
+        "Mathlib.Logic.Function.Basic"
+      ],
+      "sourceText": "import Mathlib.Logic.Function.Basic\nimport Mathlib.Data.List.Basic\n\n/-!\n---\ntitle: For-transducers\ntype: definition\n---\nA *for-transducer* (Section D.1 of *Transducers*) is an imperative program\nwith `for` loops ranging over the positions of the input string, in increasing\nor decreasing order. It has position variables, bound by the loops and read\nonly, and Boolean variables, initially false and assignable; its tests compare\npositions (`x == y`, `x <= y`), read the letter at a position (`w[x] == a`) and\nread Boolean variables, with Boolean connectives; and its statements are\n`output(b)`, assignment to a Boolean variable, sequential composition,\nconditionals and loops. The output of a run is the concatenation of the output\nletters produced. A for-transducer is in *prenex form* (Definition D.1.2) if it\nis a block of nested loops whose body is loop-free and produces at most one\noutput letter per iteration, followed by a loop-free epilogue. For-transducers\ncompute exactly the polyregular functions (Theorem D.1.1).\n\n# Formalization notes\n\nVariables of both kinds are named by natural numbers; a valuation of the\nposition variables is `ℕ → ℕ` and of the Boolean variables `ℕ → Bool`. `exec`\nruns a program from a valuation and returns the final Boolean valuation and the\noutput; `eval P w` is the output from the all-zero valuations. `loop true x P`\nranges over the positions in increasing order, `loop false x P` in decreasing\norder.\n-/\n\nnamespace Lax194892.ForTransducers\n\n/-- Tests of a for-transducer. -/\ninductive ForTest (A : Type) : Type\n  /-- The value of a Boolean variable. -/\n  | boolVar : ℕ → ForTest A\n  /-- The equality test `x == y` on position variables. -/\n  | eqPos : ℕ → ℕ → ForTest A\n  /-- The order test `x <= y` on position variables. -/\n  | lePos : ℕ → ℕ → ForTest A\n  /-- The label test `w[x] == a`. -/\n  | label : ℕ → A → ForTest A\n  /-- Negation. -/\n  | not : ForTest A → ForTest A\n  /-- Conjunction. -/\n  | and : ForTest A → ForTest A → ForTest A\n  /-- Disjunction. -/\n  | or : ForTest A → ForTest A → ForTest A\n\n/-- Programs of a for-transducer. -/\ninductive ForProg (A B : Type) : Type\n  /-- The empty program. -/\n  | skip : ForProg A B\n  /-- `output(b)`. -/\n  | output : B → ForProg A B\n  /-- `X = true` / `X = false`. -/\n  | assign : ℕ → Bool → ForProg A B\n  /-- Sequential composition `I ; J`. -/\n  | seq : ForProg A B → ForProg A B → ForProg A B\n  /-- A conditional. -/\n  | ite : ForTest A → ForProg A B → ForProg A B → ForProg A B\n  /-- `for x in positions(w)` (`true`) or `for x in positions_reverse(w)` (`false`). -/\n  | loop : Bool → ℕ → ForProg A B → ForProg A B\n\nnamespace ForTest\n\nvariable {A : Type}\n\n/-- The truth value of a test under valuations of the position and Boolean\nvariables. -/\ndef Holds (w : List A) (pos : ℕ → ℕ) (bv : ℕ → Bool) : ForTest A → Prop\n  | boolVar i => bv i = true\n  | eqPos i j => pos i = pos j\n  | lePos i j => pos i ≤ pos j\n  | label i a => w[pos i]? = some a\n  | not t => ¬ Holds w pos bv t\n  | and t s => Holds w pos bv t ∧ Holds w pos bv s\n  | or t s => Holds w pos bv t ∨ Holds w pos bv s\n\nend ForTest\n\n/-- Running the body of a loop over a list of positions, threading the Boolean\nvaluation and concatenating the outputs. -/\ndef forLoopRun {B : Type} (body : (ℕ → Bool) → ℕ → (ℕ → Bool) × List B) :\n    List ℕ → (ℕ → Bool) → (ℕ → Bool) × List B\n  | [], bv => (bv, [])\n  | p :: ps, bv =>\n      let r := body bv p\n      let r' := forLoopRun body ps r.1\n      (r'.1, r.2 ++ r'.2)\n\nnamespace ForProg\n\nvariable {A B : Type}\n\nopen scoped Classical in\n/-- The semantics of a program: the final Boolean valuation and the output. -/\nnoncomputable def exec (w : List A) :\n    ForProg A B → (ℕ → ℕ) → (ℕ → Bool) → (ℕ → Bool) × List B\n  | skip, _, bv => (bv, [])\n  | output b, _, bv => (bv, [b])\n  | assign i v, _, bv => (Function.update bv i v, [])\n  | seq P Q, pos, bv =>\n      let r := exec w P pos bv\n      let r' := exec w Q pos r.1\n      (r'.1, r.2 ++ r'.2)\n  | ite t P Q, pos, bv =>\n      if ForTest.Holds w pos bv t then exec w P pos bv else exec w Q pos bv\n  | loop dir x P, pos, bv =>\n      forLoopRun (fun bv' p => exec w P (Function.update pos x p) bv')\n        (if dir then List.range w.length else (List.range w.length).reverse) bv\n\n/-- The function computed by a for-transducer. -/\nnoncomputable def eval (P : ForProg A B) (w : List A) : List B :=\n  (exec w P (fun _ => 0) (fun _ => false)).2\n\n/-- A program without loops. -/\ndef LoopFree : ForProg A B → Prop\n  | skip => True\n  | output _ => True\n  | assign _ _ => True\n  | seq P Q => LoopFree P ∧ LoopFree Q\n  | ite _ P Q => LoopFree P ∧ LoopFree Q\n  | loop _ _ _ => False\n\n/-- Nested loops `for x₁ in τ₁: ⋯ for x_k in τ_k: body`. -/\ndef nestLoops : List (Bool × ℕ) → ForProg A B → ForProg A B\n  | [], body => body\n  | (d, x) :: rest, body => ForProg.loop d x (nestLoops rest body)\n\n/-- A program produces at most one output letter per execution. -/\ndef OutputsAtMostOne (P : ForProg A B) : Prop :=\n  ∀ (w : List A) (pos : ℕ → ℕ) (bv : ℕ → Bool), ((exec w P pos bv).2).length ≤ 1\n\n/-- Prenex form: nested loops whose body is loop-free and outputs at most one\nletter per iteration, followed by a loop-free epilogue. -/\ndef PrenexForm (P : ForProg A B) : Prop :=\n  ∃ (ls : List (Bool × ℕ)) (body epilogue : ForProg A B),\n    LoopFree body ∧ LoopFree epilogue ∧ OutputsAtMostOne body ∧\n    P = ForProg.seq (nestLoops ls body) epilogue\n\nend ForProg\n\n/-- A function computed by a for-transducer. -/\ndef IsForTransducer {A B : Type} (f : List A → List B) : Prop :=\n  ∃ P : ForProg A B, ∀ w, P.eval w = f w\n\nend Lax194892.ForTransducers\n",
+      "statements": []
+    },
+    {
+      "id": "Lax194892.MarkedSquaring",
+      "path": "concepts/Lax194892/MarkedSquaring.lean",
+      "title": "Marked squaring",
+      "type": "definition",
+      "description": "The *marked squaring* function (Example 33 of *Transducers*) copies an input\nstring of length $n$ exactly $n$ times, underlining the first $i$ letters of the\n$i$-th copy:\n$$1234 \\mapsto \\underline{1}234\\;\\underline{12}34\\;\\underline{123}4\\;\\underline{1234}.$$\nThe output has length $n^2$ over the alphabet $A + A$, one copy of the input\nalphabet underlined and one plain. It is the one prime function of quadratic\ngrowth that, added to the regular functions, generates the polyregular\nfunctions (Definition D.0.1).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Underlined letters are `Sum.inl`, plain ones `Sum.inr`; the `i`-th copy is\n`(w.take (i+1)).map Sum.inl ++ (w.drop (i+1)).map Sum.inr`. Marked squaring is a\nfamily of functions, one for each alphabet."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.List.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.List.Basic\n\n/-!\n---\ntitle: Marked squaring\ntype: definition\n---\nThe *marked squaring* function (Example 33 of *Transducers*) copies an input\nstring of length $n$ exactly $n$ times, underlining the first $i$ letters of the\n$i$-th copy:\n$$1234 \\mapsto \\underline{1}234\\;\\underline{12}34\\;\\underline{123}4\\;\\underline{1234}.$$\nThe output has length $n^2$ over the alphabet $A + A$, one copy of the input\nalphabet underlined and one plain. It is the one prime function of quadratic\ngrowth that, added to the regular functions, generates the polyregular\nfunctions (Definition D.0.1).\n\n# Formalization notes\n\nUnderlined letters are `Sum.inl`, plain ones `Sum.inr`; the `i`-th copy is\n`(w.take (i+1)).map Sum.inl ++ (w.drop (i+1)).map Sum.inr`. Marked squaring is a\nfamily of functions, one for each alphabet.\n-/\n\nnamespace Lax194892.MarkedSquaring\n\n/-- Marked squaring: `n` copies of an input of length `n`, the first `i` letters\nof the `i`-th copy underlined. -/\ndef markedSquare (A : Type) (w : List A) : List (A ⊕ A) :=\n  ((List.range w.length).map\n    (fun i => (w.take (i + 1)).map Sum.inl ++ (w.drop (i + 1)).map Sum.inr)).flatten\n\nend Lax194892.MarkedSquaring\n",
+      "statements": []
+    },
+    {
+      "id": "Lax194892.PebbleConfigurationEncoding",
+      "path": "concepts/Lax194892/PebbleConfigurationEncoding.lean",
+      "title": "String representations of pebble configurations, and balanced runs",
+      "type": "definition",
+      "description": "Section D.2 of *Transducers* represents a configuration of a $k$-pebble\ntransducer on an input $w$ — a state and a stack of at most $k$ gaps of $w$ — as\na string with one letter per gap of $w$, the letter of a gap recording the\nstate, the input letter that follows the gap and the set of pebbles sitting in\nthe gap; the results on reachability speak about a *pair* of configurations at\na time, encoded together. A run between two configurations of height $\\ell$ is\n*balanced* if the pebble at height $\\ell$ is never popped during it, although\nit may be moved.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "`pairEnc q₁ q₂ sts stt w` has `w.length + 1` letters, the last one being the\nonly one with no following input letter; `ann k st p` is the set of pebbles of\nthe stack `st` sitting in the gap `p`. `RestrReaches M w ℓ` is reachability\nalong runs all of whose configurations have height at least `ℓ`; with `ℓ = 0` it\nis ordinary reachability, and for endpoints of height `ℓ` it is the book's\nbalanced run."
+        }
+      ],
+      "imports": [
+        "Lax194892.PebbleTransducers"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax194892.PebbleTransducers\n\n/-!\n---\ntitle: String representations of pebble configurations, and balanced runs\ntype: definition\n---\nSection D.2 of *Transducers* represents a configuration of a $k$-pebble\ntransducer on an input $w$ — a state and a stack of at most $k$ gaps of $w$ — as\na string with one letter per gap of $w$, the letter of a gap recording the\nstate, the input letter that follows the gap and the set of pebbles sitting in\nthe gap; the results on reachability speak about a *pair* of configurations at\na time, encoded together. A run between two configurations of height $\\ell$ is\n*balanced* if the pebble at height $\\ell$ is never popped during it, although\nit may be moved.\n\n# Formalization notes\n\n`pairEnc q₁ q₂ sts stt w` has `w.length + 1` letters, the last one being the\nonly one with no following input letter; `ann k st p` is the set of pebbles of\nthe stack `st` sitting in the gap `p`. `RestrReaches M w ℓ` is reachability\nalong runs all of whose configurations have height at least `ℓ`; with `ℓ = 0` it\nis ordinary reachability, and for endpoints of height `ℓ` it is the book's\nbalanced run.\n-/\n\nnamespace Lax194892.PebbleConfigurationEncoding\n\nopen Lax194892.PebbleTransducers\n\n/-- Reachability along runs whose configurations all have height at least `ℓ`:\nthe topmost `ℓ` pebbles are never popped. -/\ninductive RestrReaches {A B Q : Type} {k : ℕ} (M : Pebble A B Q k) (w : List A) (ℓ : ℕ) :\n    PebbleCfg Q → PebbleCfg Q → Prop\n  /-- The empty run. -/\n  | refl (q : Q) (st : List ℕ) (h : ℓ ≤ st.length) :\n      RestrReaches M w ℓ (PebbleCfg.conf q st) (PebbleCfg.conf q st)\n  /-- One step from a configuration of height at least `ℓ`. -/\n  | step {q : Q} {st : List ℕ} {c' c'' : PebbleCfg Q} {o : List B} (h : ℓ ≤ st.length)\n      (hs : M.stepCfg w (PebbleCfg.conf q st) = some (o, c'))\n      (hr : RestrReaches M w ℓ c' c'') :\n      RestrReaches M w ℓ (PebbleCfg.conf q st) c''\n\n/-- A balanced run between two configurations of height `ℓ`: the pebble at\nheight `ℓ` is never popped. -/\ndef BalancedRun {A B Q : Type} {k : ℕ} (M : Pebble A B Q k) (w : List A) (ℓ : ℕ)\n    (c c' : PebbleCfg Q) : Prop :=\n  RestrReaches M w ℓ c c'\n\n/-- The pebbles of the stack `st` sitting in the gap `p`. -/\ndef ann (k : ℕ) (st : List ℕ) (p : ℕ) : Fin k → Bool := fun i => decide (st[(i : ℕ)]? = some p)\n\n/-- A letter of the representation of a pair of configurations: the two states, the\ninput letter following the gap, and the pebbles of each configuration in the gap. -/\nabbrev PairLetter (A Q : Type) (k : ℕ) := Q × Q × Option A × (Fin k → Bool) × (Fin k → Bool)\n\n/-- The string representation of the pair of configurations `(q₁, sts)` and\n`(q₂, stt)` of the input `w`: one letter per gap. -/\ndef pairEnc {A Q : Type} {k : ℕ} (q₁ q₂ : Q) (sts stt : List ℕ) (w : List A) :\n    List (PairLetter A Q k) :=\n  (List.range (w.length + 1)).map fun p => (q₁, q₂, w[p]?, ann k sts p, ann k stt p)\n\nend Lax194892.PebbleConfigurationEncoding\n",
+      "statements": []
+    },
+    {
+      "id": "Lax194892.PebbleContinuity",
+      "path": "concepts/Lax194892/PebbleContinuity.lean",
+      "title": "Pebble transducers are continuous",
+      "type": "theorem",
+      "description": "Pebble transducers compute continuous functions (Theorem D.2.1 of\n*Transducers*). The languages recognised by pebble automata — pebble\ntransducers with a yes/no answer — are regular, by induction on the number of\npebbles; running an automaton for the target language on the output turns the\ntransducer into a pebble automaton.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Both alphabets are assumed finite, as in the book."
+        }
+      ],
+      "imports": [
+        "Lax194892.PebbleTransducers",
+        "Lax765601.Continuity"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax765601.Continuity\nimport Lax194892.PebbleTransducers\n\n/-!\n---\ntitle: Pebble transducers are continuous\ntype: theorem\n---\nPebble transducers compute continuous functions (Theorem D.2.1 of\n*Transducers*). The languages recognised by pebble automata — pebble\ntransducers with a yes/no answer — are regular, by induction on the number of\npebbles; running an automaton for the target language on the output turns the\ntransducer into a pebble automaton.\n\n# Formalization notes\n\nBoth alphabets are assumed finite, as in the book.\n-/\n\nnamespace Lax194892.PebbleContinuity\n\nopen Lax765601.Continuity Lax194892.PebbleTransducers\n\n/-- A function computed by a pebble transducer is continuous. -/\naxiom continuous_of_isPebbleTransducer {A B : Type} [Finite A] [Finite B] {f : List A → List B}\n    (hf : IsPebbleTransducer f) : Continuous f\n\nend Lax194892.PebbleContinuity\n",
+      "statements": [
+        {
+          "id": "Lax194892.PebbleContinuity.continuous_of_isPebbleTransducer",
+          "signature": "continuous_of_isPebbleTransducer : ∀ {A B : Type} [Finite A] [Finite B] {f : List A → List B},\n  Lax194892.PebbleTransducers.IsPebbleTransducer f → Lax765601.Continuity.Continuous f",
+          "startLine": 24,
+          "endLine": 26,
+          "doc": "A function computed by a pebble transducer is continuous."
+        }
+      ]
+    },
+    {
+      "id": "Lax194892.PebbleIffFor",
+      "path": "concepts/Lax194892/PebbleIffFor.lean",
+      "title": "Pebble transducers and for-transducers compute the same functions",
+      "type": "theorem",
+      "description": "Pebble transducers and for-transducers compute the same string-to-string\nfunctions (Theorem D.2.4 of *Transducers*). The two implications are the\nseparate statements `ForOfPebble` and `PebbleOfFor`; this statement is their\nconjunction.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Both alphabets are assumed finite."
+        }
+      ],
+      "imports": [
+        "Lax194892.ForTransducers",
+        "Lax194892.PebbleTransducers"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax194892.PebbleTransducers\nimport Lax194892.ForTransducers\n\n/-!\n---\ntitle: Pebble transducers and for-transducers compute the same functions\ntype: theorem\n---\nPebble transducers and for-transducers compute the same string-to-string\nfunctions (Theorem D.2.4 of *Transducers*). The two implications are the\nseparate statements `ForOfPebble` and `PebbleOfFor`; this statement is their\nconjunction.\n\n# Formalization notes\n\nBoth alphabets are assumed finite.\n-/\n\nnamespace Lax194892.PebbleIffFor\n\nopen Lax194892.PebbleTransducers Lax194892.ForTransducers\n\n/-- A function is computed by a pebble transducer if and only if it is computed by\na for-transducer. -/\naxiom isPebbleTransducer_iff_isForTransducer {A B : Type} [Finite A] [Finite B]\n    (f : List A → List B) : IsPebbleTransducer f ↔ IsForTransducer f\n\nend Lax194892.PebbleIffFor\n",
+      "statements": [
+        {
+          "id": "Lax194892.PebbleIffFor.isPebbleTransducer_iff_isForTransducer",
+          "signature": "isPebbleTransducer_iff_isForTransducer : ∀ {A B : Type} [Finite A] [Finite B] (f : List A → List B),\n  Iff (Lax194892.PebbleTransducers.IsPebbleTransducer f) (Lax194892.ForTransducers.IsForTransducer f)",
+          "startLine": 23,
+          "endLine": 26,
+          "doc": "A function is computed by a pebble transducer if and only if it is computed by\na for-transducer."
+        }
+      ]
+    },
+    {
+      "id": "Lax194892.PebbleOfFor",
+      "path": "concepts/Lax194892/PebbleOfFor.lean",
+      "title": "For-transducers are computed by pebble transducers",
+      "type": "theorem",
+      "description": "Every function computed by a for-transducer is computed by a pebble\ntransducer (Theorem D.2.4 of *Transducers*, the implication from for-transducer\nto pebble). In prenex form the loop variables are pushed as pebbles, in the\norder of the loops; the loop-free body is evaluated by a one-way pass with the\npebbles in place, since it can only compare positions, read letters and read\nBoolean variables, which the state carries.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Both alphabets are assumed finite, as in the book."
+        }
+      ],
+      "imports": [
+        "Lax194892.ForTransducers",
+        "Lax194892.PebbleTransducers"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax194892.PebbleTransducers\nimport Lax194892.ForTransducers\n\n/-!\n---\ntitle: For-transducers are computed by pebble transducers\ntype: theorem\n---\nEvery function computed by a for-transducer is computed by a pebble\ntransducer (Theorem D.2.4 of *Transducers*, the implication from for-transducer\nto pebble). In prenex form the loop variables are pushed as pebbles, in the\norder of the loops; the loop-free body is evaluated by a one-way pass with the\npebbles in place, since it can only compare positions, read letters and read\nBoolean variables, which the state carries.\n\n# Formalization notes\n\nBoth alphabets are assumed finite, as in the book.\n-/\n\nnamespace Lax194892.PebbleOfFor\n\nopen Lax194892.PebbleTransducers Lax194892.ForTransducers\n\n/-- A function computed by a for-transducer is computed by a pebble transducer. -/\naxiom isPebbleTransducer_of_isForTransducer {A B : Type} [Finite A] [Finite B]\n    {f : List A → List B} (hf : IsForTransducer f) : IsPebbleTransducer f\n\nend Lax194892.PebbleOfFor\n",
+      "statements": [
+        {
+          "id": "Lax194892.PebbleOfFor.isPebbleTransducer_of_isForTransducer",
+          "signature": "isPebbleTransducer_of_isForTransducer : ∀ {A B : Type} [Finite A] [Finite B] {f : List A → List B},\n  Lax194892.ForTransducers.IsForTransducer f → Lax194892.PebbleTransducers.IsPebbleTransducer f",
+          "startLine": 25,
+          "endLine": 27,
+          "doc": "A function computed by a for-transducer is computed by a pebble transducer."
+        }
+      ]
+    },
+    {
+      "id": "Lax194892.PebbleReachability",
+      "path": "concepts/Lax194892/PebbleReachability.lean",
+      "title": "Reachability between configurations of a pebble transducer is regular",
+      "type": "theorem",
+      "description": "Reachability between two configurations of a $k$-pebble transducer is\ndefinable: there is an mso formula $\\varphi(s, t)$ over configurations which\nholds if some run begins in $s$ and ends in $t$ (Lemma D.2.2 of\n*Transducers*). Reachability is reduced, by induction on the height, to\nreachability between configurations that share their lower pebbles, which is\nchecked by a pebble automaton with one pebble more.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The book asks for an mso formula whose two free variables range over\nconfigurations. Here the pair of configurations is encoded into the input\nstring (`pairEnc`, one letter per gap) and the conclusion is that the set of\nencodings of reachable pairs is a *regular language* — equivalently, by Büchi's\ntheorem, an mso-definable one. Since a formula is only ever evaluated on a\ngenuine structure, the language is only required to be correct on genuine\nencodings: stacks of at most `k` gaps of the input. Stated for pebble\ntransducers rather than pebble automata, which have the same configuration\ngraph."
+        }
+      ],
+      "imports": [
+        "Lax194892.PebbleConfigurationEncoding"
+      ],
+      "mathlibImports": [
+        "Mathlib.Computability.DFA"
+      ],
+      "sourceText": "import Mathlib.Computability.DFA\nimport Lax194892.PebbleConfigurationEncoding\n\n/-!\n---\ntitle: Reachability between configurations of a pebble transducer is regular\ntype: theorem\n---\nReachability between two configurations of a $k$-pebble transducer is\ndefinable: there is an mso formula $\\varphi(s, t)$ over configurations which\nholds if some run begins in $s$ and ends in $t$ (Lemma D.2.2 of\n*Transducers*). Reachability is reduced, by induction on the height, to\nreachability between configurations that share their lower pebbles, which is\nchecked by a pebble automaton with one pebble more.\n\n# Formalization notes\n\nThe book asks for an mso formula whose two free variables range over\nconfigurations. Here the pair of configurations is encoded into the input\nstring (`pairEnc`, one letter per gap) and the conclusion is that the set of\nencodings of reachable pairs is a *regular language* — equivalently, by Büchi's\ntheorem, an mso-definable one. Since a formula is only ever evaluated on a\ngenuine structure, the language is only required to be correct on genuine\nencodings: stacks of at most `k` gaps of the input. Stated for pebble\ntransducers rather than pebble automata, which have the same configuration\ngraph.\n-/\n\nnamespace Lax194892.PebbleReachability\n\nopen Lax194892.PebbleTransducers Lax194892.PebbleConfigurationEncoding\n\n/-- The encodings of pairs of configurations connected by a run form a regular\nlanguage. -/\naxiom exists_regular_reachLang {A B Q : Type} {k : ℕ} [Finite A] [Finite Q] (M : Pebble A B Q k) :\n    ∃ L : Language (PairLetter A Q k), L.IsRegular ∧\n      ∀ (q₁ q₂ : Q) (sts stt : List ℕ) (w : List A),\n        (∀ p ∈ sts, p ≤ w.length) → (∀ p ∈ stt, p ≤ w.length) →\n        sts.length ≤ k → stt.length ≤ k →\n        (pairEnc q₁ q₂ sts stt w ∈ L ↔\n          ∃ v, M.Reaches w (PebbleCfg.conf q₁ sts) v (PebbleCfg.conf q₂ stt))\n\nend Lax194892.PebbleReachability\n",
+      "statements": [
+        {
+          "id": "Lax194892.PebbleReachability.exists_regular_reachLang",
+          "signature": "exists_regular_reachLang : ∀ {A B Q : Type} {k : Nat} [Finite A] [Finite Q] (M : Lax194892.PebbleTransducers.Pebble A B Q k),\n  Exists fun L =>\n    And L.IsRegular\n      (∀ (q₁ q₂ : Q) (sts stt : List Nat) (w : List A),\n        (∀ (p : Nat), List.instMembership.mem sts p → instLENat.le p w.length) →\n          (∀ (p : Nat), List.instMembership.mem stt p → instLENat.le p w.length) →\n            instLENat.le sts.length k →\n              instLENat.le stt.length k →\n                Iff (Language.instMembershipList.mem L (Lax194892.PebbleConfigurationEncoding.pairEnc q₁ q₂ sts stt w))\n                  (Exists fun v =>\n                    M.Reaches w (Lax194892.PebbleTransducers.PebbleCfg.conf q₁ sts) v\n                      (Lax194892.PebbleTransducers.PebbleCfg.conf q₂ stt)))",
+          "startLine": 33,
+          "endLine": 41,
+          "doc": "The encodings of pairs of configurations connected by a run form a regular\nlanguage."
+        }
+      ]
+    },
+    {
+      "id": "Lax194892.PebbleTransducers",
+      "path": "concepts/Lax194892/PebbleTransducers.lean",
+      "title": "Pebble transducers",
+      "type": "definition",
+      "description": "A *pebble transducer* (Section D.2 of *Transducers*) extends a two-way\ntransducer by a stack of at most $k$ *pebbles* pointing to gaps of the input\nstring; the topmost pebble is the *head*, and only it can be moved. The\ntransducer has a finite set of states with an initial state; it looks at its\nstate and, for every pebble on the stack, at the two input letters adjacent to\nit and the set of pebbles in the same place, and deterministically chooses a\nnew state and an *action*: output a letter, move the head one position left or\nright, push a new pebble at the first gap, pop the head, or terminate. It\ncomputes $v$ on $w$ if the run from the initial state with an empty stack\nterminates with output $v$. Pebble transducers compute exactly the functions of\nfor-transducers (Theorem D.2.4), hence the polyregular functions.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The information available to the transducer is its `PebbleView`: for each\npebble, from the bottom of the stack, the two adjacent letters and the Booleans\nsaying which pebbles share its place. A configuration is a state and the stack\nof gaps, or the halting vertex; a step is undefined if the head would leave the\ninput, the stack bound would be exceeded, or an empty stack popped. `IsPebbleTransducer`\nasks for some bound `k`, a finite state space and a transducer computing `f w`\non every `w`."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.Finite.Defs",
+        "Mathlib.Data.List.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.Finite.Defs\nimport Mathlib.Data.List.Basic\n\n/-!\n---\ntitle: Pebble transducers\ntype: definition\n---\nA *pebble transducer* (Section D.2 of *Transducers*) extends a two-way\ntransducer by a stack of at most $k$ *pebbles* pointing to gaps of the input\nstring; the topmost pebble is the *head*, and only it can be moved. The\ntransducer has a finite set of states with an initial state; it looks at its\nstate and, for every pebble on the stack, at the two input letters adjacent to\nit and the set of pebbles in the same place, and deterministically chooses a\nnew state and an *action*: output a letter, move the head one position left or\nright, push a new pebble at the first gap, pop the head, or terminate. It\ncomputes $v$ on $w$ if the run from the initial state with an empty stack\nterminates with output $v$. Pebble transducers compute exactly the functions of\nfor-transducers (Theorem D.2.4), hence the polyregular functions.\n\n# Formalization notes\n\nThe information available to the transducer is its `PebbleView`: for each\npebble, from the bottom of the stack, the two adjacent letters and the Booleans\nsaying which pebbles share its place. A configuration is a state and the stack\nof gaps, or the halting vertex; a step is undefined if the head would leave the\ninput, the stack bound would be exceeded, or an empty stack popped. `IsPebbleTransducer`\nasks for some bound `k`, a finite state space and a transducer computing `f w`\non every `w`.\n-/\n\nnamespace Lax194892.PebbleTransducers\n\n/-- What a pebble transducer sees: for every pebble on the stack, from the\nbottom, the two adjacent letters and the pebbles in the same place. -/\nabbrev PebbleView (A : Type) := List ((Option A × Option A) × List Bool)\n\n/-- The view of the input from a stack of gaps. -/\ndef viewOf {A : Type} (w : List A) (st : List ℕ) : PebbleView A :=\n  st.map (fun p => ((if p = 0 then none else w[p - 1]?, w[p]?),\n    st.map (fun q => decide (q = p))))\n\n/-- The actions of a pebble transducer. -/\ninductive PebbleAction (B : Type) : Type\n  /-- Output a letter. -/\n  | out : B → PebbleAction B\n  /-- Move the head right (`true`) or left (`false`). -/\n  | move : Bool → PebbleAction B\n  /-- Push a new pebble at the first gap. -/\n  | push : PebbleAction B\n  /-- Pop the topmost pebble. -/\n  | pop : PebbleAction B\n  /-- Terminate. -/\n  | terminate : PebbleAction B\n\n/-- A `k`-pebble transducer: a deterministic machine with a stack of at most `k`\npebbles pointing to gaps of the input. -/\nstructure Pebble (A B Q : Type) (k : ℕ) where\n  /-- The initial state. -/\n  init : Q\n  /-- The transition function. -/\n  step : Q → PebbleView A → Q × PebbleAction B\n\n/-- A configuration: the state and the stack of gaps (from the bottom), or the\nhalting vertex. -/\ninductive PebbleCfg (Q : Type) : Type\n  | conf : Q → List ℕ → PebbleCfg Q\n  | halt : PebbleCfg Q\n\nnamespace Pebble\n\nvariable {A B Q : Type} {k : ℕ}\n\n/-- One step: the produced output and the next configuration, undefined if the\nhead leaves the input, the stack bound is exceeded, or an empty stack is popped. -/\ndef stepCfg (M : Pebble A B Q k) (w : List A) : PebbleCfg Q → Option (List B × PebbleCfg Q)\n  | PebbleCfg.halt => none\n  | PebbleCfg.conf q st =>\n      let r := M.step q (viewOf w st)\n      match r.2 with\n      | PebbleAction.out b => some ([b], PebbleCfg.conf r.1 st)\n      | PebbleAction.terminate => some ([], PebbleCfg.halt)\n      | PebbleAction.push =>\n          if st.length < k then some ([], PebbleCfg.conf r.1 (st ++ [0])) else none\n      | PebbleAction.pop =>\n          if st = [] then none else some ([], PebbleCfg.conf r.1 st.dropLast)\n      | PebbleAction.move dir =>\n          match st.getLast? with\n          | none => none\n          | some p =>\n              if dir then\n                (if p < w.length then some ([], PebbleCfg.conf r.1 (st.dropLast ++ [p + 1]))\n                 else none)\n              else\n                (if 0 < p then some ([], PebbleCfg.conf r.1 (st.dropLast ++ [p - 1]))\n                 else none)\n\n/-- Reachability in the configuration graph, recording the output. -/\ninductive Reaches (M : Pebble A B Q k) (w : List A) :\n    PebbleCfg Q → List B → PebbleCfg Q → Prop\n  | refl (c : PebbleCfg Q) : Reaches M w c [] c\n  | step {c c' c'' : PebbleCfg Q} {o o' : List B} :\n      M.stepCfg w c = some (o, c') → Reaches M w c' o' c'' → Reaches M w c (o ++ o') c''\n\n/-- The transducer produces `v` on `w`. -/\ndef Computes (M : Pebble A B Q k) (w : List A) (v : List B) : Prop :=\n  M.Reaches w (PebbleCfg.conf M.init []) v PebbleCfg.halt\n\nend Pebble\n\n/-- A function computed by a pebble transducer with finitely many states, for some\nbound on the number of pebbles. -/\ndef IsPebbleTransducer {A B : Type} (f : List A → List B) : Prop :=\n  ∃ (k : ℕ) (Q : Type) (_ : Finite Q) (M : Pebble A B Q k), ∀ w, M.Computes w (f w)\n\nend Lax194892.PebbleTransducers\n",
+      "statements": []
+    },
+    {
+      "id": "Lax194892.PolyregularContinuity",
+      "path": "concepts/Lax194892/PolyregularContinuity.lean",
+      "title": "Polyregular functions are continuous",
+      "type": "theorem",
+      "description": "Polyregular functions are continuous (Theorem D.0.2 of *Transducers*):\nregular functions are, continuity is preserved by composition, and marked\nsquaring is continuous — an automaton for the target language is run on the\nmarked square from right to left, remembering the state transformation of the\nunderlined suffix and how the state transformation of the prefix transforms the\ncontribution of the suffix.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Both alphabets are assumed finite, as in the book."
+        }
+      ],
+      "imports": [
+        "Lax194892.PolyregularFunctions",
+        "Lax765601.Continuity"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax765601.Continuity\nimport Lax194892.PolyregularFunctions\n\n/-!\n---\ntitle: Polyregular functions are continuous\ntype: theorem\n---\nPolyregular functions are continuous (Theorem D.0.2 of *Transducers*):\nregular functions are, continuity is preserved by composition, and marked\nsquaring is continuous — an automaton for the target language is run on the\nmarked square from right to left, remembering the state transformation of the\nunderlined suffix and how the state transformation of the prefix transforms the\ncontribution of the suffix.\n\n# Formalization notes\n\nBoth alphabets are assumed finite, as in the book.\n-/\n\nnamespace Lax194892.PolyregularContinuity\n\nopen Lax765601.Continuity Lax194892.PolyregularFunctions\n\n/-- A polyregular function is continuous. -/\naxiom continuous_of_isPolyregular {A B : Type} [Finite A] [Finite B] {f : List A → List B}\n    (hf : IsPolyregular f) : Continuous f\n\nend Lax194892.PolyregularContinuity\n",
+      "statements": [
+        {
+          "id": "Lax194892.PolyregularContinuity.continuous_of_isPolyregular",
+          "signature": "continuous_of_isPolyregular : ∀ {A B : Type} [Finite A] [Finite B] {f : List A → List B},\n  Lax194892.PolyregularFunctions.IsPolyregular f → Lax765601.Continuity.Continuous f",
+          "startLine": 25,
+          "endLine": 27,
+          "doc": "A polyregular function is continuous."
+        }
+      ]
+    },
+    {
+      "id": "Lax194892.PolyregularFunctions",
+      "path": "concepts/Lax194892/PolyregularFunctions.lean",
+      "title": "Polyregular functions",
+      "type": "definition",
+      "description": "A string-to-string function is *polyregular* (Definition D.0.1 of\n*Transducers*) if it can be obtained as a finite composition of functions each\nof which is either regular or a marked squaring function:\n$$\\text{polyregular} = (\\text{regular} \\cup \\text{marked squaring})^*.$$\nThe polyregular functions are the top step of the book's transducer ladder;\nPart D shows that they are the functions of for-transducers and of pebble\ntransducers.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "As for the regular functions, marked squaring appears in the family up to a\nrenaming of the alphabets by bijections `A ≃ A₀` and `B ≃ A₀ ⊕ A₀`;\n`IsPolyregular` is the composition closure of `Lax765601.CompositionClosure`."
+        }
+      ],
+      "imports": [
+        "Lax194892.MarkedSquaring",
+        "Lax765601.CompositionClosure",
+        "Lax916827.RegularFunctions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax765601.CompositionClosure\nimport Lax916827.RegularFunctions\nimport Lax194892.MarkedSquaring\n\n/-!\n---\ntitle: Polyregular functions\ntype: definition\n---\nA string-to-string function is *polyregular* (Definition D.0.1 of\n*Transducers*) if it can be obtained as a finite composition of functions each\nof which is either regular or a marked squaring function:\n$$\\text{polyregular} = (\\text{regular} \\cup \\text{marked squaring})^*.$$\nThe polyregular functions are the top step of the book's transducer ladder;\nPart D shows that they are the functions of for-transducers and of pebble\ntransducers.\n\n# Formalization notes\n\nAs for the regular functions, marked squaring appears in the family up to a\nrenaming of the alphabets by bijections `A ≃ A₀` and `B ≃ A₀ ⊕ A₀`;\n`IsPolyregular` is the composition closure of `Lax765601.CompositionClosure`.\n-/\n\nnamespace Lax194892.PolyregularFunctions\n\nopen Lax765601.CompositionClosure Lax916827.RegularFunctions Lax194892.MarkedSquaring\n\n/-- The family of prime polyregular functions: regular functions and marked\nsquaring, up to a renaming of the alphabets. -/\ndef PolyregularFam : Family := fun A B f =>\n  IsRegularFun f ∨\n  (∃ (A₀ : Type) (e : A ≃ A₀) (e' : B ≃ A₀ ⊕ A₀),\n      ∀ w, f w = (markedSquare A₀ (w.map e)).map e'.symm)\n\n/-- A function is polyregular if it is a finite composition of regular functions\nand marked squaring. -/\ndef IsPolyregular {A B : Type} (f : List A → List B) : Prop := CompClosure PolyregularFam A B f\n\nend Lax194892.PolyregularFunctions\n",
+      "statements": []
+    },
+    {
+      "id": "Lax194892.PolyregularOfFor",
+      "path": "concepts/Lax194892/PolyregularOfFor.lean",
+      "title": "For-transducers compute polyregular functions",
+      "type": "theorem",
+      "description": "Every function computed by a for-transducer is polyregular (Theorem D.1.1 of\n*Transducers*, the implication from for-transducer to polyregular). The program\nis put in prenex form (Lemma D.1.3); the tuples of loop variables are\nenumerated, in the order of the loops, by iterated marked squaring, and the\nloop-free body is evaluated on each tuple by a rational function.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Both alphabets are assumed finite, as in the book."
+        }
+      ],
+      "imports": [
+        "Lax194892.ForTransducers",
+        "Lax194892.PolyregularFunctions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax194892.PolyregularFunctions\nimport Lax194892.ForTransducers\n\n/-!\n---\ntitle: For-transducers compute polyregular functions\ntype: theorem\n---\nEvery function computed by a for-transducer is polyregular (Theorem D.1.1 of\n*Transducers*, the implication from for-transducer to polyregular). The program\nis put in prenex form (Lemma D.1.3); the tuples of loop variables are\nenumerated, in the order of the loops, by iterated marked squaring, and the\nloop-free body is evaluated on each tuple by a rational function.\n\n# Formalization notes\n\nBoth alphabets are assumed finite, as in the book.\n-/\n\nnamespace Lax194892.PolyregularOfFor\n\nopen Lax194892.PolyregularFunctions Lax194892.ForTransducers\n\n/-- A function computed by a for-transducer is polyregular. -/\naxiom isPolyregular_of_isForTransducer {A B : Type} [Finite A] [Finite B]\n    {f : List A → List B} (hf : IsForTransducer f) : IsPolyregular f\n\nend Lax194892.PolyregularOfFor\n",
+      "statements": [
+        {
+          "id": "Lax194892.PolyregularOfFor.isPolyregular_of_isForTransducer",
+          "signature": "isPolyregular_of_isForTransducer : ∀ {A B : Type} [Finite A] [Finite B] {f : List A → List B},\n  Lax194892.ForTransducers.IsForTransducer f → Lax194892.PolyregularFunctions.IsPolyregular f",
+          "startLine": 24,
+          "endLine": 26,
+          "doc": "A function computed by a for-transducer is polyregular."
+        }
+      ]
+    },
+    {
+      "id": "Lax194892.PrenexNormalForm",
+      "path": "concepts/Lax194892/PrenexNormalForm.lean",
+      "title": "Every for-transducer has a prenex form",
+      "type": "theorem",
+      "description": "Every for-transducer is equivalent to one in prenex form (Lemma D.1.3 of\n*Transducers*): a block of nested loops over positions, in increasing or\ndecreasing order, whose body is loop-free and outputs at most one letter per\niteration, followed by a loop-free epilogue. Loops are pulled outwards one at a\ntime, Boolean variables recording which iterations have already been executed.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Stated over any alphabets, for every program `P`; `PrenexForm` is that of\n`ForTransducers`."
+        }
+      ],
+      "imports": [
+        "Lax194892.ForTransducers"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax194892.ForTransducers\n\n/-!\n---\ntitle: Every for-transducer has a prenex form\ntype: theorem\n---\nEvery for-transducer is equivalent to one in prenex form (Lemma D.1.3 of\n*Transducers*): a block of nested loops over positions, in increasing or\ndecreasing order, whose body is loop-free and outputs at most one letter per\niteration, followed by a loop-free epilogue. Loops are pulled outwards one at a\ntime, Boolean variables recording which iterations have already been executed.\n\n# Formalization notes\n\nStated over any alphabets, for every program `P`; `PrenexForm` is that of\n`ForTransducers`.\n-/\n\nnamespace Lax194892.PrenexNormalForm\n\nopen Lax194892.ForTransducers\n\n/-- Every for-transducer program is equivalent to one in prenex form. -/\naxiom exists_prenexForm {A B : Type} (P : ForProg A B) :\n    ∃ P' : ForProg A B, P'.PrenexForm ∧ ∀ w, P'.eval w = P.eval w\n\nend Lax194892.PrenexNormalForm\n",
+      "statements": [
+        {
+          "id": "Lax194892.PrenexNormalForm.exists_prenexForm",
+          "signature": "exists_prenexForm : ∀ {A B : Type} (P : Lax194892.ForTransducers.ForProg A B),\n  Exists fun P' => And P'.PrenexForm (∀ (w : List A), Eq (P'.eval w) (P.eval w))",
+          "startLine": 24,
+          "endLine": 26,
+          "doc": "Every for-transducer program is equivalent to one in prenex form."
+        }
+      ]
+    }
+  ],
   "proofs": [],
   "capture": {
     "formatVersion": 1,
-    "digest": "32ba1472df4103a2b663077535f54b9d5f38d324f381996384d1762e2c3a4cb5",
-    "sourceCommit": "a2e2a89d2d19f9eb52f1329453dcabf5d0e172e3",
+    "digest": "e8f530c7aace7279515d0c1869d35327a59ccf9c99f5065cd03e497aedc5c72e",
+    "sourceCommit": "b4e869bfc984bb173fccdd7b5a284344937e04de",
     "leanToolchain": "leanprover/lean4:v4.30.0",
     "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
     "files": [
       {
+        "path": "concepts/ir/Lax194892/BalancedRunReachability.c",
+        "bytes": 1649,
+        "sha256": "beb6a357c9328bb69c3363c4bdf636f910b39a8fa8c163313d62ef96e4b2472a"
+      },
+      {
+        "path": "concepts/ir/Lax194892/BalancedRunReachability.c.hash",
+        "bytes": 16,
+        "sha256": "c8a516865940834ede6d81cd3984a73282f482bc6183b837ec6f96f2a59f9ef7"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ChildConfigurationGraphs.c",
+        "bytes": 40044,
+        "sha256": "cb41ee1126a1436c1acc0dffd98eb9e0f87ae9b1da8bda305705b1f4b1563ba0"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ChildConfigurationGraphs.c.hash",
+        "bytes": 16,
+        "sha256": "8cc3a3c0cff235ca14177bbc497627fc03aa7d611b04476c017de2773b945802"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ChildGraphOfConfiguration.c",
+        "bytes": 1645,
+        "sha256": "d8c7ab607add32b2db6a7fc103ee0a6e8bdb28e71a9fa209cf22e5944fc895a1"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ChildGraphOfConfiguration.c.hash",
+        "bytes": 16,
+        "sha256": "612df0a1247cca05ac772bda4e344bce7406e658b08bb4a38eb0dde3cc745e98"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ChildrenOfChildGraph.c",
+        "bytes": 1635,
+        "sha256": "390d227a3af99ccf0d1e442de5b6580f6f5b6811c6e28f67003da436a722e0a3"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ChildrenOfChildGraph.c.hash",
+        "bytes": 16,
+        "sha256": "00f0367797e78c32c29a14e7e5a9bb56dc6a5f55e860f4dd7ea29bb3679c214a"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ChildrenOfConfiguration.c",
+        "bytes": 1641,
+        "sha256": "c0ce35d777186427d7fea488a43710a53de51257ea650dcb112fd9f45a7f6ad8"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ChildrenOfConfiguration.c.hash",
+        "bytes": 16,
+        "sha256": "60b5967c8819ef551c97a7fb24af8d8c1989c99ce7463c530b0d62677a250951"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ForComposition.c",
+        "bytes": 1350,
+        "sha256": "2e64df91784d50db95c60cbd933ece5f83fce4123fa77c8ea1c0419b9866ae74"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ForComposition.c.hash",
+        "bytes": 16,
+        "sha256": "5fb65a2411ac74633983024ddbf2991ea3ba0781dbd26ba394ac31e9b153aa54"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ForIffPolyregular.c",
+        "bytes": 1617,
+        "sha256": "866b62f2d4a9d3a91d73d849adbc9134a5724e4974cc7c94f90675b197874528"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ForIffPolyregular.c.hash",
+        "bytes": 16,
+        "sha256": "c5f77e463fc42e4a2969163d8c468d709186bfbc833850ddf2a405851682a105"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ForOfPebble.c",
+        "bytes": 1596,
+        "sha256": "de878740c3f45e5607436340b47f94ef2162d93c5592d099adc5bb06d6a13817"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ForOfPebble.c.hash",
+        "bytes": 16,
+        "sha256": "3f414ba2f5e4e4be82abcb23ca75aac01be02814f8594aa9f0659a1c7bec4286"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ForOfPolyregular.c",
+        "bytes": 1615,
+        "sha256": "2a33dbdbed5946b95b95533ca55adc51e5f69e8bb55447b9fdd29b9841413198"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ForOfPolyregular.c.hash",
+        "bytes": 16,
+        "sha256": "b0a252400b6437f97c55795ca4ec88d2c5e14f395baae1555313a1ccbe6daa2c"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ForTransducers.c",
+        "bytes": 29600,
+        "sha256": "5496c9027f1703339a21f108460284d4ec8fe3dbb99a9c272714c8877486e75a"
+      },
+      {
+        "path": "concepts/ir/Lax194892/ForTransducers.c.hash",
+        "bytes": 16,
+        "sha256": "6ebb6e7eee3ac6b8d1f4c59cd76bb8dfb45d0e401ae753a55275f9ce74c62b58"
+      },
+      {
+        "path": "concepts/ir/Lax194892/MarkedSquaring.c",
+        "bytes": 13118,
+        "sha256": "d8b1ffdb420333c9b005c27e0659bf58b782ff69aa889e5527aa319ff202a378"
+      },
+      {
+        "path": "concepts/ir/Lax194892/MarkedSquaring.c.hash",
+        "bytes": 16,
+        "sha256": "4cb975023c4793ab13da2785a458f643bb12782325a0b2fc49c03e4602c11a1a"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PebbleConfigurationEncoding.c",
+        "bytes": 13012,
+        "sha256": "2a27758c09a07c3b80257fbaf5099013a05f0f3cde605062b8a7e5ef1575f5ac"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PebbleConfigurationEncoding.c.hash",
+        "bytes": 16,
+        "sha256": "0ecd5595a509f0638d1763ca6e81bb2c9c38f5769cab82d631e229786be63e6c"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PebbleContinuity.c",
+        "bytes": 1594,
+        "sha256": "09501841d241b24664cd7176045e9563d60c316919de4e757e32792fe4d3bad7"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PebbleContinuity.c.hash",
+        "bytes": 16,
+        "sha256": "e225abec76bba6515ff16a1f93c88baa60b888c211eb2f6aa5467059079c255f"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PebbleIffFor.c",
+        "bytes": 1598,
+        "sha256": "8649a6f8db8b596eb523cd9129caa6fcdba35b4983c4ef65ceb45e90397a22e5"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PebbleIffFor.c.hash",
+        "bytes": 16,
+        "sha256": "53ee32b9d4e9ed527cc2d09e8a7644ca6bad0d0223a0fd87b93c3b0acbadc935"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PebbleOfFor.c",
+        "bytes": 1596,
+        "sha256": "f20cc8bfadccc5544c8bded4ded5fb7f656ae218f446ccda9294c4b153da8830"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PebbleOfFor.c.hash",
+        "bytes": 16,
+        "sha256": "c4c19da2efa874ffe6f77fcf16ff55ae1c31c56e4997b28f428410353e4738e2"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PebbleReachability.c",
+        "bytes": 1639,
+        "sha256": "fa0724ee142745d6a2c21dc4d1bf081d563c0fff70df9e305aea171abbcbbeb5"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PebbleReachability.c.hash",
+        "bytes": 16,
+        "sha256": "3aebf1b12a992d17b7f057003a3bddf5625a5d549c7f978f28df6f1cc5f45120"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PebbleTransducers.c",
+        "bytes": 45948,
+        "sha256": "cd9fbe782ac1db05f030150608351c76a433bc0ce4a0b555f868dccb8145e121"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PebbleTransducers.c.hash",
+        "bytes": 16,
+        "sha256": "cc33ca3cd4bae8adf3f7513db7a34cd88d99673b10c3f2fcaeda07e6f3d3333c"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PolyregularContinuity.c",
+        "bytes": 1613,
+        "sha256": "3b0c2c9a823736edf7b0cb89e3bb2f7288f9f0b20039f0bf89f2de0cfd70623c"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PolyregularContinuity.c.hash",
+        "bytes": 16,
+        "sha256": "338198e76260adeeaa139735965b3414ef02bd749f5203f459bb3ed522a5808c"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PolyregularFunctions.c",
+        "bytes": 1866,
+        "sha256": "97f52c1b96ac02f9d7825d7b288ff8d1fca5de7156a7710129015975ca8aead4"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PolyregularFunctions.c.hash",
+        "bytes": 16,
+        "sha256": "3b88d402011574201784282930361b3f4cba6b78fcda6c253f7a2e8b41c91395"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PolyregularOfFor.c",
+        "bytes": 1615,
+        "sha256": "bdf10c5673bbffe2a8086883cf758b001ca81752eacf3e3114a6c140c635724b"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PolyregularOfFor.c.hash",
+        "bytes": 16,
+        "sha256": "af3f838a62f16c1b6afd340586c10bf79bd2057b121d9e465aaadcbf18a55783"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PrenexNormalForm.c",
+        "bytes": 1354,
+        "sha256": "def6b49b763173e14ed84a6788cab0b2ad3e1f47fb7584bba3cbe5dc86d33170"
+      },
+      {
+        "path": "concepts/ir/Lax194892/PrenexNormalForm.c.hash",
+        "bytes": 16,
+        "sha256": "b34770ce2f7955a3e646af17c291944167afdd1aa779711fc36b6b8f671c2079"
+      },
+      {
         "path": "concepts/ir/Lax194892.c",
-        "bytes": 1077,
-        "sha256": "1b9079df0eb45495741defc22552d6c75c50f398fe8f89c76cb4d026092f95df"
+        "bytes": 6423,
+        "sha256": "b29bb29cdd51f00596b04285d45ec6b4cac8b14eb1cf54e32e67e1f24d4e9ebc"
       },
       {
         "path": "concepts/ir/Lax194892.c.hash",
         "bytes": 16,
-        "sha256": "948a4e2b50291ce84c89f14c30a230f264ca68b60a0eed7203ef6861759ea961"
+        "sha256": "2ea99ab7ed605574a63c6aa4a23223e53558cde1efad0c6e89a5a53796f89af1"
+      },
+      {
+        "path": "concepts/lib/Lax194892/BalancedRunReachability.ilean",
+        "bytes": 3350,
+        "sha256": "f0b5390df23c105f7febc97de6c7e17ef31acb60c395725caa476feb3b405a13"
+      },
+      {
+        "path": "concepts/lib/Lax194892/BalancedRunReachability.ilean.hash",
+        "bytes": 16,
+        "sha256": "61baecd14ea863dfc47c8f17cbfacd2777ccbbba87af59feb264f2b81a9549c1"
+      },
+      {
+        "path": "concepts/lib/Lax194892/BalancedRunReachability.olean",
+        "bytes": 16576,
+        "sha256": "2e27e2fedca8d788ac891ff0ce34b11987e092cce313efabd24c8e3c381b71e0"
+      },
+      {
+        "path": "concepts/lib/Lax194892/BalancedRunReachability.olean.hash",
+        "bytes": 16,
+        "sha256": "c1b12a6c949174d897dc830bf8b4d6744688ed2a09aaaf42a1d69571a952a348"
+      },
+      {
+        "path": "concepts/lib/Lax194892/BalancedRunReachability.trace",
+        "bytes": 2831,
+        "sha256": "4af4b48f5fe189639ed6f04e0f23cb99a1649e44ee6e52f913942f674ccb0d68"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildConfigurationGraphs.ilean",
+        "bytes": 29409,
+        "sha256": "3a678fdcb7f96151c33f50d9d2d19942b4b885b36c8c2f84c191709b9c5a3420"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildConfigurationGraphs.ilean.hash",
+        "bytes": 16,
+        "sha256": "382bf961df7669960b6c9dc13a06f89dbc7f3737de60eba48d290e83871a9daf"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildConfigurationGraphs.olean",
+        "bytes": 345392,
+        "sha256": "78c89f24fcb2f0ac3a48abdc4b36257f696facdce44b7aaf21895659795f8907"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildConfigurationGraphs.olean.hash",
+        "bytes": 16,
+        "sha256": "bf1bb6020e94b70cbea178cb6f9a0201a0660e62bbd36ebbd3462bff87fe1e7b"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildConfigurationGraphs.trace",
+        "bytes": 2998,
+        "sha256": "0bdd55e66f270d5bca332f0a29cd7a3a520a7c1571f1062307ca2529afd0fcdf"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildGraphOfConfiguration.ilean",
+        "bytes": 4010,
+        "sha256": "f92f50e9b7308db7c43087f3cfcd03620cf706d11dd81eb6d8cedc80a332ecac"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildGraphOfConfiguration.ilean.hash",
+        "bytes": 16,
+        "sha256": "410df904f1004bfcfeaf8894849e3b53fb6e871243f9bab0de97f22dfca706bc"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildGraphOfConfiguration.olean",
+        "bytes": 14512,
+        "sha256": "d4e908057cc59c244026ec957c894fddb19342307904803a126647396dfecfd0"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildGraphOfConfiguration.olean.hash",
+        "bytes": 16,
+        "sha256": "2344bd8c6355883d2d8f33bb71f36f3d77313c65853b4983a2cbc23a31528e8b"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildGraphOfConfiguration.trace",
+        "bytes": 2839,
+        "sha256": "6cd9b6f707669f2f60ad1407123a257d92b0c61d8ad1f50888877a4a546bb8cc"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildrenOfChildGraph.ilean",
+        "bytes": 1984,
+        "sha256": "0a2de4d2fbf3698be89b272a345637d70d81f09aab5ba0ef56db90cb8abd08fc"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildrenOfChildGraph.ilean.hash",
+        "bytes": 16,
+        "sha256": "3856df36872f4acb8914b18823c626feaa952d7a16ee930bbc078126d000c361"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildrenOfChildGraph.olean",
+        "bytes": 9776,
+        "sha256": "63574e1b433be7288e2799e4ad35e3aa545e7f243459ac79ac8b1212a0d12ae9"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildrenOfChildGraph.olean.hash",
+        "bytes": 16,
+        "sha256": "020c2c01b94621df69d5626c8d9a5f7e53f05ec6594a9aae95b298c7020e8acb"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildrenOfChildGraph.trace",
+        "bytes": 2799,
+        "sha256": "367f84ba31590e18ef8fb074f4a388ca9cd31d4ea211049c23919ae50f0d68e3"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildrenOfConfiguration.ilean",
+        "bytes": 4133,
+        "sha256": "60ceafe826f77cb0c0eefce8a779807681a05f97419a3a0808f1e04d03731b82"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildrenOfConfiguration.ilean.hash",
+        "bytes": 16,
+        "sha256": "b2dc3d2bdf66fc92c007365d366bf83997596e0e7fba49dbdffc78942da5966f"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildrenOfConfiguration.olean",
+        "bytes": 16832,
+        "sha256": "f5c3b0ba80265c2a63f9dfa5cee7677c57a7e6bbab23032646ea3c9972bfcfa9"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildrenOfConfiguration.olean.hash",
+        "bytes": 16,
+        "sha256": "75c163382787040fe7c41903552a60e20922fbd47cd8a9ea9a6fe20671bba891"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ChildrenOfConfiguration.trace",
+        "bytes": 2823,
+        "sha256": "2ec528038b6ba03bc772c6e98b81531371657e11ba9dd951f2cf41c7a9f08ee7"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForComposition.ilean",
+        "bytes": 1046,
+        "sha256": "4e784ba3fd6d38ef06870a618b7f00970fd060017555fdc273bb57a2f94d7d3e"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForComposition.ilean.hash",
+        "bytes": 16,
+        "sha256": "14c8bec4deaa6830812d99772084418e32610373e603103768262807d73a7d06"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForComposition.olean",
+        "bytes": 7168,
+        "sha256": "b4f94b2db4c16dff0b687a03d8dcb569af7d00d75e2895d1e9e92f57b3d39d19"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForComposition.olean.hash",
+        "bytes": 16,
+        "sha256": "255a947cce153cea4112189b6a047ea4417a2607a0eb800710b7d60994cc7a38"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForComposition.trace",
+        "bytes": 2555,
+        "sha256": "b0ffee050b534bcdb16ce6710f80f3909831e31883e204e0c8b8042d8185ca0e"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForIffPolyregular.ilean",
+        "bytes": 1420,
+        "sha256": "802beff4a90f428f7b20c1e413d9ea196a3efff989f9ff4f2bb69e1743f571fd"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForIffPolyregular.ilean.hash",
+        "bytes": 16,
+        "sha256": "cfdd1a33a3e6d07c31f2b3bdabda6ff2d149de56d28614e2d78ddae7a619129c"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForIffPolyregular.olean",
+        "bytes": 6976,
+        "sha256": "e59a527e5634ffac7abb0f3f2c9b2ad4ab88caf178b1fc8e4cf216fc6244e71b"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForIffPolyregular.olean.hash",
+        "bytes": 16,
+        "sha256": "d39f8d7f43f2c3f237cb2877e9545fc4124841494887a1a8bb6e0374bddc816a"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForIffPolyregular.trace",
+        "bytes": 2758,
+        "sha256": "3c761d9d8527d16cd3f2d222a9e1b5adb2c3be3fa26b47596f94821384321bda"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForOfPebble.ilean",
+        "bytes": 1386,
+        "sha256": "9a83ec7d6dd662188d84fb0d7edfa7f20993c2f448d3f48d7f4c53522822b0a0"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForOfPebble.ilean.hash",
+        "bytes": 16,
+        "sha256": "f917488fe17e386056e74a6cbc6fb30218dc87bf9d1213dbce8f35bd9ab90b74"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForOfPebble.olean",
+        "bytes": 7032,
+        "sha256": "7c313ba2410b265578724163a261544e6b545e826b0fc171c259588b1aafc419"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForOfPebble.olean.hash",
+        "bytes": 16,
+        "sha256": "0e6a1548e3078719fa7bb773afc41fdfdb4d2f825f91efa58dc9a350585d93f8"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForOfPebble.trace",
+        "bytes": 2704,
+        "sha256": "df15a9d9998bcf674d44fec7c8b2ac2a71fc16cfcf3591be957b5d31bfaf75ce"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForOfPolyregular.ilean",
+        "bytes": 1400,
+        "sha256": "98b6dedd5c196e161c3259e0ae4a9326fb94b38a75f256265342c5b045fc2301"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForOfPolyregular.ilean.hash",
+        "bytes": 16,
+        "sha256": "9bc9be39a9800224db09b8d2b62d0101227a521209015086f586cb5ed4fcadcd"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForOfPolyregular.olean",
+        "bytes": 6800,
+        "sha256": "f3feab6489abb52454c189c8052395d4a29e526b5a5a81ed1e308e67db8ae676"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForOfPolyregular.olean.hash",
+        "bytes": 16,
+        "sha256": "66786cf3e2adb78f3295a7741a9ff246c3e779eac6b0391563b1a3d8438a7c38"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForOfPolyregular.trace",
+        "bytes": 2750,
+        "sha256": "11d80e49e1f933e807d151a3e2349247245f7e27e702980c895c5c24ac806b43"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForTransducers.ilean",
+        "bytes": 14552,
+        "sha256": "1b36cfabc0aea8921d9d76f634ff83b0cf3ce7501f780deb804b4a41a965dd84"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForTransducers.ilean.hash",
+        "bytes": 16,
+        "sha256": "40508d80f5d345b4e4c3b9466b7e8adb16061ec1b84f99ee2c3d97fe385c40e8"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForTransducers.olean",
+        "bytes": 421056,
+        "sha256": "57f5c490d33804d746d50d61addbb40b66e4836daff721c768e11ba8f71080f3"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForTransducers.olean.hash",
+        "bytes": 16,
+        "sha256": "0acbf76be62b9568e1368bb175ed1bbbaf4a0b9bfc6fe8a505f0dbe262f21549"
+      },
+      {
+        "path": "concepts/lib/Lax194892/ForTransducers.trace",
+        "bytes": 2728,
+        "sha256": "2bc62563518ca5202daaa0a6009d33115bd90912e49388c2ac898f86cdc3381c"
+      },
+      {
+        "path": "concepts/lib/Lax194892/MarkedSquaring.ilean",
+        "bytes": 1772,
+        "sha256": "2b40d602d128d4a005bee8b0757d7f8b8d775a090cb07d9b5ba3be07752070c5"
+      },
+      {
+        "path": "concepts/lib/Lax194892/MarkedSquaring.ilean.hash",
+        "bytes": 16,
+        "sha256": "5b99b0a4db44c327bb81affc12fd64dedc600e0a30248d79691145ad131f60d0"
+      },
+      {
+        "path": "concepts/lib/Lax194892/MarkedSquaring.olean",
+        "bytes": 47008,
+        "sha256": "fd832d7f8bd91c3e4117d2e6bdba4fc2d441950051e98424d61487388f378a33"
+      },
+      {
+        "path": "concepts/lib/Lax194892/MarkedSquaring.olean.hash",
+        "bytes": 16,
+        "sha256": "f25ad99328fead95a99444b8299c77659d161bd883cdabf47d134bbfc74a0a38"
+      },
+      {
+        "path": "concepts/lib/Lax194892/MarkedSquaring.trace",
+        "bytes": 2553,
+        "sha256": "12995e3b2c5242ef66aefd5dea4634c95a0ebe9a1c39d58b579f3a77e295e759"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleConfigurationEncoding.ilean",
+        "bytes": 6698,
+        "sha256": "b9c8a09e9327f7b96aa74b1826c2dc972b39f16d59e0d1f02137c002e50663cb"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleConfigurationEncoding.ilean.hash",
+        "bytes": 16,
+        "sha256": "b96e9c9e9429728f71ae2fbecfcf07adae8f7e4f51de43bc850ac95809fce048"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleConfigurationEncoding.olean",
+        "bytes": 109848,
+        "sha256": "164adc1c7029376bf1bcf33fc0fc9223b97f6a568836b763fa6d555510e1c5fa"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleConfigurationEncoding.olean.hash",
+        "bytes": 16,
+        "sha256": "9dee0986457174e406d2f59774c17d9501d3dc91d6a1f25986901cc8731740ef"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleConfigurationEncoding.trace",
+        "bytes": 2665,
+        "sha256": "e69d3b1387a84fa0b9ba8c2c56e0a169f09c509eb85c4cf9d5e34bf6fa97867a"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleContinuity.ilean",
+        "bytes": 1380,
+        "sha256": "98229540d9cdde56d2f385d2c65ebbfaae2d65501939e0f3a7631740a93376d0"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleContinuity.ilean.hash",
+        "bytes": 16,
+        "sha256": "449e9ce569a731cf11d58ba18050e925021153a722cf28565624778ecf256b65"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleContinuity.olean",
+        "bytes": 6704,
+        "sha256": "8a8262d356814b05b6110f8ea532f0a4d73e88169651aa6ab3539e892bdef0c5"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleContinuity.olean.hash",
+        "bytes": 16,
+        "sha256": "a0bb8da68825fafa603930bdb9e5498d524831d93590bfe86ddc0545df044ff6"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleContinuity.trace",
+        "bytes": 2736,
+        "sha256": "a642f420d90f923b2d16eb23ed534bac5f15523a3b60bddeaa810831581272f1"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleIffFor.ilean",
+        "bytes": 1406,
+        "sha256": "a33dce5377702b244f6242371af8fc86ba59a7e28f88ad2968cf3dc5e7df6dd4"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleIffFor.ilean.hash",
+        "bytes": 16,
+        "sha256": "7847af63af7af6d919821ecb11bf3b2fcd9310d7c3c2353d5afe135ed0b3958d"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleIffFor.olean",
+        "bytes": 7000,
+        "sha256": "fa3a47d41a8aae56184f348694cc1ad8dc65b270ec54e29030dd8dd03c958063"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleIffFor.olean.hash",
+        "bytes": 16,
+        "sha256": "4c4ecdf406f9e4b42656679c40c54e3c151ad7e1bab63179c056cbc27b64fb4d"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleIffFor.trace",
+        "bytes": 2712,
+        "sha256": "959f130b96f3a0869d9a50b3067de2feb0d75c434432735aae9fac7e04fccd33"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleOfFor.ilean",
+        "bytes": 1386,
+        "sha256": "495c89f68c307e705b5c4e4c7f0494104f4286c03b7f445691172728e60751ee"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleOfFor.ilean.hash",
+        "bytes": 16,
+        "sha256": "81ff6f73c307edf56ef29a11323aafb4fecda1666e254a0921a185fe9b908742"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleOfFor.olean",
+        "bytes": 6896,
+        "sha256": "75f2c219f4720eb2af8195bffff73b9bf1d87de7604eb63e039b5280eb1cb07b"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleOfFor.olean.hash",
+        "bytes": 16,
+        "sha256": "38f139e49685369a2a371d96188514538ca90b7cfe43cfc10440af7128a37585"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleOfFor.trace",
+        "bytes": 2704,
+        "sha256": "f82013bad2da5016f689e232cd122b7a80b1afb3858b3595a69f3367092a97ff"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleReachability.ilean",
+        "bytes": 3000,
+        "sha256": "5d2c0e3d9380f59927144f8e41b8881e3d0186fcd9b62c1e552a2fa2bf193157"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleReachability.ilean.hash",
+        "bytes": 16,
+        "sha256": "1724daf7fafbca84950b2ce8eafd5ccae50429660b8e386aa87de04ddebc3fc0"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleReachability.olean",
+        "bytes": 14072,
+        "sha256": "6dff6006bca6b0b58cf34a7aed26a5e9e7badd767cafa9c6595665e142ae5377"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleReachability.olean.hash",
+        "bytes": 16,
+        "sha256": "be00e8cf763fe14488815f2dc2d4b64839b6270a56d01eb2d3f68860f7630d16"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleReachability.trace",
+        "bytes": 2791,
+        "sha256": "ab18e2b35b8688da5b602bc33038c821fee8ef642940359e2d8c596eb1a42f67"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleTransducers.ilean",
+        "bytes": 11197,
+        "sha256": "98f3aca5028c9127ae94c8d412921f5c0d32e5b14c0a4368eedc6295b7b99d3b"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleTransducers.ilean.hash",
+        "bytes": 16,
+        "sha256": "068abe0ce0cc94b6401f5fb0591b4e7ceb951e42a752fccf56f018fd6e65a185"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleTransducers.olean",
+        "bytes": 334616,
+        "sha256": "f00cb01602f7a57c9f9f0e354f25743ea85a94dcaeff073f0bcbf26fa7f84db2"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleTransducers.olean.hash",
+        "bytes": 16,
+        "sha256": "6d019f0471a97e6f38ae08e72ee32b91b970157a3df464308a874b6061c0b48d"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PebbleTransducers.trace",
+        "bytes": 2744,
+        "sha256": "eee3b21943411e1e3095901ce00841df984e4a93df8b5270c2d124a33798a0e7"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PolyregularContinuity.ilean",
+        "bytes": 1394,
+        "sha256": "3b7842d06612d4187aea0070d593630d66814a8881c16b4a35b8a6bfd75eda2c"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PolyregularContinuity.ilean.hash",
+        "bytes": 16,
+        "sha256": "fa0952fe813d1b680e0984781533efb77098fefe588279250d8c89956ed17574"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PolyregularContinuity.olean",
+        "bytes": 6744,
+        "sha256": "cedff01228365d2effe9748c033af1c8f87b4d7c7a9c19039d5506bb4f74b3e0"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PolyregularContinuity.olean.hash",
+        "bytes": 16,
+        "sha256": "659cb2c132446dea04f8c82ddd0d9da0889344b8a31da2d624321f0562da6faf"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PolyregularContinuity.trace",
+        "bytes": 2791,
+        "sha256": "078c328045a370970ff4585c22fe95b54e32ae2ee8eb9743d504ceecf7335739"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PolyregularFunctions.ilean",
+        "bytes": 2081,
+        "sha256": "cd6e20b0fd33fa00ac8729bae12b93af39691512d57dfb8080f98d7dae89343e"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PolyregularFunctions.ilean.hash",
+        "bytes": 16,
+        "sha256": "addd1632bf600b2c3f00d71d86cfc9bcf2fbf1168af55e57c068e3a5da1faabb"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PolyregularFunctions.olean",
+        "bytes": 12992,
+        "sha256": "72e3326e50f63015fe0a33edac49d732ed74d33f5b6e2baa68e56ab033af4fb6"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PolyregularFunctions.olean.hash",
+        "bytes": 16,
+        "sha256": "4b91cf03c48ef60d5cf890aaa1c6b761024e8a02400fcec5878299c61d1c3459"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PolyregularFunctions.trace",
+        "bytes": 2949,
+        "sha256": "f4a6abd33c332f53b48f0227e18b43c929db4036b26fbe164daa6d40025bb74c"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PolyregularOfFor.ilean",
+        "bytes": 1400,
+        "sha256": "38640cd1976bb31c0572530157c3a9924bd44097f95c0d84c5830acac242ac69"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PolyregularOfFor.ilean.hash",
+        "bytes": 16,
+        "sha256": "a1e28819901ffc37bf021304c1eb2977fd02c0f1d5757cfd4ffbe10f7cd71db0"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PolyregularOfFor.olean",
+        "bytes": 6824,
+        "sha256": "160a40e51497661860f161b2eb772657c2413ba4f56b22e4c3eb3c78656394ec"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PolyregularOfFor.olean.hash",
+        "bytes": 16,
+        "sha256": "6e2f99f6018c4616f90307d81fa93c8fbba3a81dc7afab642e11e050ce0d60df"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PolyregularOfFor.trace",
+        "bytes": 2750,
+        "sha256": "e7bcb8546319d1bb0206a7deeb9e71c31868d30c32a55049c10a4e47fc80e077"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PrenexNormalForm.ilean",
+        "bytes": 1087,
+        "sha256": "574044f508927e1a568b2a7e2df0db2cb9b6c0abfa68fdd11e8f8f834f3c8bf6"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PrenexNormalForm.ilean.hash",
+        "bytes": 16,
+        "sha256": "3ebedd7b5d48ab47b5ad6e1e39f92da55dc511b5241c7516285b36b1def9f9f3"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PrenexNormalForm.olean",
+        "bytes": 7104,
+        "sha256": "be168f76e070d47b700ea83fd1c9c90807a7dae8a6810f1e8acb10ef728ee81b"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PrenexNormalForm.olean.hash",
+        "bytes": 16,
+        "sha256": "bc49647f075f0bf0fb2d4770e8b1d4d3664d48d8a852fae7c5e1d59f205c0ae1"
+      },
+      {
+        "path": "concepts/lib/Lax194892/PrenexNormalForm.trace",
+        "bytes": 2571,
+        "sha256": "16928a3c4b43c480f18ea050f4714e445f232ff972221896bc7cb2905693ae58"
       },
       {
         "path": "concepts/lib/Lax194892.ilean",
-        "bytes": 80,
-        "sha256": "0093fda08b6620c32790e9bf8c66f4bd887e89dedea78b098cb76c2b42c0351e"
+        "bytes": 1147,
+        "sha256": "f3a4a9dbacd8689beae63c674a1b4061aa3b0f1e1d81b24d46d0b3ea96b749ea"
       },
       {
         "path": "concepts/lib/Lax194892.ilean.hash",
         "bytes": 16,
-        "sha256": "d0ee526465213ab8069eb3f2ba465c98dd716873ba1bc98fedb102024a364720"
+        "sha256": "96ae42659e5e8581c5654ad23f40552fc12d717a9c347ca01a8a5e8ddb61c68a"
       },
       {
         "path": "concepts/lib/Lax194892.olean",
-        "bytes": 1200,
-        "sha256": "0f72107472e794a17392500f8009b0f1a3c18fded86aef0189b4163bbf19faea"
+        "bytes": 3728,
+        "sha256": "eec0caf36f6af601726e2be5fad6b3a19176dc6136c84882586c9a264432ec04"
       },
       {
         "path": "concepts/lib/Lax194892.olean.hash",
         "bytes": 16,
-        "sha256": "237389e82154e8b91b62bf9da7d0d1a82204d6b931266f127b0e20d14bd13e48"
+        "sha256": "e06c19f79ab8f73210dd851783d3fdec6987d5dd663907740a09c25b5ee823d0"
       },
       {
         "path": "concepts/lib/Lax194892.trace",
-        "bytes": 2122,
-        "sha256": "329b99d5284e03b12271f3035d652770289772533630f2d71f950722997bd697"
+        "bytes": 5964,
+        "sha256": "4dc7e1f429e5df188296b0cdcda24130c1f9b9fbd3f748716545790ba6ca2eb4"
       },
       {
         "path": "concepts/package/lake-manifest.json",
-        "bytes": 3162,
-        "sha256": "a0cdc406f106d3b403d989288de4bf470ae19da1d1da7c4c53478757d0b9403f"
+        "bytes": 3798,
+        "sha256": "98fc1ab23e69cae508302d3f576d9021f57194a2ec6a38b3693ec5f024029676"
       },
       {
         "path": "concepts/package/lakefile.toml",
-        "bytes": 255,
-        "sha256": "58f62ed886437b75a7e97deb78dc094accefa838db08df1ed3784a4eac2e470c"
+        "bytes": 656,
+        "sha256": "8a90f44392e8464e09b96c4a67966b4f8b7f00b51d3465890816229ff12e4749"
+      },
+      {
+        "path": "concepts/package/Lax194892/BalancedRunReachability.lean",
+        "bytes": 1667,
+        "sha256": "f823f443def01b2756055a8578591717a0f94c369288ccc33ec63583e7a2619b"
+      },
+      {
+        "path": "concepts/package/Lax194892/ChildConfigurationGraphs.lean",
+        "bytes": 11640,
+        "sha256": "1fcf8d272970993bf652ceeef87117d67a702a4f69062a1c96da1750bc66806f"
+      },
+      {
+        "path": "concepts/package/Lax194892/ChildGraphOfConfiguration.lean",
+        "bytes": 1738,
+        "sha256": "0299c481e07545a451821dd68e88011b479388447b594938752f85934f9578fc"
+      },
+      {
+        "path": "concepts/package/Lax194892/ChildrenOfChildGraph.lean",
+        "bytes": 1429,
+        "sha256": "2ab7895ba80915c595b53d19edc10a216b4503dabd119eef738686a30d60b780"
+      },
+      {
+        "path": "concepts/package/Lax194892/ChildrenOfConfiguration.lean",
+        "bytes": 1881,
+        "sha256": "8398323a0e2e3ae0f0d4c65e0629ceee15a16c1726ca0c6417f7fa6d5b580387"
+      },
+      {
+        "path": "concepts/package/Lax194892/ForComposition.lean",
+        "bytes": 979,
+        "sha256": "ab22037d1401d3a8ee29a5221b17ce6aeebefa2760a8f2b8339b843f82a6840b"
+      },
+      {
+        "path": "concepts/package/Lax194892/ForIffPolyregular.lean",
+        "bytes": 836,
+        "sha256": "a10f2eba26dc8d96a1f097f66ef887e6bcdb46030d6c49e52c90c0691f640643"
+      },
+      {
+        "path": "concepts/package/Lax194892/ForOfPebble.lean",
+        "bytes": 1145,
+        "sha256": "ba1527dbb217b739b05b4f959f114cc735b9e3a6bcb298d204d3f4eb94e7d4de"
+      },
+      {
+        "path": "concepts/package/Lax194892/ForOfPolyregular.lean",
+        "bytes": 914,
+        "sha256": "1de3bfac60c850f20a44df0ecab1b83d92eee51fb1b21728efa92a5d85947be5"
+      },
+      {
+        "path": "concepts/package/Lax194892/ForTransducers.lean",
+        "bytes": 5764,
+        "sha256": "7e85293c2ab586654ec91e9b7ba1172653e2ebfbcbdf3efc07155840f90f7f5b"
+      },
+      {
+        "path": "concepts/package/Lax194892/MarkedSquaring.lean",
+        "bytes": 1183,
+        "sha256": "3830d37e3bf43f27b1bb9ed7f8927c65e5136e2a0582fd6948908b2dcf2f8380"
+      },
+      {
+        "path": "concepts/package/Lax194892/PebbleConfigurationEncoding.lean",
+        "bytes": 3049,
+        "sha256": "a9ff22c81d28963d548ba375f97830e987bc0d8e0ac5281a6cc1fc892532ad8d"
+      },
+      {
+        "path": "concepts/package/Lax194892/PebbleContinuity.lean",
+        "bytes": 876,
+        "sha256": "1646d60fbc9ca9b18ccdacc0cad5498eaac74d8bae9840ac4e9a0ee47ee87347"
+      },
+      {
+        "path": "concepts/package/Lax194892/PebbleIffFor.lean",
+        "bytes": 844,
+        "sha256": "ff0bfc2daf9d706299f24b74e4bd9453b63e32c394b96b82a0d00c60b7218eb6"
+      },
+      {
+        "path": "concepts/package/Lax194892/PebbleOfFor.lean",
+        "bytes": 1012,
+        "sha256": "627b53953b1f7b4720776596c4b4a593eb8c09c5d7fd959b88d9f950d41073ed"
+      },
+      {
+        "path": "concepts/package/Lax194892/PebbleReachability.lean",
+        "bytes": 1944,
+        "sha256": "baff5545024c6c40aa9ad9242fc886ab058e5679a76d4133060b70ca2f3e8f20"
+      },
+      {
+        "path": "concepts/package/Lax194892/PebbleTransducers.lean",
+        "bytes": 4892,
+        "sha256": "bb6034dce1172282fd67c145ff7439c1320437d30b63bbd502413fff7c258659"
+      },
+      {
+        "path": "concepts/package/Lax194892/PolyregularContinuity.lean",
+        "bytes": 943,
+        "sha256": "15674c171aa3c55055b4ce1fdcd5760e53f7d56e08daac61f026716e07c17483"
+      },
+      {
+        "path": "concepts/package/Lax194892/PolyregularFunctions.lean",
+        "bytes": 1548,
+        "sha256": "dc847a3e766ed8df4a4ec0a4a0d9e6779aafdc2018cc3e788042f2db12439e56"
+      },
+      {
+        "path": "concepts/package/Lax194892/PolyregularOfFor.lean",
+        "bytes": 938,
+        "sha256": "2736442c0ec92c1946274660ad3474b3579ab31592b1a04c7be797bf0f0fff29"
+      },
+      {
+        "path": "concepts/package/Lax194892/PrenexNormalForm.lean",
+        "bytes": 910,
+        "sha256": "770f15e2fdd08e851143ada0c44304daad0c1d42c779c7d705beb04527943755"
       },
       {
         "path": "concepts/package/Lax194892.lean",
-        "bytes": 0,
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        "bytes": 753,
+        "sha256": "e484c4e44c67eccd13f71aea591197faadf51bf630fe88a93d82a4c2cda55ae2"
       },
       {
         "path": "concepts/package/lean-toolchain",
@@ -122,13 +1512,13 @@
       },
       {
         "path": "proofs/lib/Lax194892Proofs.trace",
-        "bytes": 2244,
-        "sha256": "14193bdb53286a98a073c3c7ee7efea4dfa3f75017c9d658a6ee02f5b8c533fd"
+        "bytes": 2409,
+        "sha256": "0c3a436e9a6ada545eb03034a8378f2ffd3ed4fa48cc54b142a425c2c9d30123"
       },
       {
         "path": "proofs/package/lake-manifest.json",
-        "bytes": 3352,
-        "sha256": "6678e082939ac3ec194b9049409422e182843209771e65f08e11a02e26ec7132"
+        "bytes": 3988,
+        "sha256": "c673c9b3a6b12e5a49f83251c41c30d20d87e48f1835a15bba83015814b461a2"
       },
       {
         "path": "proofs/package/lakefile.toml",
@@ -146,6 +1536,6 @@
         "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
       }
     ],
-    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:32ba1472df4103a2b663077535f54b9d5f38d324f381996384d1762e2c3a4cb5"
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:e8f530c7aace7279515d0c1869d35327a59ccf9c99f5065cd03e497aedc5c72e"
   }
 }
