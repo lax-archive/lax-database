@@ -4,5 +4,355 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 83
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-195003",
+      "leanVersion": "v4.30.0",
+      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "title": "Near-Linear Time Computation of Welzl Orders on Graphs with Linear Neighborhood Complexity",
+      "authors": [
+        {
+          "name": "Jan Dreier",
+          "github": "jan3er"
+        },
+        {
+          "name": "Clemens Kuske",
+          "github": "clemenskuske"
+        },
+        {
+          "name": "Codex (OpenAI)"
+        }
+      ],
+      "bibEntries": [
+        "@misc{DreierKuske2026,\n  author        = {Dreier, Jan and Kuske, Clemens},\n  title         = {Near-Linear Time Computation of {Welzl} Orders on\n                   Graphs with Linear Neighborhood Complexity},\n  year          = {2026},\n  eprint        = {2602.14625},\n  archivePrefix = {arXiv},\n  primaryClass  = {cs.DS},\n  doi           = {10.48550/arXiv.2602.14625}\n}\n",
+        "@inproceedings{Welzl1988,\n  author    = {Welzl, Emo},\n  title     = {Partition Trees for Triangle Counting and Other Range\n               Searching Problems},\n  booktitle = {Proceedings of the Fourth Annual Symposium on\n               Computational Geometry},\n  pages     = {23--33},\n  publisher = {ACM},\n  year      = {1988},\n  doi       = {10.1145/73393.73397}\n}\n"
+      ]
+    },
+    "abstract": "This submission states the graph form of the main result of Jan Dreier and\nClemens Kuske, *Near-Linear Time Computation of Welzl Orders on Graphs with\nLinear Neighborhood Complexity* (arXiv:2602.14625). Given a graph whose\nneighborhoods leave at most *c* · |*A*| distinct traces on every nonempty\nvertex set *A*, a randomized algorithm computes, with probability at least\n2/3, an ordering crossed at most 12*c*² log² *n* times by every vertex\nneighborhood. Its running time is `O((n+m) log n)` on the word RAM.\n\nThe concept surface has three review units. The first starts with Welzl\norders themselves: the crossing count of a set in a total order, the maximum\nover a set system, and the specialization to the neighborhood set system of\na graph. The second gives the exact finite-randomness reading of a randomized\nword-RAM computation: independent uniform random bits are appended to the\nordinary input, every run respects the time bound, and at least two thirds of\nthe bit strings produce an accepted output. The final concept is the theorem,\nstated for graphs in compressed sparse row form and with its constants and\nsuccess probability exposed.\n\nThe submission reuses rather than restates three registered concepts. The\nword RAM and its step-count semantics are those of *The Word RAM* (Lax67),\nthe graph input is the compressed sparse row representation of *Algorithmic\nExperiments on a Random Access Machine* (Lax11), and neighborhood complexity\nis measured by the neighborhood trace count of *Sparsity Lectures* (Lax12).\nIn particular, the theorem's linear-neighborhood-complexity hypothesis is\nliterally a linear bound on Lax12's endorsed `traceCount`.\n\nThis draft contains the definition and theorem statements only. Its proof\nobligation is intentionally open while the concept files are reviewed and\nendorsed.\n"
+  },
+  "requiredByConcepts": [
+    "Lax11",
+    "Lax12",
+    "Lax67"
+  ],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax195003.WelzlOrders",
+      "path": "concepts/Lax195003/WelzlOrders.lean",
+      "title": "Welzl orders",
+      "type": "definition",
+      "description": "Let `𝓕` be a set system on a finite ground set. A set `X ∈ 𝓕` crosses\na total order whenever two consecutive elements lie on opposite sides of\n`X`. Its crossing count is the number of such consecutive pairs, and the\ncrossing number of the order is the largest crossing count over all sets in\n`𝓕`. A Welzl order of crossing number at most *k* is a total order whose\ncrossing number is at most *k*.\n\nFor a graph, the relevant set system consists of the open neighborhoods of\nits vertices. A graph Welzl order is therefore crossed at most *k* times by\nevery vertex neighborhood.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "A total order of `Fin n` is represented by a permutation `π`, with `π v` the\nposition of `v`. Consecutive pairs are counted by their earlier endpoint:\n`u` contributes exactly when some `v` has natural-number position\n`(π u).val + 1` and precisely one of `u` and `v` lies in the set. Comparing\nthe natural values, rather than adding inside `Fin n`, avoids turning the\nlast and first positions into an artificial cyclic pair.\n\nThe crossing number is a natural supremum. Every crossing count is at most\n`n - 1`, so the set is bounded; for an empty family the natural convention\n`sSup ∅ = 0` gives the expected crossing number zero. `IsWelzlOrder` is a\n`Prop`-valued bound rather than a structure carrying data derivable from the\norder and the set system.\n\nAn output order is the list of vertices in increasing position. The graph\nspecialization packages only the existence of a permutation represented by\nthat list and satisfying the crossing bound; it does not prescribe which of\nthe potentially many good orders an algorithm must choose."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Basic",
+        "Mathlib.Data.Nat.Lattice",
+        "Mathlib.Data.Set.Card"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Basic\nimport Mathlib.Data.Nat.Lattice\nimport Mathlib.Data.Set.Card\n\n/-!\n---\ntitle: Welzl orders\ntype: definition\n---\nLet `𝓕` be a set system on a finite ground set. A set `X ∈ 𝓕` crosses\na total order whenever two consecutive elements lie on opposite sides of\n`X`. Its crossing count is the number of such consecutive pairs, and the\ncrossing number of the order is the largest crossing count over all sets in\n`𝓕`. A Welzl order of crossing number at most *k* is a total order whose\ncrossing number is at most *k*.\n\nFor a graph, the relevant set system consists of the open neighborhoods of\nits vertices. A graph Welzl order is therefore crossed at most *k* times by\nevery vertex neighborhood.\n\n# Formalization notes\n\nA total order of `Fin n` is represented by a permutation `π`, with `π v` the\nposition of `v`. Consecutive pairs are counted by their earlier endpoint:\n`u` contributes exactly when some `v` has natural-number position\n`(π u).val + 1` and precisely one of `u` and `v` lies in the set. Comparing\nthe natural values, rather than adding inside `Fin n`, avoids turning the\nlast and first positions into an artificial cyclic pair.\n\nThe crossing number is a natural supremum. Every crossing count is at most\n`n - 1`, so the set is bounded; for an empty family the natural convention\n`sSup ∅ = 0` gives the expected crossing number zero. `IsWelzlOrder` is a\n`Prop`-valued bound rather than a structure carrying data derivable from the\norder and the set system.\n\nAn output order is the list of vertices in increasing position. The graph\nspecialization packages only the existence of a permutation represented by\nthat list and satisfying the crossing bound; it does not prescribe which of\nthe potentially many good orders an algorithm must choose.\n-/\n\nnamespace Lax195003.WelzlOrders\n\n/-- A set system on `α`: a family of subsets of the ground set `α`. -/\nabbrev SetSystem (α : Type*) := Set (Set α)\n\n/-- The number of consecutive pairs in the order `π` with exactly one\nendpoint in `X`. -/\nnoncomputable def crossingCount {n : ℕ} (π : Equiv.Perm (Fin n))\n    (X : Set (Fin n)) : ℕ :=\n  {u : Fin n | ∃ v : Fin n,\n    (π v).val = (π u).val + 1 ∧ (u ∈ X ↔ v ∉ X)}.ncard\n\n/-- The crossing number of `π` with respect to `𝓕`: the largest crossing\ncount of a member of the set system. -/\nnoncomputable def crossingNumber {n : ℕ} (𝓕 : SetSystem (Fin n))\n    (π : Equiv.Perm (Fin n)) : ℕ :=\n  sSup {k : ℕ | ∃ X ∈ 𝓕, k = crossingCount π X}\n\n/-- The order `π` is a Welzl order of crossing number at most `k` for the\nset system `𝓕`. -/\ndef IsWelzlOrder {n : ℕ} (𝓕 : SetSystem (Fin n))\n    (π : Equiv.Perm (Fin n)) (k : ℕ) : Prop :=\n  crossingNumber 𝓕 π ≤ k\n\n/-- The neighborhood set system of a graph: the open neighborhood of every\nvertex. -/\ndef neighborhoodSetSystem {n : ℕ} (G : SimpleGraph (Fin n)) :\n    SetSystem (Fin n) :=\n  {X | ∃ v : Fin n, X = G.neighborSet v}\n\n/-- The list encoding of an order: vertices listed from first to last. -/\ndef EncodesOrder {n : ℕ} (y : List ℕ) (π : Equiv.Perm (Fin n)) : Prop :=\n  y = List.ofFn (fun i : Fin n => (π.symm i).val)\n\n/-- The word `y` encodes a Welzl order of crossing number at most `k` for\nthe neighborhood set system of `G`. -/\ndef EncodesGraphWelzlOrder {n : ℕ} (G : SimpleGraph (Fin n))\n    (k : ℕ) (y : List ℕ) : Prop :=\n  ∃ π : Equiv.Perm (Fin n),\n    EncodesOrder y π ∧ IsWelzlOrder (neighborhoodSetSystem G) π k\n\nend Lax195003.WelzlOrders\n",
+      "statements": []
+    },
+    {
+      "id": "Lax195003.WelzlOrdersComputation",
+      "path": "concepts/Lax195003/WelzlOrdersComputation.lean",
+      "title": "Near-linear-time computation of Welzl orders",
+      "type": "theorem",
+      "description": "Let *G* be an *n*-vertex graph whose neighborhoods leave at most\n*c* · |*A*| distinct traces on every nonempty vertex set *A*, for some\n*c* ≥ 1. There is a randomized algorithm which, given *G* and *c*, runs in\n`O((n+m) log n)` time and, with probability at least 2/3, returns a total\norder of the vertices with crossing number at most 12*c*² log² *n*.\n\nThis is Theorem 1.3 of Dreier and Kuske, *Near-Linear Time Computation of\nWelzl Orders on Graphs with Linear Neighborhood Complexity* (2026).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Neighborhood complexity is not redefined: the hypothesis is literally the\nlinear bound on `Lax12.NeighborhoodComplexity.traceCount` from the registered\n*Sparsity Lectures* submission. The graph is presented by the compressed\nsparse row encoding of Lax11, and the program runs on the registered word RAM\nof Lax67 through this submission's finite-randomness predicate.\n\nThe program and the constant `K` precede the graph, the linearity constant,\nthe input word and the word length, so one uniform program realizes the whole\nalgorithm. Its input is `c :: x` followed by the random tape. The time bound\n`K · (|x|+1) · (⌈log₂ n⌉+1)` is an elementary form of\n`O((n+m) log n)`: a compressed sparse row word has length `3+n+2m`, up to\nany repetitions present in the representation. The added ones make the bound\nmeaningful for the empty and one-vertex graphs and change it only by a\nconstant factor.\n\nThe paper writes a real-valued base-two logarithm. Its use in the natural\ncrossing and time bounds is read as `Nat.clog 2 n`, the ceiling binary\nlogarithm; this rounds the displayed upper bound upward rather than silently\nstrengthening it at non-powers of two.\n\nThe word-length condition says that the input, every value in it, and a\nlinear amount of working memory fit into a word-addressed machine. It follows\nthe convention of Lax11's algorithmic statements and is separate from the\nrunning-time bound. The random tape has the same length as the time bound;\nunused trailing bits do not affect its uniform success probability.\n\nThe output is relational rather than a preselected function of the graph:\nany encoded vertex order meeting the paper's explicit crossing bound is a\nsuccessful output. Thus the statement preserves the mathematical content of\na randomized search algorithm without imposing an arbitrary tie-breaking\nrule absent from the paper."
+        }
+      ],
+      "imports": [
+        "Lax11.GraphEncoding",
+        "Lax12.NeighborhoodComplexity",
+        "Lax195003.WelzlOrders",
+        "Lax195003.WordRamRandomness"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Nat.Log"
+      ],
+      "sourceText": "import Lax195003.WordRamRandomness\nimport Lax195003.WelzlOrders\nimport Lax11.GraphEncoding\nimport Lax12.NeighborhoodComplexity\nimport Mathlib.Data.Nat.Log\n\n/-!\n---\ntitle: Near-linear-time computation of Welzl orders\ntype: theorem\n---\nLet *G* be an *n*-vertex graph whose neighborhoods leave at most\n*c* · |*A*| distinct traces on every nonempty vertex set *A*, for some\n*c* ≥ 1. There is a randomized algorithm which, given *G* and *c*, runs in\n`O((n+m) log n)` time and, with probability at least 2/3, returns a total\norder of the vertices with crossing number at most 12*c*² log² *n*.\n\nThis is Theorem 1.3 of Dreier and Kuske, *Near-Linear Time Computation of\nWelzl Orders on Graphs with Linear Neighborhood Complexity* (2026).\n\n# Formalization notes\n\nNeighborhood complexity is not redefined: the hypothesis is literally the\nlinear bound on `Lax12.NeighborhoodComplexity.traceCount` from the registered\n*Sparsity Lectures* submission. The graph is presented by the compressed\nsparse row encoding of Lax11, and the program runs on the registered word RAM\nof Lax67 through this submission's finite-randomness predicate.\n\nThe program and the constant `K` precede the graph, the linearity constant,\nthe input word and the word length, so one uniform program realizes the whole\nalgorithm. Its input is `c :: x` followed by the random tape. The time bound\n`K · (|x|+1) · (⌈log₂ n⌉+1)` is an elementary form of\n`O((n+m) log n)`: a compressed sparse row word has length `3+n+2m`, up to\nany repetitions present in the representation. The added ones make the bound\nmeaningful for the empty and one-vertex graphs and change it only by a\nconstant factor.\n\nThe paper writes a real-valued base-two logarithm. Its use in the natural\ncrossing and time bounds is read as `Nat.clog 2 n`, the ceiling binary\nlogarithm; this rounds the displayed upper bound upward rather than silently\nstrengthening it at non-powers of two.\n\nThe word-length condition says that the input, every value in it, and a\nlinear amount of working memory fit into a word-addressed machine. It follows\nthe convention of Lax11's algorithmic statements and is separate from the\nrunning-time bound. The random tape has the same length as the time bound;\nunused trailing bits do not affect its uniform success probability.\n\nThe output is relational rather than a preselected function of the graph:\nany encoded vertex order meeting the paper's explicit crossing bound is a\nsuccessful output. Thus the statement preserves the mathematical content of\na randomized search algorithm without imposing an arbitrary tie-breaking\nrule absent from the paper.\n-/\n\nnamespace Lax195003.WelzlOrdersComputation\n\nopen Lax11.GraphEncoding\nopen Lax12.NeighborhoodComplexity\nopen Lax67.Ram\nopen Lax195003.WordRamRandomness Lax195003.WelzlOrders\n\n/-- **Near-linear computation of graph Welzl orders** (Dreier–Kuske,\nTheorem 1.3): one randomized word-RAM program, given a graph with neighborhood\ncomplexity at most `c · k`, returns with probability at least `2/3` an order\nwith crossing number at most `12 · c^2 · log₂(n)^2`, within a constant\nmultiple of `(n+m) log n` steps. -/\naxiom exists_nearLinearTime_randomized_welzlOrder_program :\n    ∃ (p : Program) (K : ℕ), 1 ≤ K ∧\n      ∀ (c n : ℕ) (G : SimpleGraph (Fin n)), 1 ≤ c →\n        (∀ A : Set (Fin n), A.Nonempty →\n          traceCount G A ≤ c * A.ncard) →\n        ∀ (w : ℕ) (x : List ℕ), EncodesGraph x n G →\n          (∀ v ∈ c :: x, K * (x.length + v + 1) ≤ 2 ^ w) →\n          let T := K * (x.length + 1) * (Nat.clog 2 n + 1)\n          SucceedsWithProbabilityAtLeastTwoThirdsInTime\n            w p (c :: x) T T\n            (EncodesGraphWelzlOrder G\n              (12 * c ^ 2 * (Nat.clog 2 n) ^ 2))\n\nend Lax195003.WelzlOrdersComputation\n",
+      "statements": [
+        {
+          "id": "Lax195003.WelzlOrdersComputation.exists_nearLinearTime_randomized_welzlOrder_program",
+          "signature": "exists_nearLinearTime_randomized_welzlOrder_program : Exists fun p =>\n  Exists fun K =>\n    And (instLENat.le 1 K)\n      (∀ (c n : Nat) (G : SimpleGraph (Fin n)),\n        instLENat.le 1 c →\n          (∀ (A : Set (Fin n)),\n              A.Nonempty → instLENat.le (Lax12.NeighborhoodComplexity.traceCount G A) (instHMul.hMul c A.ncard)) →\n            ∀ (w : Nat) (x : List Nat),\n              Lax11.GraphEncoding.EncodesGraph x n G →\n                (∀ (v : Nat),\n                    List.instMembership.mem (List.cons c x) v →\n                      instLENat.le (instHMul.hMul K (instHAdd.hAdd (instHAdd.hAdd x.length v) 1)) (instHPow.hPow 2 w)) →\n                  let T := instHMul.hMul (instHMul.hMul K (instHAdd.hAdd x.length 1)) (instHAdd.hAdd (Nat.clog 2 n) 1);\n                  Lax195003.WordRamRandomness.SucceedsWithProbabilityAtLeastTwoThirdsInTime w p (List.cons c x) T T\n                    (Lax195003.WelzlOrders.EncodesGraphWelzlOrder G\n                      (instHMul.hMul (instHMul.hMul 12 (instHPow.hPow c 2)) (instHPow.hPow (Nat.clog 2 n) 2))))",
+          "startLine": 63,
+          "endLine": 79,
+          "doc": "**Near-linear computation of graph Welzl orders** (Dreier–Kuske,\nTheorem 1.3): one randomized word-RAM program, given a graph with neighborhood\ncomplexity at most `c · k`, returns with probability at least `2/3` an order\nwith crossing number at most `12 · c^2 · log₂(n)^2`, within a constant\nmultiple of `(n+m) log n` steps."
+        }
+      ]
+    },
+    {
+      "id": "Lax195003.WordRamRandomness",
+      "path": "concepts/Lax195003/WordRamRandomness.lean",
+      "title": "Randomized computation on the word RAM",
+      "type": "definition",
+      "description": "A randomized word-RAM computation is a deterministic word-RAM program whose\nordinary input is followed by a finite tape of independent uniform random\nbits. It succeeds with probability at least 2/3 within time *T* if every\nrandom tape makes the program halt within *T* steps, and at least two thirds\nof the equally likely bit strings make it halt with an accepted output.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The machine itself is exactly the word RAM of Lax67; randomness is input, not\na new primitive instruction. A random tape of length `r` is a function\n`Fin r → Bool`, encoded in index order by the words zero and one. There are\nexactly `2 ^ r` such tapes, and the integer inequality\n`2 · 2^r ≤ 3 · |good tapes|` states probability at least 2/3 without\nintroducing a measure-theoretic representation of a finite experiment.\n\nThe definition separates total running time from success: every tape must\nhalt within the bound, while a bad tape may return any output. The accepting\ncondition is a relation on output words because a search algorithm may return\nany one of many correct witnesses. Supplying more bits than a program reads\ndoes not alter the success fraction—each used prefix has equally many\nextensions—so a theorem may use its time bound itself as a uniform tape\nlength without exposing an implementation-specific random-bit count."
+        }
+      ],
+      "imports": [
+        "Lax67.Ram"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Set.Card"
+      ],
+      "sourceText": "import Lax67.Ram\nimport Mathlib.Data.Set.Card\n\n/-!\n---\ntitle: Randomized computation on the word RAM\ntype: definition\n---\nA randomized word-RAM computation is a deterministic word-RAM program whose\nordinary input is followed by a finite tape of independent uniform random\nbits. It succeeds with probability at least 2/3 within time *T* if every\nrandom tape makes the program halt within *T* steps, and at least two thirds\nof the equally likely bit strings make it halt with an accepted output.\n\n# Formalization notes\n\nThe machine itself is exactly the word RAM of Lax67; randomness is input, not\na new primitive instruction. A random tape of length `r` is a function\n`Fin r → Bool`, encoded in index order by the words zero and one. There are\nexactly `2 ^ r` such tapes, and the integer inequality\n`2 · 2^r ≤ 3 · |good tapes|` states probability at least 2/3 without\nintroducing a measure-theoretic representation of a finite experiment.\n\nThe definition separates total running time from success: every tape must\nhalt within the bound, while a bad tape may return any output. The accepting\ncondition is a relation on output words because a search algorithm may return\nany one of many correct witnesses. Supplying more bits than a program reads\ndoes not alter the success fraction—each used prefix has equally many\nextensions—so a theorem may use its time bound itself as a uniform tape\nlength without exposing an implementation-specific random-bit count.\n-/\n\nnamespace Lax195003.WordRamRandomness\n\nopen Lax67.Ram\n\n/-- A bit tape as a word list, in index order, with `false` encoded by zero\nand `true` by one. -/\ndef bitTape {r : ℕ} (ρ : Fin r → Bool) : List ℕ :=\n  List.ofFn (fun i : Fin r => if ρ i then 1 else 0)\n\n/-- The program halts within `T` steps on every `r`-bit tape, and on at least\ntwo thirds of those tapes its output satisfies `Accept`. -/\nnoncomputable def SucceedsWithProbabilityAtLeastTwoThirdsInTime\n    (w : ℕ) (p : Program) (input : List ℕ) (r T : ℕ)\n    (Accept : List ℕ → Prop) : Prop :=\n  (∀ ρ : Fin r → Bool, ∃ y : List ℕ, ∃ t ≤ T,\n      RunsTo w p (input ++ bitTape ρ) y t) ∧\n    2 * 2 ^ r ≤ 3 *\n      {ρ : Fin r → Bool | ∃ y : List ℕ, ∃ t ≤ T,\n        RunsTo w p (input ++ bitTape ρ) y t ∧ Accept y}.ncard\n\nend Lax195003.WordRamRandomness\n",
+      "statements": []
+    }
+  ],
+  "proofs": [],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "87569660edcf9086465abca070f31f11268e6d58e22878d2d6008b65930dfc2e",
+    "sourceCommit": "f94d59dab0eb5b2d100e1f0d525e75919d732582",
+    "leanToolchain": "leanprover/lean4:v4.30.0",
+    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "files": [
+      {
+        "path": "concepts/ir/Lax195003/WelzlOrders.c",
+        "bytes": 1854,
+        "sha256": "db6f8cec5293f23d731631ef7ac9fc03c1af3ff7c65f2f7d4ae3e2243e5fea86"
+      },
+      {
+        "path": "concepts/ir/Lax195003/WelzlOrders.c.hash",
+        "bytes": 16,
+        "sha256": "2f0ba0d5646dd7f567bb1b79f14c9062801e93d4cf2ead8b8e283f81f2cf4ae9"
+      },
+      {
+        "path": "concepts/ir/Lax195003/WelzlOrdersComputation.c",
+        "bytes": 2303,
+        "sha256": "5721ddda215fc1307f0eca8c8604ad1951dba465c82112d31c90c584798ec19a"
+      },
+      {
+        "path": "concepts/ir/Lax195003/WelzlOrdersComputation.c.hash",
+        "bytes": 16,
+        "sha256": "a44ea43ddb2cc768f71754def071252d14461026025077873a4473bf3391f12c"
+      },
+      {
+        "path": "concepts/ir/Lax195003/WordRamRandomness.c",
+        "bytes": 2676,
+        "sha256": "8b91e783feb7fc8c338c75173f8baf3da82b67f72099e6b69fe01dfd2dc6c0ec"
+      },
+      {
+        "path": "concepts/ir/Lax195003/WordRamRandomness.c.hash",
+        "bytes": 16,
+        "sha256": "e19997a77f7d5a66f1fdfb35322d1cdd436ffa8c3a16b7edd204239ccfe6e8f4"
+      },
+      {
+        "path": "concepts/ir/Lax195003.c",
+        "bytes": 1830,
+        "sha256": "06204c28f4bb1ee99b95dfdfb4f42ceacc9d95d927db613f334d44e3723d9e13"
+      },
+      {
+        "path": "concepts/ir/Lax195003.c.hash",
+        "bytes": 16,
+        "sha256": "a886f0df7cd9e681d2806b8188db61e7c21f2116d603106db86c4045c3d18e3c"
+      },
+      {
+        "path": "concepts/lib/Lax195003/WelzlOrders.ilean",
+        "bytes": 5791,
+        "sha256": "ff6a91440d95946161a1b26ae5b244d7022110fb51a58683914973f27e795789"
+      },
+      {
+        "path": "concepts/lib/Lax195003/WelzlOrders.ilean.hash",
+        "bytes": 16,
+        "sha256": "1f85ebe27b7eeb8f48b67a1ed0cdcfe2432767cb926a85e80cebbf0e0b49c343"
+      },
+      {
+        "path": "concepts/lib/Lax195003/WelzlOrders.olean",
+        "bytes": 24944,
+        "sha256": "bad8fe48d4236a752b0fb690294cee1796958dc9078442d3cbd816a96222ff4c"
+      },
+      {
+        "path": "concepts/lib/Lax195003/WelzlOrders.olean.hash",
+        "bytes": 16,
+        "sha256": "624521a61df743f08d3ee9882f99d9624e4dfe0f88c6dc58cdaecacb3d0111a0"
+      },
+      {
+        "path": "concepts/lib/Lax195003/WelzlOrders.trace",
+        "bytes": 2795,
+        "sha256": "ff106365b37272eac19a5a4fe7158aa84706c3e626b4fe9cb2246fe8a14458ec"
+      },
+      {
+        "path": "concepts/lib/Lax195003/WelzlOrdersComputation.ilean",
+        "bytes": 4191,
+        "sha256": "79a2ac295252b68b2d63199192c05542cdf806b0c1b9ac1c217b5837940a4eaa"
+      },
+      {
+        "path": "concepts/lib/Lax195003/WelzlOrdersComputation.ilean.hash",
+        "bytes": 16,
+        "sha256": "72c9161a42fee1beaf9a3d98cdcb19994cfa1faf85eef98fc29f97193ae264d3"
+      },
+      {
+        "path": "concepts/lib/Lax195003/WelzlOrdersComputation.olean",
+        "bytes": 18280,
+        "sha256": "9c43b92498dc7d1874d5db0f6faad7b4894c366f8bbf910c9f78a0f07f6db679"
+      },
+      {
+        "path": "concepts/lib/Lax195003/WelzlOrdersComputation.olean.hash",
+        "bytes": 16,
+        "sha256": "a3f0d01debaf202e5e6479365cf453a9ce2c06f3b0de5c5c2eddec96132947c4"
+      },
+      {
+        "path": "concepts/lib/Lax195003/WelzlOrdersComputation.trace",
+        "bytes": 3165,
+        "sha256": "d3de3617df74afa0118b3d7c64533f65688c05a5213a8aa76ec120f6471d5a8d"
+      },
+      {
+        "path": "concepts/lib/Lax195003/WordRamRandomness.ilean",
+        "bytes": 3494,
+        "sha256": "1ccf3824092009ae2422149d7fd7de28dd946671b333c95d61dcbd44fa69bd82"
+      },
+      {
+        "path": "concepts/lib/Lax195003/WordRamRandomness.ilean.hash",
+        "bytes": 16,
+        "sha256": "926c49fe1a35f47ff29e41a4fb4f30e898b8f03176efe477b07e190a63d6a2b0"
+      },
+      {
+        "path": "concepts/lib/Lax195003/WordRamRandomness.olean",
+        "bytes": 23480,
+        "sha256": "2d569cbcd5d6b10874f18ae8766506d78c06efd2768e243e529687ab30cd1f90"
+      },
+      {
+        "path": "concepts/lib/Lax195003/WordRamRandomness.olean.hash",
+        "bytes": 16,
+        "sha256": "e8d610a5ab612fd5ea70b25612a40b10f808294c013e9c27e26f9ab7ae9bd2a6"
+      },
+      {
+        "path": "concepts/lib/Lax195003/WordRamRandomness.trace",
+        "bytes": 2598,
+        "sha256": "a6a638b0a543e997c66d60a8f4e827fd6b1ecce40ad953e6974203d5bb6c3348"
+      },
+      {
+        "path": "concepts/lib/Lax195003.ilean",
+        "bytes": 228,
+        "sha256": "9116bc471aa3adb8a0c09c9bb9be8a8a6ba8788eecf201642964c7df833c934b"
+      },
+      {
+        "path": "concepts/lib/Lax195003.ilean.hash",
+        "bytes": 16,
+        "sha256": "7ec682f7de76847fbcb67d3ac47c59a9689236ab0a33e120ebe4f733e5e9cffb"
+      },
+      {
+        "path": "concepts/lib/Lax195003.olean",
+        "bytes": 1584,
+        "sha256": "df96ef16bdf4ab07951168f7e71e97ace80121f2104cb9e1071917f03f319926"
+      },
+      {
+        "path": "concepts/lib/Lax195003.olean.hash",
+        "bytes": 16,
+        "sha256": "e5a04360a2832eb32e90eec86d0a2ccf988b82123218b0999b55a41a1fbe4413"
+      },
+      {
+        "path": "concepts/lib/Lax195003.trace",
+        "bytes": 2679,
+        "sha256": "5a7505a712035078cd7e78bfc2b697dfd4ab5c84adee0335db0e1e596c838273"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3774,
+        "sha256": "52f4266b81d51b3f1dd8d071e488c0d116f8a6110e044154fa17e3a5ab43453c"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 895,
+        "sha256": "c97d3b473a0f81f008f6e6c482c468b71300d08021ccbb61c0a45b674d726adc"
+      },
+      {
+        "path": "concepts/package/Lax195003/WelzlOrders.lean",
+        "bytes": 3538,
+        "sha256": "afed2f393b56fd7aaad6ce3d14136a503f1aa9a8c738501fb923e60e821784af"
+      },
+      {
+        "path": "concepts/package/Lax195003/WelzlOrdersComputation.lean",
+        "bytes": 3786,
+        "sha256": "675112c14a1f9f7226421e5fa0a3f3df54d4b5a4f18072ef67716a526c0d735d"
+      },
+      {
+        "path": "concepts/package/Lax195003/WordRamRandomness.lean",
+        "bytes": 2325,
+        "sha256": "9f4a8bbecb2dc7ad85146322ac05a646b7e40bac973808ab533888067a63b511"
+      },
+      {
+        "path": "concepts/package/Lax195003.lean",
+        "bytes": 104,
+        "sha256": "46af41e235066eb1008a721c2f57b34ea41440fdbd01cf45c90169ba07530b0d"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      },
+      {
+        "path": "proofs/ir/Lax195003Proofs.c",
+        "bytes": 1095,
+        "sha256": "1ac89d8cb14cd3cf578eee887d7cdb285f88000243086e648575aff3da4694d1"
+      },
+      {
+        "path": "proofs/ir/Lax195003Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "5d20311ded8031f3d812343634c1675629cc2a1234855c6c3831df3396e5674f"
+      },
+      {
+        "path": "proofs/lib/Lax195003Proofs.ilean",
+        "bytes": 86,
+        "sha256": "df31ec59ada769c7208ad6b4565196c49ef48a560d6b2dd5afdb2515af170f87"
+      },
+      {
+        "path": "proofs/lib/Lax195003Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "048acbe3475cb7546afaef02595b1d5cb3b988f0967ebf7ace24ed541b403257"
+      },
+      {
+        "path": "proofs/lib/Lax195003Proofs.olean",
+        "bytes": 1200,
+        "sha256": "eca53767a94c86d8d89441569d46b35d985400aeb059a81adab4009934b2be89"
+      },
+      {
+        "path": "proofs/lib/Lax195003Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "3edd5323de79a70da094290d0d6d66ff4f77ceb153ea856f592fab45ec0cb71e"
+      },
+      {
+        "path": "proofs/lib/Lax195003Proofs.trace",
+        "bytes": 2290,
+        "sha256": "69cd83e91baa804cc9b296302904098ee8168f4e3a9b50970dfd71808506be6a"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3964,
+        "sha256": "810ee00ac5d1f11ea69f45bf15ebf786555bd8266eab059a785ced2ba2139336"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "516dba39b2d7bb0607f094db005e3486d1974b3db68770b9cd9574a349b5a535"
+      },
+      {
+        "path": "proofs/package/Lax195003Proofs.lean",
+        "bytes": 43,
+        "sha256": "a26ece122f77bb763183bc41898a2b7434094e3aeb2c5c5a49d2653b1e70d401"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:87569660edcf9086465abca070f31f11268e6d58e22878d2d6008b65930dfc2e"
   }
 }
