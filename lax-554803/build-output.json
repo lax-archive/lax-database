@@ -4,5 +4,975 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 85
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-554803",
+      "leanVersion": "v4.30.0",
+      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "title": "Polynomial Time and Closure under Complement",
+      "authors": [
+        {
+          "name": "Édouard Bonnet"
+        },
+        {
+          "name": "gpt-6-astra max"
+        }
+      ],
+      "bibEntries": []
+    },
+    "abstract": "We formalize the complexity class $\\mathrm{P}$ and prove that it is closed under\ncomplement. We prove that the stack-machine and elementary single-tape\ndefinitions coincide, with polynomial bounds covering input conversion and\noutput cleanup. Requiring finite work-stack alphabets leaves the class unchanged.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax554803.ComplementClosure",
+      "path": "concepts/Lax554803/ComplementClosure.lean",
+      "title": "P is closed under complement",
+      "type": "theorem",
+      "description": "If a language of binary strings belongs to $\\mathrm{P}$, then its complement\nalso belongs to $\\mathrm{P}$. The complement is taken in the set of all finite\nbinary strings.",
+      "imports": [
+        "Lax554803.PolynomialTime"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax554803.PolynomialTime\n\n/-!\n---\ntitle: P is closed under complement\ntype: theorem\n---\nIf a language of binary strings belongs to $\\mathrm{P}$, then its complement\nalso belongs to $\\mathrm{P}$. The complement is taken in the set of all finite\nbinary strings.\n-/\n\nnamespace Lax554803.ComplementClosure\n\nopen Lax554803.PolynomialTime\n\n/-- The complement of a polynomial-time decidable language is polynomial-time decidable. -/\naxiom closed_under_complement (L : Language) : L ∈ P → Lᶜ ∈ P\n\nend Lax554803.ComplementClosure\n",
+      "statements": [
+        {
+          "id": "Lax554803.ComplementClosure.closed_under_complement",
+          "signature": "closed_under_complement : ∀ (L : Lax554803.PolynomialTime.Language),\n  Set.instMembership.mem Lax554803.PolynomialTime.P L →\n    Set.instMembership.mem Lax554803.PolynomialTime.P (Set.instCompl.compl L)",
+          "startLine": 17,
+          "endLine": 18,
+          "doc": "The complement of a polynomial-time decidable language is polynomial-time decidable."
+        }
+      ]
+    },
+    {
+      "id": "Lax554803.FiniteStackEquivalence",
+      "path": "concepts/Lax554803/FiniteStackEquivalence.lean",
+      "title": "Finite stack alphabets suffice",
+      "type": "theorem",
+      "description": "Requiring every work-stack alphabet to be finite leaves $\\mathrm{P}$ unchanged.",
+      "imports": [
+        "Lax554803.MachineModels"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax554803.MachineModels\n\n/-!\n---\ntitle: Finite stack alphabets suffice\ntype: theorem\n---\nRequiring every work-stack alphabet to be finite leaves $\\mathrm{P}$ unchanged.\n-/\n\nnamespace Lax554803.FiniteStackEquivalence\n\nopen PolynomialTime MachineModels\n\n/-- Requiring all work alphabets to be finite does not change P. -/\naxiom finiteStackP_eq_P : FiniteStackP = P\n\nend Lax554803.FiniteStackEquivalence\n",
+      "statements": [
+        {
+          "id": "Lax554803.FiniteStackEquivalence.finiteStackP_eq_P",
+          "signature": "finiteStackP_eq_P : Eq Lax554803.MachineModels.FiniteStackP Lax554803.PolynomialTime.P",
+          "startLine": 15,
+          "endLine": 16,
+          "doc": "Requiring all work alphabets to be finite does not change P."
+        }
+      ]
+    },
+    {
+      "id": "Lax554803.MachineModels",
+      "path": "concepts/Lax554803/MachineModels.lean",
+      "title": "Finite-stack and elementary single-tape definitions of P",
+      "type": "definition",
+      "description": "The finite-stack class requires every stack alphabet to be finite. The\nsingle-tape class uses a deterministic machine whose transitions each move\nthe head one square or write one symbol. Its alphabet and control states\nare finite. The input is\nwritten in its original order, starting at the head, with blank tape elsewhere.\nThe two input symbols are distinct and different from blank. A halted control\nstate determines the Boolean answer; work tape need not be erased.",
+      "imports": [
+        "Lax554803.PolynomialTime"
+      ],
+      "mathlibImports": [
+        "Mathlib.Computability.TuringMachine.PostTuringMachine"
+      ],
+      "sourceText": "import Lax554803.PolynomialTime\nimport Mathlib.Computability.TuringMachine.PostTuringMachine\n\n/-!\n---\ntitle: Finite-stack and elementary single-tape definitions of P\ntype: definition\n---\nThe finite-stack class requires every stack alphabet to be finite. The\nsingle-tape class uses a deterministic machine whose transitions each move\nthe head one square or write one symbol. Its alphabet and control states\nare finite. The input is\nwritten in its original order, starting at the head, with blank tape elsewhere.\nThe two input symbols are distinct and different from blank. A halted control\nstate determines the Boolean answer; work tape need not be erased.\n-/\n\nnamespace Lax554803.MachineModels\n\nopen Turing PolynomialTime\n\n/-- Polynomial-time stack deciders with finite alphabets at every stack. -/\ndef FiniteStackP : Set Language :=\n  {L | ∃ (f : Word → Bool)\n    (M : TM2ComputableInPolyTime id Computability.encodeBool f),\n    (∀ w, f w = true ↔ w ∈ L) ∧ ∀ k, Finite (M.tm.Γ k)}\n\n/-- A finite elementary single-tape machine, with ordinary binary input. -/\nstructure SingleTape where\n  Γ : Type\n  Q : Type\n  [alphabet : Fintype Γ]\n  [control : Fintype Q]\n  [blank : Inhabited Γ]\n  [initial : Inhabited Q]\n  input : Bool ↪ Γ\n  input_ne_blank : ∀ b, input b ≠ default\n  transition : TM0.Machine Γ Q\n  accept : Q → Bool\n\nattribute [instance] SingleTape.alphabet SingleTape.control SingleTape.blank SingleTape.initial\n\n/-- The standard single-tape formulation: one machine and one polynomial,\nhalting on every input, with acceptance exactly matching membership. -/\ndef SingleTapeP : Set Language :=\n  {L | ∃ (M : SingleTape) (p : Polynomial ℕ), ∀ w : Word,\n    ∃ c : TM0.Cfg M.Γ M.Q,\n      Nonempty (StateTransition.EvalsToInTime (TM0.step M.transition)\n        (TM0.init (w.map M.input)) (some c) (p.eval w.length)) ∧\n      TM0.step M.transition c = none ∧ (M.accept c.q = true ↔ w ∈ L)}\n\nend Lax554803.MachineModels\n",
+      "statements": []
+    },
+    {
+      "id": "Lax554803.ModelEquivalence",
+      "path": "concepts/Lax554803/ModelEquivalence.lean",
+      "title": "Single-tape characterization of P",
+      "type": "theorem",
+      "description": "The elementary single-tape and stack-machine definitions of $\\mathrm{P}$\ncoincide. Both simulations include polynomial bounds for input conversion,\nexecution, and final output conversion.",
+      "imports": [
+        "Lax554803.MachineModels"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax554803.MachineModels\n\n/-!\n---\ntitle: Single-tape characterization of P\ntype: theorem\n---\nThe elementary single-tape and stack-machine definitions of $\\mathrm{P}$\ncoincide. Both simulations include polynomial bounds for input conversion,\nexecution, and final output conversion.\n-/\n\nnamespace Lax554803.ModelEquivalence\n\nopen PolynomialTime MachineModels\n\n/-- The elementary single-tape and stack definitions give the same class P. -/\naxiom singleTapeP_eq_P : SingleTapeP = P\n\nend Lax554803.ModelEquivalence\n",
+      "statements": [
+        {
+          "id": "Lax554803.ModelEquivalence.singleTapeP_eq_P",
+          "signature": "singleTapeP_eq_P : Eq Lax554803.MachineModels.SingleTapeP Lax554803.PolynomialTime.P",
+          "startLine": 17,
+          "endLine": 18,
+          "doc": "The elementary single-tape and stack definitions give the same class P."
+        }
+      ]
+    },
+    {
+      "id": "Lax554803.PolynomialTime",
+      "path": "concepts/Lax554803/PolynomialTime.lean",
+      "title": "The complexity class P",
+      "type": "definition",
+      "description": "A language of finite binary strings belongs to $\\mathrm{P}$ if a deterministic\nTuring machine decides membership in that language in polynomial time.\nPrecisely, there are a single machine and a polynomial $p \\in \\mathbb{N}[X]$\nsuch that, on every input $w$, the machine halts within $p(|w|)$ steps and\nreturns the bit $1$ if $w$ belongs to the language and $0$ otherwise.\n\nThe definition uses mathlib's deterministic stack machines, the identity\nencoding of binary strings, and a singleton Boolean output. Time counts\ntransitions of fixed finite instruction blocks. We also prove equivalence\nwith elementary single-tape machines.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Computability.TuringMachine.Computable"
+      ],
+      "sourceText": "import Mathlib.Computability.TuringMachine.Computable\n\n/-!\n---\ntitle: The complexity class P\ntype: definition\n---\nA language of finite binary strings belongs to $\\mathrm{P}$ if a deterministic\nTuring machine decides membership in that language in polynomial time.\nPrecisely, there are a single machine and a polynomial $p \\in \\mathbb{N}[X]$\nsuch that, on every input $w$, the machine halts within $p(|w|)$ steps and\nreturns the bit $1$ if $w$ belongs to the language and $0$ otherwise.\n\nThe definition uses mathlib's deterministic stack machines, the identity\nencoding of binary strings, and a singleton Boolean output. Time counts\ntransitions of fixed finite instruction blocks. We also prove equivalence\nwith elementary single-tape machines.\n-/\n\nnamespace Lax554803.PolynomialTime\n\n/-- A finite binary string. -/\nabbrev Word := List Bool\n\n/-- A language of finite binary strings. -/\nabbrev Language := Set Word\n\n/-- Languages whose Boolean characteristic functions are computable in polynomial time. -/\ndef P : Set Language :=\n  {L | ∃ f : Word → Bool,\n    (∀ w, f w = true ↔ w ∈ L) ∧\n    Nonempty (Turing.TM2ComputableInPolyTime id Computability.encodeBool f)}\n\nend Lax554803.PolynomialTime\n",
+      "statements": []
+    },
+    {
+      "id": "Lax554803.SingleTapeComplement",
+      "path": "concepts/Lax554803/SingleTapeComplement.lean",
+      "title": "Single-tape P is closed under complement",
+      "type": "theorem",
+      "description": "The elementary single-tape class $\\mathrm{P}$ is closed under complement.",
+      "imports": [
+        "Lax554803.MachineModels"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax554803.MachineModels\n\n/-!\n---\ntitle: Single-tape P is closed under complement\ntype: theorem\n---\nThe elementary single-tape class $\\mathrm{P}$ is closed under complement.\n-/\n\nnamespace Lax554803.SingleTapeComplement\n\nopen PolynomialTime MachineModels\n\n/-- Complement closure for the elementary single-tape definition. -/\naxiom closed_under_complement (L : Language) :\n  L ∈ SingleTapeP → Lᶜ ∈ SingleTapeP\n\nend Lax554803.SingleTapeComplement\n",
+      "statements": [
+        {
+          "id": "Lax554803.SingleTapeComplement.closed_under_complement",
+          "signature": "closed_under_complement : ∀ (L : Lax554803.PolynomialTime.Language),\n  Set.instMembership.mem Lax554803.MachineModels.SingleTapeP L →\n    Set.instMembership.mem Lax554803.MachineModels.SingleTapeP (Set.instCompl.compl L)",
+          "startLine": 15,
+          "endLine": 17,
+          "doc": "Complement closure for the elementary single-tape definition."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax554803Proofs.closed_under_complement",
+      "path": "proofs/Lax554803Proofs/ComplementClosure.lean",
+      "conclusion": "Lax554803.ComplementClosure.closed_under_complement",
+      "assumptions": [],
+      "description": "Compose the output-alphabet equivalence with Boolean negation. The same\nmachine execution then computes the complemented answer with the same time\nbound. Negating the correctness equivalence identifies the complement language."
+    },
+    {
+      "id": "Lax554803Proofs.ModelEquivalence.finiteStackP_eq_P",
+      "path": "proofs/Lax554803Proofs/ModelEquivalence.lean",
+      "conclusion": "Lax554803.FiniteStackEquivalence.finiteStackP_eq_P",
+      "assumptions": [],
+      "description": "Retain the input/output symbols and the finite ranges of push instructions.\nRestricting each stack alphabet to these symbols preserves every transition\nand the original time polynomial."
+    },
+    {
+      "id": "Lax554803Proofs.ModelEquivalence.singleTape_closed_under_complement",
+      "path": "proofs/Lax554803Proofs/ModelEquivalence.lean",
+      "conclusion": "Lax554803.SingleTapeComplement.closed_under_complement",
+      "assumptions": [
+        "Lax554803.ComplementClosure.closed_under_complement",
+        "Lax554803.ModelEquivalence.singleTapeP_eq_P"
+      ],
+      "description": "Transport the established complement theorem across the proved class equality."
+    },
+    {
+      "id": "Lax554803Proofs.ModelEquivalence.singleTapeP_eq_P",
+      "path": "proofs/Lax554803Proofs/ModelEquivalence.lean",
+      "conclusion": "Lax554803.ModelEquivalence.singleTapeP_eq_P",
+      "assumptions": [
+        "Lax554803.FiniteStackEquivalence.finiteStackP_eq_P"
+      ],
+      "description": "After restricting stack alphabets, compile stacks to tape tracks with polynomial\noverhead. Conversely, simulate a tape by two stacks with linear overhead.\nBoth bounds include input conversion and final output conversion."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "4cfdd188967016564b5700628952d596adf2d61bbc94771f859f48fef08300fd",
+    "sourceCommit": "289e82d4351fe8c710add0dcbffd0290f016994e",
+    "leanToolchain": "leanprover/lean4:v4.30.0",
+    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "files": [
+      {
+        "path": "concepts/ir/Lax554803/ComplementClosure.c",
+        "bytes": 1356,
+        "sha256": "b5de76da1e84377922e309e7e1b56317aed945ae96f11ce45116947b2eaa36ff"
+      },
+      {
+        "path": "concepts/ir/Lax554803/ComplementClosure.c.hash",
+        "bytes": 16,
+        "sha256": "d60f72b4e0904052052ca0b2343472d13acc98832ac8f36262056c63e193f241"
+      },
+      {
+        "path": "concepts/ir/Lax554803/FiniteStackEquivalence.c",
+        "bytes": 1363,
+        "sha256": "f47ba9fd0953c8806901d49f49feb817851ed01d5314c1af269cf0af686cc2f4"
+      },
+      {
+        "path": "concepts/ir/Lax554803/FiniteStackEquivalence.c.hash",
+        "bytes": 16,
+        "sha256": "02193eb24c3824ed452c54bc3c8f0c13f2c433500611599009b2e4f038a18b24"
+      },
+      {
+        "path": "concepts/ir/Lax554803/MachineModels.c",
+        "bytes": 1674,
+        "sha256": "c18c492764ebb3b51290034833ebcd47b98ba5340bbb02b734fd9d2ff6856cea"
+      },
+      {
+        "path": "concepts/ir/Lax554803/MachineModels.c.hash",
+        "bytes": 16,
+        "sha256": "dbbaa918eaf623b9684b7c3820d1b44af180aa3830cd03f2c793f018d3090e8e"
+      },
+      {
+        "path": "concepts/ir/Lax554803/ModelEquivalence.c",
+        "bytes": 1351,
+        "sha256": "3678d7e8581de3d7d54a379fabb4dab8fd279198d07ea25bd0fc7c16ee48fc0f"
+      },
+      {
+        "path": "concepts/ir/Lax554803/ModelEquivalence.c.hash",
+        "bytes": 16,
+        "sha256": "01fde41cf2be568c3266c963f06c11770a8ff145dd63598cdc8adf3c178dd078"
+      },
+      {
+        "path": "concepts/ir/Lax554803/PolynomialTime.c",
+        "bytes": 1412,
+        "sha256": "5bf12c9b47d6c3061bd32bd81b1c0c398982bbc5d7eb5d83032880a7af789b79"
+      },
+      {
+        "path": "concepts/ir/Lax554803/PolynomialTime.c.hash",
+        "bytes": 16,
+        "sha256": "6055c37e3f5bdf9e462d9ccfaad9536559ffbd075695333afb582231e742bdad"
+      },
+      {
+        "path": "concepts/ir/Lax554803/SingleTapeComplement.c",
+        "bytes": 1359,
+        "sha256": "78aea357c0c71751386e79d4e6c39cf1c304db2dea78646a10d27045582da3f3"
+      },
+      {
+        "path": "concepts/ir/Lax554803/SingleTapeComplement.c.hash",
+        "bytes": 16,
+        "sha256": "d99ae05ae9a0c493f3706f8a6b355694c1766dd6d3b137b7eed39ef25e2e53ed"
+      },
+      {
+        "path": "concepts/ir/Lax554803.c",
+        "bytes": 2589,
+        "sha256": "1ea8739ec3014cfe31cac8fd159da341cd4892c486eba4f9fd31f114c98eec67"
+      },
+      {
+        "path": "concepts/ir/Lax554803.c.hash",
+        "bytes": 16,
+        "sha256": "abcb99adf18f035a60aec32ccb35d4eaf7870d79451dfca7daac320ed1bdc0e7"
+      },
+      {
+        "path": "concepts/lib/Lax554803/ComplementClosure.ilean",
+        "bytes": 867,
+        "sha256": "47c97ebdf7dabd4b3ed945c938e91e71fec7d39f19f151213f7dd04d6a01dada"
+      },
+      {
+        "path": "concepts/lib/Lax554803/ComplementClosure.ilean.hash",
+        "bytes": 16,
+        "sha256": "65b2e24d26b9871a7cb53485ab90b722667f9976eadec132d02c363f8daf7a46"
+      },
+      {
+        "path": "concepts/lib/Lax554803/ComplementClosure.olean",
+        "bytes": 6480,
+        "sha256": "8e0eb0334d2cc743e414c235db367fa45a90947c5220bd3678075ee7e10a2f0b"
+      },
+      {
+        "path": "concepts/lib/Lax554803/ComplementClosure.olean.hash",
+        "bytes": 16,
+        "sha256": "1aba58198e0b7eb8b10e3adcded2bf5ec1262ef6363807bce35eb84092ae8710"
+      },
+      {
+        "path": "concepts/lib/Lax554803/ComplementClosure.trace",
+        "bytes": 2229,
+        "sha256": "071a524132e4591776940f9217d55e62b07c852ecd2812430b871edaa75b6999"
+      },
+      {
+        "path": "concepts/lib/Lax554803/FiniteStackEquivalence.ilean",
+        "bytes": 805,
+        "sha256": "86d8445b3ef50a11ef153deb8479336d04e4a3adf16eacb07c8628bc599ec170"
+      },
+      {
+        "path": "concepts/lib/Lax554803/FiniteStackEquivalence.ilean.hash",
+        "bytes": 16,
+        "sha256": "8d591ce246fa7819024931a8b8ed7c2ce6da174a06b6388241a2913bd7eb339f"
+      },
+      {
+        "path": "concepts/lib/Lax554803/FiniteStackEquivalence.olean",
+        "bytes": 4992,
+        "sha256": "f2a479121cb3c81f8da7567277cbdca3af6aa5cd96696658c17eb17592f64f66"
+      },
+      {
+        "path": "concepts/lib/Lax554803/FiniteStackEquivalence.olean.hash",
+        "bytes": 16,
+        "sha256": "74de9110eaf5b373378584eaf7473d08f260d08db0bcfb52ad8ce0dca4687777"
+      },
+      {
+        "path": "concepts/lib/Lax554803/FiniteStackEquivalence.trace",
+        "bytes": 2270,
+        "sha256": "073be70e72180f5ba2c6d90506f0d31556078cfe6520d32b3de8bd49e953f7eb"
+      },
+      {
+        "path": "concepts/lib/Lax554803/MachineModels.ilean",
+        "bytes": 7555,
+        "sha256": "a9ef9e92715011a200b851a50db04bf99889990d875a949ab4f3148dbfec779d"
+      },
+      {
+        "path": "concepts/lib/Lax554803/MachineModels.ilean.hash",
+        "bytes": 16,
+        "sha256": "74269e5a87cda6a3251a4f51ce19a71e4eff445905d3274e67336127f1a42d6f"
+      },
+      {
+        "path": "concepts/lib/Lax554803/MachineModels.olean",
+        "bytes": 105240,
+        "sha256": "91340a9a403f71ac5ebab21afe87defed2b21eb5dac0e2874236cd4c31268506"
+      },
+      {
+        "path": "concepts/lib/Lax554803/MachineModels.olean.hash",
+        "bytes": 16,
+        "sha256": "bb864a8c52111d88528951673eb72cb2d1e5d7fc3583cc8cd23217ef86a89b27"
+      },
+      {
+        "path": "concepts/lib/Lax554803/MachineModels.trace",
+        "bytes": 2431,
+        "sha256": "e73e3f9471668d1b912c74295f104ed498d566b7865456f46f3d84f9013bd293"
+      },
+      {
+        "path": "concepts/lib/Lax554803/ModelEquivalence.ilean",
+        "bytes": 757,
+        "sha256": "c18e4c34f2ba0d605915a5b761a54c63625f9bf3165e09bd9b04c0ce4bfba407"
+      },
+      {
+        "path": "concepts/lib/Lax554803/ModelEquivalence.ilean.hash",
+        "bytes": 16,
+        "sha256": "8dbab63f390ea9ea0184d6f03041a920be0d374466363e31de490f2b7c21475c"
+      },
+      {
+        "path": "concepts/lib/Lax554803/ModelEquivalence.olean",
+        "bytes": 5272,
+        "sha256": "064fcb566c17c7991bcba1718795e28a4085955c237a6c6c984bd7aaa4ff685d"
+      },
+      {
+        "path": "concepts/lib/Lax554803/ModelEquivalence.olean.hash",
+        "bytes": 16,
+        "sha256": "9c06264d7e781da0f270e5ecbfaf704fec52498b565d0262ecee4ebb65f8511d"
+      },
+      {
+        "path": "concepts/lib/Lax554803/ModelEquivalence.trace",
+        "bytes": 2219,
+        "sha256": "f99432a377c5bba378b0b5393626e89a0bbdde9e0ac740d8515846f71e611fa3"
+      },
+      {
+        "path": "concepts/lib/Lax554803/PolynomialTime.ilean",
+        "bytes": 2046,
+        "sha256": "71519c37ed16eaed8590a7003f62d65535c062366d96f0237b0e370c8c442c99"
+      },
+      {
+        "path": "concepts/lib/Lax554803/PolynomialTime.ilean.hash",
+        "bytes": 16,
+        "sha256": "2e445839e138e2675c23f72fe056c8999457e5c9ebc0c2fde5545b86950bbb7f"
+      },
+      {
+        "path": "concepts/lib/Lax554803/PolynomialTime.olean",
+        "bytes": 10944,
+        "sha256": "34b28280cf288c6dd8427599fb5d0760b67f2afe3cd9a929728f6d1865e590ea"
+      },
+      {
+        "path": "concepts/lib/Lax554803/PolynomialTime.olean.hash",
+        "bytes": 16,
+        "sha256": "99b9610a9792220df7b5bd25250c222a64eac34b77e8dec63e9ee6e4177e681a"
+      },
+      {
+        "path": "concepts/lib/Lax554803/PolynomialTime.trace",
+        "bytes": 2258,
+        "sha256": "7862af1bb152d2b78c5b9ff2c8cdc62ff56317f79db5f084e3e3cca9b33a1c59"
+      },
+      {
+        "path": "concepts/lib/Lax554803/SingleTapeComplement.ilean",
+        "bytes": 897,
+        "sha256": "b56395d1ab8851c92f1e492fc4c6c2f91df85954233b329554ba67d9985bc74b"
+      },
+      {
+        "path": "concepts/lib/Lax554803/SingleTapeComplement.ilean.hash",
+        "bytes": 16,
+        "sha256": "19f13cbad65e8a48d30724b8a9332ee9151c6319c78d8fa12cb8a49c9fd4898d"
+      },
+      {
+        "path": "concepts/lib/Lax554803/SingleTapeComplement.olean",
+        "bytes": 6616,
+        "sha256": "6fc1642b3e145f79cc3ca8757c5bbbfe99542be5946eb2df95d05a7603e95315"
+      },
+      {
+        "path": "concepts/lib/Lax554803/SingleTapeComplement.olean.hash",
+        "bytes": 16,
+        "sha256": "009c6e4f9b614ef8f0487e2206cf9c67d677087c3a8ccff32e1a6951aa141d4c"
+      },
+      {
+        "path": "concepts/lib/Lax554803/SingleTapeComplement.trace",
+        "bytes": 2251,
+        "sha256": "2230f8dcedcee6960622fd012cd9f8fa2e2942c0959cb462dad81fb2b42fe4ed"
+      },
+      {
+        "path": "concepts/lib/Lax554803.ilean",
+        "bytes": 379,
+        "sha256": "6c46788dfe43b6ae16b904bfc6fbc6fa5ec8f9d2938e886d85b0f1154e29f36c"
+      },
+      {
+        "path": "concepts/lib/Lax554803.ilean.hash",
+        "bytes": 16,
+        "sha256": "bad600066bf1261981fb95e16773db598f73326ff6650fbe754cc6a40f9772ad"
+      },
+      {
+        "path": "concepts/lib/Lax554803.olean",
+        "bytes": 1936,
+        "sha256": "a996315f7806a892ae974ec85dc5e3d67855c8bc974622f5099dcecef40bbe24"
+      },
+      {
+        "path": "concepts/lib/Lax554803.olean.hash",
+        "bytes": 16,
+        "sha256": "e27a62aad280131ef7e0fc37de428f342f0eb675102ac837727e1abbe5ee4122"
+      },
+      {
+        "path": "concepts/lib/Lax554803.trace",
+        "bytes": 2965,
+        "sha256": "62a30877becf98f7e4161322a128092a734ce7cc4bb00757a7b8c55370ab01e3"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3162,
+        "sha256": "a0cdc406f106d3b403d989288de4bf470ae19da1d1da7c4c53478757d0b9403f"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "2ae4cde76c8a2067f0a5895b528c7b06a2b838286aef1bc39cbede23ddf4beec"
+      },
+      {
+        "path": "concepts/package/Lax554803/ComplementClosure.lean",
+        "bytes": 536,
+        "sha256": "2292363a247c7cd68feac14e89b37cb2426cea0e3eab7cdfaea51c09f581f49a"
+      },
+      {
+        "path": "concepts/package/Lax554803/FiniteStackEquivalence.lean",
+        "bytes": 408,
+        "sha256": "510213bfba28a493743b4bb94a22818cbf9a5c678b51767ac8baafd1605edb7d"
+      },
+      {
+        "path": "concepts/package/Lax554803/MachineModels.lean",
+        "bytes": 1961,
+        "sha256": "c318f9e8ad844d407e9edb2150d21257e257840affb7343f6f44f8441488d0ac"
+      },
+      {
+        "path": "concepts/package/Lax554803/ModelEquivalence.lean",
+        "bytes": 516,
+        "sha256": "4c4c823932f58105a83703d7399915210903458d5299968592825f7cfffe15ff"
+      },
+      {
+        "path": "concepts/package/Lax554803/PolynomialTime.lean",
+        "bytes": 1206,
+        "sha256": "9aee66cd6af320e6df92e4fbdd60f6381cea22400a60d8e5cf33a6f29c93f6f7"
+      },
+      {
+        "path": "concepts/package/Lax554803/SingleTapeComplement.lean",
+        "bytes": 458,
+        "sha256": "c512842b2291b086870327009d96c3d91500257c9fb9306380ce6d44db203f7d"
+      },
+      {
+        "path": "concepts/package/Lax554803.lean",
+        "bytes": 210,
+        "sha256": "c41d44df7f6cb65a0bf73a13994a7871da3cc6bb416643a2a176bcf812dc250c"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/ComplementClosure.c",
+        "bytes": 5857,
+        "sha256": "fdfcc866ea52997439a072759ce6ebe195f14df1b71af1d7fdeb1f9d2f9dd0b7"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/ComplementClosure.c.hash",
+        "bytes": 16,
+        "sha256": "4b9519af28a4272a17bb7e31204e1eb77ca69051a7da630906d9308cd7e45de8"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/FiniteAlphabet.c",
+        "bytes": 32283,
+        "sha256": "93de7e2fe4c7608f1fea13c3692cad6fdb929aaf73f59edd2da55dc8694d65f9"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/FiniteAlphabet.c.hash",
+        "bytes": 16,
+        "sha256": "a637f32dcc8f0af003a1391dbf72d82d806ec75b2ff73c0b3e1e0053d1b534a8"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/FiniteControl.c",
+        "bytes": 12914,
+        "sha256": "101a7020584a2a8cdb2d90b8d1c122a76caa5bc4663afce254e569c726f70cd1"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/FiniteControl.c.hash",
+        "bytes": 16,
+        "sha256": "089fd3a39065ab6a561bb76534913710bcd2341a5a3d2d1d88a0250fd258840b"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/ModelEquivalence.c",
+        "bytes": 2968,
+        "sha256": "ca1c395703900fd996216ae27089d181940845537468a9060345e3999ad7052e"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/ModelEquivalence.c.hash",
+        "bytes": 16,
+        "sha256": "d9b93fdb60d3370a66fb36dcc57864edb369fac4f44dc44c7e147026b561685b"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/PostTime.c",
+        "bytes": 12932,
+        "sha256": "cc569bec5b6f78c631dcdda1e20e4edc338d50fb6b1ea551b6919ee8110b4197"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/PostTime.c.hash",
+        "bytes": 16,
+        "sha256": "53b28e4014f38150b55bff7aed00d4722b55608817320e23c23a07b7cd680d4c"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/StackTime.c",
+        "bytes": 13226,
+        "sha256": "ea8277950a872e9658da104d846e2393992318f791b1e648cef48ba5808bdc00"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/StackTime.c.hash",
+        "bytes": 16,
+        "sha256": "846648038dae8fd134b5634331a5b9ff02f70d2625eb7e327845ea2195cf38cb"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/StackToTape.c",
+        "bytes": 2141,
+        "sha256": "fb21aa56ce2af87f4da4e7c56de3b70c4fea6b8f32385f1845dd815e4d472c2e"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/StackToTape.c.hash",
+        "bytes": 16,
+        "sha256": "d437f8d814ca84a4815ae3ea7c36da09f7b49b13608fa9adf1d752ae6ac1fec1"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/TapeInput.c",
+        "bytes": 46270,
+        "sha256": "b309efa0d6677a30cf44a695e0b6a24c1e3eec962b3066cabbc9a8aaa93e6c2a"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/TapeInput.c.hash",
+        "bytes": 16,
+        "sha256": "398a57ecb6541ab90b79006aa4651019cfa66299f65b464b689403e29ca6e7d4"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/TapeOutput.c",
+        "bytes": 13741,
+        "sha256": "34ce48a7674b9fb1737d132250a7e3169c8c99d950e64ab28bf8a40b48ddb70d"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/TapeOutput.c.hash",
+        "bytes": 16,
+        "sha256": "84e8ef05a380b8d56062fde077d16bb2af9db227938ca09d242a9a0a305c1cbd"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/TapeToStack.c",
+        "bytes": 137744,
+        "sha256": "9db6606425d9a906b2ee99f52b616517119b2e624c1007e0f21592774166f5a8"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/TapeToStack.c.hash",
+        "bytes": 16,
+        "sha256": "5c40ac1e41f552d15eb0d00dd4cfaf2384ad233192ccacc8bd4e8aa305e6efa4"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/Time.c",
+        "bytes": 1600,
+        "sha256": "129e2a5f09ad11d7c0fc4f424ec632a89fe80bfd0eb3254cab2f2c3ad836fd5c"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs/Time.c.hash",
+        "bytes": 16,
+        "sha256": "5691aa186850b83ec8176b70dc6d333c76015d45e497c092f5aba0b453578c08"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs.c",
+        "bytes": 4002,
+        "sha256": "26bff9b4e99941c4e976085e09680dd452838f88189f66c0bcf8921c551461e5"
+      },
+      {
+        "path": "proofs/ir/Lax554803Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "507483a3d195055726167a953823458811ca7c318d79f5703a9fec82b7f8f80d"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/ComplementClosure.ilean",
+        "bytes": 5263,
+        "sha256": "d1743f0676cd4a3cc57a6748d19e67ba69b52db776e9d6e3a9ef3604add92d6e"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/ComplementClosure.ilean.hash",
+        "bytes": 16,
+        "sha256": "a991c556c9c732658628d2f27f8141001ddf6ab0e82571cbfe38a08de5dab6ff"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/ComplementClosure.olean",
+        "bytes": 51904,
+        "sha256": "0aa1125b988b0347171d61d3da5aa79398d781c6d7e2d77a464c764187b76b5a"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/ComplementClosure.olean.hash",
+        "bytes": 16,
+        "sha256": "10a0f25a0e22db71223337726131ca6eefd8db2e7349c204c975fc91ad12fd76"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/ComplementClosure.trace",
+        "bytes": 2498,
+        "sha256": "a3b64ac0d77a5f2281cfc313ff7b40508de917af62e10efb9844231259b615f9"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/FiniteAlphabet.ilean",
+        "bytes": 45624,
+        "sha256": "1ea0376890902c069ffc51b8200435917ac9105f1eaebde3773d8a4c5115f799"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/FiniteAlphabet.ilean.hash",
+        "bytes": 16,
+        "sha256": "5d4459d4fb2e01f3433b6450fedc524b8f909fae67397fbc14171635dc5c5866"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/FiniteAlphabet.olean",
+        "bytes": 680944,
+        "sha256": "8a22270e40abeef33d2ce0105af82f8c17ecc620f2eed88dc67a73d7e5d4b9d6"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/FiniteAlphabet.olean.hash",
+        "bytes": 16,
+        "sha256": "6f1abff192fb031991e643dbe15c0e0b8ce3babaaac0a5a0a71564ab8643a344"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/FiniteAlphabet.trace",
+        "bytes": 2859,
+        "sha256": "60c6cf0156c143348bba3dd4a27f5a1de525706910afef8b20f18987f7e5bd4b"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/FiniteControl.ilean",
+        "bytes": 7065,
+        "sha256": "dc62b627f777b5bb09869d43f7f15bbd02682f05d519825cc5b9972dbcc4111b"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/FiniteControl.ilean.hash",
+        "bytes": 16,
+        "sha256": "c0db1e8090dcbeca3c5765cc15774c1c8976db45c64ee52d8050156e0123d0a8"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/FiniteControl.olean",
+        "bytes": 128784,
+        "sha256": "697d601b747666bf28d2e1db72790f664360133b0984f0624745a0dca11eeb34"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/FiniteControl.olean.hash",
+        "bytes": 16,
+        "sha256": "e91ae040f90dcae044bd0ef25310b9d668c4388c1a574afc09fc8d710c8bc21a"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/FiniteControl.trace",
+        "bytes": 2450,
+        "sha256": "429e42b585d8c6a5bb17617e3c5b580c9a5c09f91037b201583ca3e450ec4f5b"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/ModelEquivalence.ilean",
+        "bytes": 4404,
+        "sha256": "a260bf8fd577b02239a6468c43bf2225cced42f0f5aa2ca0c6f26a6b03139c7f"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/ModelEquivalence.ilean.hash",
+        "bytes": 16,
+        "sha256": "bf94783dd4909032311235c7d5b435d9ec78303402ab2214c02566f7d6ba29eb"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/ModelEquivalence.olean",
+        "bytes": 14872,
+        "sha256": "b997f1903803fd535dfdb9984b919f9faf7779a200d3588eeec51420c1f37252"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/ModelEquivalence.olean.hash",
+        "bytes": 16,
+        "sha256": "b9743246a75835e07e98612a8996bd4043ae6a72b5c698942736f11329586a7d"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/ModelEquivalence.trace",
+        "bytes": 3396,
+        "sha256": "7d733f2aceac7e7bc8430268a9a48437ecbdc71b462a011ecbfcf7e8cf3b3581"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/PostTime.ilean",
+        "bytes": 14711,
+        "sha256": "19e1761cf4944472b89e4a76e7f7b1e82d448b13c4a28694be21e4573b50cdb0"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/PostTime.ilean.hash",
+        "bytes": 16,
+        "sha256": "c78b7cafda5b204eb2862996672c36c47b5550833b26202dc1098f56863979ed"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/PostTime.olean",
+        "bytes": 356440,
+        "sha256": "2ba2ddca15b544114138f3ea0e63602a32fdaa9c4a9f7ab5783d8cd3c27d04d6"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/PostTime.olean.hash",
+        "bytes": 16,
+        "sha256": "0835a3ebabfe7f57fe4d12565de325fc993a9287ee980d80c56676b09f213ebf"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/PostTime.trace",
+        "bytes": 2701,
+        "sha256": "205f30b3d48b90907aac0a18d26c5c052dd58f7eed447e4c723bf4b2288140a4"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/StackTime.ilean",
+        "bytes": 34461,
+        "sha256": "05062fc41ec40a53861fe893eeb4c2e9bad3a63f09bf655aa0192e2477ca6d30"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/StackTime.ilean.hash",
+        "bytes": 16,
+        "sha256": "3ec08217ef1a0797295ea3f610b1a2798bb3e25901c880d4f81059dceae37b37"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/StackTime.olean",
+        "bytes": 800472,
+        "sha256": "78c25f07f9aa8b1f42cab57b6e6a4f350dda42b3237f6d80ee52bffcc29183c0"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/StackTime.olean.hash",
+        "bytes": 16,
+        "sha256": "2e5c1f61028347f579b4eb07c97811ce37ee858b1d8f1a3d104e7089c7954eb7"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/StackTime.trace",
+        "bytes": 2860,
+        "sha256": "b1b1fdd9efe7a309e24cabc4348d5f5540d0fe77e1f59bc2d0bac061374e5133"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/StackToTape.ilean",
+        "bytes": 35627,
+        "sha256": "ad84e801b643e1228ddee71a3107005759da82db784cdf1af9f36f19fab9f3c0"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/StackToTape.ilean.hash",
+        "bytes": 16,
+        "sha256": "2b10acd66c0d82ebc38fe2055f7d4259a13e1602c046b312dd4b20af1ba9874c"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/StackToTape.olean",
+        "bytes": 388800,
+        "sha256": "01cca5ab40c614d863f71d323fe907df4af041d9dc8b9e4514534d31eb27ba35"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/StackToTape.olean.hash",
+        "bytes": 16,
+        "sha256": "eb12bc4d336835f70befa492d4e1883904fd42ab6df79792bd2df2ea66738bad"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/StackToTape.trace",
+        "bytes": 2790,
+        "sha256": "a783846820484ba5cd54c3159fd47deb872259eb13d2a32bb287833b0fb38f0f"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/TapeInput.ilean",
+        "bytes": 31430,
+        "sha256": "801a849f2355d821f08d2479404d5f8c55fd133990228fff2c1bc30a7ac21752"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/TapeInput.ilean.hash",
+        "bytes": 16,
+        "sha256": "b519975ec95c4b35aed22f580e4b3fd06419288d08bd6ad7714015185b6b7dbb"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/TapeInput.olean",
+        "bytes": 502400,
+        "sha256": "11b873126f6bf1d4b2920ffb1ee53fdcff56d11169fad0e576b6d866f0532d24"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/TapeInput.olean.hash",
+        "bytes": 16,
+        "sha256": "3ca894c6a14e20117716fb88104509c329b36cfd0a98d476d44040ee5e195d8f"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/TapeInput.trace",
+        "bytes": 2430,
+        "sha256": "55789f745b7d6dfc099c58b5723049ce7491ce1b05a84f23d17bdde2acc8b74d"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/TapeOutput.ilean",
+        "bytes": 19181,
+        "sha256": "5396d9786988765dbb2337fd05f3a24e09f0798f7827f6c9475f9bad27ea4807"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/TapeOutput.ilean.hash",
+        "bytes": 16,
+        "sha256": "d881c53b7396dc1c49cc98a6ea415c14d23958944a0bac30b90af05e45403973"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/TapeOutput.olean",
+        "bytes": 369056,
+        "sha256": "1d9989c18ef2e9580ac9589bc7b5332bc057e894b12ff768a49cc82f66df946d"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/TapeOutput.olean.hash",
+        "bytes": 16,
+        "sha256": "9d7a7b99096e688ef66e8624a0d90a65300dc5556018b19e916a4ec65a630fd4"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/TapeOutput.trace",
+        "bytes": 2279,
+        "sha256": "a2d82a4479d5cb4968fae2e41b103bd4f3ae1800834e5aaec5aa332d66fd0d03"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/TapeToStack.ilean",
+        "bytes": 76581,
+        "sha256": "2d6a93038358f22c4abead43974be1b1f2730365414437a70bcca4486738056a"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/TapeToStack.ilean.hash",
+        "bytes": 16,
+        "sha256": "b035165bdf6f3882b30b7f37cecf8d29f144ff4f46949cb5f237b50ba0df808b"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/TapeToStack.olean",
+        "bytes": 1279960,
+        "sha256": "d5240ba2fb39759a65ccbb94670fc0b01cd8f665c446818bb5706dc439cc101d"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/TapeToStack.olean.hash",
+        "bytes": 16,
+        "sha256": "e5a050d6a3a3f31062cfd45a9df984af2e294ece82a67359aa0b03c3b72ebb9f"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/TapeToStack.trace",
+        "bytes": 2774,
+        "sha256": "fc9f17a91114dd34a896618d7fa44d45b51c12a89923ab31ed4e82bb6c5c661e"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/Time.ilean",
+        "bytes": 13284,
+        "sha256": "aee35c50804013a63f4d4b5284f6533e0ad5e8bb54f25951988860d3b5c3376b"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/Time.ilean.hash",
+        "bytes": 16,
+        "sha256": "13ede00741fd70a7e37ed5901a782ed7091a8c3e821afa70947a83019d9f3c2a"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/Time.olean",
+        "bytes": 178216,
+        "sha256": "72e5811dd5d1338c465e085f56dd947ba2fa10b753fd169c0a0526c5922a7004"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/Time.olean.hash",
+        "bytes": 16,
+        "sha256": "08bad7ec569d5168dab1126ad8054e330e53c63ec956f2cc997bbd923ff7559e"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs/Time.trace",
+        "bytes": 2256,
+        "sha256": "106a0a22a7a36680f3ee0f33519582a8ee531cd5ea7e350042ad223f426f0ae6"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs.ilean",
+        "bytes": 636,
+        "sha256": "8996538c353276a8367452b5e828f83d0513338ae8099ed3ccc6585df54a52ac"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "cd5d32664c7feed56494e9a09bf1f91d04c3de3c994caaaa32fdc410dbb9d5cf"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs.olean",
+        "bytes": 2472,
+        "sha256": "0963db6fbd0352f110520b48a18405a57376b4de6825aeca71ca4e5476e73097"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "131311a920c6092ee510e784404f31e66a5207bbb43d9a1ad21bccb7834a13f8"
+      },
+      {
+        "path": "proofs/lib/Lax554803Proofs.trace",
+        "bytes": 3919,
+        "sha256": "28188276a416ba893c33e13d3b143ca67c9edb5c9db66468005de7f1c2884d3a"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3352,
+        "sha256": "84d9451f12ce787d927e7047afeb1821c63718f7579ef78eed8a138c6a516036"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "10b4d15498436b11f3fee2f08f7647899c49d8dd2f01713253a15cc8200d8a1b"
+      },
+      {
+        "path": "proofs/package/Lax554803Proofs/ComplementClosure.lean",
+        "bytes": 1420,
+        "sha256": "adb8d3fafb199988e9bebc2b85f2300f086e1d5eb1795a4724f62c1e0a71d1ad"
+      },
+      {
+        "path": "proofs/package/Lax554803Proofs/FiniteAlphabet.lean",
+        "bytes": 9723,
+        "sha256": "4ed481bbb40f520d877289d24e4577cb8ba7c9453b6b30667783df2013cc35b5"
+      },
+      {
+        "path": "proofs/package/Lax554803Proofs/FiniteControl.lean",
+        "bytes": 1591,
+        "sha256": "99da67756bc81ebc7f988ae57f62f8a68bdb1e8624489749ebdf994887ca7f95"
+      },
+      {
+        "path": "proofs/package/Lax554803Proofs/ModelEquivalence.lean",
+        "bytes": 2046,
+        "sha256": "867c8fc6c5e0013be03c55ae237d9ff22ab5df910bd5ccde8ff655df1d5f51cb"
+      },
+      {
+        "path": "proofs/package/Lax554803Proofs/PostTime.lean",
+        "bytes": 4556,
+        "sha256": "2ebcaa431599b61642260f841e90650cfdf10d9ae3a1b455ec93901586bc6de2"
+      },
+      {
+        "path": "proofs/package/Lax554803Proofs/StackTime.lean",
+        "bytes": 9900,
+        "sha256": "8f29b389c6e968670b8fb23777da38439c0d8d2cd2bc382b85a67cb8fc442e9f"
+      },
+      {
+        "path": "proofs/package/Lax554803Proofs/StackToTape.lean",
+        "bytes": 5778,
+        "sha256": "c5835e210b194da7539047e298bbe0ac5f0737e11658b4bd0bfb2f7c045fec02"
+      },
+      {
+        "path": "proofs/package/Lax554803Proofs/TapeInput.lean",
+        "bytes": 7153,
+        "sha256": "b5a212d2af585f35ce0cebe8bf6eb058cab5ff5c3f624026d9e9617ddf74a7d2"
+      },
+      {
+        "path": "proofs/package/Lax554803Proofs/TapeOutput.lean",
+        "bytes": 4337,
+        "sha256": "97ecc33a808506782bc1ac3f1facb1bbebced7c29d557a688db9ee5e0e6acf85"
+      },
+      {
+        "path": "proofs/package/Lax554803Proofs/TapeToStack.lean",
+        "bytes": 16009,
+        "sha256": "dbcea6d863decdf3196f4ead1c976eda61f721b78b1a963a9f2d0cd320ff64bd"
+      },
+      {
+        "path": "proofs/package/Lax554803Proofs/Time.lean",
+        "bytes": 5006,
+        "sha256": "c799eb1ea94f27d7e05b0807eb8e6de6e49d97eb8b3c469a99fba5bf98170a42"
+      },
+      {
+        "path": "proofs/package/Lax554803Proofs.lean",
+        "bytes": 386,
+        "sha256": "eeafbda0fe82441896fa0c075abf6c6f2094d97a703f34ab52442895aac448b4"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:4cfdd188967016564b5700628952d596adf2d61bbc94771f859f48fef08300fd"
   }
 }
