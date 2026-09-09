@@ -4,5 +4,1596 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 92
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-489179",
+      "leanVersion": "v4.30.0",
+      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "title": "ETH, SETH, Weighted APSP, and 3SUM",
+      "authors": [
+        {
+          "name": "Édouard Bonnet"
+        },
+        {
+          "name": "gpt-6-astra"
+        }
+      ],
+      "bibEntries": [
+        "@article{ImpagliazzoPaturi2001,\n  author = {Russell Impagliazzo and Ramamohan Paturi},\n  title = {On the Complexity of k-SAT},\n  journal = {Journal of Computer and System Sciences},\n  volume = {62},\n  number = {2},\n  pages = {367--375},\n  year = {2001},\n  doi = {10.1006/jcss.2000.1727}\n}\n",
+        "@inproceedings{VassilevskaWilliams2021,\n  author = {Virginia Vassilevska Williams},\n  title = {3SUM and Related Problems in Fine-Grained Complexity},\n  booktitle = {37th International Symposium on Computational Geometry},\n  series = {Leibniz International Proceedings in Informatics},\n  volume = {189},\n  pages = {2:1--2:2},\n  year = {2021},\n  doi = {10.4230/LIPIcs.SoCG.2021.2}\n}\n",
+        "@inproceedings{JinXu2023,\n  author = {Ce Jin and Yinzhan Xu},\n  title = {Removing Additive Structure in 3SUM-Based Reductions},\n  booktitle = {Proceedings of the 55th Annual ACM Symposium on Theory of Computing},\n  pages = {405--418},\n  year = {2023},\n  doi = {10.1145/3564246.3585157},\n  url = {https://arxiv.org/abs/2211.07048}\n}\n",
+        "@misc{ChanVassilevskaWilliamsXu2022,\n  author = {Timothy M. Chan and Virginia Vassilevska Williams and Yinzhan Xu},\n  title = {Hardness for Triangle Problems under Even More Believable Hypotheses:\n    Reductions from Real APSP, Real 3SUM, and OV},\n  year = {2022},\n  eprint = {2203.08356},\n  archivePrefix = {arXiv},\n  url = {https://arxiv.org/abs/2203.08356}\n}\n"
+      ]
+    },
+    "abstract": "We formalize the Exponential Time Hypothesis, the Strong Exponential Time\nHypothesis, the weighted all-pairs shortest paths complexity assumption,\nand the integer 3-SUM Hypothesis as Lean propositions. Each has a\ndeterministic and a bounded-error randomized version. SAT uses finite\nmultitape Turing machines with an explicit polynomial factor in the\nencoded formula length. APSP and 3-SUM use uniform word-RAM programs on\nlogarithmic words, with specified integer ranges, input encodings and\ncomplete outputs. Supporting lemmas establish properties of the\nencodings, shortest-path specification, running-time quantifiers and\nalgorithm conventions. The four hypotheses remain open mathematical\nassumptions and are supplied as definitions for use in conditional results.\n"
+  },
+  "requiredByConcepts": [
+    "Lax67"
+  ],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax489179.Algorithms",
+      "path": "concepts/Lax489179/Algorithms.lean",
+      "title": "Deterministic and bounded-error algorithms",
+      "type": "definition",
+      "description": "We distinguish deterministic algorithms from randomized algorithms with\ntwo-sided error at most $1/3$ and a worst-case running-time bound.\nFor a computation of at most $t$ steps, all $2^t$ strings of independent\nfair bits are equally likely. Every string must lead to termination;\nat least two thirds must give a correct answer. Unused bits are ignored.\n\nBoth machine models below have finite programs. In deterministic mode\nthe program cannot use randomness. The hypotheses themselves are\npropositions, available as explicit premises in later theorems.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.Fintype.Pi",
+        "Mathlib.SetTheory.Cardinal.Finite"
+      ],
+      "sourceText": "import Mathlib.SetTheory.Cardinal.Finite\nimport Mathlib.Data.Fintype.Pi\n\n/-!\n---\ntitle: Deterministic and bounded-error algorithms\ntype: definition\n---\nWe distinguish deterministic algorithms from randomized algorithms with\ntwo-sided error at most $1/3$ and a worst-case running-time bound.\nFor a computation of at most $t$ steps, all $2^t$ strings of independent\nfair bits are equally likely. Every string must lead to termination;\nat least two thirds must give a correct answer. Unused bits are ignored.\n\nBoth machine models below have finite programs. In deterministic mode\nthe program cannot use randomness. The hypotheses themselves are\npropositions, available as explicit premises in later theorems.\n-/\n\nnamespace Lax489179.Algorithms\n\ninductive Mode\n  | deterministic\n  | randomized\n  deriving DecidableEq\n\n/-- Deterministic mode restricts the program; randomized mode allows it. -/\ndef Allowed (mode : Mode) (isDeterministic : Prop) : Prop :=\n  mode = .deterministic → isDeterministic\n\n/-- Every random tape terminates, and at least two thirds return a\ncorrect result. `none` means that the computation has not terminated. -/\ndef CorrectWithin {α : Type} (t : ℕ)\n    (result : (Fin t → Bool) → Option α) (correct : α → Prop) : Prop :=\n  (∀ r, (result r).isSome = true) ∧\n  2 * 2 ^ t ≤ 3 * Nat.card {r : Fin t → Bool //\n    ∃ y, result r = some y ∧ correct y}\n\nend Lax489179.Algorithms\n",
+      "statements": []
+    },
+    {
+      "id": "Lax489179.APSPHypothesis",
+      "path": "concepts/Lax489179/APSPHypothesis.lean",
+      "title": "The weighted APSP complexity assumption",
+      "type": "definition",
+      "description": "For some fixed positive integer $c$, no $O(n^{3-\\varepsilon})$\nword-RAM algorithm computes all-pairs shortest-path distances, for any\nconstant $\\varepsilon>0$, on $n$-vertex directed graphs with integer\nedge weights of absolute value at most $n^c$ and no negative cycles.\nWords have $O(\\log n)$ bits. The exponent $c$ is chosen before\n$\\varepsilon$; it is one fixed polynomial weight range.\n\n`Deterministic` is the deterministic version.\n`Randomized` also excludes randomized algorithms\nwith two-sided error at most $1/3$ and a worst-case running-time bound.\nSuccess means that the entire distance matrix is correct. No\nequivalence with an expected-time or zero-error variant is asserted.\nBoth assumptions are propositions, not axioms.",
+      "imports": [
+        "Lax489179.WeightedAPSP"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax489179.WeightedAPSP\n\n/-!\n---\ntitle: The weighted APSP complexity assumption\ntype: definition\n---\nFor some fixed positive integer $c$, no $O(n^{3-\\varepsilon})$\nword-RAM algorithm computes all-pairs shortest-path distances, for any\nconstant $\\varepsilon>0$, on $n$-vertex directed graphs with integer\nedge weights of absolute value at most $n^c$ and no negative cycles.\nWords have $O(\\log n)$ bits. The exponent $c$ is chosen before\n$\\varepsilon$; it is one fixed polynomial weight range.\n\n`Deterministic` is the deterministic version.\n`Randomized` also excludes randomized algorithms\nwith two-sided error at most $1/3$ and a worst-case running-time bound.\nSuccess means that the entire distance matrix is correct. No\nequivalence with an expected-time or zero-error variant is asserted.\nBoth assumptions are propositions, not axioms.\n-/\n\nnamespace Lax489179.APSPHypothesis\n\ndef HypothesisAt (mode : Algorithms.Mode) (c : ℕ) : Prop :=\n  ∀ ε : ℝ, 0 < ε → ¬ WordTime.Solvable mode (WeightedAPSP.problem c) (3 - ε)\n\ndef Hypothesis (mode : Algorithms.Mode) : Prop :=\n  ∃ c : ℕ, 0 < c ∧ HypothesisAt mode c\n\ndef Deterministic : Prop := Hypothesis .deterministic\n\ndef Randomized : Prop := Hypothesis .randomized\n\nend Lax489179.APSPHypothesis\n",
+      "statements": []
+    },
+    {
+      "id": "Lax489179.DeterministicSemantics",
+      "path": "concepts/Lax489179/DeterministicSemantics.lean",
+      "title": "Exact correctness of deterministic computations",
+      "type": "lemma",
+      "description": "For a deterministic program the bounded-error specification is\nequivalent to exact correctness on the all-zero random tape. Thus\nthe common probability-based definition gives ordinary deterministic\ndecision and computation when randomness is forbidden.",
+      "imports": [
+        "Lax489179.TuringMachine",
+        "Lax489179.WordPrograms"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax489179.TuringMachine\nimport Lax489179.WordPrograms\n\n/-!\n---\ntitle: Exact correctness of deterministic computations\ntype: lemma\n---\nFor a deterministic program the bounded-error specification is\nequivalent to exact correctness on the all-zero random tape. Thus\nthe common probability-based definition gives ordinary deterministic\ndecision and computation when randomness is forbidden.\n-/\n\nnamespace Lax489179.DeterministicSemantics\n\naxiom turing_exact (M : TuringMachine.Machine) (h : TuringMachine.Deterministic M)\n    (input : List Bool) (answer : Prop) (t : ℕ) :\n    TuringMachine.DecidesWithin M input answer t ↔\n      ∃ b, (TuringMachine.run M t (fun _ => false) (TuringMachine.init M input)).answer =\n        some b ∧ (b = true ↔ answer)\n\naxiom word_exact (w : ℕ) (p : WordPrograms.Program) (h : WordPrograms.Deterministic p)\n    (input : List ℕ) (correct : List ℕ → Prop) (t : ℕ) :\n    WordPrograms.ComputesWithin w p input correct t ↔\n      ∃ y, WordPrograms.output (WordPrograms.run w p t (fun _ => false)\n        (WordPrograms.init input)) = some y ∧ correct y\n\nend Lax489179.DeterministicSemantics\n",
+      "statements": [
+        {
+          "id": "Lax489179.DeterministicSemantics.turing_exact",
+          "signature": "turing_exact : ∀ (M : Lax489179.TuringMachine.Machine),\n  Lax489179.TuringMachine.Deterministic M →\n    ∀ (input : List Bool) (answer : Prop) (t : Nat),\n      Iff (Lax489179.TuringMachine.DecidesWithin M input answer t)\n        (Exists fun b =>\n          And\n            (Eq (Lax489179.TuringMachine.run M t (fun x => Bool.false) (Lax489179.TuringMachine.init M input)).answer\n              (Option.some b))\n            (Iff (Eq b Bool.true) answer))",
+          "startLine": 17,
+          "endLine": 21
+        },
+        {
+          "id": "Lax489179.DeterministicSemantics.word_exact",
+          "signature": "word_exact : ∀ (w : Nat) (p : Lax489179.WordPrograms.Program),\n  Lax489179.WordPrograms.Deterministic p →\n    ∀ (input : List Nat) (correct : List Nat → Prop) (t : Nat),\n      Iff (Lax489179.WordPrograms.ComputesWithin w p input correct t)\n        (Exists fun y =>\n          And\n            (Eq\n              (Lax489179.WordPrograms.output\n                (Lax489179.WordPrograms.run w p t (fun x => Bool.false) (Lax489179.WordPrograms.init input)))\n              (Option.some y))\n            (correct y))",
+          "startLine": 23,
+          "endLine": 27
+        }
+      ]
+    },
+    {
+      "id": "Lax489179.DistanceProperties",
+      "path": "concepts/Lax489179/DistanceProperties.lean",
+      "title": "Uniqueness and diagonal entries of shortest-path distances",
+      "type": "lemma",
+      "description": "The distance specification has at most one answer for each ordered\npair. In a graph with no negative cycle every diagonal answer is zero.\nAn encoded $n$ by $n$ distance matrix contains exactly $n^2$ words.",
+      "imports": [
+        "Lax489179.WeightedAPSP"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax489179.WeightedAPSP\n\n/-!\n---\ntitle: Uniqueness and diagonal entries of shortest-path distances\ntype: lemma\n---\nThe distance specification has at most one answer for each ordered\npair. In a graph with no negative cycle every diagonal answer is zero.\nAn encoded $n$ by $n$ distance matrix contains exactly $n^2$ words.\n-/\n\nnamespace Lax489179.DistanceProperties\n\nopen WeightedAPSP\n\naxiom distance_unique (G : Graph) (u v : Fin G.vertices) (a b : Option ℤ)\n    (ha : Distance G u v a) (hb : Distance G u v b) : a = b\n\naxiom diagonal_zero (G : Graph) (h : NoNegativeCycle G) (v : Fin G.vertices) :\n    Distance G v v (some 0)\n\naxiom matrix_length (n : ℕ) (matrix : Fin n → Fin n → Option ℤ) :\n    (encodeMatrix n matrix).length = n * n\n\nend Lax489179.DistanceProperties\n",
+      "statements": [
+        {
+          "id": "Lax489179.DistanceProperties.diagonal_zero",
+          "signature": "diagonal_zero : ∀ (G : Lax489179.WeightedAPSP.Graph),\n  Lax489179.WeightedAPSP.NoNegativeCycle G →\n    ∀ (v : Fin G.vertices), Lax489179.WeightedAPSP.Distance G v v (Option.some 0)",
+          "startLine": 20,
+          "endLine": 21
+        },
+        {
+          "id": "Lax489179.DistanceProperties.distance_unique",
+          "signature": "distance_unique : ∀ (G : Lax489179.WeightedAPSP.Graph) (u v : Fin G.vertices) (a b : Option Int),\n  Lax489179.WeightedAPSP.Distance G u v a → Lax489179.WeightedAPSP.Distance G u v b → Eq a b",
+          "startLine": 17,
+          "endLine": 18
+        },
+        {
+          "id": "Lax489179.DistanceProperties.matrix_length",
+          "signature": "matrix_length : ∀ (n : Nat) (matrix : Fin n → Fin n → Option Int),\n  Eq (Lax489179.WeightedAPSP.encodeMatrix n matrix).length (instHMul.hMul n n)",
+          "startLine": 23,
+          "endLine": 24
+        }
+      ]
+    },
+    {
+      "id": "Lax489179.EncodingProperties",
+      "path": "concepts/Lax489179/EncodingProperties.lean",
+      "title": "Integer encodings and distinct 3-SUM entries",
+      "type": "lemma",
+      "description": "The signed-integer and optional-integer decoders are left inverses of\ntheir encoders. In particular, both encodings are injective. A 3-SUM\nyes-instance has at least three entries.",
+      "imports": [
+        "Lax489179.IntegerEncoding",
+        "Lax489179.ThreeSUM"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax489179.IntegerEncoding\nimport Lax489179.ThreeSUM\n\n/-!\n---\ntitle: Integer encodings and distinct 3-SUM entries\ntype: lemma\n---\nThe signed-integer and optional-integer decoders are left inverses of\ntheir encoders. In particular, both encodings are injective. A 3-SUM\nyes-instance has at least three entries.\n-/\n\nnamespace Lax489179.EncodingProperties\n\nopen IntegerEncoding\n\naxiom decode_encode_int (z : ℤ) : decodeInt (encodeInt z) = z\n\naxiom decode_encode_option (z : Option ℤ) : decodeOption (encodeOption z) = z\n\naxiom encode_int_injective : Function.Injective encodeInt\n\naxiom encode_option_injective : Function.Injective encodeOption\n\naxiom three_entries (input : List ℤ) (h : ThreeSUM.HasZeroSum input) : 3 ≤ input.length\n\nend Lax489179.EncodingProperties\n",
+      "statements": [
+        {
+          "id": "Lax489179.EncodingProperties.decode_encode_int",
+          "signature": "decode_encode_int : ∀ (z : Int), Eq (Lax489179.IntegerEncoding.decodeInt (Lax489179.IntegerEncoding.encodeInt z)) z",
+          "startLine": 18,
+          "endLine": 18
+        },
+        {
+          "id": "Lax489179.EncodingProperties.decode_encode_option",
+          "signature": "decode_encode_option : ∀ (z : Option Int), Eq (Lax489179.IntegerEncoding.decodeOption (Lax489179.IntegerEncoding.encodeOption z)) z",
+          "startLine": 20,
+          "endLine": 20
+        },
+        {
+          "id": "Lax489179.EncodingProperties.encode_int_injective",
+          "signature": "encode_int_injective : Function.Injective Lax489179.IntegerEncoding.encodeInt",
+          "startLine": 22,
+          "endLine": 22
+        },
+        {
+          "id": "Lax489179.EncodingProperties.encode_option_injective",
+          "signature": "encode_option_injective : Function.Injective Lax489179.IntegerEncoding.encodeOption",
+          "startLine": 24,
+          "endLine": 24
+        },
+        {
+          "id": "Lax489179.EncodingProperties.three_entries",
+          "signature": "three_entries : ∀ (input : List Int), Lax489179.ThreeSUM.HasZeroSum input → instLENat.le 3 input.length",
+          "startLine": 26,
+          "endLine": 26
+        }
+      ]
+    },
+    {
+      "id": "Lax489179.ETH",
+      "path": "concepts/Lax489179/ETH.lean",
+      "title": "The Exponential Time Hypothesis (ETH)",
+      "type": "definition",
+      "description": "The Exponential Time Hypothesis asserts that there exists a constant\n$a>0$ such that 3-CNF satisfiability has no deterministic\n$O^*(2^{an})$ algorithm, where $n$ counts variables. This is the\npositive-exponent formulation of ETH. In its negation, for each\npositive exponent there may be a different algorithm.\n\n`Randomized` is the stronger version excluding bounded-error\nrandomized algorithms. Both are defined as propositions; neither is\nasserted as an axiom or claimed as a proved theorem.",
+      "imports": [
+        "Lax489179.SATTime"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax489179.SATTime\n\n/-!\n---\ntitle: The Exponential Time Hypothesis (ETH)\ntype: definition\n---\nThe Exponential Time Hypothesis asserts that there exists a constant\n$a>0$ such that 3-CNF satisfiability has no deterministic\n$O^*(2^{an})$ algorithm, where $n$ counts variables. This is the\npositive-exponent formulation of ETH. In its negation, for each\npositive exponent there may be a different algorithm.\n\n`Randomized` is the stronger version excluding bounded-error\nrandomized algorithms. Both are defined as propositions; neither is\nasserted as an axiom or claimed as a proved theorem.\n-/\n\nnamespace Lax489179.ETH\n\ndef Hypothesis (mode : Algorithms.Mode) : Prop :=\n  ∃ a : ℝ, 0 < a ∧ ¬ SATTime.Solvable mode 3 a\n\ndef Deterministic : Prop := Hypothesis .deterministic\n\ndef Randomized : Prop := Hypothesis .randomized\n\nend Lax489179.ETH\n",
+      "statements": []
+    },
+    {
+      "id": "Lax489179.HypothesisProperties",
+      "path": "concepts/Lax489179/HypothesisProperties.lean",
+      "title": "Negations and algorithm conventions for the four hypotheses",
+      "type": "lemma",
+      "description": "Negating ETH allows a separate 3-SAT algorithm for each positive\nexponent. Negating SETH gives one positive exponent improvement that\nworks for every fixed clause width, with the algorithm allowed to\ndepend on the width. Negating the 3-SUM Hypothesis gives a truly\nsubquadratic solver. Negating the APSP assumption gives, for each\nfixed weight exponent, some truly subcubic solver; its improvement\nmay depend on that weight exponent.\n\nFor each hypothesis, its randomized version implies its deterministic\nversion. These are logical consequences of the specified algorithm\nclasses; all four hypotheses themselves remain explicit premises.",
+      "imports": [
+        "Lax489179.APSPHypothesis",
+        "Lax489179.ETH",
+        "Lax489179.SETH",
+        "Lax489179.ThreeSUMHypothesis"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax489179.ETH\nimport Lax489179.SETH\nimport Lax489179.APSPHypothesis\nimport Lax489179.ThreeSUMHypothesis\n\n/-!\n---\ntitle: Negations and algorithm conventions for the four hypotheses\ntype: lemma\n---\nNegating ETH allows a separate 3-SAT algorithm for each positive\nexponent. Negating SETH gives one positive exponent improvement that\nworks for every fixed clause width, with the algorithm allowed to\ndepend on the width. Negating the 3-SUM Hypothesis gives a truly\nsubquadratic solver. Negating the APSP assumption gives, for each\nfixed weight exponent, some truly subcubic solver; its improvement\nmay depend on that weight exponent.\n\nFor each hypothesis, its randomized version implies its deterministic\nversion. These are logical consequences of the specified algorithm\nclasses; all four hypotheses themselves remain explicit premises.\n-/\n\nnamespace Lax489179.HypothesisProperties\n\naxiom not_eth (mode : Algorithms.Mode) :\n    ¬ ETH.Hypothesis mode ↔ ∀ a : ℝ, 0 < a → SATTime.Solvable mode 3 a\n\naxiom not_seth (mode : Algorithms.Mode) :\n    ¬ SETH.Hypothesis mode ↔ ∃ ε : ℝ, 0 < ε ∧ ε < 1 ∧\n      ∀ k : ℕ, 3 ≤ k → SATTime.Solvable mode k (1 - ε)\n\naxiom not_three_sum (mode : Algorithms.Mode) :\n    ¬ ThreeSUMHypothesis.Hypothesis mode ↔ ∃ ε : ℝ, 0 < ε ∧\n      WordTime.Solvable mode ThreeSUM.problem (2 - ε)\n\naxiom not_apsp (mode : Algorithms.Mode) :\n    ¬ APSPHypothesis.Hypothesis mode ↔ ∀ c : ℕ, 0 < c →\n      ∃ ε : ℝ, 0 < ε ∧ WordTime.Solvable mode (WeightedAPSP.problem c) (3 - ε)\n\naxiom randomized_eth : ETH.Randomized → ETH.Deterministic\n\naxiom randomized_seth : SETH.Randomized → SETH.Deterministic\n\naxiom randomized_three_sum : ThreeSUMHypothesis.Randomized → ThreeSUMHypothesis.Deterministic\n\naxiom randomized_apsp : APSPHypothesis.Randomized → APSPHypothesis.Deterministic\n\nend Lax489179.HypothesisProperties\n",
+      "statements": [
+        {
+          "id": "Lax489179.HypothesisProperties.not_apsp",
+          "signature": "not_apsp : ∀ (mode : Lax489179.Algorithms.Mode),\n  Iff (Not (Lax489179.APSPHypothesis.Hypothesis mode))\n    (∀ (c : Nat),\n      instLTNat.lt 0 c →\n        Exists fun ε =>\n          And (Real.instLT.lt 0 ε)\n            (Lax489179.WordTime.Solvable mode (Lax489179.WeightedAPSP.problem c) (instHSub.hSub 3 ε)))",
+          "startLine": 37,
+          "endLine": 39
+        },
+        {
+          "id": "Lax489179.HypothesisProperties.not_eth",
+          "signature": "not_eth : ∀ (mode : Lax489179.Algorithms.Mode),\n  Iff (Not (Lax489179.ETH.Hypothesis mode)) (∀ (a : Real), Real.instLT.lt 0 a → Lax489179.SATTime.Solvable mode 3 a)",
+          "startLine": 26,
+          "endLine": 27
+        },
+        {
+          "id": "Lax489179.HypothesisProperties.not_seth",
+          "signature": "not_seth : ∀ (mode : Lax489179.Algorithms.Mode),\n  Iff (Not (Lax489179.SETH.Hypothesis mode))\n    (Exists fun ε =>\n      And (Real.instLT.lt 0 ε)\n        (And (Real.instLT.lt ε 1)\n          (∀ (k : Nat), instLENat.le 3 k → Lax489179.SATTime.Solvable mode k (instHSub.hSub 1 ε))))",
+          "startLine": 29,
+          "endLine": 31
+        },
+        {
+          "id": "Lax489179.HypothesisProperties.not_three_sum",
+          "signature": "not_three_sum : ∀ (mode : Lax489179.Algorithms.Mode),\n  Iff (Not (Lax489179.ThreeSUMHypothesis.Hypothesis mode))\n    (Exists fun ε =>\n      And (Real.instLT.lt 0 ε) (Lax489179.WordTime.Solvable mode Lax489179.ThreeSUM.problem (instHSub.hSub 2 ε)))",
+          "startLine": 33,
+          "endLine": 35
+        },
+        {
+          "id": "Lax489179.HypothesisProperties.randomized_apsp",
+          "signature": "randomized_apsp : Lax489179.APSPHypothesis.Randomized → Lax489179.APSPHypothesis.Deterministic",
+          "startLine": 47,
+          "endLine": 47
+        },
+        {
+          "id": "Lax489179.HypothesisProperties.randomized_eth",
+          "signature": "randomized_eth : Lax489179.ETH.Randomized → Lax489179.ETH.Deterministic",
+          "startLine": 41,
+          "endLine": 41
+        },
+        {
+          "id": "Lax489179.HypothesisProperties.randomized_seth",
+          "signature": "randomized_seth : Lax489179.SETH.Randomized → Lax489179.SETH.Deterministic",
+          "startLine": 43,
+          "endLine": 43
+        },
+        {
+          "id": "Lax489179.HypothesisProperties.randomized_three_sum",
+          "signature": "randomized_three_sum : Lax489179.ThreeSUMHypothesis.Randomized → Lax489179.ThreeSUMHypothesis.Deterministic",
+          "startLine": 45,
+          "endLine": 45
+        }
+      ]
+    },
+    {
+      "id": "Lax489179.IntegerEncoding",
+      "path": "concepts/Lax489179/IntegerEncoding.lean",
+      "title": "Encoding signed integers and missing distances",
+      "type": "definition",
+      "description": "Signed integers are stored in natural-number words using\n$0\\mapsto0$, $-1\\mapsto1$, $1\\mapsto2$, $-2\\mapsto3$, and so on.\nFor an optional integer, zero denotes absence and an integer is encoded\nby its signed code plus one. This separates a missing edge or infinite\ndistance from every finite weight, including zero and negative weights.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.Int.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.Int.Basic\n\n/-!\n---\ntitle: Encoding signed integers and missing distances\ntype: definition\n---\nSigned integers are stored in natural-number words using\n$0\\mapsto0$, $-1\\mapsto1$, $1\\mapsto2$, $-2\\mapsto3$, and so on.\nFor an optional integer, zero denotes absence and an integer is encoded\nby its signed code plus one. This separates a missing edge or infinite\ndistance from every finite weight, including zero and negative weights.\n-/\n\nnamespace Lax489179.IntegerEncoding\n\ndef encodeInt : ℤ → ℕ\n  | .ofNat n => 2 * n\n  | .negSucc n => 2 * n + 1\n\ndef decodeInt (n : ℕ) : ℤ :=\n  if n % 2 = 0 then .ofNat (n / 2) else .negSucc (n / 2)\n\ndef encodeOption : Option ℤ → ℕ\n  | none => 0\n  | some z => encodeInt z + 1\n\ndef decodeOption : ℕ → Option ℤ\n  | 0 => none\n  | n + 1 => some (decodeInt n)\n\nend Lax489179.IntegerEncoding\n",
+      "statements": []
+    },
+    {
+      "id": "Lax489179.Satisfiability",
+      "path": "concepts/Lax489179/Satisfiability.lean",
+      "title": "Bounded-width CNF satisfiability and its encoding",
+      "type": "definition",
+      "description": "A CNF formula has $n$ indexed Boolean variables. A literal is a variable\nand a polarity; a clause is a disjunction of literals and a formula is\na conjunction of clauses. Width at most $k$ means at most $k$ literals\nin each clause. The empty conjunction is true and an empty clause is false.\n\nThe binary encoding gives $n$, the number of clauses, each clause length,\nand each literal's index and sign, in that order. Natural numbers use\nunary followed by a zero. This self-delimiting encoding has polynomial\nlength in $n$ and the usual explicit formula size. Polynomial factors\nin its full length are retained in the SAT running-time bounds; the\nexponential parameter is $n$, not the number of clauses or encoded bits.\nUnused indexed variables, repeated literals and repeated clauses are allowed.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.Fin.Basic",
+        "Mathlib.Data.List.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.List.Basic\nimport Mathlib.Data.Fin.Basic\n\n/-!\n---\ntitle: Bounded-width CNF satisfiability and its encoding\ntype: definition\n---\nA CNF formula has $n$ indexed Boolean variables. A literal is a variable\nand a polarity; a clause is a disjunction of literals and a formula is\na conjunction of clauses. Width at most $k$ means at most $k$ literals\nin each clause. The empty conjunction is true and an empty clause is false.\n\nThe binary encoding gives $n$, the number of clauses, each clause length,\nand each literal's index and sign, in that order. Natural numbers use\nunary followed by a zero. This self-delimiting encoding has polynomial\nlength in $n$ and the usual explicit formula size. Polynomial factors\nin its full length are retained in the SAT running-time bounds; the\nexponential parameter is $n$, not the number of clauses or encoded bits.\nUnused indexed variables, repeated literals and repeated clauses are allowed.\n-/\n\nnamespace Lax489179.Satisfiability\n\nabbrev Literal (n : ℕ) := Fin n × Bool\nabbrev Clause (n : ℕ) := List (Literal n)\n\nstructure Formula where\n  numVars : ℕ\n  clauses : List (Clause numVars)\n\ndef Satisfiable (F : Formula) : Prop :=\n  ∃ assignment : Fin F.numVars → Bool,\n    ∀ clause ∈ F.clauses, ∃ literal ∈ clause, assignment literal.1 = literal.2\n\ndef WidthAtMost (k : ℕ) (F : Formula) : Prop :=\n  ∀ clause ∈ F.clauses, clause.length ≤ k\n\ndef encodeNat (n : ℕ) : List Bool := List.replicate n true ++ [false]\n\ndef encodeLiteral {n : ℕ} (literal : Literal n) : List Bool :=\n  encodeNat literal.1.val ++ [literal.2]\n\ndef encodeClause {n : ℕ} (clause : Clause n) : List Bool :=\n  encodeNat clause.length ++ clause.flatMap encodeLiteral\n\ndef encode (F : Formula) : List Bool :=\n  encodeNat F.numVars ++ encodeNat F.clauses.length ++ F.clauses.flatMap encodeClause\n\nend Lax489179.Satisfiability\n",
+      "statements": []
+    },
+    {
+      "id": "Lax489179.SATTime",
+      "path": "concepts/Lax489179/SATTime.lean",
+      "title": "Exponential running time for bounded-width SAT",
+      "type": "definition",
+      "description": "For a fixed width $k$ and real exponent $a$, `Solvable mode k a`\nmeans that one finite multitape machine decides $k$-CNF satisfiability\nin time $C(L+1)^d 2^{an}$, where $L$ is the encoded formula length,\n$n$ is the number of variables, and $C>0$ and $d$ are fixed constants.\nThis is the meaning of $O^*(2^{an})$ used here. The same machine and\nconstants serve every formula of width at most $k$.\n\nThe mode distinguishes exact deterministic decision from randomized\ndecision with two-sided error at most $1/3$. In either mode the step\nbound holds on every input and, in randomized mode, every random tape.\nConstants and the machine may depend on $k$ and $a$.",
+      "imports": [
+        "Lax489179.Satisfiability",
+        "Lax489179.TuringMachine"
+      ],
+      "mathlibImports": [
+        "Mathlib.Analysis.SpecialFunctions.Pow.Real"
+      ],
+      "sourceText": "import Lax489179.TuringMachine\nimport Lax489179.Satisfiability\nimport Mathlib.Analysis.SpecialFunctions.Pow.Real\n\n/-!\n---\ntitle: Exponential running time for bounded-width SAT\ntype: definition\n---\nFor a fixed width $k$ and real exponent $a$, `Solvable mode k a`\nmeans that one finite multitape machine decides $k$-CNF satisfiability\nin time $C(L+1)^d 2^{an}$, where $L$ is the encoded formula length,\n$n$ is the number of variables, and $C>0$ and $d$ are fixed constants.\nThis is the meaning of $O^*(2^{an})$ used here. The same machine and\nconstants serve every formula of width at most $k$.\n\nThe mode distinguishes exact deterministic decision from randomized\ndecision with two-sided error at most $1/3$. In either mode the step\nbound holds on every input and, in randomized mode, every random tape.\nConstants and the machine may depend on $k$ and $a$.\n-/\n\nnamespace Lax489179.SATTime\n\nopen Algorithms Satisfiability TuringMachine\n\ndef Solvable (mode : Mode) (k : ℕ) (a : ℝ) : Prop :=\n  ∃ (M : Machine) (C : ℝ) (d : ℕ), 0 < C ∧ Allowed mode (Deterministic M) ∧\n    ∀ F : Formula, WidthAtMost k F →\n      ∃ t : ℕ, (t : ℝ) ≤ C * ((encode F).length + 1 : ℝ) ^ d *\n        Real.rpow 2 (a * F.numVars) ∧\n        DecidesWithin M (encode F) (Satisfiable F) t\n\nend Lax489179.SATTime\n",
+      "statements": []
+    },
+    {
+      "id": "Lax489179.SETH",
+      "path": "concepts/Lax489179/SETH.lean",
+      "title": "The Strong Exponential Time Hypothesis (SETH)",
+      "type": "definition",
+      "description": "For every $0<\\varepsilon<1$, there is a width $k\\geq 3$ such that\n$k$-CNF satisfiability has no deterministic\n$O^*(2^{(1-\\varepsilon)n})$ algorithm. The width may depend on\n$\\varepsilon$. This is the exponential-rate formulation of SETH;\nit expresses the absence of a fixed improvement below base two across\nall fixed clause widths, even when each width has its own algorithm.\n\n`Randomized` excludes bounded-error randomized algorithms instead.\nThe polynomial factor in the full formula length is explicit in\n`SATTime.Solvable`. These are propositions, not axioms.",
+      "imports": [
+        "Lax489179.SATTime"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax489179.SATTime\n\n/-!\n---\ntitle: The Strong Exponential Time Hypothesis (SETH)\ntype: definition\n---\nFor every $0<\\varepsilon<1$, there is a width $k\\geq 3$ such that\n$k$-CNF satisfiability has no deterministic\n$O^*(2^{(1-\\varepsilon)n})$ algorithm. The width may depend on\n$\\varepsilon$. This is the exponential-rate formulation of SETH;\nit expresses the absence of a fixed improvement below base two across\nall fixed clause widths, even when each width has its own algorithm.\n\n`Randomized` excludes bounded-error randomized algorithms instead.\nThe polynomial factor in the full formula length is explicit in\n`SATTime.Solvable`. These are propositions, not axioms.\n-/\n\nnamespace Lax489179.SETH\n\ndef Hypothesis (mode : Algorithms.Mode) : Prop :=\n  ∀ ε : ℝ, 0 < ε → ε < 1 →\n    ∃ k : ℕ, 3 ≤ k ∧ ¬ SATTime.Solvable mode k (1 - ε)\n\ndef Deterministic : Prop := Hypothesis .deterministic\n\ndef Randomized : Prop := Hypothesis .randomized\n\nend Lax489179.SETH\n",
+      "statements": []
+    },
+    {
+      "id": "Lax489179.ThreeSUM",
+      "path": "concepts/Lax489179/ThreeSUM.lean",
+      "title": "The integer 3-SUM problem",
+      "type": "definition",
+      "description": "The input is an array of $n$ distinct integers in $[-n^3,n^3]$.\nIt is a yes-instance if three distinct entries sum to zero. The\norder of the array is arbitrary. The machine must output exactly\none word: one for yes and zero for no. The raw input is the list of\nsigned integer codes; lax-67 supplies its length through the input interface.\n\nThe cubic universe is the standard integer 3-SUM convention. Arithmetic\nin the specification is over $\\mathbb Z$, so the sum test is exact and\nhas no modular overflow. Machine arithmetic remains bounded-word\narithmetic as specified in `WordPrograms`.",
+      "imports": [
+        "Lax489179.IntegerEncoding",
+        "Lax489179.WordTime"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax489179.WordTime\nimport Lax489179.IntegerEncoding\n\n/-!\n---\ntitle: The integer 3-SUM problem\ntype: definition\n---\nThe input is an array of $n$ distinct integers in $[-n^3,n^3]$.\nIt is a yes-instance if three distinct entries sum to zero. The\norder of the array is arbitrary. The machine must output exactly\none word: one for yes and zero for no. The raw input is the list of\nsigned integer codes; lax-67 supplies its length through the input interface.\n\nThe cubic universe is the standard integer 3-SUM convention. Arithmetic\nin the specification is over $\\mathbb Z$, so the sum test is exact and\nhas no modular overflow. Machine arithmetic remains bounded-word\narithmetic as specified in `WordPrograms`.\n-/\n\nnamespace Lax489179.ThreeSUM\n\ndef HasZeroSum (input : List ℤ) : Prop :=\n  ∃ i j k : Fin input.length,\n    i < j ∧ j < k ∧ input[i] + input[j] + input[k] = 0\n\ndef Valid (input : List ℤ) : Prop :=\n  input.Nodup ∧ ∀ z ∈ input, z.natAbs ≤ input.length ^ 3\n\ndef Correct (input : List ℤ) (output : List ℕ) : Prop :=\n  (output = [1] ∧ HasZeroSum input) ∨ (output = [0] ∧ ¬ HasZeroSum input)\n\ndef problem : WordTime.Problem where\n  Input := List ℤ\n  size := List.length\n  encode := List.map IntegerEncoding.encodeInt\n  valid := Valid\n  correct := Correct\n\nend Lax489179.ThreeSUM\n",
+      "statements": []
+    },
+    {
+      "id": "Lax489179.ThreeSUMHypothesis",
+      "path": "concepts/Lax489179/ThreeSUMHypothesis.lean",
+      "title": "The 3-SUM Hypothesis",
+      "type": "definition",
+      "description": "The integer 3-SUM Hypothesis excludes an $O(n^{2-\\varepsilon})$\nword-RAM algorithm for every constant $\\varepsilon>0$, on arrays of\n$n$ distinct integers in $[-n^3,n^3]$. Words have $O(\\log n)$ bits.\n\n`Deterministic` uses deterministic algorithms;\n`Randomized` also excludes randomized algorithms with\ntwo-sided error at most $1/3$ and a worst-case time bound. The latter\nis the randomized convention supplied by this submission. We do not\nidentify it here with an expected-time or a zero-error formulation.\n\nThese are propositions. The bound concerns a fixed improvement in the\nexponent; it permits savings by logarithmic or other subpolynomial factors.",
+      "imports": [
+        "Lax489179.ThreeSUM"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax489179.ThreeSUM\n\n/-!\n---\ntitle: The 3-SUM Hypothesis\ntype: definition\n---\nThe integer 3-SUM Hypothesis excludes an $O(n^{2-\\varepsilon})$\nword-RAM algorithm for every constant $\\varepsilon>0$, on arrays of\n$n$ distinct integers in $[-n^3,n^3]$. Words have $O(\\log n)$ bits.\n\n`Deterministic` uses deterministic algorithms;\n`Randomized` also excludes randomized algorithms with\ntwo-sided error at most $1/3$ and a worst-case time bound. The latter\nis the randomized convention supplied by this submission. We do not\nidentify it here with an expected-time or a zero-error formulation.\n\nThese are propositions. The bound concerns a fixed improvement in the\nexponent; it permits savings by logarithmic or other subpolynomial factors.\n-/\n\nnamespace Lax489179.ThreeSUMHypothesis\n\ndef Hypothesis (mode : Algorithms.Mode) : Prop :=\n  ∀ ε : ℝ, 0 < ε → ¬ WordTime.Solvable mode ThreeSUM.problem (2 - ε)\n\ndef Deterministic : Prop := Hypothesis .deterministic\n\ndef Randomized : Prop := Hypothesis .randomized\n\nend Lax489179.ThreeSUMHypothesis\n",
+      "statements": []
+    },
+    {
+      "id": "Lax489179.TimeProperties",
+      "path": "concepts/Lax489179/TimeProperties.lean",
+      "title": "Monotonicity of running-time bounds",
+      "type": "lemma",
+      "description": "Increasing a time exponent preserves solvability. A solver for width\nat most $k$ also solves every smaller SAT width. A deterministic solver\nis an admissible randomized solver with the same time bound.",
+      "imports": [
+        "Lax489179.SATTime",
+        "Lax489179.WordTime"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax489179.SATTime\nimport Lax489179.WordTime\n\n/-!\n---\ntitle: Monotonicity of running-time bounds\ntype: lemma\n---\nIncreasing a time exponent preserves solvability. A solver for width\nat most $k$ also solves every smaller SAT width. A deterministic solver\nis an admissible randomized solver with the same time bound.\n-/\n\nnamespace Lax489179.TimeProperties\n\nopen Algorithms\n\naxiom sat_exponent_mono (mode : Mode) (k : ℕ) (a b : ℝ) (hab : a ≤ b)\n    (h : SATTime.Solvable mode k a) : SATTime.Solvable mode k b\n\naxiom sat_width_mono (mode : Mode) (k l : ℕ) (a : ℝ) (hkl : k ≤ l)\n    (h : SATTime.Solvable mode l a) : SATTime.Solvable mode k a\n\naxiom word_exponent_mono (mode : Mode) (P : WordTime.Problem) (a b : ℝ) (hab : a ≤ b)\n    (h : WordTime.Solvable mode P a) : WordTime.Solvable mode P b\n\naxiom sat_randomized (k : ℕ) (a : ℝ) (h : SATTime.Solvable .deterministic k a) :\n    SATTime.Solvable .randomized k a\n\naxiom word_randomized (P : WordTime.Problem) (a : ℝ)\n    (h : WordTime.Solvable .deterministic P a) : WordTime.Solvable .randomized P a\n\nend Lax489179.TimeProperties\n",
+      "statements": [
+        {
+          "id": "Lax489179.TimeProperties.sat_exponent_mono",
+          "signature": "sat_exponent_mono : ∀ (mode : Lax489179.Algorithms.Mode) (k : Nat) (a b : Real),\n  Real.instLE.le a b → Lax489179.SATTime.Solvable mode k a → Lax489179.SATTime.Solvable mode k b",
+          "startLine": 18,
+          "endLine": 19
+        },
+        {
+          "id": "Lax489179.TimeProperties.sat_randomized",
+          "signature": "sat_randomized : ∀ (k : Nat) (a : Real),\n  Lax489179.SATTime.Solvable Lax489179.Algorithms.Mode.deterministic k a →\n    Lax489179.SATTime.Solvable Lax489179.Algorithms.Mode.randomized k a",
+          "startLine": 27,
+          "endLine": 28
+        },
+        {
+          "id": "Lax489179.TimeProperties.sat_width_mono",
+          "signature": "sat_width_mono : ∀ (mode : Lax489179.Algorithms.Mode) (k l : Nat) (a : Real),\n  instLENat.le k l → Lax489179.SATTime.Solvable mode l a → Lax489179.SATTime.Solvable mode k a",
+          "startLine": 21,
+          "endLine": 22
+        },
+        {
+          "id": "Lax489179.TimeProperties.word_exponent_mono",
+          "signature": "word_exponent_mono : ∀ (mode : Lax489179.Algorithms.Mode) (P : Lax489179.WordTime.Problem) (a b : Real),\n  Real.instLE.le a b → Lax489179.WordTime.Solvable mode P a → Lax489179.WordTime.Solvable mode P b",
+          "startLine": 24,
+          "endLine": 25
+        },
+        {
+          "id": "Lax489179.TimeProperties.word_randomized",
+          "signature": "word_randomized : ∀ (P : Lax489179.WordTime.Problem) (a : Real),\n  Lax489179.WordTime.Solvable Lax489179.Algorithms.Mode.deterministic P a →\n    Lax489179.WordTime.Solvable Lax489179.Algorithms.Mode.randomized P a",
+          "startLine": 30,
+          "endLine": 31
+        }
+      ]
+    },
+    {
+      "id": "Lax489179.TuringMachine",
+      "path": "concepts/Lax489179/TuringMachine.lean",
+      "title": "Finite multitape Turing machines",
+      "type": "definition",
+      "description": "A machine has a fixed finite number of tapes, symbols and control states.\nEach transition reads the scanned symbols, writes one symbol per tape,\nand moves each head by at most one cell. Halting returns one Boolean.\nTapes are indexed by integers. Initially all heads are at zero; tape zero\ncontains the binary input in its original order and every other cell is\nblank. Blank, false and true are distinct symbols.\n\nA randomized transition may also inspect one fresh fair bit. A\ndeterministic machine has the same transition for both values of that\nbit. One transition, including the transition returning an answer,\ncosts one step. The finite transition table is chosen before the input.\nThis elementary multitape model avoids any uncharged computation inside\na transition and is used for the SAT hypotheses.",
+      "imports": [
+        "Lax489179.Algorithms"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Int.Basic"
+      ],
+      "sourceText": "import Lax489179.Algorithms\nimport Mathlib.Data.Int.Basic\n\n/-!\n---\ntitle: Finite multitape Turing machines\ntype: definition\n---\nA machine has a fixed finite number of tapes, symbols and control states.\nEach transition reads the scanned symbols, writes one symbol per tape,\nand moves each head by at most one cell. Halting returns one Boolean.\nTapes are indexed by integers. Initially all heads are at zero; tape zero\ncontains the binary input in its original order and every other cell is\nblank. Blank, false and true are distinct symbols.\n\nA randomized transition may also inspect one fresh fair bit. A\ndeterministic machine has the same transition for both values of that\nbit. One transition, including the transition returning an answer,\ncosts one step. The finite transition table is chosen before the input.\nThis elementary multitape model avoids any uncharged computation inside\na transition and is used for the SAT hypotheses.\n-/\n\nnamespace Lax489179.TuringMachine\n\ninductive Move\n  | left\n  | stay\n  | right\n\ndef Move.offset : Move → ℤ\n  | .left => -1\n  | .stay => 0\n  | .right => 1\n\ninductive Instruction (tapes symbols states : ℕ)\n  | halt (answer : Bool)\n  | next (state : Fin states) (write : Fin tapes → Fin symbols)\n      (move : Fin tapes → Move)\n\n/-- The added constants ensure a nonempty control and tape set and\nthree distinct input/blank symbols. -/\nstructure Machine where\n  tapes : ℕ\n  symbols : ℕ\n  states : ℕ\n  transition : Fin (states + 1) → (Fin (tapes + 1) → Fin (symbols + 3)) →\n    Bool → Instruction (tapes + 1) (symbols + 3) (states + 1)\n\nstructure Config (M : Machine) where\n  state : Fin (M.states + 1)\n  head : Fin (M.tapes + 1) → ℤ\n  tape : Fin (M.tapes + 1) → ℤ → Fin (M.symbols + 3)\n  answer : Option Bool\n\ndef init (M : Machine) (input : List Bool) : Config M where\n  state := 0\n  head := fun _ => 0\n  tape := fun j z =>\n    if j = 0 ∧ 0 ≤ z then\n      match input[z.toNat]? with\n      | none => 0\n      | some false => 1\n      | some true => 2\n    else 0\n  answer := none\n\n/-- A halted configuration is unchanged, allowing a run to be padded. -/\ndef step (M : Machine) (coin : Bool) (c : Config M) : Config M :=\n  match c.answer with\n  | some _ => c\n  | none =>\n    match M.transition c.state (fun j => c.tape j (c.head j)) coin with\n    | .halt b => { c with answer := some b }\n    | .next q write move =>\n      { state := q\n        head := fun j => c.head j + (move j).offset\n        tape := fun j z => if z = c.head j then write j else c.tape j z\n        answer := none }\n\ndef run (M : Machine) : (t : ℕ) → (Fin t → Bool) → Config M → Config M\n  | 0, _, c => c\n  | t + 1, r, c => run M t (fun i => r i.succ) (step M (r 0) c)\n\ndef Deterministic (M : Machine) : Prop :=\n  ∀ q scanned, M.transition q scanned false = M.transition q scanned true\n\ndef DecidesWithin (M : Machine) (input : List Bool) (answer : Prop) (t : ℕ) : Prop :=\n  Algorithms.CorrectWithin t (fun r => (run M t r (init M input)).answer)\n    (fun b => b = true ↔ answer)\n\nend Lax489179.TuringMachine\n",
+      "statements": []
+    },
+    {
+      "id": "Lax489179.WeightedAPSP",
+      "path": "concepts/Lax489179/WeightedAPSP.lean",
+      "title": "Weighted all-pairs shortest paths",
+      "type": "definition",
+      "description": "An input is a directed graph on vertices $0,\\ldots,n-1$ with optional\ninteger edge weights. A walk may repeat vertices and its weight is the\nsum of its edge weights. We promise that every closed walk has\nnonnegative weight, and that each edge weight has absolute value at\nmost $n^c$, for a fixed positive integer $c$.\n\nFor each ordered vertex pair the output is its minimum walk weight,\nor infinity exactly when there is no walk. An empty walk has weight\nzero, so every diagonal distance is zero under the promise. The\nspecification uses all finite walks, not a bounded or approximate\nsurrogate for shortest paths. Negative weights and disconnected graphs\nare both included.\n\nThe input array is the vertex count followed by the $n^2$ adjacency\nentries in row-major order. The output consists of all $n^2$ distances\nin the same order, without a header. Optional-integer encoding separates\nmissing edges and infinite distances from finite zero. Producing the\nentire matrix is charged by the word-RAM execution semantics.",
+      "imports": [
+        "Lax489179.IntegerEncoding",
+        "Lax489179.WordTime"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.List.FinRange"
+      ],
+      "sourceText": "import Lax489179.WordTime\nimport Lax489179.IntegerEncoding\nimport Mathlib.Data.List.FinRange\n\n/-!\n---\ntitle: Weighted all-pairs shortest paths\ntype: definition\n---\nAn input is a directed graph on vertices $0,\\ldots,n-1$ with optional\ninteger edge weights. A walk may repeat vertices and its weight is the\nsum of its edge weights. We promise that every closed walk has\nnonnegative weight, and that each edge weight has absolute value at\nmost $n^c$, for a fixed positive integer $c$.\n\nFor each ordered vertex pair the output is its minimum walk weight,\nor infinity exactly when there is no walk. An empty walk has weight\nzero, so every diagonal distance is zero under the promise. The\nspecification uses all finite walks, not a bounded or approximate\nsurrogate for shortest paths. Negative weights and disconnected graphs\nare both included.\n\nThe input array is the vertex count followed by the $n^2$ adjacency\nentries in row-major order. The output consists of all $n^2$ distances\nin the same order, without a header. Optional-integer encoding separates\nmissing edges and infinite distances from finite zero. Producing the\nentire matrix is charged by the word-RAM execution semantics.\n-/\n\nnamespace Lax489179.WeightedAPSP\n\nstructure Graph where\n  vertices : ℕ\n  edge : Fin vertices → Fin vertices → Option ℤ\n\ninductive Walk (G : Graph) : Fin G.vertices → Fin G.vertices → ℤ → Prop\n  | nil (v : Fin G.vertices) : Walk G v v 0\n  | cons {u v z : Fin G.vertices} {a b : ℤ}\n      (edge : G.edge u v = some a) (tail : Walk G v z b) : Walk G u z (a + b)\n\ndef NoNegativeCycle (G : Graph) : Prop :=\n  ∀ v d, Walk G v v d → 0 ≤ d\n\ndef BoundedWeights (c : ℕ) (G : Graph) : Prop :=\n  ∀ u v z, G.edge u v = some z → z.natAbs ≤ G.vertices ^ c\n\ndef Distance (G : Graph) (u v : Fin G.vertices) : Option ℤ → Prop\n  | none => ¬ ∃ d, Walk G u v d\n  | some d => Walk G u v d ∧ ∀ d', Walk G u v d' → d ≤ d'\n\ndef encodeMatrix (n : ℕ) (matrix : Fin n → Fin n → Option ℤ) : List ℕ :=\n  (List.finRange n).flatMap fun i =>\n    (List.finRange n).map fun j => IntegerEncoding.encodeOption (matrix i j)\n\ndef encode (G : Graph) : List ℕ := G.vertices :: encodeMatrix G.vertices G.edge\n\ndef Correct (G : Graph) (output : List ℕ) : Prop :=\n  ∃ matrix : Fin G.vertices → Fin G.vertices → Option ℤ,\n    output = encodeMatrix G.vertices matrix ∧ ∀ u v, Distance G u v (matrix u v)\n\ndef problem (c : ℕ) : WordTime.Problem where\n  Input := Graph\n  size := Graph.vertices\n  encode := encode\n  valid := fun G => BoundedWeights c G ∧ NoNegativeCycle G\n  correct := Correct\n\nend Lax489179.WeightedAPSP\n",
+      "statements": []
+    },
+    {
+      "id": "Lax489179.WordPrograms",
+      "path": "concepts/Lax489179/WordPrograms.lean",
+      "title": "Word-RAM programs with optional fair coins",
+      "type": "definition",
+      "description": "We use the finite word-RAM instruction set of lax-67 and add one\ninstruction writing a fresh fair bit to a specified cell. In deterministic\nmode this instruction is forbidden. All arithmetic, indirect addressing,\ninput access and output use lax-67's word semantics. Input is a read-only\narray, writable memory starts at zero, and output is append-only.\n\nEach fetched instruction costs one step, including a coin or a halt.\nDetecting an out-of-range program counter also costs one step in this\nwrapper. Halted configurations are unchanged by further padding steps.\nThe bound thus includes the full output and termination. A random word\ncan be assembled from fair bits using the ordinary instructions.\nThe probability space is the uniform distribution on the finite bit\nstrings supplied to these transitions; it does not provide random advice.",
+      "imports": [
+        "Lax489179.Algorithms",
+        "Lax67.Ram"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax67.Ram\nimport Lax489179.Algorithms\n\n/-!\n---\ntitle: Word-RAM programs with optional fair coins\ntype: definition\n---\nWe use the finite word-RAM instruction set of lax-67 and add one\ninstruction writing a fresh fair bit to a specified cell. In deterministic\nmode this instruction is forbidden. All arithmetic, indirect addressing,\ninput access and output use lax-67's word semantics. Input is a read-only\narray, writable memory starts at zero, and output is append-only.\n\nEach fetched instruction costs one step, including a coin or a halt.\nDetecting an out-of-range program counter also costs one step in this\nwrapper. Halted configurations are unchanged by further padding steps.\nThe bound thus includes the full output and termination. A random word\ncan be assembled from fair bits using the ordinary instructions.\nThe probability space is the uniform distribution on the finite bit\nstrings supplied to these transitions; it does not provide random advice.\n-/\n\nnamespace Lax489179.WordPrograms\n\nopen Lax67.Ram\n\ninductive Instruction\n  | ordinary (instruction : Instr)\n  | coin (destination : ℕ)\n\nabbrev Program := List Instruction\n\nstructure Config where\n  state : State\n  halted : Bool\n\ndef init (input : List ℕ) : Config := ⟨initState input, false⟩\n\ndef step (w : ℕ) (p : Program) (bit : Bool) (c : Config) : Config :=\n  if c.halted then c else\n    match p[c.state.pc]? with\n    | none => { c with halted := true }\n    | some (.ordinary instruction) =>\n      match instruction.effect w c.state with\n      | none => { c with halted := true }\n      | some s => ⟨s, false⟩\n    | some (.coin a) =>\n      ⟨{ c.state with\n          pc := c.state.pc + 1\n          mem := setCell w c.state.mem a bit.toNat }, false⟩\n\ndef run (w : ℕ) (p : Program) : (t : ℕ) → (Fin t → Bool) → Config → Config\n  | 0, _, c => c\n  | t + 1, r, c => run w p t (fun i => r i.succ) (step w p (r 0) c)\n\ndef output (c : Config) : Option (List ℕ) :=\n  if c.halted then some c.state.out else none\n\ndef Deterministic (p : Program) : Prop :=\n  ∀ a, Instruction.coin a ∉ p\n\ndef ComputesWithin (w : ℕ) (p : Program) (input : List ℕ)\n    (correct : List ℕ → Prop) (t : ℕ) : Prop :=\n  Algorithms.CorrectWithin t (fun r => output (run w p t r (init input))) correct\n\nend Lax489179.WordPrograms\n",
+      "statements": []
+    },
+    {
+      "id": "Lax489179.WordTime",
+      "path": "concepts/Lax489179/WordTime.lean",
+      "title": "Polynomial running time on logarithmic words",
+      "type": "definition",
+      "description": "An encoded problem specifies its instances, size parameter $n$, input\narray, admissibility promise and correct outputs. It is solvable with\nexponent $a$ if one finite word-RAM program solves every admissible\ninstance within $C(n+2)^a$ instructions, for a constant $C>0$.\n\nThe word length is $b(1+\\lfloor\\log_2(n+2)\\rfloor)$ for one fixed\npositive integer $b$. Thus words have $\\Theta(\\log(n+2))$ bits and\nthe program is uniform in $n$. Both $b$ and the program are chosen\nbefore the input. Every encoded input entry and the full input length\nmust fit in a word. These fitting conditions are requirements on the\nalgorithm, so a choice of small words cannot discard difficult inputs.\n\nThe size parameter counts vertices for APSP and integers for 3-SUM.\nThere is no arbitrary polynomial factor in these time bounds. The\nadditive two makes the same constant bound meaningful at small sizes.",
+      "imports": [
+        "Lax489179.WordPrograms"
+      ],
+      "mathlibImports": [
+        "Mathlib.Analysis.SpecialFunctions.Pow.Real",
+        "Mathlib.Data.Nat.Log"
+      ],
+      "sourceText": "import Lax489179.WordPrograms\nimport Mathlib.Data.Nat.Log\nimport Mathlib.Analysis.SpecialFunctions.Pow.Real\n\n/-!\n---\ntitle: Polynomial running time on logarithmic words\ntype: definition\n---\nAn encoded problem specifies its instances, size parameter $n$, input\narray, admissibility promise and correct outputs. It is solvable with\nexponent $a$ if one finite word-RAM program solves every admissible\ninstance within $C(n+2)^a$ instructions, for a constant $C>0$.\n\nThe word length is $b(1+\\lfloor\\log_2(n+2)\\rfloor)$ for one fixed\npositive integer $b$. Thus words have $\\Theta(\\log(n+2))$ bits and\nthe program is uniform in $n$. Both $b$ and the program are chosen\nbefore the input. Every encoded input entry and the full input length\nmust fit in a word. These fitting conditions are requirements on the\nalgorithm, so a choice of small words cannot discard difficult inputs.\n\nThe size parameter counts vertices for APSP and integers for 3-SUM.\nThere is no arbitrary polynomial factor in these time bounds. The\nadditive two makes the same constant bound meaningful at small sizes.\n-/\n\nnamespace Lax489179.WordTime\n\nstructure Problem where\n  Input : Type\n  size : Input → ℕ\n  encode : Input → List ℕ\n  valid : Input → Prop\n  correct : Input → List ℕ → Prop\n\ndef wordLength (b n : ℕ) : ℕ := b * (Nat.log2 (n + 2) + 1)\n\ndef Fits (w : ℕ) (input : List ℕ) : Prop :=\n  input.length < 2 ^ w ∧ ∀ x ∈ input, x < 2 ^ w\n\ndef Solvable (mode : Algorithms.Mode) (P : Problem) (a : ℝ) : Prop :=\n  ∃ (p : WordPrograms.Program) (b : ℕ) (C : ℝ),\n    0 < b ∧ 0 < C ∧ Algorithms.Allowed mode (WordPrograms.Deterministic p) ∧\n    ∀ x : P.Input, P.valid x →\n      Fits (wordLength b (P.size x)) (P.encode x) ∧\n      ∃ t : ℕ, (t : ℝ) ≤ C * Real.rpow (P.size x + 2 : ℝ) a ∧\n        WordPrograms.ComputesWithin (wordLength b (P.size x)) p\n          (P.encode x) (P.correct x) t\n\nend Lax489179.WordTime\n",
+      "statements": []
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax489179Proofs.decode_encode_int",
+      "path": "proofs/Lax489179Proofs/Encodings.lean",
+      "conclusion": "Lax489179.EncodingProperties.decode_encode_int",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.decode_encode_option",
+      "path": "proofs/Lax489179Proofs/Encodings.lean",
+      "conclusion": "Lax489179.EncodingProperties.decode_encode_option",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.diagonal_zero",
+      "path": "proofs/Lax489179Proofs/Encodings.lean",
+      "conclusion": "Lax489179.DistanceProperties.diagonal_zero",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.distance_unique",
+      "path": "proofs/Lax489179Proofs/Encodings.lean",
+      "conclusion": "Lax489179.DistanceProperties.distance_unique",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.encode_int_injective",
+      "path": "proofs/Lax489179Proofs/Encodings.lean",
+      "conclusion": "Lax489179.EncodingProperties.encode_int_injective",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.encode_option_injective",
+      "path": "proofs/Lax489179Proofs/Encodings.lean",
+      "conclusion": "Lax489179.EncodingProperties.encode_option_injective",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.matrix_length",
+      "path": "proofs/Lax489179Proofs/Encodings.lean",
+      "conclusion": "Lax489179.DistanceProperties.matrix_length",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.not_apsp",
+      "path": "proofs/Lax489179Proofs/Hypotheses.lean",
+      "conclusion": "Lax489179.HypothesisProperties.not_apsp",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.not_eth",
+      "path": "proofs/Lax489179Proofs/Hypotheses.lean",
+      "conclusion": "Lax489179.HypothesisProperties.not_eth",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.not_seth",
+      "path": "proofs/Lax489179Proofs/Hypotheses.lean",
+      "conclusion": "Lax489179.HypothesisProperties.not_seth",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.not_three_sum",
+      "path": "proofs/Lax489179Proofs/Hypotheses.lean",
+      "conclusion": "Lax489179.HypothesisProperties.not_three_sum",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.randomized_apsp",
+      "path": "proofs/Lax489179Proofs/Hypotheses.lean",
+      "conclusion": "Lax489179.HypothesisProperties.randomized_apsp",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.randomized_eth",
+      "path": "proofs/Lax489179Proofs/Hypotheses.lean",
+      "conclusion": "Lax489179.HypothesisProperties.randomized_eth",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.randomized_seth",
+      "path": "proofs/Lax489179Proofs/Hypotheses.lean",
+      "conclusion": "Lax489179.HypothesisProperties.randomized_seth",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.randomized_three_sum",
+      "path": "proofs/Lax489179Proofs/Hypotheses.lean",
+      "conclusion": "Lax489179.HypothesisProperties.randomized_three_sum",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.sat_exponent_mono",
+      "path": "proofs/Lax489179Proofs/Time.lean",
+      "conclusion": "Lax489179.TimeProperties.sat_exponent_mono",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.sat_randomized",
+      "path": "proofs/Lax489179Proofs/Time.lean",
+      "conclusion": "Lax489179.TimeProperties.sat_randomized",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.sat_width_mono",
+      "path": "proofs/Lax489179Proofs/Time.lean",
+      "conclusion": "Lax489179.TimeProperties.sat_width_mono",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.three_entries",
+      "path": "proofs/Lax489179Proofs/Encodings.lean",
+      "conclusion": "Lax489179.EncodingProperties.three_entries",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.turing_exact",
+      "path": "proofs/Lax489179Proofs/Semantics.lean",
+      "conclusion": "Lax489179.DeterministicSemantics.turing_exact",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.word_exact",
+      "path": "proofs/Lax489179Proofs/Semantics.lean",
+      "conclusion": "Lax489179.DeterministicSemantics.word_exact",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.word_exponent_mono",
+      "path": "proofs/Lax489179Proofs/Time.lean",
+      "conclusion": "Lax489179.TimeProperties.word_exponent_mono",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax489179Proofs.word_randomized",
+      "path": "proofs/Lax489179Proofs/Time.lean",
+      "conclusion": "Lax489179.TimeProperties.word_randomized",
+      "assumptions": [],
+      "description": ""
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "93fa5d38023bac7fefed820aad9238568cf1bcd74adedc3bab6112682d088660",
+    "sourceCommit": "fd16a906670722d2245bdab81930c6cb6af432e9",
+    "leanToolchain": "leanprover/lean4:v4.30.0",
+    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "files": [
+      {
+        "path": "concepts/ir/Lax489179/Algorithms.c",
+        "bytes": 10217,
+        "sha256": "71999f2ab44684640b82aa91687f063dbd639532ddc82ae2cf3caedd24b6dc62"
+      },
+      {
+        "path": "concepts/ir/Lax489179/Algorithms.c.hash",
+        "bytes": 16,
+        "sha256": "3bc7ad07197aa2fa98ee3d86084a0ef6990b1d1133133002cf018b31d9d40233"
+      },
+      {
+        "path": "concepts/ir/Lax489179/APSPHypothesis.c",
+        "bytes": 1344,
+        "sha256": "299a7272f287390ed3fc3966194a44883c9f0522dce26fe9c4928d4fb7a54e65"
+      },
+      {
+        "path": "concepts/ir/Lax489179/APSPHypothesis.c.hash",
+        "bytes": 16,
+        "sha256": "906ccf964fc4ceb9c0c2c5f16cd8f45bf9a3354bd092d879571e24f3cd54cdaf"
+      },
+      {
+        "path": "concepts/ir/Lax489179/DeterministicSemantics.c",
+        "bytes": 1600,
+        "sha256": "cb42497bc76faf61363d7a0ac87e411200c286c58993630deb9479e991a4b5c2"
+      },
+      {
+        "path": "concepts/ir/Lax489179/DeterministicSemantics.c.hash",
+        "bytes": 16,
+        "sha256": "23df2a12ca098bd4ca24898701a14d6f0a37dc67bf0b3894bf4fbce80e7cad17"
+      },
+      {
+        "path": "concepts/ir/Lax489179/DistanceProperties.c",
+        "bytes": 1352,
+        "sha256": "190a1b20878c78e71b523d64130d03c7726a372beefc256b25671558e74da735"
+      },
+      {
+        "path": "concepts/ir/Lax489179/DistanceProperties.c.hash",
+        "bytes": 16,
+        "sha256": "1b9e26560ab5f0a52f72d9235c793538037c8c1b95c417e4577bea31076cdfcc"
+      },
+      {
+        "path": "concepts/ir/Lax489179/EncodingProperties.c",
+        "bytes": 1586,
+        "sha256": "1289bb1e7fd572750f8dddb51a7aeb04e3897b7a5f063545c38b88308c483de6"
+      },
+      {
+        "path": "concepts/ir/Lax489179/EncodingProperties.c.hash",
+        "bytes": 16,
+        "sha256": "821329060720a313a9a4391ebe00602a316381c563d44561fd1cbfefd0b92e54"
+      },
+      {
+        "path": "concepts/ir/Lax489179/ETH.c",
+        "bytes": 1307,
+        "sha256": "9bd56b84dad853039f1f53067f49ec90fd5f20e0bddb96f6fdab6e6fd63cedee"
+      },
+      {
+        "path": "concepts/ir/Lax489179/ETH.c.hash",
+        "bytes": 16,
+        "sha256": "6dab5e130d4f6807c925fb29f96baa0c445fc8033bd271903f1dd3cc673921a8"
+      },
+      {
+        "path": "concepts/ir/Lax489179/HypothesisProperties.c",
+        "bytes": 2040,
+        "sha256": "e20806d1d5cb823dedd02f9674e98dab2ac7937b83fd4d22a3797ec78fb03077"
+      },
+      {
+        "path": "concepts/ir/Lax489179/HypothesisProperties.c.hash",
+        "bytes": 16,
+        "sha256": "b9ee0fb67a54b03bee5f8bf4bfd609c2f99a5014123b3091c36bef666c1e7d48"
+      },
+      {
+        "path": "concepts/ir/Lax489179/IntegerEncoding.c",
+        "bytes": 7438,
+        "sha256": "1d09451d1efa16e100078120b907192bff749ba9671b0f14b200f08f43ef10ed"
+      },
+      {
+        "path": "concepts/ir/Lax489179/IntegerEncoding.c.hash",
+        "bytes": 16,
+        "sha256": "e8b0aaea342cbff2141a714eadd72c1892c6b72cd364db33fafc968133470795"
+      },
+      {
+        "path": "concepts/ir/Lax489179/Satisfiability.c",
+        "bytes": 12146,
+        "sha256": "7435c1434fb74de5b97d8cfa13dd35fc982b5c20312a2c8596141b73b34e6a5e"
+      },
+      {
+        "path": "concepts/ir/Lax489179/Satisfiability.c.hash",
+        "bytes": 16,
+        "sha256": "cc9525b76e6ad05d9d15cac41f8ed89a2894118ed3b6c3520df5bd6bcba22a00"
+      },
+      {
+        "path": "concepts/ir/Lax489179/SATTime.c",
+        "bytes": 1869,
+        "sha256": "383e26388a288bacd08b6bde4ba2d3fc1e49a3776e6d7d46bd9ce09285c35381"
+      },
+      {
+        "path": "concepts/ir/Lax489179/SATTime.c.hash",
+        "bytes": 16,
+        "sha256": "108ce1d23a1f651f6f970f54994cbb7f3e3ae7c79c1ef49a4f444b7624bf12c7"
+      },
+      {
+        "path": "concepts/ir/Lax489179/SETH.c",
+        "bytes": 1309,
+        "sha256": "09167f5ff1ca149ed468e6c6933b67957d1c74852cbe5fafdc59c57741713017"
+      },
+      {
+        "path": "concepts/ir/Lax489179/SETH.c.hash",
+        "bytes": 16,
+        "sha256": "da6999810495311e7504a7f374e055a99041ae9046625ea9a8b66a980d3d763c"
+      },
+      {
+        "path": "concepts/ir/Lax489179/ThreeSUM.c",
+        "bytes": 5354,
+        "sha256": "475f730a1e4de46f99d07fad92d552f8a5c3ec993aeee48c20ef0573c402044e"
+      },
+      {
+        "path": "concepts/ir/Lax489179/ThreeSUM.c.hash",
+        "bytes": 16,
+        "sha256": "35f96b6b697ea4d99d626ba7af1076b9437de33a902e164138c2eaab6387aa87"
+      },
+      {
+        "path": "concepts/ir/Lax489179/ThreeSUMHypothesis.c",
+        "bytes": 1340,
+        "sha256": "995509e3b41ff7252aaf4055555e61bc5f303a4962549016fd25e671be468eb8"
+      },
+      {
+        "path": "concepts/ir/Lax489179/ThreeSUMHypothesis.c.hash",
+        "bytes": 16,
+        "sha256": "26143e32700e39e55b486b9ca6f91f7beb6375c4139b1b3857caebfc962a059a"
+      },
+      {
+        "path": "concepts/ir/Lax489179/TimeProperties.c",
+        "bytes": 1554,
+        "sha256": "89f0fabb4464640e0058edc5345ab21a5684c0aa1df1a61cc63984afb7e0148b"
+      },
+      {
+        "path": "concepts/ir/Lax489179/TimeProperties.c.hash",
+        "bytes": 16,
+        "sha256": "7461edfbedc663fe0c425ac2747543e95fb0d7e1cb4b21b50123d4b52f5da7bb"
+      },
+      {
+        "path": "concepts/ir/Lax489179/TuringMachine.c",
+        "bytes": 37660,
+        "sha256": "6cd76a6882c1e1d4b24dc074c55a05c1087453452b3ebeb0e737828d12308e22"
+      },
+      {
+        "path": "concepts/ir/Lax489179/TuringMachine.c.hash",
+        "bytes": 16,
+        "sha256": "815e4a26062647c7915dc53367ce0b72d6e9af3cf9037a8f99ecfee4575f250c"
+      },
+      {
+        "path": "concepts/ir/Lax489179/WeightedAPSP.c",
+        "bytes": 12353,
+        "sha256": "2b7b4abf33bdb7521bc0e2ac57b43eee5bfbd59bb54474acbbeb97346fa6fd78"
+      },
+      {
+        "path": "concepts/ir/Lax489179/WeightedAPSP.c.hash",
+        "bytes": 16,
+        "sha256": "ade0f342398cc4e025093cbfb96293c552a1c42c95f4fe87984e570fb1fbda60"
+      },
+      {
+        "path": "concepts/ir/Lax489179/WordPrograms.c",
+        "bytes": 17226,
+        "sha256": "2f24bb3a662306a47420f2798c52175034683bd900d95121aca4e1f3e5b1f255"
+      },
+      {
+        "path": "concepts/ir/Lax489179/WordPrograms.c.hash",
+        "bytes": 16,
+        "sha256": "d589b7bd0488302f9ab619e93c0389262760e681b066fe5d0a1dc6898cd72b19"
+      },
+      {
+        "path": "concepts/ir/Lax489179/WordTime.c",
+        "bytes": 3075,
+        "sha256": "1acec827d730c2014b37fadecd0ff6b5db464c7a28919d0aebe88cde26c6cb91"
+      },
+      {
+        "path": "concepts/ir/Lax489179/WordTime.c.hash",
+        "bytes": 16,
+        "sha256": "a8d835caad2de45820019c198865054284eca33f8da04dca8d1eb7a8a88fde06"
+      },
+      {
+        "path": "concepts/ir/Lax489179.c",
+        "bytes": 5385,
+        "sha256": "78843ae508d51c1c6a1adc6aacad5e84dd16a74524991a3a0171274f377d2d62"
+      },
+      {
+        "path": "concepts/ir/Lax489179.c.hash",
+        "bytes": 16,
+        "sha256": "01f2b7a2c806a5e1ae0fca9dcb98c2b066214c1f2b3d551c1bee115b5d3e8810"
+      },
+      {
+        "path": "concepts/lib/Lax489179/Algorithms.ilean",
+        "bytes": 2479,
+        "sha256": "b54ab3b76459947471934ae9c16d4e5e890823ad888b1aef4e42e3f836fd6d5d"
+      },
+      {
+        "path": "concepts/lib/Lax489179/Algorithms.ilean.hash",
+        "bytes": 16,
+        "sha256": "95e7a4f35454d363436ab71d6bb70db4f8a76a410039476b2fdca8955c3adbae"
+      },
+      {
+        "path": "concepts/lib/Lax489179/Algorithms.olean",
+        "bytes": 61816,
+        "sha256": "407fcf9ce0242a7f1fbd03193c3845f1128577d2c453f4d685208df8a7248a56"
+      },
+      {
+        "path": "concepts/lib/Lax489179/Algorithms.olean.hash",
+        "bytes": 16,
+        "sha256": "861f8d1b9e84f97d174ccbcee7110427255606f0d47ba02979b65b12e4f9b0a5"
+      },
+      {
+        "path": "concepts/lib/Lax489179/Algorithms.trace",
+        "bytes": 2407,
+        "sha256": "3a1a51231bfffacaf939f785ef1d4a0555c500df48a89c1997bf5fbe0285fc26"
+      },
+      {
+        "path": "concepts/lib/Lax489179/APSPHypothesis.ilean",
+        "bytes": 2315,
+        "sha256": "f7857bae3af4c912a1e8fd6840e86dd93be17387a87dc043f8cad2e3cedf4116"
+      },
+      {
+        "path": "concepts/lib/Lax489179/APSPHypothesis.ilean.hash",
+        "bytes": 16,
+        "sha256": "645d2616c4fc76567d1ac4d8485563c5993d99daf19d145688831ce2ed94ea73"
+      },
+      {
+        "path": "concepts/lib/Lax489179/APSPHypothesis.olean",
+        "bytes": 14024,
+        "sha256": "5d45b3b69a96d17173f2da0ce4e42ec4a9fb6062fe46d28332ad8e5977b47118"
+      },
+      {
+        "path": "concepts/lib/Lax489179/APSPHypothesis.olean.hash",
+        "bytes": 16,
+        "sha256": "79ea5cdb6f5a58db4fabff35fb08c806859f8a7f9f8ce9aa0207dddeadc3724a"
+      },
+      {
+        "path": "concepts/lib/Lax489179/APSPHypothesis.trace",
+        "bytes": 2252,
+        "sha256": "124a0fc993c49bd4238a66d33d11c3e259289191f4af4a454e503ff995d86066"
+      },
+      {
+        "path": "concepts/lib/Lax489179/DeterministicSemantics.ilean",
+        "bytes": 4242,
+        "sha256": "769ce0c91e356c103f657bc02ca2baab53cd373d8ee96521839f073ebdc8c5e2"
+      },
+      {
+        "path": "concepts/lib/Lax489179/DeterministicSemantics.ilean.hash",
+        "bytes": 16,
+        "sha256": "bda82fbdd47aeec5af3ab0766d92a4c956c5bfa93a7d56d05cdaa0594ab7a374"
+      },
+      {
+        "path": "concepts/lib/Lax489179/DeterministicSemantics.olean",
+        "bytes": 12168,
+        "sha256": "8bd3690cebb17db4f6f0e90a695e086f3757b7ca27711cbd8936169e6fb2e04d"
+      },
+      {
+        "path": "concepts/lib/Lax489179/DeterministicSemantics.olean.hash",
+        "bytes": 16,
+        "sha256": "6737bb8ea24c1baf13c7e39eae0cc5c799f6b62eb5ae7d6757ee6663d1001675"
+      },
+      {
+        "path": "concepts/lib/Lax489179/DeterministicSemantics.trace",
+        "bytes": 2484,
+        "sha256": "ce8458ff855c88556ec7f79809d3a9308f7497c37f8468ebbd63ca1aacd975de"
+      },
+      {
+        "path": "concepts/lib/Lax489179/DistanceProperties.ilean",
+        "bytes": 3223,
+        "sha256": "7b9639837e3dafc3cf5766ad8fa1eb55efeea60b77c12dcd36861c12497ceb3f"
+      },
+      {
+        "path": "concepts/lib/Lax489179/DistanceProperties.ilean.hash",
+        "bytes": 16,
+        "sha256": "28af337b31025d69803ad2c2afb6d9e07ffea9b8c0fc4540e8d48f0e9371305e"
+      },
+      {
+        "path": "concepts/lib/Lax489179/DistanceProperties.olean",
+        "bytes": 10488,
+        "sha256": "9e7f3b3f2072b3db5adfa68c9f3c88c5e64cd7ecb306a13e407bc40cb5c86b76"
+      },
+      {
+        "path": "concepts/lib/Lax489179/DistanceProperties.olean.hash",
+        "bytes": 16,
+        "sha256": "3734b3d88a9a73af0f31b511333ec1ba20b7b4165d24b125c4bb06e4597d693c"
+      },
+      {
+        "path": "concepts/lib/Lax489179/DistanceProperties.trace",
+        "bytes": 2284,
+        "sha256": "5a632a37fda846f7fc4c5781a7bec20be487e3f47f9cedebfbd81a8047abb6fd"
+      },
+      {
+        "path": "concepts/lib/Lax489179/EncodingProperties.ilean",
+        "bytes": 3576,
+        "sha256": "0c62c1475be62b9d4d396ae6580c7211fc6d87aee818a24f3f2af145bc4b784a"
+      },
+      {
+        "path": "concepts/lib/Lax489179/EncodingProperties.ilean.hash",
+        "bytes": 16,
+        "sha256": "edfc470913bddae66a23b84d7e517e1ea5cbebd0faee8d38958466127344ff4d"
+      },
+      {
+        "path": "concepts/lib/Lax489179/EncodingProperties.olean",
+        "bytes": 9728,
+        "sha256": "3945ab6050c14e42af5107212bde92684b382f0a9132c51d2a42374bf56a807a"
+      },
+      {
+        "path": "concepts/lib/Lax489179/EncodingProperties.olean.hash",
+        "bytes": 16,
+        "sha256": "4d7afb5965e655cff8d0e2a4d5c02bb7558772d5e35631112215c037502b06c1"
+      },
+      {
+        "path": "concepts/lib/Lax489179/EncodingProperties.trace",
+        "bytes": 2436,
+        "sha256": "232dbe4baa669533a7e28a2a2b5870276de455376ae1677a960fe8c72e037d38"
+      },
+      {
+        "path": "concepts/lib/Lax489179/ETH.ilean",
+        "bytes": 1458,
+        "sha256": "1473948f3060285b93cfee50ed010a1db128700b0f5454725ec1c7ea2bf68536"
+      },
+      {
+        "path": "concepts/lib/Lax489179/ETH.ilean.hash",
+        "bytes": 16,
+        "sha256": "e9a031d919ce93a9869cca5a11a7eb137aa3f79c3a0a7559c03973cb37f64f34"
+      },
+      {
+        "path": "concepts/lib/Lax489179/ETH.olean",
+        "bytes": 9064,
+        "sha256": "f66d7a8b91bf543e6e75377155161c823a32dbb2e32cffd92d05ca2725d91878"
+      },
+      {
+        "path": "concepts/lib/Lax489179/ETH.olean.hash",
+        "bytes": 16,
+        "sha256": "e8e7fddc55a62d64a21aed66a6adecbd605c0003dadabaa4dcecb351f5b58465"
+      },
+      {
+        "path": "concepts/lib/Lax489179/ETH.trace",
+        "bytes": 2145,
+        "sha256": "07ed756b9fe297162c5f759941b91bb763e3306547621289344d5bc7161e3f6a"
+      },
+      {
+        "path": "concepts/lib/Lax489179/HypothesisProperties.ilean",
+        "bytes": 6157,
+        "sha256": "5fcb93fbef148448dd3a2dc070de77e8d34fe5a52d632dfca023ad737209bbc1"
+      },
+      {
+        "path": "concepts/lib/Lax489179/HypothesisProperties.ilean.hash",
+        "bytes": 16,
+        "sha256": "a5d15efa0b266629ed537dc04e6a193769e3d1a7cccded0ee5a4502793d33e02"
+      },
+      {
+        "path": "concepts/lib/Lax489179/HypothesisProperties.olean",
+        "bytes": 18904,
+        "sha256": "584fdf31806d88f6d72b36e85300ec5ce9190ff2717c5473ba905ad155ed0a88"
+      },
+      {
+        "path": "concepts/lib/Lax489179/HypothesisProperties.olean.hash",
+        "bytes": 16,
+        "sha256": "9a693ff3141fc63430f94a3608299e8903bc9ddfac787b08c789842f197c8a7c"
+      },
+      {
+        "path": "concepts/lib/Lax489179/HypothesisProperties.trace",
+        "bytes": 2753,
+        "sha256": "883451514107e45fffc8addfa255572da542c3e3ef3535b8405c8c8bfc4f6de1"
+      },
+      {
+        "path": "concepts/lib/Lax489179/IntegerEncoding.ilean",
+        "bytes": 2615,
+        "sha256": "9414554d551527ee250b85f6f480ac98864aec478e7a3cc58d543b15402e0ef5"
+      },
+      {
+        "path": "concepts/lib/Lax489179/IntegerEncoding.ilean.hash",
+        "bytes": 16,
+        "sha256": "378dcf61158308e4d3d4f84d0ddcf045d2304a0ef8dc4d38c22390594396f256"
+      },
+      {
+        "path": "concepts/lib/Lax489179/IntegerEncoding.olean",
+        "bytes": 39296,
+        "sha256": "acd441f57bd73cc8592458499bd90c8e1067c5e08a53f65151572e3e446cad98"
+      },
+      {
+        "path": "concepts/lib/Lax489179/IntegerEncoding.olean.hash",
+        "bytes": 16,
+        "sha256": "cf1f555e597caa525f19325543b9206347b6a89fd7fe699e06030d0b568d4476"
+      },
+      {
+        "path": "concepts/lib/Lax489179/IntegerEncoding.trace",
+        "bytes": 2260,
+        "sha256": "0e01d676d6ed24da3e45a83472b4a36494679711dc36ca2c6707d07e2de730a8"
+      },
+      {
+        "path": "concepts/lib/Lax489179/Satisfiability.ilean",
+        "bytes": 5974,
+        "sha256": "b340413e35f5622c701a5326f10a0ae23aeb8094f7591ffb2cdffd53acd19928"
+      },
+      {
+        "path": "concepts/lib/Lax489179/Satisfiability.ilean.hash",
+        "bytes": 16,
+        "sha256": "ac2febc73d316168f6f3fc9f82aae14b4b0e316ffee8dfa97267aaed14f9552d"
+      },
+      {
+        "path": "concepts/lib/Lax489179/Satisfiability.olean",
+        "bytes": 74920,
+        "sha256": "83ea5d98735396164a4b5901d76872e6d1cf84525e2bd66464e23997f91950a9"
+      },
+      {
+        "path": "concepts/lib/Lax489179/Satisfiability.olean.hash",
+        "bytes": 16,
+        "sha256": "a33c9b2cfecaf2046995cf1db24e2655223e7a5974cbd6d228fc7e620c758924"
+      },
+      {
+        "path": "concepts/lib/Lax489179/Satisfiability.trace",
+        "bytes": 2417,
+        "sha256": "02f0cbe3b33640927101a918ddcc48aba0d94484b59be74838c548d527cdd749"
+      },
+      {
+        "path": "concepts/lib/Lax489179/SATTime.ilean",
+        "bytes": 2858,
+        "sha256": "262b8df182bded89cc65bf43f741fb9e65dcaa879ab9db3cdda25c473826694b"
+      },
+      {
+        "path": "concepts/lib/Lax489179/SATTime.ilean.hash",
+        "bytes": 16,
+        "sha256": "b764e605dcaabf1a49862097195bacb2b36deba2b92a3c0e6ceacff004c756b7"
+      },
+      {
+        "path": "concepts/lib/Lax489179/SATTime.olean",
+        "bytes": 16936,
+        "sha256": "bb78268fa2816ac94de91a0fa329ec2dcabe9c985b5062c89a1eb5c35839a75c"
+      },
+      {
+        "path": "concepts/lib/Lax489179/SATTime.olean.hash",
+        "bytes": 16,
+        "sha256": "1952be1d485829e2510b86d1a36598fdb06361b9c6b6bdcd53138b50d5d3acd0"
+      },
+      {
+        "path": "concepts/lib/Lax489179/SATTime.trace",
+        "bytes": 2577,
+        "sha256": "45e9c899cf254c47473d25dfcca7560f445ece87f622bcc371c0f1811c24bde4"
+      },
+      {
+        "path": "concepts/lib/Lax489179/SETH.ilean",
+        "bytes": 1597,
+        "sha256": "c7ae3bd09bf84929b7375888727cb0aa9e8e439cd67e8eef343c9b2473496652"
+      },
+      {
+        "path": "concepts/lib/Lax489179/SETH.ilean.hash",
+        "bytes": 16,
+        "sha256": "8633f8309c0077987effc2f89a25505f43a4e9f13134f4cf18186b83c14ddf77"
+      },
+      {
+        "path": "concepts/lib/Lax489179/SETH.olean",
+        "bytes": 11464,
+        "sha256": "5143f8c26f08fb77677dca05491d6dd3b7b35a94ba2c3b990ec587efd392e209"
+      },
+      {
+        "path": "concepts/lib/Lax489179/SETH.olean.hash",
+        "bytes": 16,
+        "sha256": "282f76bbf68a56f12c7e8ad4127d6d049f4a60fe59033ae93cdda78d4cd0a8b7"
+      },
+      {
+        "path": "concepts/lib/Lax489179/SETH.trace",
+        "bytes": 2153,
+        "sha256": "3a5138983200b035bdf1186927a24673cdbd47cd496e9419449a9ff311da1783"
+      },
+      {
+        "path": "concepts/lib/Lax489179/ThreeSUM.ilean",
+        "bytes": 3552,
+        "sha256": "843512d2c8cc0fea13025aa52409d7a8eade5b603a23d85808f6e4080a3fe73e"
+      },
+      {
+        "path": "concepts/lib/Lax489179/ThreeSUM.ilean.hash",
+        "bytes": 16,
+        "sha256": "05b0b85b943b46ae785b9cc165bfa2f9bcf8716670bc21f0f21bd80af0b79586"
+      },
+      {
+        "path": "concepts/lib/Lax489179/ThreeSUM.olean",
+        "bytes": 47696,
+        "sha256": "b27969b772ee562a52b98f50edea5d1094d8773aed5ec91dc0a0424f8d9c2f6e"
+      },
+      {
+        "path": "concepts/lib/Lax489179/ThreeSUM.olean.hash",
+        "bytes": 16,
+        "sha256": "618d8bde3685202add6fe68e46d14e5b863162da0ed3dc757ea34ddd5f344509"
+      },
+      {
+        "path": "concepts/lib/Lax489179/ThreeSUM.trace",
+        "bytes": 2356,
+        "sha256": "40502b91964834fb430b8df85f2babab222336a2128383aec71b4b28de0e62c0"
+      },
+      {
+        "path": "concepts/lib/Lax489179/ThreeSUMHypothesis.ilean",
+        "bytes": 1881,
+        "sha256": "6593af48b431bb086fa46b85f0439b0c66ac808557a1fdd7bf9fead6402c38ef"
+      },
+      {
+        "path": "concepts/lib/Lax489179/ThreeSUMHypothesis.ilean.hash",
+        "bytes": 16,
+        "sha256": "84d63c03792ed29f60db0649e9a517c930d2927ee2983f3dccb6f335309787d1"
+      },
+      {
+        "path": "concepts/lib/Lax489179/ThreeSUMHypothesis.olean",
+        "bytes": 12008,
+        "sha256": "bf48143e737a3f32d924e20312196e0a6833da003393f9a2f0d63d4cf2ba431b"
+      },
+      {
+        "path": "concepts/lib/Lax489179/ThreeSUMHypothesis.olean.hash",
+        "bytes": 16,
+        "sha256": "aad7c3b2fd8f702a73896989cd2fd9e0dcc39de8ac14d9fc60d1d13e09c679cd"
+      },
+      {
+        "path": "concepts/lib/Lax489179/ThreeSUMHypothesis.trace",
+        "bytes": 2267,
+        "sha256": "a71ac5e3a2a26a651ffa9bd25bc43ff7738b04ff54d6a14181295d5746eca6f5"
+      },
+      {
+        "path": "concepts/lib/Lax489179/TimeProperties.ilean",
+        "bytes": 3824,
+        "sha256": "f2b6206c02e3e93a6f2d59fe6cf5f0b1248f90d34256c1b15470f8bf32add858"
+      },
+      {
+        "path": "concepts/lib/Lax489179/TimeProperties.ilean.hash",
+        "bytes": 16,
+        "sha256": "d4a63069b152274eee4e9d5cb69f69d8c47592e517aa3af8eaa7ef235a2531ca"
+      },
+      {
+        "path": "concepts/lib/Lax489179/TimeProperties.olean",
+        "bytes": 10968,
+        "sha256": "f596e9d18f22323de339212165a7114ee7f7da1d808aa1b8fd44f8f1cd5abdf2"
+      },
+      {
+        "path": "concepts/lib/Lax489179/TimeProperties.olean.hash",
+        "bytes": 16,
+        "sha256": "9660b4ee70cd286cb476e8e3347de871b25654d97b89ed2fc9c84471537e2558"
+      },
+      {
+        "path": "concepts/lib/Lax489179/TimeProperties.trace",
+        "bytes": 2379,
+        "sha256": "dbe280bbeab35a8075488ee064fa76e65d85638086358de7bc6bc933be6515ca"
+      },
+      {
+        "path": "concepts/lib/Lax489179/TuringMachine.ilean",
+        "bytes": 9704,
+        "sha256": "c0410e4c5a1076fc3c6e073a9c71307bf1d8f03cb13f6e220e767c9ece375b2c"
+      },
+      {
+        "path": "concepts/lib/Lax489179/TuringMachine.ilean.hash",
+        "bytes": 16,
+        "sha256": "3653dfd8af4c161149e6073c8093fdc4740996a832eddbc9df5e099e15b63733"
+      },
+      {
+        "path": "concepts/lib/Lax489179/TuringMachine.olean",
+        "bytes": 298384,
+        "sha256": "31d58f9519ad18ca62ff093265a2bef9e4276ff20b99769dd61f1b81bb5bf0a0"
+      },
+      {
+        "path": "concepts/lib/Lax489179/TuringMachine.olean.hash",
+        "bytes": 16,
+        "sha256": "4c3e51827812e46d41b4ff4971dd63d584cda945f293975e2d13f3c54d6f55bc"
+      },
+      {
+        "path": "concepts/lib/Lax489179/TuringMachine.trace",
+        "bytes": 2403,
+        "sha256": "2de8c6d038feb4e6ab0d0f5f30524cbc6d739ed9dabcbe99dedabe20d825e4d5"
+      },
+      {
+        "path": "concepts/lib/Lax489179/WeightedAPSP.ilean",
+        "bytes": 8250,
+        "sha256": "00674470f1176d47e8cbae16ad915bfced06d794034613dec641c322c61ea403"
+      },
+      {
+        "path": "concepts/lib/Lax489179/WeightedAPSP.ilean.hash",
+        "bytes": 16,
+        "sha256": "15b9c843edfd618d5e1d0e201c851e4bf3673f7c6dfd6d7c68814828b5b28864"
+      },
+      {
+        "path": "concepts/lib/Lax489179/WeightedAPSP.olean",
+        "bytes": 113608,
+        "sha256": "c938e887b809e4673c99ad02409438a7ff5878b1ccb12687448362c46f3fc14b"
+      },
+      {
+        "path": "concepts/lib/Lax489179/WeightedAPSP.olean.hash",
+        "bytes": 16,
+        "sha256": "cd4d096b394a1a85a7f45ed4955fdc777dcadae899a4dd48be334bb94a06c39c"
+      },
+      {
+        "path": "concepts/lib/Lax489179/WeightedAPSP.trace",
+        "bytes": 2559,
+        "sha256": "7650a5b4fed755774d4bc8b3c3fce617267ccd8c109288208ae1ab11e9387ace"
+      },
+      {
+        "path": "concepts/lib/Lax489179/WordPrograms.ilean",
+        "bytes": 7727,
+        "sha256": "6f963681e815beb307646ad758c670bf5ab67710a473f007594d6191fe3b5b92"
+      },
+      {
+        "path": "concepts/lib/Lax489179/WordPrograms.ilean.hash",
+        "bytes": 16,
+        "sha256": "ad4958fa5a1fd7aff61163cc2ccc012d0b494258e2324a40e24e2deb7ceb22e0"
+      },
+      {
+        "path": "concepts/lib/Lax489179/WordPrograms.olean",
+        "bytes": 135920,
+        "sha256": "884ed53cac4b4d32f5224169183918e4aec8c2217e74fa8d121703a7a1a7d2c7"
+      },
+      {
+        "path": "concepts/lib/Lax489179/WordPrograms.olean.hash",
+        "bytes": 16,
+        "sha256": "80864af9c21fd338112910f9b4895173f611034ab78011154ccbbe91e8629280"
+      },
+      {
+        "path": "concepts/lib/Lax489179/WordPrograms.trace",
+        "bytes": 2360,
+        "sha256": "d539bf68571df337d2cad48374004a40bc549cb253bbebaa0dd67db915ff9b31"
+      },
+      {
+        "path": "concepts/lib/Lax489179/WordTime.ilean",
+        "bytes": 4263,
+        "sha256": "ea49481c3f4e0973f23b68aae7e049d5e85e7b0130677adcf922dc1a2b2a5c1f"
+      },
+      {
+        "path": "concepts/lib/Lax489179/WordTime.ilean.hash",
+        "bytes": 16,
+        "sha256": "eb7e0ab6f95e77462ea4f7eb8c9fc51e6f46b8a1a1f5c3fe086dc317c161be8b"
+      },
+      {
+        "path": "concepts/lib/Lax489179/WordTime.olean",
+        "bytes": 67576,
+        "sha256": "dbccb4be71f71ff9e767f4dda6076429629a0b7e7235163a3f45289d3c3d9f80"
+      },
+      {
+        "path": "concepts/lib/Lax489179/WordTime.olean.hash",
+        "bytes": 16,
+        "sha256": "f37a26d3c39c0127ad0d4e14a5bd86c19757aceba949e881a7f46f5910046f57"
+      },
+      {
+        "path": "concepts/lib/Lax489179/WordTime.trace",
+        "bytes": 2575,
+        "sha256": "d80a89b84940b190192f9e91f8d4b4e1b1b7a3e94a3419b8e4c901cf24113504"
+      },
+      {
+        "path": "concepts/lib/Lax489179.ilean",
+        "bytes": 903,
+        "sha256": "042c86f2d13a787198b4e51d688448022944fb3d35357a11c98c6356f3a37830"
+      },
+      {
+        "path": "concepts/lib/Lax489179.ilean.hash",
+        "bytes": 16,
+        "sha256": "d5a36d9e70fcc9369085ca07d86a74ef0e9a7e5a3160d733db1857e8dd0d59e2"
+      },
+      {
+        "path": "concepts/lib/Lax489179.olean",
+        "bytes": 3264,
+        "sha256": "2db2248c847c3112ce94f0e6b7e96ee97c49f5dfb5ae838f3098304f07e0ebe3"
+      },
+      {
+        "path": "concepts/lib/Lax489179.olean.hash",
+        "bytes": 16,
+        "sha256": "11684e5f8b770fde5e876d1783f4c229237071fb8e1bc41b1f01db920c558a07"
+      },
+      {
+        "path": "concepts/lib/Lax489179.trace",
+        "bytes": 4895,
+        "sha256": "26e04e9116d6de4f296eef92f454b46b89fc92ebd6a3f15d8bece7be6e614f6a"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3366,
+        "sha256": "74a9b42264a7b4023a0c5b1c76ef02122365549e5222bfedb9c3a847b384ba97"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 416,
+        "sha256": "9ab92e9aa7045f12cd6a6a78b766882a70e38782b50650aede11b871386c0e03"
+      },
+      {
+        "path": "concepts/package/Lax489179/Algorithms.lean",
+        "bytes": 1418,
+        "sha256": "c3fab1866cb3dd56913a91d9ab34c75a50fa0cffbfb92a568ce7ca965719b369"
+      },
+      {
+        "path": "concepts/package/Lax489179/APSPHypothesis.lean",
+        "bytes": 1262,
+        "sha256": "030104ad2aa0aa0a93ca2e56afc945922c64eba177a7ebe0cf0cbfde47c8f222"
+      },
+      {
+        "path": "concepts/package/Lax489179/DeterministicSemantics.lean",
+        "bytes": 1144,
+        "sha256": "cd5d86e3215ebaf5afec3f4d6c7990c7d912eefc688cd53bf84a2e2ab1e54922"
+      },
+      {
+        "path": "concepts/package/Lax489179/DistanceProperties.lean",
+        "bytes": 786,
+        "sha256": "c479308e51b6b3de725c437cc66698fa479205f5d3812a4014f5d7d67b32e15c"
+      },
+      {
+        "path": "concepts/package/Lax489179/EncodingProperties.lean",
+        "bytes": 778,
+        "sha256": "99abc93caa5dede97fc9c1c16b23db9069098273c8b2c08e574a45d48832d9b0"
+      },
+      {
+        "path": "concepts/package/Lax489179/ETH.lean",
+        "bytes": 849,
+        "sha256": "88416146cca43bd4ab9d068fdaac83267405b8627f77c8a984a4cce8904ec4f7"
+      },
+      {
+        "path": "concepts/package/Lax489179/HypothesisProperties.lean",
+        "bytes": 1895,
+        "sha256": "5ebb054464227a94af40188de0389082df83ef31dcaa4803e0eda8b2291a92a3"
+      },
+      {
+        "path": "concepts/package/Lax489179/IntegerEncoding.lean",
+        "bytes": 860,
+        "sha256": "b1974cd45ab35521094f65b9489c969f17cb676eea54155998b72f7fdc5f5ece"
+      },
+      {
+        "path": "concepts/package/Lax489179/Satisfiability.lean",
+        "bytes": 1873,
+        "sha256": "6f18cbcbac7a31e743b455f08d961bbde778f5bc207e67165a67e776bd9e29ef"
+      },
+      {
+        "path": "concepts/package/Lax489179/SATTime.lean",
+        "bytes": 1307,
+        "sha256": "393fe0a11d993b11b803fb750f777d92416c9ff5450b6f7c7d8d7de04d601b40"
+      },
+      {
+        "path": "concepts/package/Lax489179/SETH.lean",
+        "bytes": 980,
+        "sha256": "fd9ae8c44636dec84df256d471b1222d4259d664f1d19fdcf363baaf4b8dff71"
+      },
+      {
+        "path": "concepts/package/Lax489179/ThreeSUM.lean",
+        "bytes": 1319,
+        "sha256": "72ad09578c012a9311a8812879396ea7cd33462a391b009ec0af0b42d4f1c1e8"
+      },
+      {
+        "path": "concepts/package/Lax489179/ThreeSUMHypothesis.lean",
+        "bytes": 1050,
+        "sha256": "7249cbf128ac22343b0f73d1af69a58c5fd3c249201d742bc4053f95434183b1"
+      },
+      {
+        "path": "concepts/package/Lax489179/TimeProperties.lean",
+        "bytes": 1105,
+        "sha256": "acdfac76a1cbdc9862ad8c75dcebae9576eded8d98bba0c4cc9fd5eb2db5cbb2"
+      },
+      {
+        "path": "concepts/package/Lax489179/TuringMachine.lean",
+        "bytes": 3060,
+        "sha256": "cd4dc05233082529f2e6b92890f394d89461132498a1cc09e517cd3108a061bf"
+      },
+      {
+        "path": "concepts/package/Lax489179/WeightedAPSP.lean",
+        "bytes": 2636,
+        "sha256": "0267c0436ba4e10d0f3a87ef8ece5b93456698481e1d3616942bb427a851b697"
+      },
+      {
+        "path": "concepts/package/Lax489179/WordPrograms.lean",
+        "bytes": 2309,
+        "sha256": "864351acea0a0e58c563fbdf6c9bb755e094e973acae255353a59d47353742cd"
+      },
+      {
+        "path": "concepts/package/Lax489179/WordTime.lean",
+        "bytes": 1935,
+        "sha256": "12c6425d64158110e7b933c476578f186daddc196e37f80c6cf35fc21280e399"
+      },
+      {
+        "path": "concepts/package/Lax489179.lean",
+        "bytes": 554,
+        "sha256": "00a702c1a2d29c43df108c0f68ff55e93b29256556908ab257870e761de814b9"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      },
+      {
+        "path": "proofs/ir/Lax489179Proofs/Encodings.c",
+        "bytes": 12280,
+        "sha256": "723b7df1645f0cd0b3c41a0828736357634ad5d29f60a24bbbc14d7ed8f16519"
+      },
+      {
+        "path": "proofs/ir/Lax489179Proofs/Encodings.c.hash",
+        "bytes": 16,
+        "sha256": "063b9b9dd315ae14b0a7b4a854b13f2d9bfadd1a18b66cdcd57f988c5e39a62f"
+      },
+      {
+        "path": "proofs/ir/Lax489179Proofs/Hypotheses.c",
+        "bytes": 1621,
+        "sha256": "3039f96d3e010ef28f17bf077ab0c5cd920296fcb1f42a9940da057268b06bd5"
+      },
+      {
+        "path": "proofs/ir/Lax489179Proofs/Hypotheses.c.hash",
+        "bytes": 16,
+        "sha256": "bd89306be92d9094eb7dea9750cdf40b172464339f8731d7aaa8c44a04ccbcfc"
+      },
+      {
+        "path": "proofs/ir/Lax489179Proofs/Semantics.c",
+        "bytes": 18342,
+        "sha256": "aaa137337dea54ba73d0bd56d8e3e6c10f1e7c7578974c6e8141dbc981e05fe1"
+      },
+      {
+        "path": "proofs/ir/Lax489179Proofs/Semantics.c.hash",
+        "bytes": 16,
+        "sha256": "25e38023fb06885d7494a01ec7723bffc2595f613f6d798633d4960dd50be452"
+      },
+      {
+        "path": "proofs/ir/Lax489179Proofs/Time.c",
+        "bytes": 1557,
+        "sha256": "248935820c207b95533a9d5c274f42069cc2b7ee10af5422deb3701c67b37ef6"
+      },
+      {
+        "path": "proofs/ir/Lax489179Proofs/Time.c.hash",
+        "bytes": 16,
+        "sha256": "b5f6f824625351cbb37e54bb5e9d173d723da7d20ce09a7a1fc1387cbdd112dc"
+      },
+      {
+        "path": "proofs/ir/Lax489179Proofs.c",
+        "bytes": 2115,
+        "sha256": "6947bae2c943eead80e2e594cea7cfc765cef9feb9d876e52f137eda8c125c4b"
+      },
+      {
+        "path": "proofs/ir/Lax489179Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "ba86a38729696d250d948aed20f486467103fd951fe768426cc3ce95ebe40fad"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Encodings.ilean",
+        "bytes": 8300,
+        "sha256": "9e29dbab2f92653bd389fc971ea7b075eaf058ba791b9d3a95864c951ee8d1fd"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Encodings.ilean.hash",
+        "bytes": 16,
+        "sha256": "fa4312afb0a34724da7da3b8da815e35894eacbbf7ad4922b2c5516de8e5267c"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Encodings.olean",
+        "bytes": 154120,
+        "sha256": "eee3ef9ee13f42e0a7916c85f4b82b09359ec790d54ef18fd3fd557274b1882b"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Encodings.olean.hash",
+        "bytes": 16,
+        "sha256": "29fc9dcdb2153bd157f6d9b7aa7646dad5c5865f25d0e32c11c27338a1fa8c73"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Encodings.trace",
+        "bytes": 2633,
+        "sha256": "43f56437b722ba38737214a36f8e35fbd1f5a83f0972bb87ea87d785dc2c9ecc"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Hypotheses.ilean",
+        "bytes": 5872,
+        "sha256": "ff6109a425a3689a8d274d1b38ccea1bc063cd0954899e2eb68893edee77873a"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Hypotheses.ilean.hash",
+        "bytes": 16,
+        "sha256": "93417e4e9d481da797e5fccd8d09b604c6992125c411f73008ff12505c072e42"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Hypotheses.olean",
+        "bytes": 49768,
+        "sha256": "6deb98c7369b728bf36879ece91d95f36550403c8579c28f357c504454bf0186"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Hypotheses.olean.hash",
+        "bytes": 16,
+        "sha256": "ce44273b1d1cd77860fc467733d16ec0c2ba6176d45dbaa5ed067e8a9644eccd"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Hypotheses.trace",
+        "bytes": 2491,
+        "sha256": "f6efca1c97d9733a4988bf441f5689159ad2f162b2b7cf894edc4c91564d5fa8"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Semantics.ilean",
+        "bytes": 10576,
+        "sha256": "ee283e090c47721be97ce7592507a9ecbdb6d57334251a30263f0fbf68ac3e9f"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Semantics.ilean.hash",
+        "bytes": 16,
+        "sha256": "5b786d9e005bdaf932c06d1e13b2662a3162156a408ec3f3b4ef55ba8f47666c"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Semantics.olean",
+        "bytes": 276520,
+        "sha256": "d05eb2adfa464c6263814f8b1ab1fa77cf2b9fa99ad00f1e5fd8da2f57b01b9e"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Semantics.olean.hash",
+        "bytes": 16,
+        "sha256": "a30bb85797aaed351f021ee3848aaf1c2f40dc6dff01bf41fa4abd8a1e6d687e"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Semantics.trace",
+        "bytes": 2466,
+        "sha256": "304ccf3b39744d8a8bba4156dc8a64904200480704f1b498fb9e5a23285f476e"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Time.ilean",
+        "bytes": 5118,
+        "sha256": "7e93db7b440472d8e62062b8bed37a8754cdf4cc3546c96fb780f4f63c73f871"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Time.ilean.hash",
+        "bytes": 16,
+        "sha256": "d6e40baea187f432e59493da7750836579fc989e19b4f3b7703e79f8904b99a1"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Time.olean",
+        "bytes": 148464,
+        "sha256": "125d1cbaa26abd3737df69af8310ec567c16a4dc3e58bc617a30461d71e786ed"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Time.olean.hash",
+        "bytes": 16,
+        "sha256": "dbc76bd4c80630eece7319429da0d059b72555cce5fb46c1ff5fb4accbd26510"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs/Time.trace",
+        "bytes": 2410,
+        "sha256": "bb15726c7e7de11d1011374cc1f9ef7abfdd73236a6bd135f8b51789474d4d57"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs.ilean",
+        "bytes": 273,
+        "sha256": "f3fa9a2421e001c6d8d374aaac12f4b97293331517bcd0069886be71e442bfa4"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "2f46a105e06c4fe02cd471b79c8ad8bcc4681dabf4616b3b0291d811d93cb355"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs.olean",
+        "bytes": 1672,
+        "sha256": "cacb8117b1b6cbd17881e78e8044b16e6ce1cb3f82b5399c6b16257e58db2bff"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "aebe8971a0662ea992b7248cb69c72addffa0a9e387a571e1d76c8df38e46159"
+      },
+      {
+        "path": "proofs/lib/Lax489179Proofs.trace",
+        "bytes": 2733,
+        "sha256": "201c31bf05901790f02341cbd63456d477aa2c332e89c0327c74aa2edeee085f"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3556,
+        "sha256": "5b595397e61e05c7edfae67d92181b3a729c6366d852aae69c861510307c0594"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "e9038403465307398f3af80955a9e8b885ad8d1caaebf7f93eb8f43e1783175f"
+      },
+      {
+        "path": "proofs/package/Lax489179Proofs/Encodings.lean",
+        "bytes": 2300,
+        "sha256": "ce737adcbdf04f80cad0c00799892276a553dbc151fa54593378b6594d58da29"
+      },
+      {
+        "path": "proofs/package/Lax489179Proofs/Hypotheses.lean",
+        "bytes": 2311,
+        "sha256": "dfb3367372b9e51ea79a26fbf609d3594517ef0364050efda6b2929f8733748b"
+      },
+      {
+        "path": "proofs/package/Lax489179Proofs/Semantics.lean",
+        "bytes": 3279,
+        "sha256": "bd58b7d29c6d2dcd9b8e0dfe727310a0878ec3d9ac61fc91217331fe48b443be"
+      },
+      {
+        "path": "proofs/package/Lax489179Proofs/Time.lean",
+        "bytes": 2211,
+        "sha256": "de3ffe2dc9cfad15bd763e89cb384abb04fe3a0e6a9339f0d313f37fe3cf5e56"
+      },
+      {
+        "path": "proofs/package/Lax489179Proofs.lean",
+        "bytes": 128,
+        "sha256": "31966b1ef1f471aeb712daa7b9fb70e9cf8076e5abe2b15e445fa400ce324748"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:93fa5d38023bac7fefed820aad9238568cf1bcd74adedc3bab6112682d088660"
   }
 }
