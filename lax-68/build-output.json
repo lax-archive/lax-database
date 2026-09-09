@@ -21,7 +21,7 @@
         "@book{Diestel2025,\n  author = {Reinhard Diestel},\n  title = {Graph Theory},\n  edition = {6},\n  series = {Graduate Texts in Mathematics},\n  volume = {173},\n  publisher = {Springer},\n  year = {2025},\n  isbn = {978-3-662-70106-5}\n}\n"
       ]
     },
-    "abstract": "This submission collects clean Lean concepts for twelve familiar planar\ngraph classes: planar, outerplanar, maximal outerplanar, grids and walls,\ntriangles, stars, ladders, Halin graphs, wheels, series-parallel graphs, trees,\nand paths, together with a relational concept for triangulations of planar\ngraphs.\n\nThe definitions follow the standard descriptions in Reinhard Diestel's\n*Graph Theory* (6th edition). Straight-line graph drawings are presented as a\nseparate geometric concept and used as compact certificates of planarity, in\naccordance with Fáry's theorem. Graph minors, represented by connected branch\nsets, are likewise isolated as a separate combinatorial concept. The planar\nconcept uses that relation directly to exclude *K₅* and *K₃,₃*; Wagner's\ntheorem records the equivalence for finite graphs. Each graph-class predicate\ncontains only its defining structure: planarity and superclass consequences\nare stated separately as theorem cards. Proofs are supplied only where the\ninclusion is an elementary projection or composition in the present\nformalization.\n"
+    "abstract": "This submission collects clean Lean concepts for twelve familiar planar\ngraph classes: planar, outerplanar, maximal outerplanar, grids and walls,\ntriangles, stars, ladders, Halin graphs, wheels, series-parallel graphs, trees,\nand paths, together with a relational concept for triangulations of planar\ngraphs.\n\nThe definitions follow the standard descriptions in Reinhard Diestel's\n*Graph Theory* (6th edition). Straight-line graph drawings are presented as a\nseparate geometric concept and used as compact certificates of planarity, in\naccordance with Fáry's theorem. Graph minors, represented by connected branch\nsets, are likewise isolated as a separate combinatorial concept. The planar\nconcept uses that relation directly to exclude *K₅* and *K₃,₃*; Wagner's\ntheorem records the equivalence for finite graphs.\n\nTopological minors are presented separately as internally disjoint path\nmodels. The proof of Wagner's equivalence factors through Kuratowski's\nsubdivision characterization and the special fact that the *K₅* and *K₃,₃*\nminor obstructions agree with their topological-minor obstructions. Each\ngraph-class predicate contains only its defining structure: planarity and\nsuperclass consequences are stated separately as theorem cards. Proofs are\nsupplied where the result is an elementary projection or composition in the\n"
   },
   "requiredByConcepts": [],
   "requiredByProofs": [],
@@ -37,6 +37,21 @@
         "Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected"
       ],
       "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected\n\n/-!\n---\ntitle: Graph minors\ntype: definition\n---\nA graph *H* is a minor of a graph *G* when the vertices of *H* can be\nrepresented by pairwise disjoint connected branch sets in *G*, with an edge\njoining the corresponding branch sets for every edge of *H*.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax68.GraphMinors\n\nstructure MinorModel {W V : Type*}\n    (H : SimpleGraph W) (G : SimpleGraph V) where\n  branchSet : W → Set V\n  connected : ∀ w, (G.induce (branchSet w)).Connected\n  disjoint :\n    ∀ {u v}, u ≠ v →\n      Disjoint (branchSet u) (branchSet v)\n  adjacent :\n    ∀ {u v}, H.Adj u v →\n      ∃ x ∈ branchSet u, ∃ y ∈ branchSet v, G.Adj x y\n\ndef IsMinor {W V : Type*}\n    (H : SimpleGraph W) (G : SimpleGraph V) : Prop :=\n  Nonempty (MinorModel H G)\n\nabbrev K5 : SimpleGraph (Fin 5) :=\n  SimpleGraph.completeGraph (Fin 5)\n\nabbrev K33 : SimpleGraph (Fin 3 ⊕ Fin 3) :=\n  completeBipartiteGraph (Fin 3) (Fin 3)\n\nend Lax68.GraphMinors\n",
+      "statements": []
+    },
+    {
+      "id": "Lax68.GraphTopologicalMinors",
+      "path": "concepts/Lax68/GraphTopologicalMinors.lean",
+      "title": "Topological graph minors",
+      "type": "definition",
+      "description": "A graph *H* is a topological minor of *G* when the vertices of *H* are\nrepresented by distinct branch vertices of *G* and its edges by paths whose\ninteriors contain no branch vertex and are pairwise disjoint. Equivalently,\n*G* contains a subdivision of *H* as a subgraph.",
+      "imports": [
+        "Lax68.GraphMinors"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Paths"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Paths\nimport Lax68.GraphMinors\n\n/-!\n---\ntitle: Topological graph minors\ntype: definition\n---\nA graph *H* is a topological minor of *G* when the vertices of *H* are\nrepresented by distinct branch vertices of *G* and its edges by paths whose\ninteriors contain no branch vertex and are pairwise disjoint. Equivalently,\n*G* contains a subdivision of *H* as a subgraph.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax68.GraphTopologicalMinors\n\nopen GraphMinors\n\ndef walkInterior {V : Type*} {G : SimpleGraph V} {a b : V}\n    (P : G.Walk a b) : Set V :=\n  {x | x ∈ P.support ∧ x ≠ a ∧ x ≠ b}\n\nstructure TopologicalMinorModel {W V : Type*}\n    (H : SimpleGraph W) (G : SimpleGraph V) where\n  branch : W ↪ V\n  route :\n    ∀ {a b : W}, H.Adj a b →\n      G.Walk (branch a) (branch b)\n  route_isPath :\n    ∀ {a b : W} (h : H.Adj a b),\n      (route h).IsPath\n  branch_avoids_interiors :\n    ∀ {a b : W} (h : H.Adj a b) (w : W),\n      branch w ∉ walkInterior (route h)\n  route_interiors_disjoint :\n    ∀ {a b c d : W}\n        (hab : H.Adj a b) (hcd : H.Adj c d),\n      ¬ ((a = c ∧ b = d) ∨ (a = d ∧ b = c)) →\n        Disjoint\n          (walkInterior (route hab))\n          (walkInterior (route hcd))\n\ndef IsTopologicalMinor {W V : Type*}\n    (H : SimpleGraph W) (G : SimpleGraph V) : Prop :=\n  Nonempty (TopologicalMinorModel H G)\n\ndef IsKuratowskiFree {V : Type*} (G : SimpleGraph V) : Prop :=\n  ¬IsTopologicalMinor K5 G ∧\n  ¬IsTopologicalMinor K33 G\n\nend Lax68.GraphTopologicalMinors\n",
       "statements": []
     },
     {
@@ -107,6 +122,27 @@
           "signature": "halin_planar : ∀ {V : Type u_1} {G : SimpleGraph V}, Lax68.HalinGraphs.IsHalin G → Lax68.Planar.IsPlanar G",
           "startLine": 16,
           "endLine": 19
+        }
+      ]
+    },
+    {
+      "id": "Lax68.KuratowskiPlanarity",
+      "path": "concepts/Lax68/KuratowskiPlanarity.lean",
+      "title": "Kuratowski's theorem in straight-line form",
+      "type": "theorem",
+      "description": "A finite simple graph admits a crossing-free straight-line drawing exactly\nwhen it contains no subdivision of *K₅* or *K₃,₃*. This is Kuratowski's\ntheorem together with Fáry's straight-line drawing theorem.",
+      "imports": [
+        "Lax68.GraphTopologicalMinors",
+        "Lax68.Planar"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax68.GraphTopologicalMinors\nimport Lax68.Planar\n\n/-!\n---\ntitle: Kuratowski's theorem in straight-line form\ntype: theorem\n---\nA finite simple graph admits a crossing-free straight-line drawing exactly\nwhen it contains no subdivision of *K₅* or *K₃,₃*. This is Kuratowski's\ntheorem together with Fáry's straight-line drawing theorem.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax68.KuratowskiPlanarity\n\naxiom planar_iff_kuratowskiFree\n    {V : Type*} {G : SimpleGraph V} :\n  Finite V →\n  (Lax68.Planar.IsPlanar G ↔\n    Lax68.GraphTopologicalMinors.IsKuratowskiFree G)\n\nend Lax68.KuratowskiPlanarity\n",
+      "statements": [
+        {
+          "id": "Lax68.KuratowskiPlanarity.planar_iff_kuratowskiFree",
+          "signature": "planar_iff_kuratowskiFree : ∀ {V : Type u_1} {G : SimpleGraph V},\n  Finite V → Iff (Lax68.Planar.IsPlanar G) (Lax68.GraphTopologicalMinors.IsKuratowskiFree G)",
+          "startLine": 18,
+          "endLine": 22
         }
       ]
     },
@@ -697,6 +733,27 @@
       "statements": []
     },
     {
+      "id": "Lax68.WagnerObstructionBridge",
+      "path": "concepts/Lax68/WagnerObstructionBridge.lean",
+      "title": "The Kuratowski-Wagner obstruction bridge",
+      "type": "theorem",
+      "description": "A graph contains a subdivision of *K₅* or *K₃,₃* exactly when it contains\n*K₅* or *K₃,₃* as a minor. This special equivalence does not hold for\narbitrary forbidden graphs.",
+      "imports": [
+        "Lax68.GraphTopologicalMinors",
+        "Lax68.Planar"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax68.GraphTopologicalMinors\nimport Lax68.Planar\n\n/-!\n---\ntitle: The Kuratowski-Wagner obstruction bridge\ntype: theorem\n---\nA graph contains a subdivision of *K₅* or *K₃,₃* exactly when it contains\n*K₅* or *K₃,₃* as a minor. This special equivalence does not hold for\narbitrary forbidden graphs.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax68.WagnerObstructionBridge\n\naxiom kuratowskiFree_iff_excludedMinors\n    {V : Type*} {G : SimpleGraph V} :\n  Lax68.GraphTopologicalMinors.IsKuratowskiFree G ↔\n    Lax68.Planar.IsPlanarByExcludedMinors G\n\nend Lax68.WagnerObstructionBridge\n",
+      "statements": [
+        {
+          "id": "Lax68.WagnerObstructionBridge.kuratowskiFree_iff_excludedMinors",
+          "signature": "kuratowskiFree_iff_excludedMinors : ∀ {V : Type u_1} {G : SimpleGraph V},\n  Iff (Lax68.GraphTopologicalMinors.IsKuratowskiFree G) (Lax68.Planar.IsPlanarByExcludedMinors G)",
+          "startLine": 18,
+          "endLine": 21
+        }
+      ]
+    },
+    {
       "id": "Lax68.WallPlanar",
       "path": "concepts/Lax68/WallPlanar.lean",
       "title": "Walls are planar",
@@ -843,6 +900,16 @@
       "description": "Every path is planar."
     },
     {
+      "id": "Lax68Proofs.planar_iff_excludedMinors",
+      "path": "proofs/Lax68Proofs/Wagner.lean",
+      "conclusion": "Lax68.PlanarExcludedMinors.planar_iff_excludedMinors",
+      "assumptions": [
+        "Lax68.KuratowskiPlanarity.planar_iff_kuratowskiFree",
+        "Lax68.WagnerObstructionBridge.kuratowskiFree_iff_excludedMinors"
+      ],
+      "description": "Kuratowski's theorem characterizes finite planar graphs by the absence of the\ntwo topological obstructions. The Kuratowski-Wagner bridge identifies those\ntopological obstructions with the corresponding minor obstructions."
+    },
+    {
       "id": "Lax68Proofs.star_outerplanar",
       "path": "proofs/Lax68Proofs/Relationships.lean",
       "conclusion": "Lax68.StarOuterplanar.star_outerplanar",
@@ -912,8 +979,8 @@
   ],
   "capture": {
     "formatVersion": 1,
-    "digest": "8a3514e0699e0a66c34b2e42aa8935d4cdfce3aeca71ae1d8add4210bcb46a80",
-    "sourceCommit": "af2841dec9e338f945414b19d86dcc2c51cd7c80",
+    "digest": "383e78f354773e0fbd700618475054d0a1223b4b1cd889840afc2a32ad86342c",
+    "sourceCommit": "8d743cbd317e45a6025989563b6ae2d07ed28d13",
     "leanToolchain": "leanprover/lean4:v4.30.0",
     "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
     "files": [
@@ -926,6 +993,16 @@
         "path": "concepts/ir/Lax68/GraphMinors.c.hash",
         "bytes": 16,
         "sha256": "1bace85c5844bc445c213f303acf76e6268f3a2c945621843f51096775f682bc"
+      },
+      {
+        "path": "concepts/ir/Lax68/GraphTopologicalMinors.c",
+        "bytes": 1609,
+        "sha256": "9447241382f5676e5aa78bd3484b65d4b73a32d8c63bdab82ddd851bda32ea5d"
+      },
+      {
+        "path": "concepts/ir/Lax68/GraphTopologicalMinors.c.hash",
+        "bytes": 16,
+        "sha256": "f1e01d9c452a1dac8835ce107580fcca5599257ee1ca60b4b92346a96ef33476"
       },
       {
         "path": "concepts/ir/Lax68/GridPlanar.c",
@@ -966,6 +1043,16 @@
         "path": "concepts/ir/Lax68/HalinPlanar.c.hash",
         "bytes": 16,
         "sha256": "9d955f23a433a3b4e4c1f8597f23df7052a46c92b2b593059655518ec5c807fd"
+      },
+      {
+        "path": "concepts/ir/Lax68/KuratowskiPlanarity.c",
+        "bytes": 1551,
+        "sha256": "63b7e6f863cca51d41b008c58afa2e935ef3c632b71187f184e938e8542579f5"
+      },
+      {
+        "path": "concepts/ir/Lax68/KuratowskiPlanarity.c.hash",
+        "bytes": 16,
+        "sha256": "8f3f06931acfdeef054241961056b6f7efec74f2afa626303e18ccd28bb435f9"
       },
       {
         "path": "concepts/ir/Lax68/LadderGrid.c",
@@ -1288,6 +1375,16 @@
         "sha256": "2eb06046ca85ef892c99b8b8f34b9812e07e6abe3d7f8f95b07e94379ee486dd"
       },
       {
+        "path": "concepts/ir/Lax68/WagnerObstructionBridge.c",
+        "bytes": 1559,
+        "sha256": "83a45828e5e12472435c56d35721dbb9ef7545f8a5b6c4a1020a3048c91dd669"
+      },
+      {
+        "path": "concepts/ir/Lax68/WagnerObstructionBridge.c.hash",
+        "bytes": 16,
+        "sha256": "aa8f82ded8ba8dd99630b76f13b96757a51a67f6ad58864ab64d1306f4db2614"
+      },
+      {
         "path": "concepts/ir/Lax68/WallPlanar.c",
         "bytes": 1506,
         "sha256": "f44c3539dc67d160ee22141761a61cdf67bef9a58d88ecda0e34f6ef5b3cc43e"
@@ -1329,13 +1426,13 @@
       },
       {
         "path": "concepts/ir/Lax68.c",
-        "bytes": 10121,
-        "sha256": "68a8afbe76b8565a608e980b28c76de69d6376e1ee1ef99e3b6be642ad90681b"
+        "bytes": 10856,
+        "sha256": "5abaa502d59744dd648c40c550e61101917fa70c149e2b89b89388e49315888c"
       },
       {
         "path": "concepts/ir/Lax68.c.hash",
         "bytes": 16,
-        "sha256": "aba006044ff7ed9904a440bba1ad1423ba44b71c5a8677cfde23ea3e22262286"
+        "sha256": "d32754c06eb210e8ec7a139e9c19a829d6629b61cc4cec4ef91c9c843695a773"
       },
       {
         "path": "concepts/lib/Lax68/GraphMinors.ilean",
@@ -1361,6 +1458,31 @@
         "path": "concepts/lib/Lax68/GraphMinors.trace",
         "bytes": 2349,
         "sha256": "6fa77906b28bc592ba590b14255eed26a2bb96e17576899d6c580134cd2e71c9"
+      },
+      {
+        "path": "concepts/lib/Lax68/GraphTopologicalMinors.ilean",
+        "bytes": 4840,
+        "sha256": "fca76bbc36e94cab49ba31eee57633338e40d9e49476c099bb7d35e71ca1244f"
+      },
+      {
+        "path": "concepts/lib/Lax68/GraphTopologicalMinors.ilean.hash",
+        "bytes": 16,
+        "sha256": "289b1ba5eee7cbccf178b3161e10232900621729afd7812e8c7f5c0551f717d3"
+      },
+      {
+        "path": "concepts/lib/Lax68/GraphTopologicalMinors.olean",
+        "bytes": 139912,
+        "sha256": "630938dca15360c5063018dd0b92fd485a1d1a888fed478c958cbabcad1315a2"
+      },
+      {
+        "path": "concepts/lib/Lax68/GraphTopologicalMinors.olean.hash",
+        "bytes": 16,
+        "sha256": "72e85257584bb20e7ccf27b0912380169c098e4dddf543764042301f78b9d2e2"
+      },
+      {
+        "path": "concepts/lib/Lax68/GraphTopologicalMinors.trace",
+        "bytes": 2547,
+        "sha256": "51d9f404831ebf13fcf3a090ee6e1a86bcac8457d2f3cd260b48ed66df4d7d2d"
       },
       {
         "path": "concepts/lib/Lax68/GridPlanar.ilean",
@@ -1461,6 +1583,31 @@
         "path": "concepts/lib/Lax68/HalinPlanar.trace",
         "bytes": 2387,
         "sha256": "72585b2f66522d5d7c9aea1d76988d94269a2006f83becee74c9ae5368e1d164"
+      },
+      {
+        "path": "concepts/lib/Lax68/KuratowskiPlanarity.ilean",
+        "bytes": 1295,
+        "sha256": "69b1551a1a82ab7ed72285b55be37999f339bc0c5fd2e55fd9456e9fd71f04f6"
+      },
+      {
+        "path": "concepts/lib/Lax68/KuratowskiPlanarity.ilean.hash",
+        "bytes": 16,
+        "sha256": "0a74e2aea1b32b90b08b93b7438c4598f4f5f4e7f451c9c337fe6f726c8b8982"
+      },
+      {
+        "path": "concepts/lib/Lax68/KuratowskiPlanarity.olean",
+        "bytes": 6288,
+        "sha256": "8d746e376ca7f7a51b4867585068390728c0e8e5279596d5574c3ad6ccb84e1f"
+      },
+      {
+        "path": "concepts/lib/Lax68/KuratowskiPlanarity.olean.hash",
+        "bytes": 16,
+        "sha256": "422f099732dac3688e2778d8b6c210d066aa6fb889709abe01f6fd5c0bae8683"
+      },
+      {
+        "path": "concepts/lib/Lax68/KuratowskiPlanarity.trace",
+        "bytes": 2482,
+        "sha256": "9f7ba75ddbd188d9e7f208d82ed56d8c2c1b486ab493f33f63e8d27407575b4d"
       },
       {
         "path": "concepts/lib/Lax68/LadderGrid.ilean",
@@ -2263,6 +2410,31 @@
         "sha256": "dd5aa3ba08373b803ed620d215a090278e0814aa5618daef7485a88883a4fe14"
       },
       {
+        "path": "concepts/lib/Lax68/WagnerObstructionBridge.ilean",
+        "bytes": 1230,
+        "sha256": "af260fb96862d158876a9c4a23ed883ad62fb3913d0189a205821a2ae0e7daf1"
+      },
+      {
+        "path": "concepts/lib/Lax68/WagnerObstructionBridge.ilean.hash",
+        "bytes": 16,
+        "sha256": "bdd1a4f2cadae7e2906ce987cebe8b4807f9f0fc12fea4b94432cc981f6f302b"
+      },
+      {
+        "path": "concepts/lib/Lax68/WagnerObstructionBridge.olean",
+        "bytes": 5720,
+        "sha256": "2f279915ae41de95b70be458724a3d43c2ca27f6746b7aa1c6504aeff6978037"
+      },
+      {
+        "path": "concepts/lib/Lax68/WagnerObstructionBridge.olean.hash",
+        "bytes": 16,
+        "sha256": "0f736de0669ca827a763953d7df6e55e1cce0c1ceee2051cca5137375a31d280"
+      },
+      {
+        "path": "concepts/lib/Lax68/WagnerObstructionBridge.trace",
+        "bytes": 2514,
+        "sha256": "8d484b80cbcb6ebfad18cf06b6b6d22ba9b4010a2b42b84ea5569a12a6368570"
+      },
+      {
         "path": "concepts/lib/Lax68/WallPlanar.ilean",
         "bytes": 941,
         "sha256": "4e53cc5d7a8e930412b1f5bec23c12091d29c269c64bbf2b89df8f9984feec23"
@@ -2364,28 +2536,28 @@
       },
       {
         "path": "concepts/lib/Lax68.ilean",
-        "bytes": 1809,
-        "sha256": "a48bfec316bd79fbb01cf9475b9ecb2fd59ecc06b61e69e2a4f196704e87a714"
+        "bytes": 1960,
+        "sha256": "48c27a615943e5792b717e3f865abcb655a1619f76f060138f415eb160d2d9f0"
       },
       {
         "path": "concepts/lib/Lax68.ilean.hash",
         "bytes": 16,
-        "sha256": "7e0f2b1005ff42eae5f7747605b29b5359d0388263620f98cca245815496a248"
+        "sha256": "fca83cea99dd5cda767eb6cfa9f50caa90a74ac14d69e640b53432f060fd57ed"
       },
       {
         "path": "concepts/lib/Lax68.olean",
-        "bytes": 5888,
-        "sha256": "078b84d10ae2afa36bb196909dbe6113aac30156c1d087951466f16e75bd830d"
+        "bytes": 6248,
+        "sha256": "98b237d6d2d3b9ee2859929c9a8243d0168361cf75bcecc38c003ae623342d2d"
       },
       {
         "path": "concepts/lib/Lax68.olean.hash",
         "bytes": 16,
-        "sha256": "cb5fe35f0b4250323c48146f713b95a8bbb542b684d17466f3467598ede74f09"
+        "sha256": "a56db862db14fe750b60ee770b350c80e6968dacd4a01d16902ead7ea9293291"
       },
       {
         "path": "concepts/lib/Lax68.trace",
-        "bytes": 8273,
-        "sha256": "e432b36c8dc6f2391927db8944bdefa21f0d6ff03f04dd2f82967a72a524cab4"
+        "bytes": 8794,
+        "sha256": "87e4662a26e773f0dcde54557a8b2728c1f5e5a79d15769d809d58043ca68f81"
       },
       {
         "path": "concepts/package/lake-manifest.json",
@@ -2401,6 +2573,11 @@
         "path": "concepts/package/Lax68/GraphMinors.lean",
         "bytes": 1031,
         "sha256": "240eddcea0aa1dd45cfe6d6bf9ad9bd793d6956c10b30b4bf179f19d717f39ba"
+      },
+      {
+        "path": "concepts/package/Lax68/GraphTopologicalMinors.lean",
+        "bytes": 1552,
+        "sha256": "7fcb2db60d9ea8c1fcb510ba7fd632dc1cab08c48b9b4b601ae3524f78306c62"
       },
       {
         "path": "concepts/package/Lax68/GridPlanar.lean",
@@ -2421,6 +2598,11 @@
         "path": "concepts/package/Lax68/HalinPlanar.lean",
         "bytes": 336,
         "sha256": "23eb21ab358511e7098ef698c32ee33a17368a4a20426485e0b5f7625a455c58"
+      },
+      {
+        "path": "concepts/package/Lax68/KuratowskiPlanarity.lean",
+        "bytes": 619,
+        "sha256": "3cab7caa2ade232a0c8837153e59f434e4414056b97d15714da9c41c2d794719"
       },
       {
         "path": "concepts/package/Lax68/LadderGrid.lean",
@@ -2583,6 +2765,11 @@
         "sha256": "b9e29c1f47ad92b279662778b5e4988271e9fff7cc71e07a123c32d460973f6f"
       },
       {
+        "path": "concepts/package/Lax68/WagnerObstructionBridge.lean",
+        "bytes": 602,
+        "sha256": "e27056aff2c5491412271803bf659eb7b8425ddd6d25d15eeee02fd79ade10c1"
+      },
+      {
         "path": "concepts/package/Lax68/WallPlanar.lean",
         "bytes": 324,
         "sha256": "7ad624a4fff95f2184b2e10bf12f39102a52429415f4aeb61b43d8573a0565f3"
@@ -2604,8 +2791,8 @@
       },
       {
         "path": "concepts/package/Lax68.lean",
-        "bytes": 1119,
-        "sha256": "bdd97cc9c0f07dcfdbe9e3cb5aaafd071f3e7d1d0a65e4ac2926a86d2fa0df2f"
+        "bytes": 1225,
+        "sha256": "b93f2f25a6cd63f26c1ae272aacac43fcd2022c4a5dce4004bec9b47abb96ca1"
       },
       {
         "path": "concepts/package/lean-toolchain",
@@ -2623,14 +2810,24 @@
         "sha256": "ca14e5f6155aca52556bba070d7834e5658e88ebe7c88fd387018de884019c4f"
       },
       {
+        "path": "proofs/ir/Lax68Proofs/Wagner.c",
+        "bytes": 1826,
+        "sha256": "e8d4ce11bfab177da495c5d494718a4dceec460e7f7749c7565fcde26e9583fa"
+      },
+      {
+        "path": "proofs/ir/Lax68Proofs/Wagner.c.hash",
+        "bytes": 16,
+        "sha256": "4208d48e59605b5bfa3142e24106fea8edb2fa9f975db0c108227b2da4eddc06"
+      },
+      {
         "path": "proofs/ir/Lax68Proofs.c",
-        "bytes": 1333,
-        "sha256": "79459a8d32cc7ad568527ac0e9950062465c928c9a6e882fcb15bf7ce70b9e13"
+        "bytes": 1562,
+        "sha256": "d78b5c069d867986d8cca0e7d66a2cc9b83021b299ff7d306cf36ac159e77bed"
       },
       {
         "path": "proofs/ir/Lax68Proofs.c.hash",
         "bytes": 16,
-        "sha256": "9b4b2271155e65de35a73c64157d4c22570b6e5a79c7d322f7e7ce505fe9f9ba"
+        "sha256": "1b41b114da5d4ed6a60dc421a2821a3a2d6b061ea100d928fea385cbb85f0892"
       },
       {
         "path": "proofs/lib/Lax68Proofs/Relationships.ilean",
@@ -2655,32 +2852,57 @@
       {
         "path": "proofs/lib/Lax68Proofs/Relationships.trace",
         "bytes": 2369,
-        "sha256": "8e1a3e943d9a4c5759f7673fe355218ec547dabd4178669f308201897ddc5abe"
+        "sha256": "33e19381fa82f8062c1c4751c7eb698582587e4a05affb34099ddac1d8bb189e"
+      },
+      {
+        "path": "proofs/lib/Lax68Proofs/Wagner.ilean",
+        "bytes": 1720,
+        "sha256": "8cae5c678fc59d48ea8d48d8fb0c96fe4a38c714154611f5d4edb65f5e748b36"
+      },
+      {
+        "path": "proofs/lib/Lax68Proofs/Wagner.ilean.hash",
+        "bytes": 16,
+        "sha256": "f52998275c01b09f42e9cc7942fbbecf1102a7e947b517c233fdffdc3aaa68e6"
+      },
+      {
+        "path": "proofs/lib/Lax68Proofs/Wagner.olean",
+        "bytes": 8072,
+        "sha256": "2b7934e8324d2d970a279211628f7765d7db98691dded25e4567c17722dd70d5"
+      },
+      {
+        "path": "proofs/lib/Lax68Proofs/Wagner.olean.hash",
+        "bytes": 16,
+        "sha256": "05ad19b98a6678f4f059f7ab4fe107d7495ff88d7168088857accfe99884bf0b"
+      },
+      {
+        "path": "proofs/lib/Lax68Proofs/Wagner.trace",
+        "bytes": 2710,
+        "sha256": "4a517022f1d33e08ea8add34ad1fdca2664ed11ee0b022cc1205eea8f923ae32"
       },
       {
         "path": "proofs/lib/Lax68Proofs.ilean",
-        "bytes": 129,
-        "sha256": "433294c5eb74bdda4d631ef555153bef3064e887ddd2ec20b0fdf9590ef2da8b"
+        "bytes": 170,
+        "sha256": "db098bcdac8257d760ba0d9ca9c7b338019b362d5f7898b9986f5682758c1bf3"
       },
       {
         "path": "proofs/lib/Lax68Proofs.ilean.hash",
         "bytes": 16,
-        "sha256": "36dbc5ec8a97f9388b556e2816f4d0cf77a755fcb342527a35b91b00c3a841cb"
+        "sha256": "5e9af630f1f6dedb1ad87d46a2f99c7d54c73335dc7ff248ffd7d04d0d4868f7"
       },
       {
         "path": "proofs/lib/Lax68Proofs.olean",
-        "bytes": 1344,
-        "sha256": "e86ccf6e053212ebe57764bbad85e63ef5a28b28e32a3a95cbc2a17a3eb3af9d"
+        "bytes": 1448,
+        "sha256": "cc0ccc4c9ba157b57941cb7a2d069c309f3dd31d04597da769e42404efd19204"
       },
       {
         "path": "proofs/lib/Lax68Proofs.olean.hash",
         "bytes": 16,
-        "sha256": "37b4e3b897d2f554101c0a37edac7030fa393e5f7f7398f7f03b5ba6e00b7bd4"
+        "sha256": "e7b17d2c6e58dcd61fa20139ec25cfb22984cbed6e34e0d2ffafcf6305d5d77f"
       },
       {
         "path": "proofs/lib/Lax68Proofs.trace",
-        "bytes": 2303,
-        "sha256": "e1e08f4ada2b1b81e5ea302b538ac37c94ef00c4930b1f37f88101bf8606f82a"
+        "bytes": 2449,
+        "sha256": "dcbee0e04de906438b0c68603d10bc071f4a1f21cdba0d0fb986b70c113b03be"
       },
       {
         "path": "proofs/package/lake-manifest.json",
@@ -2698,9 +2920,14 @@
         "sha256": "10bc1dadcbf864e18f872336e65390c1a4b735c6d55c1f1f4505efc87ea50b07"
       },
       {
+        "path": "proofs/package/Lax68Proofs/Wagner.lean",
+        "bytes": 940,
+        "sha256": "688971fed677bb36234a269634c414fbad4a476e193ef3b5ec0e5a76d157cb85"
+      },
+      {
         "path": "proofs/package/Lax68Proofs.lean",
-        "bytes": 33,
-        "sha256": "9f244adb9720b0a80b2bece3c3349ee55814d627b9a8d0ee53b5c16e7597faef"
+        "bytes": 59,
+        "sha256": "9faaf767ad4867044a3631acc944674fb65503854bc388403f6273eac37a3b98"
       },
       {
         "path": "proofs/package/lean-toolchain",
@@ -2708,6 +2935,6 @@
         "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
       }
     ],
-    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:8a3514e0699e0a66c34b2e42aa8935d4cdfce3aeca71ae1d8add4210bcb46a80"
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:383e78f354773e0fbd700618475054d0a1223b4b1cd889840afc2a32ad86342c"
   }
 }
