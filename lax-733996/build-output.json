@@ -4,5 +4,3005 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 90
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-733996",
+      "leanVersion": "v4.30.0",
+      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "title": "The Immerman–Szelepcsényi Theorem",
+      "authors": [
+        {
+          "name": "Édouard Bonnet"
+        },
+        {
+          "name": "gpt-6-astra"
+        }
+      ],
+      "bibEntries": [
+        "@article{Immerman1988,\n  author = {Neil Immerman},\n  title = {Nondeterministic Space is Closed under Complementation},\n  journal = {SIAM Journal on Computing},\n  volume = {17},\n  number = {5},\n  pages = {935--938},\n  year = {1988},\n  doi = {10.1137/0217058}\n}\n",
+        "@article{Szelepcsenyi1988,\n  author = {Róbert Szelepcsényi},\n  title = {The Method of Forced Enumeration for Nondeterministic Automata},\n  journal = {Acta Informatica},\n  volume = {26},\n  number = {3},\n  pages = {279--284},\n  year = {1988},\n  doi = {10.1007/BF00299636}\n}\n"
+      ]
+    },
+    "abstract": "We prove $\\mathrm{NL}=\\mathrm{coNL}$ by inductive counting on finite configuration graphs. The proof constructs a nondeterministic Turing machine that generates paths and census witnesses sequentially, halts on every branch, and uses logarithmic space. Machine classes come from lax-434930; configuration encodings and stack routines come from lax-307052.\n"
+  },
+  "requiredByConcepts": [
+    "Lax307052",
+    "Lax434930",
+    "Lax554803"
+  ],
+  "requiredByProofs": [
+    "Lax307052",
+    "Lax307052Proofs",
+    "Lax434930",
+    "Lax554803"
+  ],
+  "concepts": [
+    {
+      "id": "Lax733996.Classification",
+      "path": "concepts/Lax733996/Classification.lean",
+      "title": "Correctness of vertex classification",
+      "type": "lemma",
+      "description": "With the correct current count, a vertex has a valid positive or negative\nclassification exactly according to its membership in the next layer.",
+      "imports": [
+        "Lax733996.Counting"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax733996.Counting\n\n/-!\n---\ntitle: Correctness of vertex classification\ntype: lemma\n---\nWith the correct current count, a vertex has a valid positive or negative\nclassification exactly according to its membership in the next layer.\n-/\n\nnamespace Lax733996.Classification\n\nopen Lax307052.Reachability Counting\n\naxiom correct {N : ℕ} (G : Graph N) (a v : Fin N) (k : ℕ) (b : Bool) :\n  Classify G a k (layer G a k).card v b ↔\n    (b = true ↔ v ∈ layer G a (k + 1))\n\nend Lax733996.Classification\n",
+      "statements": [
+        {
+          "id": "Lax733996.Classification.correct",
+          "signature": "correct : ∀ {N : Nat} (G : Lax307052.Reachability.Graph N) (a v : Fin N) (k : Nat) (b : Bool),\n  Iff (Lax733996.Counting.Classify G a k (Lax733996.Counting.layer G a k).card v b)\n    (Iff (Eq b Bool.true) (SetLike.instMembership.mem (Lax733996.Counting.layer G a (instHAdd.hAdd k 1)) v))",
+          "startLine": 16,
+          "endLine": 18
+        }
+      ]
+    },
+    {
+      "id": "Lax733996.ComplementClosure",
+      "path": "concepts/Lax733996/ComplementClosure.lean",
+      "title": "Complementing a logarithmic space language",
+      "type": "lemma",
+      "description": "The complement of a language in $\\mathrm{NL}$ also belongs to $\\mathrm{NL}$.",
+      "imports": [
+        "Lax434930.NondeterministicLogarithmicSpace"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax434930.NondeterministicLogarithmicSpace\n\n/-!\n---\ntitle: Complementing a logarithmic space language\ntype: lemma\n---\nThe complement of a language in $\\mathrm{NL}$ also belongs to $\\mathrm{NL}$.\n-/\n\nnamespace Lax733996.ComplementClosure\n\nopen Lax434930.PolynomialTime Lax434930.NondeterministicLogarithmicSpace\n\naxiom closed (A : Language) : A ∈ NL → Aᶜ ∈ NL\n\nend Lax733996.ComplementClosure\n",
+      "statements": [
+        {
+          "id": "Lax733996.ComplementClosure.closed",
+          "signature": "closed : ∀ (A : Lax434930.PolynomialTime.Language),\n  Set.instMembership.mem Lax434930.NondeterministicLogarithmicSpace.NL A →\n    Set.instMembership.mem Lax434930.NondeterministicLogarithmicSpace.NL (Set.instCompl.compl A)",
+          "startLine": 15,
+          "endLine": 15
+        }
+      ]
+    },
+    {
+      "id": "Lax733996.ConfigurationCounting",
+      "path": "concepts/Lax733996/ConfigurationCounting.lean",
+      "title": "Counting on the configuration graph",
+      "type": "definition",
+      "description": "For every terminal accepting configuration, certify that it cannot be\nreached from the initial configuration. The implementation must generate\nthe witnesses sequentially; this predicate alone makes no space claim.",
+      "imports": [
+        "Lax307052.ConfigurationGraph",
+        "Lax733996.Counting"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax307052.ConfigurationGraph\nimport Lax733996.Counting\n\n/-!\n---\ntitle: Counting on the configuration graph\ntype: definition\n---\nFor every terminal accepting configuration, certify that it cannot be\nreached from the initial configuration. The implementation must generate\nthe witnesses sequentially; this predicate alone makes no space claim.\n-/\n\nnamespace Lax733996.ConfigurationCounting\n\nopen Lax434930.PolynomialTime Lax434930.SpaceMachines\nopen Lax307052.BoundedConfigurations Lax307052.ConfigurationGraph Counting\n\ndef RejectsByCounting (M : Machine) (w : Word) (s : ℕ) : Prop :=\n  ∀ a b : Config M w.length s, expand a = M.initial →\n    M.Terminal w (expand b) → M.accept b.state = true →\n    NonreachCertificate (graph M w s) (numbering M w.length s a) (numbering M w.length s b)\n\nend Lax733996.ConfigurationCounting\n",
+      "statements": []
+    },
+    {
+      "id": "Lax733996.Counting",
+      "path": "concepts/Lax733996/Counting.lean",
+      "title": "Inductive counting certificates",
+      "type": "definition",
+      "description": "The $k$th reachable layer contains vertices at distance at most $k$ from the\nsource. A census lists distinct reachable vertices and their path witnesses.\nGiven the correct census size, a negative classification checks that no\nlisted vertex has an edge to the target. A counting step classifies every\nvertex and counts the positive answers.",
+      "imports": [
+        "Lax307052.Reachability"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Fintype.Powerset"
+      ],
+      "sourceText": "import Lax307052.Reachability\nimport Mathlib.Data.Fintype.Powerset\n\n/-!\n---\ntitle: Inductive counting certificates\ntype: definition\n---\nThe $k$th reachable layer contains vertices at distance at most $k$ from the\nsource. A census lists distinct reachable vertices and their path witnesses.\nGiven the correct census size, a negative classification checks that no\nlisted vertex has an edge to the target. A counting step classifies every\nvertex and counts the positive answers.\n-/\n\nnamespace Lax733996.Counting\n\nopen Lax307052.Reachability\n\nnoncomputable def layer {N : ℕ} (G : Graph N) (a : Fin N) (k : ℕ) : Finset (Fin N) := by\n  classical\n  exact Finset.univ.filter (fun v => Within (fun u v => G u v = true) k a v)\n\ndef Census {N : ℕ} (G : Graph N) (a : Fin N) (k c : ℕ) (S : Finset (Fin N)) : Prop :=\n  S.card = c ∧ ∀ v ∈ S, Within (fun u v => G u v = true) k a v\n\ndef Classify {N : ℕ} (G : Graph N) (a : Fin N) (k c : ℕ) (v : Fin N) : Bool → Prop\n  | true => Within (fun u v => G u v = true) (k + 1) a v\n  | false => ∃ S, Census G a k c S ∧ v ≠ a ∧ ∀ u ∈ S, G u v = false\n\ndef CountStep {N : ℕ} (G : Graph N) (a : Fin N) (k c d : ℕ) : Prop :=\n  ∃ answers : Fin N → Bool, (∀ v, Classify G a k c v (answers v)) ∧\n    (Finset.univ.filter (fun v => answers v = true)).card = d\n\ndef CountTrace {N : ℕ} (G : Graph N) (a : Fin N) (counts : ℕ → ℕ) : Prop :=\n  counts 0 = 1 ∧ ∀ k < N, CountStep G a k (counts k) (counts (k + 1))\n\ndef NonreachCertificate {N : ℕ} (G : Graph N) (a b : Fin N) : Prop :=\n  ∃ counts, CountTrace G a counts ∧\n    ∃ S, Census G a N (counts N) S ∧ b ∉ S\n\nend Lax733996.Counting\n",
+      "statements": []
+    },
+    {
+      "id": "Lax733996.CountingStep",
+      "path": "concepts/Lax733996/CountingStep.lean",
+      "title": "Correctness of one counting step",
+      "type": "lemma",
+      "description": "Starting from the correct layer size, valid classifications produce exactly\nthe size of the next layer. Such classifications exist.",
+      "imports": [
+        "Lax733996.Counting"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax733996.Counting\n\n/-!\n---\ntitle: Correctness of one counting step\ntype: lemma\n---\nStarting from the correct layer size, valid classifications produce exactly\nthe size of the next layer. Such classifications exist.\n-/\n\nnamespace Lax733996.CountingStep\n\nopen Lax307052.Reachability Counting\n\naxiom correct {N : ℕ} (G : Graph N) (a : Fin N) (k d : ℕ) :\n  CountStep G a k (layer G a k).card d ↔ d = (layer G a (k + 1)).card\n\nend Lax733996.CountingStep\n",
+      "statements": [
+        {
+          "id": "Lax733996.CountingStep.correct",
+          "signature": "correct : ∀ {N : Nat} (G : Lax307052.Reachability.Graph N) (a : Fin N) (k d : Nat),\n  Iff (Lax733996.Counting.CountStep G a k (Lax733996.Counting.layer G a k).card d)\n    (Eq d (Lax733996.Counting.layer G a (instHAdd.hAdd k 1)).card)",
+          "startLine": 16,
+          "endLine": 17
+        }
+      ]
+    },
+    {
+      "id": "Lax733996.CountingTrace",
+      "path": "concepts/Lax733996/CountingTrace.lean",
+      "title": "Correctness of the count sequence",
+      "type": "lemma",
+      "description": "The initial layer consists of the source. Inductive counting certifies\nexactly the successive layer sizes, including the final size after $N$ steps.",
+      "imports": [
+        "Lax733996.Counting"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax733996.Counting\n\n/-!\n---\ntitle: Correctness of the count sequence\ntype: lemma\n---\nThe initial layer consists of the source. Inductive counting certifies\nexactly the successive layer sizes, including the final size after $N$ steps.\n-/\n\nnamespace Lax733996.CountingTrace\n\nopen Lax307052.Reachability Counting\n\naxiom correct {N : ℕ} (G : Graph N) (a : Fin N) (counts : ℕ → ℕ) :\n  CountTrace G a counts ↔ ∀ k ≤ N, counts k = (layer G a k).card\n\nend Lax733996.CountingTrace\n",
+      "statements": [
+        {
+          "id": "Lax733996.CountingTrace.correct",
+          "signature": "correct : ∀ {N : Nat} (G : Lax307052.Reachability.Graph N) (a : Fin N) (counts : Nat → Nat),\n  Iff (Lax733996.Counting.CountTrace G a counts)\n    (∀ (k : Nat), instLENat.le k N → Eq (counts k) (Lax733996.Counting.layer G a k).card)",
+          "startLine": 16,
+          "endLine": 17
+        }
+      ]
+    },
+    {
+      "id": "Lax733996.CountMachine",
+      "path": "concepts/Lax733996/CountMachine.lean",
+      "title": "Logarithmic space for inductive counting",
+      "type": "lemma",
+      "description": "For a machine using logarithmic space, a nondeterministic machine implements\nits configuration counting predicate in logarithmic space. Vertices and\nbounded paths are generated sequentially. Every branch halts.",
+      "imports": [
+        "Lax434930.SpaceBounds",
+        "Lax733996.ConfigurationCounting"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax733996.ConfigurationCounting\nimport Lax434930.SpaceBounds\n\n/-!\n---\ntitle: Logarithmic space for inductive counting\ntype: lemma\n---\nFor a machine using logarithmic space, a nondeterministic machine implements\nits configuration counting predicate in logarithmic space. Vertices and\nbounded paths are generated sequentially. Every branch halts.\n-/\n\nnamespace Lax733996.CountMachine\n\nopen Lax434930.PolynomialTime Lax434930.SpaceMachines Lax434930.SpaceBounds\nopen ConfigurationCounting\n\naxiom implement (M : Machine) (c : ℕ) (hc : 0 < c)\n    (hM : ∀ w, M.UsesSpace w (c * logSpace w.length)) :\n  ∃ (d : ℕ) (D : Machine), 0 < d ∧\n    (∀ w, D.HaltsOn w ∧ (D.Accepts w ↔ RejectsByCounting M w (c * logSpace w.length))) ∧\n    ∀ w, D.UsesSpace w (d * logSpace w.length)\n\nend Lax733996.CountMachine\n",
+      "statements": [
+        {
+          "id": "Lax733996.CountMachine.implement",
+          "signature": "implement : ∀ (M : Lax434930.SpaceMachines.Machine) (c : Nat),\n  instLTNat.lt 0 c →\n    (∀ (w : Lax434930.PolynomialTime.Word),\n        M.UsesSpace w (instHMul.hMul c (Lax434930.SpaceBounds.logSpace (List.length w)))) →\n      Exists fun d =>\n        Exists fun D =>\n          And (instLTNat.lt 0 d)\n            (And\n              (∀ (w : Lax434930.PolynomialTime.Word),\n                And (D.HaltsOn w)\n                  (Iff (D.Accepts w)\n                    (Lax733996.ConfigurationCounting.RejectsByCounting M w\n                      (instHMul.hMul c (Lax434930.SpaceBounds.logSpace (List.length w))))))\n              (∀ (w : Lax434930.PolynomialTime.Word),\n                D.UsesSpace w (instHMul.hMul d (Lax434930.SpaceBounds.logSpace (List.length w)))))",
+          "startLine": 19,
+          "endLine": 23
+        }
+      ]
+    },
+    {
+      "id": "Lax733996.ExactCensus",
+      "path": "concepts/Lax733996/ExactCensus.lean",
+      "title": "Exact censuses enumerate the whole layer",
+      "type": "lemma",
+      "description": "A census of reachable vertices with the correct cardinality contains every\nvertex of the layer. Distinctness is enforced by the finite-set representation.",
+      "imports": [
+        "Lax733996.Counting"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax733996.Counting\n\n/-!\n---\ntitle: Exact censuses enumerate the whole layer\ntype: lemma\n---\nA census of reachable vertices with the correct cardinality contains every\nvertex of the layer. Distinctness is enforced by the finite-set representation.\n-/\n\nnamespace Lax733996.ExactCensus\n\nopen Lax307052.Reachability Counting\n\naxiom complete {N : ℕ} (G : Graph N) (a : Fin N) (k : ℕ) (S : Finset (Fin N)) :\n  Census G a k (layer G a k).card S → S = layer G a k\n\nend Lax733996.ExactCensus\n",
+      "statements": [
+        {
+          "id": "Lax733996.ExactCensus.complete",
+          "signature": "complete : ∀ {N : Nat} (G : Lax307052.Reachability.Graph N) (a : Fin N) (k : Nat) (S : Finset (Fin N)),\n  Lax733996.Counting.Census G a k (Lax733996.Counting.layer G a k).card S → Eq S (Lax733996.Counting.layer G a k)",
+          "startLine": 16,
+          "endLine": 17
+        }
+      ]
+    },
+    {
+      "id": "Lax733996.NLcoNL",
+      "path": "concepts/Lax733996/NLcoNL.lean",
+      "title": "The Immerman–Szelepcsényi theorem",
+      "type": "theorem",
+      "description": "Nondeterministic logarithmic space is closed under complement:\n$\\mathrm{NL}=\\mathrm{coNL}$.",
+      "imports": [
+        "Lax434930.ComplementClasses"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax434930.ComplementClasses\n\n/-!\n---\ntitle: The Immerman–Szelepcsényi theorem\ntype: theorem\n---\nNondeterministic logarithmic space is closed under complement:\n$\\mathrm{NL}=\\mathrm{coNL}$.\n-/\n\nnamespace Lax733996.NLcoNL\n\nopen Lax434930.NondeterministicLogarithmicSpace Lax434930.ComplementClasses\n\naxiom nl_eq_conl : NL = coNL\n\nend Lax733996.NLcoNL\n",
+      "statements": [
+        {
+          "id": "Lax733996.NLcoNL.nl_eq_conl",
+          "signature": "nl_eq_conl : Eq Lax434930.NondeterministicLogarithmicSpace.NL Lax434930.ComplementClasses.coNL",
+          "startLine": 16,
+          "endLine": 16
+        }
+      ]
+    },
+    {
+      "id": "Lax733996.Nonreachability",
+      "path": "concepts/Lax733996/Nonreachability.lean",
+      "title": "Correctness of nonreachability certificates",
+      "type": "lemma",
+      "description": "A valid sequence of counts and a final census omitting the target exist\nexactly when the target is unreachable from the source.",
+      "imports": [
+        "Lax733996.Counting"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax733996.Counting\n\n/-!\n---\ntitle: Correctness of nonreachability certificates\ntype: lemma\n---\nA valid sequence of counts and a final census omitting the target exist\nexactly when the target is unreachable from the source.\n-/\n\nnamespace Lax733996.Nonreachability\n\nopen Lax307052.Reachability Counting\n\naxiom correct {N : ℕ} (G : Graph N) (a b : Fin N) :\n  NonreachCertificate G a b ↔ ¬ Reachable G a b\n\nend Lax733996.Nonreachability\n",
+      "statements": [
+        {
+          "id": "Lax733996.Nonreachability.correct",
+          "signature": "correct : ∀ {N : Nat} (G : Lax307052.Reachability.Graph N) (a b : Fin N),\n  Iff (Lax733996.Counting.NonreachCertificate G a b) (Not (Lax307052.Reachability.Reachable G a b))",
+          "startLine": 16,
+          "endLine": 17
+        }
+      ]
+    },
+    {
+      "id": "Lax733996.Rejection",
+      "path": "concepts/Lax733996/Rejection.lean",
+      "title": "Correctness of rejection by counting",
+      "type": "lemma",
+      "description": "On a space-bounded computation, counting certifies rejection precisely when\nthere is no accepting computation.",
+      "imports": [
+        "Lax733996.ConfigurationCounting"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax733996.ConfigurationCounting\n\n/-!\n---\ntitle: Correctness of rejection by counting\ntype: lemma\n---\nOn a space-bounded computation, counting certifies rejection precisely when\nthere is no accepting computation.\n-/\n\nnamespace Lax733996.Rejection\n\nopen Lax434930.PolynomialTime Lax434930.SpaceMachines ConfigurationCounting\n\naxiom correct (M : Machine) (w : Word) (s : ℕ) (hs : M.UsesSpace w s) :\n  RejectsByCounting M w s ↔ ¬ M.Accepts w\n\nend Lax733996.Rejection\n",
+      "statements": [
+        {
+          "id": "Lax733996.Rejection.correct",
+          "signature": "correct : ∀ (M : Lax434930.SpaceMachines.Machine) (w : Lax434930.PolynomialTime.Word) (s : Nat),\n  M.UsesSpace w s → Iff (Lax733996.ConfigurationCounting.RejectsByCounting M w s) (Not (M.Accepts w))",
+          "startLine": 16,
+          "endLine": 17
+        }
+      ]
+    },
+    {
+      "id": "Lax733996.SuccessorLayer",
+      "path": "concepts/Lax733996/SuccessorLayer.lean",
+      "title": "The next reachable layer",
+      "type": "lemma",
+      "description": "A vertex belongs to the next layer precisely when it is the source or has\nan incoming edge from the current layer.",
+      "imports": [
+        "Lax733996.Counting"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax733996.Counting\n\n/-!\n---\ntitle: The next reachable layer\ntype: lemma\n---\nA vertex belongs to the next layer precisely when it is the source or has\nan incoming edge from the current layer.\n-/\n\nnamespace Lax733996.SuccessorLayer\n\nopen Lax307052.Reachability Counting\n\naxiom successor {N : ℕ} (G : Graph N) (a v : Fin N) (k : ℕ) :\n  v ∈ layer G a (k + 1) ↔ v = a ∨ ∃ u ∈ layer G a k, G u v = true\n\nend Lax733996.SuccessorLayer\n",
+      "statements": [
+        {
+          "id": "Lax733996.SuccessorLayer.successor",
+          "signature": "successor : ∀ {N : Nat} (G : Lax307052.Reachability.Graph N) (a v : Fin N) (k : Nat),\n  Iff (SetLike.instMembership.mem (Lax733996.Counting.layer G a (instHAdd.hAdd k 1)) v)\n    (Or (Eq v a)\n      (Exists fun u => And (SetLike.instMembership.mem (Lax733996.Counting.layer G a k) u) (Eq (G u v) Bool.true)))",
+          "startLine": 16,
+          "endLine": 17
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax733996Proofs.classification",
+      "path": "proofs/Lax733996Proofs/Counting.lean",
+      "conclusion": "Lax733996.Classification.correct",
+      "assumptions": [
+        "Lax733996.ExactCensus.complete",
+        "Lax733996.SuccessorLayer.successor"
+      ],
+      "description": "An exact census makes the negative test exhaustive."
+    },
+    {
+      "id": "Lax733996Proofs.complement_closed",
+      "path": "proofs/Lax733996Proofs/Complement.lean",
+      "conclusion": "Lax733996.ComplementClosure.closed",
+      "assumptions": [
+        "Lax733996.CountMachine.implement",
+        "Lax733996.Rejection.correct"
+      ],
+      "description": "The counting machine accepts the complement and preserves a logarithmic space bound."
+    },
+    {
+      "id": "Lax733996Proofs.counting_rejection",
+      "path": "proofs/Lax733996Proofs/Complement.lean",
+      "conclusion": "Lax733996.Rejection.correct",
+      "assumptions": [
+        "Lax307052.Runs.acceptance",
+        "Lax733996.Nonreachability.correct"
+      ],
+      "description": "Apply the nonreachability certificate to each possible accepting configuration."
+    },
+    {
+      "id": "Lax733996Proofs.counting_step",
+      "path": "proofs/Lax733996Proofs/Counting.lean",
+      "conclusion": "Lax733996.CountingStep.correct",
+      "assumptions": [
+        "Lax733996.Classification.correct"
+      ],
+      "description": "The vertices classified positively are exactly the next layer."
+    },
+    {
+      "id": "Lax733996Proofs.counting_trace",
+      "path": "proofs/Lax733996Proofs/Counting.lean",
+      "conclusion": "Lax733996.CountingTrace.correct",
+      "assumptions": [
+        "Lax733996.CountingStep.correct"
+      ],
+      "description": "Induct from the singleton initial layer through the certified counting steps."
+    },
+    {
+      "id": "Lax733996Proofs.CountingProgram.counting_machine_implementation",
+      "path": "proofs/Lax733996Proofs/CountingMachine.lean",
+      "conclusion": "Lax733996.CountMachine.implement",
+      "assumptions": [
+        "Lax307052.Runs.acceptance",
+        "Lax307052.ShortPaths.short_path",
+        "Lax733996.Nonreachability.correct"
+      ],
+      "description": "Compile the sequential path and census loops to a finite Turing machine.\nEvery branch halts and every register has logarithmic length."
+    },
+    {
+      "id": "Lax733996Proofs.exact_census",
+      "path": "proofs/Lax733996Proofs/Counting.lean",
+      "conclusion": "Lax733996.ExactCensus.complete",
+      "assumptions": [],
+      "description": "A finite subset with the same cardinality is the entire layer."
+    },
+    {
+      "id": "Lax733996Proofs.immerman_szelepcsenyi",
+      "path": "proofs/Lax733996Proofs/Complement.lean",
+      "conclusion": "Lax733996.NLcoNL.nl_eq_conl",
+      "assumptions": [
+        "Lax733996.ComplementClosure.closed"
+      ],
+      "description": "Apply complement closure in both directions and use double complementation."
+    },
+    {
+      "id": "Lax733996Proofs.nonreachability",
+      "path": "proofs/Lax733996Proofs/Counting.lean",
+      "conclusion": "Lax733996.Nonreachability.correct",
+      "assumptions": [
+        "Lax307052.ShortPaths.short_path",
+        "Lax733996.CountingTrace.correct",
+        "Lax733996.ExactCensus.complete"
+      ],
+      "description": "The final exact census contains every reachable vertex, so omitting the target certifies nonreachability."
+    },
+    {
+      "id": "Lax733996Proofs.successor_layer",
+      "path": "proofs/Lax733996Proofs/Counting.lean",
+      "conclusion": "Lax733996.SuccessorLayer.successor",
+      "assumptions": [],
+      "description": "Remove the last edge of a nonempty walk; the empty walk ends at the source."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "19fc61dbb81903a635bfe65203e201306030c2957c84f3532733d539ae95b47d",
+    "sourceCommit": "fae3750ccee617c7f97680c6f1ceef3996b3f47e",
+    "leanToolchain": "leanprover/lean4:v4.30.0",
+    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "files": [
+      {
+        "path": "concepts/ir/Lax733996/Classification.c",
+        "bytes": 1332,
+        "sha256": "e5ba46b184b80c733a4135966d85fa717b8ae7c3c22a5b921e5abad295ad7dd7"
+      },
+      {
+        "path": "concepts/ir/Lax733996/Classification.c.hash",
+        "bytes": 16,
+        "sha256": "aedee3fcc3e55c938c5266c5da6bc41343117322e937621d8ff61197178187f7"
+      },
+      {
+        "path": "concepts/ir/Lax733996/ComplementClosure.c",
+        "bytes": 1410,
+        "sha256": "0961d1be7545697c34a762ede9a7c8c50476fe47594c1d6781094bfa4cb257a3"
+      },
+      {
+        "path": "concepts/ir/Lax733996/ComplementClosure.c.hash",
+        "bytes": 16,
+        "sha256": "cac0b91d0a3fcc348612c7dcc1ac62fe1abff0159b469090b6435dd1ba281d44"
+      },
+      {
+        "path": "concepts/ir/Lax733996/ConfigurationCounting.c",
+        "bytes": 1601,
+        "sha256": "55538a85c0a41be6b39ba69c9b82d979332d338c7c8b5d0ee449e1aad12c9811"
+      },
+      {
+        "path": "concepts/ir/Lax733996/ConfigurationCounting.c.hash",
+        "bytes": 16,
+        "sha256": "e535d8ee0101fa076d26031da5e782ceb16baa16eb5a578478ac6096c7e7b8ad"
+      },
+      {
+        "path": "concepts/ir/Lax733996/Counting.c",
+        "bytes": 1586,
+        "sha256": "0aa18ab4fec145c80ae3010b793a8e93a90a29939071cc0ec417de57f930f7e4"
+      },
+      {
+        "path": "concepts/ir/Lax733996/Counting.c.hash",
+        "bytes": 16,
+        "sha256": "716d78e6e8d18680167d419d3fe12d36d2c884127db6f94c77b9b45cc7a565ff"
+      },
+      {
+        "path": "concepts/ir/Lax733996/CountingStep.c",
+        "bytes": 1328,
+        "sha256": "12d3f3bc6abe23ad6dc22405bcf124c718e90e2c9bb5406ddee7b6b4a83c2e56"
+      },
+      {
+        "path": "concepts/ir/Lax733996/CountingStep.c.hash",
+        "bytes": 16,
+        "sha256": "510ffa2c36747f2b76e2cdabe5e147eb3c587fec9877d6f338b40bb583936497"
+      },
+      {
+        "path": "concepts/ir/Lax733996/CountingTrace.c",
+        "bytes": 1330,
+        "sha256": "3838e28dc650cede4519f3e3856314dc1676bbb0b0ad7457f153b12e3acbe75b"
+      },
+      {
+        "path": "concepts/ir/Lax733996/CountingTrace.c.hash",
+        "bytes": 16,
+        "sha256": "99f162d5dd6c6c20d1e5926c9ac8fc47a1d3b3578f1cc3452d2a31c5b88d1228"
+      },
+      {
+        "path": "concepts/ir/Lax733996/CountMachine.c",
+        "bytes": 1601,
+        "sha256": "be8d0d23b1c3d6a959a1a6744fc133755bb2c3f514db230ebfd49866daffd917"
+      },
+      {
+        "path": "concepts/ir/Lax733996/CountMachine.c.hash",
+        "bytes": 16,
+        "sha256": "e80abe724cfc3caae201816c9cea35d1ebe89dbd9e538adce6724603330728e5"
+      },
+      {
+        "path": "concepts/ir/Lax733996/ExactCensus.c",
+        "bytes": 1326,
+        "sha256": "64f08e08a5fefaa2964e5b64c37039ebdca4693c3f5624f6a42aa72990965242"
+      },
+      {
+        "path": "concepts/ir/Lax733996/ExactCensus.c.hash",
+        "bytes": 16,
+        "sha256": "f422a336861371495fc55cfe9486bbfa27cceb94388d203ad7527fb47bcd0cb5"
+      },
+      {
+        "path": "concepts/ir/Lax733996/NLcoNL.c",
+        "bytes": 1343,
+        "sha256": "6afb07bc635a7da3b4af755b1f5ae58ffb14593de9c375b30bd07f53569b8c73"
+      },
+      {
+        "path": "concepts/ir/Lax733996/NLcoNL.c.hash",
+        "bytes": 16,
+        "sha256": "ac9ab3a37c4e489fb57ab3cd4b823b00c78b4d4f61aa93a42c777827f4e10d38"
+      },
+      {
+        "path": "concepts/ir/Lax733996/Nonreachability.c",
+        "bytes": 1334,
+        "sha256": "626e53254ff7473e1d0cd4804ec5e0025514453195622b089b775ad656f7feb1"
+      },
+      {
+        "path": "concepts/ir/Lax733996/Nonreachability.c.hash",
+        "bytes": 16,
+        "sha256": "0ce7d98b1d1dc09df721142d517522d8e8a993ff651639a81e19db6245c1788c"
+      },
+      {
+        "path": "concepts/ir/Lax733996/Rejection.c",
+        "bytes": 1361,
+        "sha256": "d7998a3a1591f01ca694d17a7a5df2fbbad91d84860e2097a55e2b6818faa279"
+      },
+      {
+        "path": "concepts/ir/Lax733996/Rejection.c.hash",
+        "bytes": 16,
+        "sha256": "6b5bb5a3a4529146e54a29720ab7fe32cd107399188f78fb04b7a893ed30fd41"
+      },
+      {
+        "path": "concepts/ir/Lax733996/SuccessorLayer.c",
+        "bytes": 1332,
+        "sha256": "5aa4f4b4d24c113ceb38946c16537448811985beef45ce4dcec4d6c2415a88fa"
+      },
+      {
+        "path": "concepts/ir/Lax733996/SuccessorLayer.c.hash",
+        "bytes": 16,
+        "sha256": "82d7eff74c779fd7391928844c72733b5eb68be25bbb7c9ec9bedbddd7b27199"
+      },
+      {
+        "path": "concepts/ir/Lax733996.c",
+        "bytes": 3945,
+        "sha256": "cbc26ace45a8fe5a25fa1ce1010f5348c3cd6a8109e672a0aca828e9e0ad23eb"
+      },
+      {
+        "path": "concepts/ir/Lax733996.c.hash",
+        "bytes": 16,
+        "sha256": "6e1fd2eee89e72ec11e7df6affeb30d62a6eeb98e562e0a23ce4ecfb3311740a"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Classification.ilean",
+        "bytes": 1604,
+        "sha256": "3adbc20c884945efd2e178892a6a25aee3c59360952db331b59c5900361291c9"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Classification.ilean.hash",
+        "bytes": 16,
+        "sha256": "dce1dbbdde935b76438b9339403ba2046bc6985b56d4eb7ce9167e5e50893776"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Classification.olean",
+        "bytes": 9464,
+        "sha256": "4ca9c9c48c34d25a1eddc659a0ebbd1ab0a9e3f3b70a6365dc5b693bf063ef00"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Classification.olean.hash",
+        "bytes": 16,
+        "sha256": "9bd98da4c5ab96a5add654b5c29944e38080b16a77b479cd7f9292ab626e5934"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Classification.trace",
+        "bytes": 2349,
+        "sha256": "4e1f62201ffe01be9ee1ff78025ca6c05d20f1eaaa48509c03a1fc45cdb99cdf"
+      },
+      {
+        "path": "concepts/lib/Lax733996/ComplementClosure.ilean",
+        "bytes": 820,
+        "sha256": "03721f1ea074e904f52d698894e451b8b8ef413e65ab2a63176c751ab0bb1d3c"
+      },
+      {
+        "path": "concepts/lib/Lax733996/ComplementClosure.ilean.hash",
+        "bytes": 16,
+        "sha256": "9c91ee1baad1f2f10951e3dcf6a86a41d875f8b3210fcdb9fd1b62a9eb9539ee"
+      },
+      {
+        "path": "concepts/lib/Lax733996/ComplementClosure.olean",
+        "bytes": 6384,
+        "sha256": "1afeb29e5c9d9af24c369ab814501a6e203d9cbc7665c72c4dc407a9588c0708"
+      },
+      {
+        "path": "concepts/lib/Lax733996/ComplementClosure.olean.hash",
+        "bytes": 16,
+        "sha256": "72146da6419e11283c7db07549b1e94cc96395df6cf7a5ca8813c78fa4a08a17"
+      },
+      {
+        "path": "concepts/lib/Lax733996/ComplementClosure.trace",
+        "bytes": 2439,
+        "sha256": "1a3f8fa45aaa3f25b6ac7353ef1a6c0ce4e73430460d8cbc5dd280dc9b0afbec"
+      },
+      {
+        "path": "concepts/lib/Lax733996/ConfigurationCounting.ilean",
+        "bytes": 3266,
+        "sha256": "41d5fde4da39abdab23a9bdc931ac9cb7a02b40369dbaa4a1caf20f5efa0feb7"
+      },
+      {
+        "path": "concepts/lib/Lax733996/ConfigurationCounting.ilean.hash",
+        "bytes": 16,
+        "sha256": "f11c1cb0a9fa30dbbbabbfdb8f5b421d7b7e3ba3f375cf6aac992058c618d299"
+      },
+      {
+        "path": "concepts/lib/Lax733996/ConfigurationCounting.olean",
+        "bytes": 12608,
+        "sha256": "8dd89336f2b47111d143a3a371df9959ea09ad7a9a1e8bc2ee044407954d5d52"
+      },
+      {
+        "path": "concepts/lib/Lax733996/ConfigurationCounting.olean.hash",
+        "bytes": 16,
+        "sha256": "2646e5fc874375bf05614ee78f17d3a463616871c4c8a38ca03ee3b90a6f4441"
+      },
+      {
+        "path": "concepts/lib/Lax733996/ConfigurationCounting.trace",
+        "bytes": 2580,
+        "sha256": "4d1b5df290b0bc22379c05dc7bd3f80c738a44db279c65478a82342106b87180"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Counting.ilean",
+        "bytes": 4635,
+        "sha256": "0f01141685852bdc14a35d8f90de2006481c43d187b9d8ac843ffaa9784b3408"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Counting.ilean.hash",
+        "bytes": 16,
+        "sha256": "83181a0b2ae4691095b82a9dc2283fe52660fd9a4ac962acf7090b0edd6be262"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Counting.olean",
+        "bytes": 26552,
+        "sha256": "4b7cf2acc909d2cc78cf2599bbb63acc45d7aa52073dbcf2071042e8acce6df2"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Counting.olean.hash",
+        "bytes": 16,
+        "sha256": "9b4ac840ecdf1d1f76928fe36e4772412963d61f50ded1e5eb35d942d2ba98cc"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Counting.trace",
+        "bytes": 2495,
+        "sha256": "ce480c33034b550c5c1843d1f88baf5c853cb42d5b9baedf5518f14794109498"
+      },
+      {
+        "path": "concepts/lib/Lax733996/CountingStep.ilean",
+        "bytes": 1362,
+        "sha256": "0ff6281dc9432eac605866e67605676803092b63068fad7b883df78f7a366246"
+      },
+      {
+        "path": "concepts/lib/Lax733996/CountingStep.ilean.hash",
+        "bytes": 16,
+        "sha256": "f1eda59136dc68bfb301185487046830839017371c7cc63c07a022c8822a78cb"
+      },
+      {
+        "path": "concepts/lib/Lax733996/CountingStep.olean",
+        "bytes": 8168,
+        "sha256": "1e770804b0e6687d75260f401deb1b11cd8e0fbd9f50ad1b84fddbb622d6ed40"
+      },
+      {
+        "path": "concepts/lib/Lax733996/CountingStep.olean.hash",
+        "bytes": 16,
+        "sha256": "ac09096f4050969e3b0d71efc303cb5f290b476a5078ea772d6efba8bb55df82"
+      },
+      {
+        "path": "concepts/lib/Lax733996/CountingStep.trace",
+        "bytes": 2333,
+        "sha256": "0daebec3df8e016b28032eb921be4c8b01c20c82b861ea24afbcdf0ab41c141f"
+      },
+      {
+        "path": "concepts/lib/Lax733996/CountingTrace.ilean",
+        "bytes": 1329,
+        "sha256": "cc9a03da66d459fa53bb4209f5d0684b877710dc1cb8bc950d959577f6c2ca9e"
+      },
+      {
+        "path": "concepts/lib/Lax733996/CountingTrace.ilean.hash",
+        "bytes": 16,
+        "sha256": "8d46c8eeb0fe08ee9467588a79af947f3c3c9ab17d1b8ded2cbc6adb4fdd93d0"
+      },
+      {
+        "path": "concepts/lib/Lax733996/CountingTrace.olean",
+        "bytes": 7840,
+        "sha256": "a42338b5b3e999f7cb9243780d847377b0ac66388555522f81505788f8664f9a"
+      },
+      {
+        "path": "concepts/lib/Lax733996/CountingTrace.olean.hash",
+        "bytes": 16,
+        "sha256": "c8bfdaea84a145e296ae2c860e039301d1db93a1aa672a5768c1d71a6181f6e2"
+      },
+      {
+        "path": "concepts/lib/Lax733996/CountingTrace.trace",
+        "bytes": 2341,
+        "sha256": "353042279e35dac3facd4ef413a05d27c5554c4e8a09c94d10fb19c70c2c21df"
+      },
+      {
+        "path": "concepts/lib/Lax733996/CountMachine.ilean",
+        "bytes": 2075,
+        "sha256": "e39fa798c72135d529fc6cd4b47361e52cca586e30445679a9a1322eb1920541"
+      },
+      {
+        "path": "concepts/lib/Lax733996/CountMachine.ilean.hash",
+        "bytes": 16,
+        "sha256": "d5dfc60b8250b071e04153f366cd2d914f1a053b0d9390ab704b22fdc81a91ba"
+      },
+      {
+        "path": "concepts/lib/Lax733996/CountMachine.olean",
+        "bytes": 10264,
+        "sha256": "8e503a9261350b5a27e3ea8465e1f52abe44bb6bf89e2529b5a716407bb5e3c1"
+      },
+      {
+        "path": "concepts/lib/Lax733996/CountMachine.olean.hash",
+        "bytes": 16,
+        "sha256": "b0f8aaefb9be5c98b6085f9d389091035dad2d9c57c7f2e67df3022eaa14adec"
+      },
+      {
+        "path": "concepts/lib/Lax733996/CountMachine.trace",
+        "bytes": 2529,
+        "sha256": "d61dbc074aad7e20a2cf849f08f73fb1d9048afe75740c77794e9ddde95e676d"
+      },
+      {
+        "path": "concepts/lib/Lax733996/ExactCensus.ilean",
+        "bytes": 1498,
+        "sha256": "ecf02de7eccaf012d1fd7d1a216c4cc19767e88a85f781178bf99911e46e409e"
+      },
+      {
+        "path": "concepts/lib/Lax733996/ExactCensus.ilean.hash",
+        "bytes": 16,
+        "sha256": "498f173aa0b5b196a6c3632bac5ef26ab7070fc7c30df4d02c547e7cf65a2a80"
+      },
+      {
+        "path": "concepts/lib/Lax733996/ExactCensus.olean",
+        "bytes": 7320,
+        "sha256": "d5cb22c65714484d9ac127cadb0b4031535c23fd74eab902c515afb86e64aa96"
+      },
+      {
+        "path": "concepts/lib/Lax733996/ExactCensus.olean.hash",
+        "bytes": 16,
+        "sha256": "0231691f4428ea251f5bb504eb84e6dfa865a870ce03e9d443beb3f42834e642"
+      },
+      {
+        "path": "concepts/lib/Lax733996/ExactCensus.trace",
+        "bytes": 2325,
+        "sha256": "5a60b356dbd0dd3cf8850b4a99084f27416f74030283ba028beb3810967e568c"
+      },
+      {
+        "path": "concepts/lib/Lax733996/NLcoNL.ilean",
+        "bytes": 699,
+        "sha256": "a0ba0d3f57b48a1f3508461143d679c57de679e19524d63df68df2241745cb5a"
+      },
+      {
+        "path": "concepts/lib/Lax733996/NLcoNL.ilean.hash",
+        "bytes": 16,
+        "sha256": "1054c3815749830a6bdbbd632ab68e4ecda5791b64803bff338b44a986faf061"
+      },
+      {
+        "path": "concepts/lib/Lax733996/NLcoNL.olean",
+        "bytes": 4904,
+        "sha256": "a43edfeaaa9d32d14715c5c67658b75a3800d23b4b702faa310af376b13c9c61"
+      },
+      {
+        "path": "concepts/lib/Lax733996/NLcoNL.olean.hash",
+        "bytes": 16,
+        "sha256": "1f685e4852f7c20b539d7d53a1b185dce7d1eb43cc09edcb67791eccc146090f"
+      },
+      {
+        "path": "concepts/lib/Lax733996/NLcoNL.trace",
+        "bytes": 2312,
+        "sha256": "52ac31b9e0114417612134d993cc59b68aac20e4d8cfc87b279ca80be2f3efcd"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Nonreachability.ilean",
+        "bytes": 1126,
+        "sha256": "de495904075463c7b92bf536479fd75fe42263b3f0aaa417aa399424e08cf032"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Nonreachability.ilean.hash",
+        "bytes": 16,
+        "sha256": "1614ef30fbc7e0c04415c421bc400e1af1d9b8852facbeb2552a307b12fa911f"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Nonreachability.olean",
+        "bytes": 6384,
+        "sha256": "4d9171afc299bd423f92ad705a26c14dd61595faa604b72eda78c15171d2a096"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Nonreachability.olean.hash",
+        "bytes": 16,
+        "sha256": "e98efbeffbd3e0b45e7950f930b29080c8458d618563a63f3e12e761cb4ae434"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Nonreachability.trace",
+        "bytes": 2357,
+        "sha256": "c5e3839cb78a102b42a9e866eeee3c7ad72fa96c27c0d77ef38c543c559e545a"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Rejection.ilean",
+        "bytes": 1326,
+        "sha256": "b14d387a3d3b98223131ee6e8d904b3023bda72ff6b2dc9054e6a494cd1ddb36"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Rejection.ilean.hash",
+        "bytes": 16,
+        "sha256": "54e9cb87a5bed516869e6eaf8a434ec4e42ef3c47899359ae5a973840d08f65a"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Rejection.olean",
+        "bytes": 6456,
+        "sha256": "0eaca414a79a61e06529721b5e794cd98f2c94075a55b0fe6e0a4166c49c806d"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Rejection.olean.hash",
+        "bytes": 16,
+        "sha256": "03f0f91b4e50b1ba9d5988efc424a2e9ee9dead3700e3e00bec6883ed6cbf621"
+      },
+      {
+        "path": "concepts/lib/Lax733996/Rejection.trace",
+        "bytes": 2353,
+        "sha256": "af16780f7e41088c0270f770d026bc5955eb7e93769d73579b0923acecf8f9f7"
+      },
+      {
+        "path": "concepts/lib/Lax733996/SuccessorLayer.ilean",
+        "bytes": 1187,
+        "sha256": "462c1d7f957093e6dc6c05701f16df87190eedac95193732fddc66dadf72374f"
+      },
+      {
+        "path": "concepts/lib/Lax733996/SuccessorLayer.ilean.hash",
+        "bytes": 16,
+        "sha256": "35b99b437c97034b9d715ae89249e6e7711ae5351a46d2216dc67b88e9cfd1ae"
+      },
+      {
+        "path": "concepts/lib/Lax733996/SuccessorLayer.olean",
+        "bytes": 10208,
+        "sha256": "bd59d5378dd3cbdb990cf419a289408ab491e94b24bc5af846acacde827df99e"
+      },
+      {
+        "path": "concepts/lib/Lax733996/SuccessorLayer.olean.hash",
+        "bytes": 16,
+        "sha256": "a9f04d8e83fad8ca32cfd3682bc73721f54d4d39b4b79462c61a83462c5130f2"
+      },
+      {
+        "path": "concepts/lib/Lax733996/SuccessorLayer.trace",
+        "bytes": 2349,
+        "sha256": "759ffeebc7c7029ad534bca507a9c1b6ab16819b1c6386e7bae5bb4b130c7c3d"
+      },
+      {
+        "path": "concepts/lib/Lax733996.ilean",
+        "bytes": 627,
+        "sha256": "2923ea8f895e29edf4fe0850c9b92301d344033ba4fa46c218a7bbba4e3878ab"
+      },
+      {
+        "path": "concepts/lib/Lax733996.ilean.hash",
+        "bytes": 16,
+        "sha256": "a88260263f6f0bbd00f5d3f984192b8bb034e557964034b744096942703ea1eb"
+      },
+      {
+        "path": "concepts/lib/Lax733996.olean",
+        "bytes": 2584,
+        "sha256": "a190a8e4274164a8efffad63b96d72086b8a06eb875b32771a2131dce9aea5b4"
+      },
+      {
+        "path": "concepts/lib/Lax733996.olean.hash",
+        "bytes": 16,
+        "sha256": "bbc67f31489f836f9904c59292fd12cd2e43e7ae2bbc6a329f2ec14a6c000544"
+      },
+      {
+        "path": "concepts/lib/Lax733996.trace",
+        "bytes": 4028,
+        "sha256": "fca4b81c3cb3a38b9709807d5900f49680465bc6edf32b27c4d8f2d39c28b807"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3798,
+        "sha256": "4873e68bb0f1eccde44de52fa681a1ebc9e97723bd6f86ed06a592833b908286"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 723,
+        "sha256": "3872f36f93d6c3fbff5bc55c86cd009d8951b8933d068d49e8bf4c17036d89c2"
+      },
+      {
+        "path": "concepts/package/Lax733996/Classification.lean",
+        "bytes": 509,
+        "sha256": "0388239b9ff9de4db17c6e42bea5a41111018bbd7f2876f64dd260fac1f92906"
+      },
+      {
+        "path": "concepts/package/Lax733996/ComplementClosure.lean",
+        "bytes": 407,
+        "sha256": "bbb45101d8a5c8e4e499ac56d760efc59dc2832e9f6fd026a35f30f163486658"
+      },
+      {
+        "path": "concepts/package/Lax733996/ConfigurationCounting.lean",
+        "bytes": 840,
+        "sha256": "105825dd1b0c934ea2b637737ecf2486a1c6aba5156c98cf42ef351c21480420"
+      },
+      {
+        "path": "concepts/package/Lax733996/Counting.lean",
+        "bytes": 1666,
+        "sha256": "5f474380873e6b25670a3db41dfa3caaaa1c372d63ee0e02c3d3c49ac6da046c"
+      },
+      {
+        "path": "concepts/package/Lax733996/CountingStep.lean",
+        "bytes": 463,
+        "sha256": "9780720c656e75d40468319b28e26e6e1c84b99427209010c59b159d161f8665"
+      },
+      {
+        "path": "concepts/package/Lax733996/CountingTrace.lean",
+        "bytes": 493,
+        "sha256": "4ebcebebedf5d219e60b8f3de7ff6db0988b20a0109106ac20e1cb68ae398f10"
+      },
+      {
+        "path": "concepts/package/Lax733996/CountMachine.lean",
+        "bytes": 820,
+        "sha256": "7f17d8f6a223b80353d52033888a64d2f64d27badf11404265f34fcfb27779b5"
+      },
+      {
+        "path": "concepts/package/Lax733996/ExactCensus.lean",
+        "bytes": 496,
+        "sha256": "61584acadc265792238d1edea1327e2a79583fd2f652a1fe8a513a2e77acf3b9"
+      },
+      {
+        "path": "concepts/package/Lax733996/NLcoNL.lean",
+        "bytes": 358,
+        "sha256": "41a9dd85ac5cf286b5de56847d75fbf7355ccc4c3c1f410bed6d6793680f1158"
+      },
+      {
+        "path": "concepts/package/Lax733996/Nonreachability.lean",
+        "bytes": 445,
+        "sha256": "a2dae592e8cdc8e770e529a7cb6656b511eeeef703c509d7cd05d0249638e82a"
+      },
+      {
+        "path": "concepts/package/Lax733996/Rejection.lean",
+        "bytes": 475,
+        "sha256": "32ddc8a31bd7c28f22bae2d1677acff699991f77f878948cad7805a580b3ac4d"
+      },
+      {
+        "path": "concepts/package/Lax733996/SuccessorLayer.lean",
+        "bytes": 448,
+        "sha256": "ef1f5c8d91f3c8cdc43517a318c7e8b7bd7b18f288e688bb86de3866fa49d67e"
+      },
+      {
+        "path": "concepts/package/Lax733996.lean",
+        "bytes": 368,
+        "sha256": "da13d261e87e434b6b03fe1c341a193621885a2b8b4993f64e7e74d84119e3b0"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/BinaryInputCount.c",
+        "bytes": 10905,
+        "sha256": "b6d2dc45a24eb68f0dc2e7715605860c94eb5fe5f1b5cda9c254adaca8460d29"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/BinaryInputCount.c.hash",
+        "bytes": 16,
+        "sha256": "60a3a1d897014e7f08ede0d9a3486418e7db43ef07a02c458f7b7c8a2143311e"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/BoundedLoop.c",
+        "bytes": 1392,
+        "sha256": "fac72d6909a59bae347f3ce0cb17cba245879296f89dc6b705596c3b31344d32"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/BoundedLoop.c.hash",
+        "bytes": 16,
+        "sha256": "9ac98d2681f7cb305be28ace24b290c18f21b25b75292895be3261a43686c318"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ChoiceBlocks.c",
+        "bytes": 77397,
+        "sha256": "d07210ed2134f2a0757ffe712aebfa7025b558addae1dbd8c30d054285814ad2"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ChoiceBlocks.c.hash",
+        "bytes": 16,
+        "sha256": "5e71c7ef6d6944fe4a2cf37f5684b618231ae802a6a58d246ae39287915d2f76"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ChoiceComposition.c",
+        "bytes": 6609,
+        "sha256": "9fac63f16163510bbb03b92adec7fa83cefdcdf10705965373fd40363c99d27c"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ChoiceComposition.c.hash",
+        "bytes": 16,
+        "sha256": "0d24c58013be54d43d9c2e03f89457df66e9173b8c47c4e18028d49b5776b9de"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ChoiceLanguage.c",
+        "bytes": 13410,
+        "sha256": "845d76e9cd7674d05099469aa400cbd1dfbc3832169e7c9a67321f4ab719fcbb"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ChoiceLanguage.c.hash",
+        "bytes": 16,
+        "sha256": "95b68f26b26871a94ac5151673b643c27d707cf9b49f456d4923ffb71abfd3f2"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ChoiceMachine.c",
+        "bytes": 6334,
+        "sha256": "74bcfd7689eeb3da6624403ce39daa2c5497dface6c1c64c12cac4831507796e"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ChoiceMachine.c.hash",
+        "bytes": 16,
+        "sha256": "1af4fae95db0b9003c98726826b4f5306f9c21d3400762c6ff6506047f6af965"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ChoicePaths.c",
+        "bytes": 11772,
+        "sha256": "b532104e88074b7ab510f0117112a3f4315024678f9abb457529c5d0034b086b"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ChoicePaths.c.hash",
+        "bytes": 16,
+        "sha256": "2b84a530e95a3008f7245dacc47f2ab2043071109a0c5d699bc8b5456990db66"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ChoiceRoutines.c",
+        "bytes": 1659,
+        "sha256": "80686032fdc200a0b52b505cf3c3767c4e85edae0b09d85ac36cede24b9c4d6f"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ChoiceRoutines.c.hash",
+        "bytes": 16,
+        "sha256": "dd4b4f7cb25fb15760e0da62cf1f1a2716408ad272c7e367e9c4c24d28cca922"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ChoiceTrees.c",
+        "bytes": 6573,
+        "sha256": "e653e6d8d5087eeee6a1af4519934a3f9cd774eaa881d2c0ed4de2682c49d345"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ChoiceTrees.c.hash",
+        "bytes": 16,
+        "sha256": "fbfec284c65a47978647e131ca5d35b6b4170fbf4d655761ad0911a0400f3e01"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/Complement.c",
+        "bytes": 2721,
+        "sha256": "1ad36df50888935c412916976b8a30922ff267bf7a9ad6ff9eaac4472cda99fa"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/Complement.c.hash",
+        "bytes": 16,
+        "sha256": "901b4ec8faeea83e3c679945d961f1a8ad336f959f12203ae6dce800dff6cda5"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/Counting.c",
+        "bytes": 5923,
+        "sha256": "9e9e9b671a1cdb6b7a2610c6ddf34babb6327b012e3d37524debe5a2e1b430d9"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/Counting.c.hash",
+        "bytes": 16,
+        "sha256": "cb9f0a23e64baf3e3c0384d19ecb722b216ef027221e42c3d26aac1b90b85201"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingBounds.c",
+        "bytes": 6186,
+        "sha256": "aa037198235d27745ac2a25137574b4c1420bea8c410c43c69d27f5edee9019a"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingBounds.c.hash",
+        "bytes": 16,
+        "sha256": "a3e58e9e4e3c4b3c8e544ce718caa9fbb5412a96ca387d21db5170c27d1bc7a6"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingCensus.c",
+        "bytes": 1710,
+        "sha256": "0f37e2c1ed661ba72ff93ae436c02a8169b4e9d916f8e7efc4ae8f87fda30cc0"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingCensus.c.hash",
+        "bytes": 16,
+        "sha256": "6862353998961e27adafca126ae565c99474b358ba82831be507fe71a818aed9"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingCensusComplete.c",
+        "bytes": 1426,
+        "sha256": "bc1d88ddbc9dc9de82916f040043eab6883dcb34db4b9a2956f37119abe6dfe6"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingCensusComplete.c.hash",
+        "bytes": 16,
+        "sha256": "e63e7320eb30d88a48024deba5f0acb7971b5aac5cde7554202943dd614d280f"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingCensusLoop.c",
+        "bytes": 1421,
+        "sha256": "f22958442871e9b8977f583183bd1c63a7048011d4709e9bc96b2d85bfa9fc08"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingCensusLoop.c.hash",
+        "bytes": 16,
+        "sha256": "a4b55c60eca8247dbb938bb456929e68f35371950936d926f90afde2a0dd1ee0"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingCensusSetup.c",
+        "bytes": 1423,
+        "sha256": "e60c5dd9ca66bb4b8b797611c2f06b117dd76b4d51f0d18db4742a9c990f4caf"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingCensusSetup.c.hash",
+        "bytes": 16,
+        "sha256": "c54f61a6a1d19c8107dc6a3b9aa9cd68e32980d78a8219f2b16df0f1fb8ebc90"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingCensusState.c",
+        "bytes": 1684,
+        "sha256": "5fe99099471945c886bc992af17ac13fec583ffee55b2859862a33b10cd48dd0"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingCensusState.c.hash",
+        "bytes": 16,
+        "sha256": "15f2dc1bbfa914c7e74bda5ed4df510e50082233040205f847470aad37d00286"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingCensusStep.c",
+        "bytes": 7203,
+        "sha256": "63618ad6754607704a9ef40596cc88c68bfb9ef6a3e4a2c7e434c346787c7c10"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingCensusStep.c.hash",
+        "bytes": 16,
+        "sha256": "43c4d06416fdf062b7af3302359a0c5159c1bec412e9fba06f424dd9be55560d"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingExecution.c",
+        "bytes": 1689,
+        "sha256": "8d2b1d9bc5df5edb5d5b35b2c3239c04bb28de4666aaefca919ebec4fa73f405"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingExecution.c.hash",
+        "bytes": 16,
+        "sha256": "cd277b7de2aacbbbb017ed1bfb52834655e7f068c92de61898b63c651e739bcf"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingFrames.c",
+        "bytes": 3661,
+        "sha256": "b5bb8a1a1407f77072976d87fbdbd2262ea2ec192355dc9f1b6e9d8034bbf64b"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingFrames.c.hash",
+        "bytes": 16,
+        "sha256": "6981906aa52a3901e6ff022e8014b6aae2d18cd22b33e3342f04d9f8d88cb525"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingGuess.c",
+        "bytes": 1396,
+        "sha256": "4b8a4f8dd632bffd4bd1f2baefc54f52ea27dd747e11531b6f85a09141be7348"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingGuess.c.hash",
+        "bytes": 16,
+        "sha256": "297aba3f4c29e2f9ac79481aca40d85b52caeddab982d26ee97e8eba18813b0a"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingLayer.c",
+        "bytes": 3334,
+        "sha256": "58e94d1f79811247ca1cc37758e42807f0b0f217b29290be17bc4265e3597fbb"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingLayer.c.hash",
+        "bytes": 16,
+        "sha256": "148dc1c01fce99893f62c78369353b7840694b54218a7f416ece53cf91a5702c"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingLayerLoop.c",
+        "bytes": 1416,
+        "sha256": "bc23e8206dcdfdd6b59ef904914f1c78e8924d2c42707147588ee48e627a6d7d"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingLayerLoop.c.hash",
+        "bytes": 16,
+        "sha256": "4e4ae9849f4073dd04df7a9716591babc95931450956bfe63926ae18d6580294"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingLayerRecord.c",
+        "bytes": 1408,
+        "sha256": "91eabcf7a157c037247fdc2b9d753caf20b85831a8619a5d72ce4faf547a3e25"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingLayerRecord.c.hash",
+        "bytes": 16,
+        "sha256": "99c8ba77a32ea8355cb83451f47140fd6125c2f34bf1c1920628f05bdcb4e57e"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingLayerSetup.c",
+        "bytes": 1418,
+        "sha256": "492c79aa00925cd5aaa444e973911f8a3b8ee25d788af1fad7d5de4045741ff3"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingLayerSetup.c.hash",
+        "bytes": 16,
+        "sha256": "d9e064c2acc52364317df0f5f6f5da6ed7f5356e3376b27f71044f3d3c63624e"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingLayerState.c",
+        "bytes": 1415,
+        "sha256": "c05317454395b63acdc3d5e720167146e584ce07eb82c9c5310e32a8694e8c79"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingLayerState.c.hash",
+        "bytes": 16,
+        "sha256": "1246fe708e312c1f179cdeefd8cd2ae97caadb6b5f87e67cd0e56e9e0a1b11d0"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingLayerStep.c",
+        "bytes": 8880,
+        "sha256": "1bf00ebd15efa3a5ccddefcf2a1e2b4f2c8fe9c2f57026e0f9cb6c3d594e08ab"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingLayerStep.c.hash",
+        "bytes": 16,
+        "sha256": "a1c3497ea853479d987d31657ffaa5e28f5e5f3699608376fd02cdd8761797d3"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingMachine.c",
+        "bytes": 1409,
+        "sha256": "60aa67eefd03f438a9c3ff6588c2660579c4e78826c9fc3aef14f6aca12c64d9"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingMachine.c.hash",
+        "bytes": 16,
+        "sha256": "c6bbe718a1e56f7578d921a3814eb070e40d8afec2e3515c15ec2c1877d111b2"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingPath.c",
+        "bytes": 1682,
+        "sha256": "193075a0d718982369082785311d94025d9bbcb25cc63c9cdedd06e5407fe8b0"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingPath.c.hash",
+        "bytes": 16,
+        "sha256": "da3f6039c17facd84b965d1910c7d5148a2d475a61968c22435c66187669c5b4"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingPathBody.c",
+        "bytes": 8050,
+        "sha256": "4794b9139524282926bb712d7c8ab5a155fa60ddd48138cd028336ad86720417"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingPathBody.c.hash",
+        "bytes": 16,
+        "sha256": "bf422670fb6d4dde58c1e1dc180ae3d5fbc23780098daa0183d79280be6d43ec"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingPathLoop.c",
+        "bytes": 1675,
+        "sha256": "cceb2dd51be3ce48fd5d5e919d8d4058764365734e9f9dea2c8d3d531af8f2bb"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingPathLoop.c.hash",
+        "bytes": 16,
+        "sha256": "2cc48bd5fbbd4f9d00c333819d30a4d28c16ac9bfe72195769e8a3f2fc88e26e"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingPathSetup.c",
+        "bytes": 1410,
+        "sha256": "38a26a926c5675066014b178b031a15ddb0d15f876a4a3f9f9c7d1f5009b9cd0"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingPathSetup.c.hash",
+        "bytes": 16,
+        "sha256": "6872b9a985ab04e226e7425b29df699c3a00a0f3f61d78ee8301cc0b7801aae2"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingPathStep.c",
+        "bytes": 1399,
+        "sha256": "5d07a7f388b38077d471e801ae98372c55566a27d7602b8570355504a7b36fa2"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingPathStep.c.hash",
+        "bytes": 16,
+        "sha256": "7922954ad3377c5511bf59fa519619801e0e86c00aef1fffc511a89abb26e577"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingPrimitives.c",
+        "bytes": 8598,
+        "sha256": "a9743910a264b457c806ddcbd344c7f7f3cce862a862b02524a24207c778cd37"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingPrimitives.c.hash",
+        "bytes": 16,
+        "sha256": "ecf1d52cfc9dff68c75f382745cbd3fdad946d30c9e533ed1364f5ef89d71ce4"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingProgram.c",
+        "bytes": 134341,
+        "sha256": "f64c21c3875d84f7b2896c1d15a3aba0950b71ebd8b7faed6351c2d80a24d41c"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingProgram.c.hash",
+        "bytes": 16,
+        "sha256": "4a51eeb698d165ded6dc227235db9b294caa59f0b4dd7f11cb57a9a28913fbff"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingProgramLoop.c",
+        "bytes": 1426,
+        "sha256": "88d7b511de004b2052b83e8ecfa7df931d242385c31e03a6b3bfd78c4d5be90a"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingProgramLoop.c.hash",
+        "bytes": 16,
+        "sha256": "7790f416d6d99e95456bb5fb3640d35e89948492c2079d920cea3b5907dfece8"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingProgramState.c",
+        "bytes": 1407,
+        "sha256": "2560a45a90071586abbe7c66e5b56aa62e700bf8c153ab8de5b3463c9c4b4761"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingProgramState.c.hash",
+        "bytes": 16,
+        "sha256": "792bc1b7051721a442de600e788a90b6f799ba9abd00e473b2157d2d6af991da"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingQuery.c",
+        "bytes": 1384,
+        "sha256": "1e95a9d1eb494ab26b0d654f90f61b80fa621ecc84492a690688b29956bac97e"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingQuery.c.hash",
+        "bytes": 16,
+        "sha256": "17e37684909007625103c73cd7bb5aa857b818439e3c17d55c1da548ca983095"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingRecord.c",
+        "bytes": 1398,
+        "sha256": "961d6fc42f5fc80d7b5a9629d5ed4d152149bf816bf2bb4eaddf213b0acc3d7e"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingRecord.c.hash",
+        "bytes": 16,
+        "sha256": "ff5dcf85cb859ea5690549990a318d028021308b039bbb8c86998b1ec3aa3d4f"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingSelect.c",
+        "bytes": 1392,
+        "sha256": "74d1a4a2874f8cf4e0673f2dd904afcd449c5fd5310753359b6253f04e0e3788"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingSelect.c.hash",
+        "bytes": 16,
+        "sha256": "e1c7a4972f48cc6626f327ae3c630173a73b955376553b6011cb755aa8495efd"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingSetup.c",
+        "bytes": 1681,
+        "sha256": "99f6828e2dd574d8137a8242e9256d1c9399238a9d839cd38a877168948e9d37"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingSetup.c.hash",
+        "bytes": 16,
+        "sha256": "b8aa9ed34d98d00b661194a7dcac1ae56d82f996cb9ad5b9e9b52d1065d57a7b"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingTake.c",
+        "bytes": 6455,
+        "sha256": "ce78315b7e8f42403cb24900c3c11f27610cacf724140a9f1f4226846d450fa1"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/CountingTake.c.hash",
+        "bytes": 16,
+        "sha256": "4c9cb999eadeea6cfc131a3417819042284f8a2f21d0468ae1d75c66b7ef0228"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ExecutionTree.c",
+        "bytes": 1390,
+        "sha256": "f322fb3134aa0db50dd0c02bcf772306ab9e162e163ed34966b2cbd0ec43cfdc"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/ExecutionTree.c.hash",
+        "bytes": 16,
+        "sha256": "cdfa365758151f291cdf3849fe02181ef4f377993e2629eaf4bef8b6ad43b1a2"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/GrowingBinary.c",
+        "bytes": 2749,
+        "sha256": "178fa7e21d51dfd8d9747ea8fbe4781aae3ba53f65387b4e93c9b85e56f876fe"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/GrowingBinary.c.hash",
+        "bytes": 16,
+        "sha256": "2187e54c1b03d51e95862eb8734550dc6de1ddaa44afc23d1e1c611e3c3b6097"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/GuessWord.c",
+        "bytes": 19765,
+        "sha256": "589e9f48b2a368e7fe4d292217015992503376f34798d6410e09d86516ab5df1"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/GuessWord.c.hash",
+        "bytes": 16,
+        "sha256": "0e8cc4e59f395176f7e3b58456a993b84bfebf269a653a8f86e714d029982b7c"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/GuessWordCorrectness.c",
+        "bytes": 1395,
+        "sha256": "8ffe7c059490466084ae995ce4afb43d445abb571212402db3cbe8788362c6b2"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/GuessWordCorrectness.c.hash",
+        "bytes": 16,
+        "sha256": "2c84217777222f689264a4aa0b05a2f23cfced09bfc115a037cd567bce633029"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/LogarithmicWidth.c",
+        "bytes": 1408,
+        "sha256": "fcca8503c6c58ca802ddc2afd913e1e60a44745c3fee2643059356aed08b9531"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/LogarithmicWidth.c.hash",
+        "bytes": 16,
+        "sha256": "287d56b67951fb62fb39a2d66372a0c8bb8713b38c87733f970da1da573eeb9e"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/NondeterministicStack.c",
+        "bytes": 34052,
+        "sha256": "3302e2a0795ae6bca5eae1e0dd830ec8a601148a626b676860523d299797b6b9"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/NondeterministicStack.c.hash",
+        "bytes": 16,
+        "sha256": "fce088791dabf77b8c22bba104fc6b248ddb22541d6eebc66da31bae72813897"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/StackCompilation.c",
+        "bytes": 14646,
+        "sha256": "8c23eaa53f799e9f9f612bca8aa72c70e08953b1ddc0c3af3c01ee12ee76482f"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/StackCompilation.c.hash",
+        "bytes": 16,
+        "sha256": "773a545a98fc4aec3585eab5057badb7717a590e6d973742c140c94513891de0"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/StackMicrocode.c",
+        "bytes": 10250,
+        "sha256": "f7bf7f9170882dac6564cfb14964dc27bfe40a7e8704e2a3880f5345fedee547"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/StackMicrocode.c.hash",
+        "bytes": 16,
+        "sha256": "16a15fc27014d2251fbb25bf5472d1eeaa6c99f1d9cbd092ebe92c0c1e5559e1"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/StreamingCensus.c",
+        "bytes": 3020,
+        "sha256": "0f83191ef99d8d07b545ba3b9181acedc1b72a9670eda6be7d89fb2d5e58c798"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs/StreamingCensus.c.hash",
+        "bytes": 16,
+        "sha256": "4c9ef9781a7942f5855ff44bc2b80fff1ec97d2cdc0a1d01c4d90120784dde2f"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs.c",
+        "bytes": 15198,
+        "sha256": "bab313ce4ba36cc227a2d6225df10ee9abbd060a4c556392658bb2ce28ce0a07"
+      },
+      {
+        "path": "proofs/ir/Lax733996Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "ec920858102c1e7dc0efc10a77b64a86b370bafa48215b2f8636788899be828f"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/BinaryInputCount.ilean",
+        "bytes": 26518,
+        "sha256": "bef7142b091c0b0f6bddb47cba6bcdb73e9040c5a28460f099e629e59a244583"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/BinaryInputCount.ilean.hash",
+        "bytes": 16,
+        "sha256": "f7d2f24e4e96624b58956b443cce0b4471c3a8729c6f6178128dfdf6a2ddb988"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/BinaryInputCount.olean",
+        "bytes": 571296,
+        "sha256": "4f50d13f9af8f2bde30dce4b70baf12ce0c181cce0bc5d0e3595d0aee78ea2a9"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/BinaryInputCount.olean.hash",
+        "bytes": 16,
+        "sha256": "e6e7cf07de09e477aceeb559d09eb40e3a49691cbf9664f9aa5be367725da6cf"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/BinaryInputCount.trace",
+        "bytes": 3326,
+        "sha256": "1b6408987389cc69f40d30f84ab4ff34e3f04dc0f8abd287bce2e585b3c07403"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/BoundedLoop.ilean",
+        "bytes": 7827,
+        "sha256": "f99b14303361cb2f2680f17078d270781ad9347c48ada8517d22457d0e6a3e33"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/BoundedLoop.ilean.hash",
+        "bytes": 16,
+        "sha256": "9e6fca3e6978d1e8af87df6054c39267e88fe80e8db419ec8a7bfdb6ac174f0b"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/BoundedLoop.olean",
+        "bytes": 136280,
+        "sha256": "aa9a75dd8a98fbd1cf1e94b91bcbaa6f4cad0d5fe9c93197d34bc9cd693c393f"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/BoundedLoop.olean.hash",
+        "bytes": 16,
+        "sha256": "68e59d7e9b27b5850645d6a99add1d18f20f02f49828e2d38fa08f84ad5ea8cf"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/BoundedLoop.trace",
+        "bytes": 2516,
+        "sha256": "887c5bb944627f7037583abdabf6fd2c51454dd10ab486538fb5c14a50c2fafc"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceBlocks.ilean",
+        "bytes": 28470,
+        "sha256": "c1c2c576f1447036ca5081fc8e75633e735c523ae7d9e76433b4f6e9f85dfec1"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceBlocks.ilean.hash",
+        "bytes": 16,
+        "sha256": "167c378e2d01bc02e0167094c1edd011903c5421f4e9e90c4664dd8a0b295d55"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceBlocks.olean",
+        "bytes": 573184,
+        "sha256": "622d540ac80f254999de650c01e8b0bc4c972d26fee12ad286976dda084994af"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceBlocks.olean.hash",
+        "bytes": 16,
+        "sha256": "3561f0ebe3a633deeeb2ed6eeac3ce18794b6d6fc618e34885b4d2d2cf65a25f"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceBlocks.trace",
+        "bytes": 2524,
+        "sha256": "3fd50ce264ed72590d233aa6a15d08a7233ea181c0dc41c7ac9e83a844b08317"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceComposition.ilean",
+        "bytes": 25795,
+        "sha256": "80e73c36e892fde9dffe9da72aa650c16c6ac9aebddbc4894a5b6f6637ddb871"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceComposition.ilean.hash",
+        "bytes": 16,
+        "sha256": "14aedc1ea328e4c937024cea63f51a4c05e5000c9f9e4d5aeb8dcb9126f22d1d"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceComposition.olean",
+        "bytes": 280688,
+        "sha256": "e8cc8737f221ac152e833bb553d7ac0f7a3ead6230868c338deb09d3ccd0ea91"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceComposition.olean.hash",
+        "bytes": 16,
+        "sha256": "b9b4de754ae26df348a529447e57e0337f3d20300498f03c256772a8e07b7d37"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceComposition.trace",
+        "bytes": 2549,
+        "sha256": "0d3734c723d005d0475e368e7e71c1b70ea56d708ac7e17cd626e45d12cdbccb"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceLanguage.ilean",
+        "bytes": 15711,
+        "sha256": "122f1fd122ef0eecd3cb80613788ecf9b501b55989b9c68185b9f4dcca465993"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceLanguage.ilean.hash",
+        "bytes": 16,
+        "sha256": "c37923454fe3c94574e5cd93cef234ac734fa7f07a3e1969a0d7697a7a45b3f5"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceLanguage.olean",
+        "bytes": 494616,
+        "sha256": "182d78461deeea31c8997e5f32ef871202eed912236b26d3ab4a873d7518968b"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceLanguage.olean.hash",
+        "bytes": 16,
+        "sha256": "e88ef8976af75edfb17902a6213a66167318fcfa98ad414485885dbb6aeaee55"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceLanguage.trace",
+        "bytes": 2712,
+        "sha256": "18a27ab08baffd41260203ad16621af6b178313f4e49d6d955a19248bed16538"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceMachine.ilean",
+        "bytes": 13051,
+        "sha256": "7ad43a0bc1df2f57e8a37708ef2a24e251d17c0edea94550c9bd0a29ea49b816"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceMachine.ilean.hash",
+        "bytes": 16,
+        "sha256": "246909f56c73c30cfee8fa1efb6f714efd0dd8fb8b027a45259fc146192ecc0c"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceMachine.olean",
+        "bytes": 137736,
+        "sha256": "b042d7986f28854a5a6963b27995d536438a96554b91a0a39497b503f05a5ca2"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceMachine.olean.hash",
+        "bytes": 16,
+        "sha256": "bee06322abea20a2b797945aeed5910b788a8590b75092f02d299d9542a46e07"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceMachine.trace",
+        "bytes": 2538,
+        "sha256": "b321997edb6d5a028abfc9d3cefa99f2d8f93d620e077f5200f1c20afc6bad12"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoicePaths.ilean",
+        "bytes": 31615,
+        "sha256": "877cccac70b8e5d384777b210f317e566b2f8807699d633e5a906f299340c5e2"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoicePaths.ilean.hash",
+        "bytes": 16,
+        "sha256": "02862954766c82238ef99a39c7197d27878f8cb929efdb413cb8155a3e64de8a"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoicePaths.olean",
+        "bytes": 471008,
+        "sha256": "11a1c12386de37242098071980dadf30ca2287e418c08c00684c46865bfedc9e"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoicePaths.olean.hash",
+        "bytes": 16,
+        "sha256": "7296d48c89139c99ff7f1535684b76c3ec72d24cc9caf432dfeebd9a42cc1459"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoicePaths.trace",
+        "bytes": 2503,
+        "sha256": "dd8e6dad0dbc914d57e2ae1c65d1e7a4e96024834c3290ef1346461026b6b321"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceRoutines.ilean",
+        "bytes": 14169,
+        "sha256": "aefa7380a4a34da6f41b5702ca2d79898218bfed099242a8191f0e2563d9e8a4"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceRoutines.ilean.hash",
+        "bytes": 16,
+        "sha256": "ca7d71f71188c6f9c4a31a6da530465e4d088e5da2835d0a598c94f4208c12dc"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceRoutines.olean",
+        "bytes": 539376,
+        "sha256": "92abd53918f33be5b731333e96b27174803f0ff3b5c23e27dc7a3f699c8d90b7"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceRoutines.olean.hash",
+        "bytes": 16,
+        "sha256": "1bd75a5c1ef8f2900c7a6b850d2d833e6a18af993bf27b9a321016a19ffd7b78"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceRoutines.trace",
+        "bytes": 2702,
+        "sha256": "62b05742bc9651cd6eacdc75f4656bf62b1b1d36a75d57fe4606fc085865b047"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceTrees.ilean",
+        "bytes": 17571,
+        "sha256": "cee3e02866ea81a2c3694f7e5c64b20658b7722dd792f038051e5b763f27b7f4"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceTrees.ilean.hash",
+        "bytes": 16,
+        "sha256": "22c2fb6af65a3bbc3c5a96fb33d952e0161e89b0aa6f7fb86215f87248d55f40"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceTrees.olean",
+        "bytes": 187272,
+        "sha256": "c4d49ba6767af2bb49b5063ca6b6cd852a3024ceb0d615e9a29750297fb77e56"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceTrees.olean.hash",
+        "bytes": 16,
+        "sha256": "14bc8b3b9ef18d43d4a9f1c26b6be3cd008bd960781ddb9bab2d755b1bd58bf0"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ChoiceTrees.trace",
+        "bytes": 2501,
+        "sha256": "623eff074dff0589b213e14f594fc48c66b138beedcabab812872ddc629ed1eb"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/Complement.ilean",
+        "bytes": 4814,
+        "sha256": "e7e7487d48b17b20a375c0fb8352c99fa74370cd148578ffc89b5cd88b3481ea"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/Complement.ilean.hash",
+        "bytes": 16,
+        "sha256": "0dd75c9c0d50f43fe1aaa7c7ec68458caf7e850d82f058081bd6a5323b2b0f6d"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/Complement.olean",
+        "bytes": 61784,
+        "sha256": "9d3b04dbfe1f6279f3e26a4d1683293ccfa3427eaa865c9c77e81d4263168116"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/Complement.olean.hash",
+        "bytes": 16,
+        "sha256": "10bc90b765aeaa8755c4db1601abeaf7fd40bc504d9e8cd1c53d3463681c6121"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/Complement.trace",
+        "bytes": 3391,
+        "sha256": "eb912e4de503bc0669e197ade8379d4634f35b1d589ab7b15b207e74376ca301"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/Counting.ilean",
+        "bytes": 14810,
+        "sha256": "a6195e92b85a54e839733417db054a32e11730ae21b6f76b89a5e6aae8da32c5"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/Counting.ilean.hash",
+        "bytes": 16,
+        "sha256": "c06fa8aefa9aa84b39f979b7df958942b043d5347e0a1af4af026dd40529b9d7"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/Counting.olean",
+        "bytes": 239824,
+        "sha256": "054b1de01dcef81dda970090107d94b6635ff184f4b53800983ed4a23828c418"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/Counting.olean.hash",
+        "bytes": 16,
+        "sha256": "c1ce0f9fedac7fe339d0b57a04575f832b18f69aee45c57140d22657e92272f2"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/Counting.trace",
+        "bytes": 3593,
+        "sha256": "032fae994d0a5a1bf4e0fbf34df2c7252052ac6789854fc2b8239ce1df7ce697"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingBounds.ilean",
+        "bytes": 12179,
+        "sha256": "77103fb2e4eea3f766176aec6e033cc8b6a23b177ce95091f1bfa77b760d1eed"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingBounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "627dd52d40edbf18da1e5ecd530ab49729a5a1b3bd03869be4334d6669cf35c4"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingBounds.olean",
+        "bytes": 335168,
+        "sha256": "2ef3b74c8ca28fad61bf0ca2b3f3747e0704c70316f3835839081cfb924b80e6"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingBounds.olean.hash",
+        "bytes": 16,
+        "sha256": "00844fbc16a23cf11121408e0cb3296afc6caf49eda50b0e5680e551ce3078cb"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingBounds.trace",
+        "bytes": 2704,
+        "sha256": "8e7d2ee885113017895f1db2d8e8b88d2909126ac739755042579dbc786f5b79"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensus.ilean",
+        "bytes": 25385,
+        "sha256": "7f28ee3e814a82398ea4bb4e93f1d6875f16669e1be846f4ddf3c1743f435bda"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensus.ilean.hash",
+        "bytes": 16,
+        "sha256": "2c2bdca9b7597bcb8ef5f37eacac03d694bb323d06be04415aa5576675198422"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensus.olean",
+        "bytes": 325656,
+        "sha256": "a20f20c6bfc7350dd058d8461588f0e894f2057f36afc2a7b7bd30614acd5215"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensus.olean.hash",
+        "bytes": 16,
+        "sha256": "659190b33019ad7ba1a869588b1a44f4879cdd8b994e278c12e1f241662ed4b3"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensus.trace",
+        "bytes": 2754,
+        "sha256": "e6deeb66ff54f7ac8706b521c251b0a190cfbba518e3af039dda8402de427633"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusComplete.ilean",
+        "bytes": 15818,
+        "sha256": "771ab40827c2c0df2c15ccc1170e3c3d0c249b25b0a414a64a3831fea6a4cf80"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusComplete.ilean.hash",
+        "bytes": 16,
+        "sha256": "cae93105d946c21733315a12f72df5169931ce5c639f95787b73382fec823abf"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusComplete.olean",
+        "bytes": 136704,
+        "sha256": "2b197cb0072a1153ac55ea9f7203d0b17c410f82285ba6d94d4e292321d5956e"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusComplete.olean.hash",
+        "bytes": 16,
+        "sha256": "d2f27a7fb0e6763731d1127640ab4ccd8c518fc472bfbe3555157b3ce70edc4f"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusComplete.trace",
+        "bytes": 2615,
+        "sha256": "bf76840478d52d13841a1a6cd0f7aeb581dddd5890ed9a7ae95ec524301b5cb5"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusLoop.ilean",
+        "bytes": 8178,
+        "sha256": "3b84ce091222039b98950f68937073889cda7b4ca7a32b796ccc0b03e745b925"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusLoop.ilean.hash",
+        "bytes": 16,
+        "sha256": "4da85b4b41bbbebeb2d3b167b5a21077dfef285dc99b867ad030e5d02d6ed89e"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusLoop.olean",
+        "bytes": 95360,
+        "sha256": "5aabb76d03969251042332a9ed5898c1882049229e0ec0acb4f1d710ea7a4ce3"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusLoop.olean.hash",
+        "bytes": 16,
+        "sha256": "ba5b4b1a8bb057e64accc5a3200471db563b1cb89ebb51144a5b237e17d9bd9e"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusLoop.trace",
+        "bytes": 2585,
+        "sha256": "1ab3298a40b32a8a507c5d686e760a50a2f716b5ebfc1f7d2df279e088ab59ef"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusSetup.ilean",
+        "bytes": 20387,
+        "sha256": "be65221fed409cda4d1c9a9685b73b31b25fec7ac8a2181f5d8ea24c436bdfa3"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusSetup.ilean.hash",
+        "bytes": 16,
+        "sha256": "6fed2d871921a7de3db7444a4383a17f90d8fde2a7b50424eed4684a6d3e3ca8"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusSetup.olean",
+        "bytes": 189776,
+        "sha256": "c74006e89c59b6f70e31c01287674342bc00c9a81001af7aedf09a28559c5183"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusSetup.olean.hash",
+        "bytes": 16,
+        "sha256": "22c8784839e18816b0c2559803a9389a73d9bcaeedd7c132d02d1094c0ce4968"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusSetup.trace",
+        "bytes": 2593,
+        "sha256": "51e8e544f74352ac11edb5ae78c01a786f8b580a5e33412d62696b96b9658611"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusState.ilean",
+        "bytes": 12648,
+        "sha256": "203563c038f1b2539be7e1e2aba1f00e2ad3941d100f5a850f11959a954ac654"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusState.ilean.hash",
+        "bytes": 16,
+        "sha256": "481cb2180e716a35a840eed8dc25e467fe53f7a4dd34b1d8c4f0a06f4634ea37"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusState.olean",
+        "bytes": 164968,
+        "sha256": "160efb32d1d2d8d28d4a83024f5325886c7814abfdee91cdb9b18b7f411cded3"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusState.olean.hash",
+        "bytes": 16,
+        "sha256": "7ca0b214dc2411bc398cc053f69bbd632fbdb70a66a3169179738694f6725085"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusState.trace",
+        "bytes": 2764,
+        "sha256": "aa7e47aefb2e726a3d1aa46a601447e4bb7fa93aab9d41763a9e1f33fccab317"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusStep.ilean",
+        "bytes": 27051,
+        "sha256": "8a59332bafd77f3005e1d1d0f2ce3d9e847328cc95a14a4d2ddcb99958c6f50f"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusStep.ilean.hash",
+        "bytes": 16,
+        "sha256": "a0c447c86e2d69fe035c2401a14921f2235fbcde05a5feb2ec1f91822828076e"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusStep.olean",
+        "bytes": 335784,
+        "sha256": "5b6c0637fa26ec78931e84834c63d1cd4b9e50ae1ad7276d77ff08f80de4c50a"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusStep.olean.hash",
+        "bytes": 16,
+        "sha256": "57f156dbf1697539da59715c25be372fae09abb63adb00946449c8a682f702ba"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingCensusStep.trace",
+        "bytes": 2756,
+        "sha256": "e8a7c77d34f7efcfc40f06966cef742eb30297de8322d683aacb67a42e14380b"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingExecution.ilean",
+        "bytes": 14363,
+        "sha256": "884b95563bc5cea71aded102442bcc2fec5ce96193fba3e78da1ea138f9bcc23"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingExecution.ilean.hash",
+        "bytes": 16,
+        "sha256": "f2879dfb15c0ce12a05cee4a3787f2338be92fa52fb61b3a41febb110ba9eeb8"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingExecution.olean",
+        "bytes": 203304,
+        "sha256": "e1d0ed9b60441faa05d43c1af368b9e24e7144875f6c15173bffe4c7b5a27877"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingExecution.olean.hash",
+        "bytes": 16,
+        "sha256": "710c6a3f73f420bd462babf24d3f23a0452984e86fecd54c76e880ae1ac0efc7"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingExecution.trace",
+        "bytes": 2751,
+        "sha256": "471fcd47c21603c948188b390482edaf423ec79e34d30d23f89f24efa071a842"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingFrames.ilean",
+        "bytes": 23300,
+        "sha256": "12683953b495b49dc576ed3469b61270c38f5fd92fa0b6fd308f32c17fc00f21"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingFrames.ilean.hash",
+        "bytes": 16,
+        "sha256": "e50be8df96a6380a78456fc8c6969aa78a9ce430dd2b9eb1e9bec9b0ba93766c"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingFrames.olean",
+        "bytes": 173408,
+        "sha256": "104e8e1283a86ac75a1d52bd041eb7d91cd5adb6f5e795aacbec800550a39484"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingFrames.olean.hash",
+        "bytes": 16,
+        "sha256": "7c9dd9ce3622ac08dbbb278c7d0e8cdd1d0ee0234ab851fcf568ddf23514ee17"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingFrames.trace",
+        "bytes": 2548,
+        "sha256": "36f590a5d375293dd4c071d04789c4686f5002abc0f490a96fc30d4bf791b248"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingGuess.ilean",
+        "bytes": 24073,
+        "sha256": "ab0b9b8296b3ca018a123c0c9c557311ff7184d736cd3f36e701d8140d8d23c3"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingGuess.ilean.hash",
+        "bytes": 16,
+        "sha256": "0e6d9fc916e73147467b564b87f91c5b2af2788a67e3bf7471506274e27af01b"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingGuess.olean",
+        "bytes": 246840,
+        "sha256": "6eff6d9078d5beec52bd8cae7ba33fcf42491e85226d91fe350c8e65b7c1ce36"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingGuess.olean.hash",
+        "bytes": 16,
+        "sha256": "4324b131cfcd9a6d7490394f0ed5a102cd27d222b16154889f1d09cdf76d8bfb"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingGuess.trace",
+        "bytes": 2532,
+        "sha256": "131df29575012cd8b1e93f304fa84bcb06e7c2a787d19ba1784eadfe8a6a1416"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayer.ilean",
+        "bytes": 19577,
+        "sha256": "165d1327b442da416ca8bfd8dd71d70426f4d5fe06ae03f5b5108c19b0f90bde"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayer.ilean.hash",
+        "bytes": 16,
+        "sha256": "c53693d827340266e3b09fcd2fba015731243eec41826c04a6cd0a2e87e2bc26"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayer.olean",
+        "bytes": 286040,
+        "sha256": "a6b8e636a90f1f44ec7fbe0d5c8b63c2bf21c2d59f3bee33703b16c2832e7503"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayer.olean.hash",
+        "bytes": 16,
+        "sha256": "9103ef04d40a524316dd1f2fb29a5c1c1890c65a6f0cfb52f754aa32926ecbe6"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayer.trace",
+        "bytes": 3061,
+        "sha256": "8fc463d2603dd4f70c5d0345eb37d9b870b566e1d945e2b394ceaf5e15efab8c"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerLoop.ilean",
+        "bytes": 10785,
+        "sha256": "220079ed130421341b5f8ff80f2fe608f757684703e7f70e5965516630b8b485"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerLoop.ilean.hash",
+        "bytes": 16,
+        "sha256": "baddbd4adf0d6e891cdbfb951a6b305177bfa034478766c1dcc9d6c566c7a53a"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerLoop.olean",
+        "bytes": 108328,
+        "sha256": "21e8f9d6c19a657bfbf443fea718a2fa9aa976502c7481def5ec03e0eeb6104b"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerLoop.olean.hash",
+        "bytes": 16,
+        "sha256": "2235a0faae41142a71fefd3ed220cc340c0819bfe3f868855b3c445d7e25b0f8"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerLoop.trace",
+        "bytes": 2572,
+        "sha256": "59cd8cd40ca107f1d1dcbbabd8840ab7aa9d5a6d6f051bc2ea25cc0deb2b6fe3"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerRecord.ilean",
+        "bytes": 13438,
+        "sha256": "89e94a54162736a3739666e7c52ae6aef76858d230a6f7874eb1b2382466533f"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerRecord.ilean.hash",
+        "bytes": 16,
+        "sha256": "872b9e499952f9dfee03223ce0116baa11a5e0ecd7ea5473f404ca8c881b551c"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerRecord.olean",
+        "bytes": 219064,
+        "sha256": "596542d6903282847d22f25d40c38fb23a9136007547f873a5b446c5a19520e1"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerRecord.olean.hash",
+        "bytes": 16,
+        "sha256": "cec2a105b4d59d7377ea7a684e1e81ac48c4d2a15d04d9dfb3a35e784bb98e59"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerRecord.trace",
+        "bytes": 2583,
+        "sha256": "6560ad98ed8ad2b0f81795f7b62086ed18ffaab622bc2d64988e9a06caeb3ca5"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerSetup.ilean",
+        "bytes": 13499,
+        "sha256": "c3eb11b5e665a11f17103e111dd93baa2e8c5f48da594298694a3b65beb18c16"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerSetup.ilean.hash",
+        "bytes": 16,
+        "sha256": "54376a4269c6cf7194297afe7ccbae36d7422ab7074d036719b279b5e261a6b7"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerSetup.olean",
+        "bytes": 159520,
+        "sha256": "1429ec1871fceddd2ca309950b717cfd7439081c0dd1f9816c8beb8eb4efbc66"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerSetup.olean.hash",
+        "bytes": 16,
+        "sha256": "3d8b1e9889e203235ebc4a745c5d9574df72d9bb95979a7d62f9964639ab0027"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerSetup.trace",
+        "bytes": 2583,
+        "sha256": "ec231b331d70854c16c9b5024b4b5001dd21752ed86c9412d3e885c1c6182793"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerState.ilean",
+        "bytes": 17318,
+        "sha256": "9a898b4afeb0f72453ed78ddcf2fff34199854de37d14d969ceda9e92d70ab05"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerState.ilean.hash",
+        "bytes": 16,
+        "sha256": "de1237859e3f4cd679e4d6b85cc49778fb492be750b4c2bed975efff6022971e"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerState.olean",
+        "bytes": 268192,
+        "sha256": "b2672bc6c7b749fa4e205e667272c89b9a2edf8614fc0d775f7e982a5bfc8f5b"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerState.olean.hash",
+        "bytes": 16,
+        "sha256": "749b54ba01297e2fa396f1ac91733938dc28bef3b7cde1378ee5625c1a22d0d9"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerState.trace",
+        "bytes": 2581,
+        "sha256": "c1f5ffd4e4e5d8b4e8116a7b278b72079d37fb4af2c64f3b92ddbc4e4904eedb"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerStep.ilean",
+        "bytes": 19940,
+        "sha256": "dbababb9227b3f8fa89b75d1d57ef53d917c7e92f0e365e16b6b49febd9c6fd0"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerStep.ilean.hash",
+        "bytes": 16,
+        "sha256": "37495bb4cae30d7bfa52d5e1ddc7064f540b814203b1ae4e5cc513035af0fdca"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerStep.olean",
+        "bytes": 280472,
+        "sha256": "4fc978643fe12c149cc756efdd405a1cb7ff75db0a9acf2d8b889f5e9cce2e9f"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerStep.olean.hash",
+        "bytes": 16,
+        "sha256": "ea65250566f0a2407b8890a3da965d3ef6a32cefec6e1a66571ff50afae9f6d9"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingLayerStep.trace",
+        "bytes": 2753,
+        "sha256": "781ddc7a3375173dcb0470b04ccec0fc7f8a51d82d12e90a9a10a05284ad1ad6"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingMachine.ilean",
+        "bytes": 9188,
+        "sha256": "8a0580284c884f2d0ab26c2f17b030de7bb134c7bfbf2d47408ead940db6dc1c"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingMachine.ilean.hash",
+        "bytes": 16,
+        "sha256": "c0ad5b82d0017007343b7142d4f1bcccfc8c46010b842b364589ba339b5c0ac6"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingMachine.olean",
+        "bytes": 57240,
+        "sha256": "e6fe28484d3da6a0669e69e73abf81ec3ff3a7065405ee80a61bee0677df6e57"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingMachine.olean.hash",
+        "bytes": 16,
+        "sha256": "897483f358ade6d3d0cbe0216a53454090478673261881889e66b5c4d3cf9711"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingMachine.trace",
+        "bytes": 2554,
+        "sha256": "1a3d77a83a4246d3bd0fe0292d435ce5c50d30008523ffd4780e06a3434dcd03"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPath.ilean",
+        "bytes": 18669,
+        "sha256": "de594cfef0ae791f9052cab9dd1c88dba6036bcb94d6fa47d1de288058dedc6e"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPath.ilean.hash",
+        "bytes": 16,
+        "sha256": "bef841afdf3a393248a248c4011bd5e7d56177cd9b82a21acad8a2d7e3374c58"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPath.olean",
+        "bytes": 287920,
+        "sha256": "2209e3664c17194fb20e148d4d08b5d02c790b1491da7ea7ab25b6a5d323b304"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPath.olean.hash",
+        "bytes": 16,
+        "sha256": "b634814e272e7855c4e4399a53bdc5dfda2916493475f9dff147196402d9a2bc"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPath.trace",
+        "bytes": 2713,
+        "sha256": "89283ccf6fc1abd86bf45c7d91f6fa889c236f033958c6fdc69cc99734d6f0b5"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathBody.ilean",
+        "bytes": 21622,
+        "sha256": "75da75d5bd292bf8e76f29a110802073b506804f172145f9f094294dc71f5759"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathBody.ilean.hash",
+        "bytes": 16,
+        "sha256": "ebd8d4351e6eea87b933e597c83bd71a28d73e2dfcb332da3e16591565f9d580"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathBody.olean",
+        "bytes": 279552,
+        "sha256": "b32bee38599ab9bd9d67a306f88f08f9b99e7c2fa5c2e6512d6e775f56027003"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathBody.olean.hash",
+        "bytes": 16,
+        "sha256": "f6ecf75d9c117d6b2b796a427eaa54525eeaf4470f11c02849215ed0adefd4c4"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathBody.trace",
+        "bytes": 2560,
+        "sha256": "b689c8ef0559706e1bc59120a22c5ceb8ca2dc4e268edf2acf532f5c480172b1"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathLoop.ilean",
+        "bytes": 18413,
+        "sha256": "8a906640d12d262bd89ca5b3b7f9f2fa4e68a4987435688c90390196bf7d38dd"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathLoop.ilean.hash",
+        "bytes": 16,
+        "sha256": "d83ce688db9a5970a51b55d78e774596b1e9f469a30ac0b4eca8f501c8a8744d"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathLoop.olean",
+        "bytes": 350576,
+        "sha256": "5b93dcfcf542840d6d340b0b562e88a459f50fd47cf2ab526493337bbec7ff3e"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathLoop.olean.hash",
+        "bytes": 16,
+        "sha256": "1138bf6535be8a780ab8f1464aa73d214a841e75101a91da585abc832126e416"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathLoop.trace",
+        "bytes": 2726,
+        "sha256": "4d185ddbd0b669d5b23411891a698aa9cbe57ca2840df22b188bc5af93e16c5b"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathSetup.ilean",
+        "bytes": 16319,
+        "sha256": "07a0cb775e66e06d21e58750127589cffd42e3f93483cdae110fbb8346c3c55d"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathSetup.ilean.hash",
+        "bytes": 16,
+        "sha256": "b216e1e6de887a2132757865ea25350c3f7202ebf04465a778a60a13dbde4d9e"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathSetup.olean",
+        "bytes": 140032,
+        "sha256": "d597dadda1a471322657eeb1525b4d87d326fbb6f362526a010d9c685c5f2492"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathSetup.olean.hash",
+        "bytes": 16,
+        "sha256": "8834dcf9b1d6ce00a9c1ea92e133b6e37fff8f223feba6ed9f28fff5d6149f10"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathSetup.trace",
+        "bytes": 2568,
+        "sha256": "49b1e66ba6bb0e4f6f69f3d81e2ee29fefd082a388bc2d90ed393f592e29f24e"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathStep.ilean",
+        "bytes": 28433,
+        "sha256": "b94e1f02a993ef57f7795987c9d451045c8485ab2bb3fc963854681891d896e5"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathStep.ilean.hash",
+        "bytes": 16,
+        "sha256": "8567fb54081d925af2b6abab608e4b22d295cea59d39f76ff702004d37dc73d3"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathStep.olean",
+        "bytes": 582488,
+        "sha256": "e0301666dad443336cf18b2bcaed0f273f6889080d46a3e852da0485459012f3"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathStep.olean.hash",
+        "bytes": 16,
+        "sha256": "7a03dcc7f39a9695159097e6302731b7cb46ed8b8df1058cd55509e7df087ae9"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPathStep.trace",
+        "bytes": 2545,
+        "sha256": "6beabc7fbc73deaba99f9ee482de38c9877f16df911b5130e728ddfbeb2e9c06"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPrimitives.ilean",
+        "bytes": 29695,
+        "sha256": "a466ad4156484cc6b3d1c99128bdc71b4aafe7dabf21486471c1d28190f93fcb"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPrimitives.ilean.hash",
+        "bytes": 16,
+        "sha256": "472aba847874ff4c0398abe720c2b18799abb5c8a2ff0660dc8bae83f5eb32f8"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPrimitives.olean",
+        "bytes": 1063472,
+        "sha256": "bed9aed3288660d48a1fe292b6744333b9307c5674258a239e256888bbffbf68"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPrimitives.olean.hash",
+        "bytes": 16,
+        "sha256": "f545811a011099c3ec85a41d01f435d3cbd27d1e9898feed8d82d9ccbf70dc3f"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingPrimitives.trace",
+        "bytes": 3992,
+        "sha256": "130a759352808cfafbb5154ea9a48d2677a7c4fbc30747729aac235677adce8e"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingProgram.ilean",
+        "bytes": 43692,
+        "sha256": "94e9b64e3ef12ae5f825ab2f28177d35327acf6770e59198d6f2e58e432bd607"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingProgram.ilean.hash",
+        "bytes": 16,
+        "sha256": "9792df13dfaed98c2f2ac823c411ec3cce64aea517a0a155c00decddf38b236b"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingProgram.olean",
+        "bytes": 268128,
+        "sha256": "9abcd8aee9c4050694b51e8df0ae88cd3e8e1cdc50046f94c7afe2f1d7f6a2cf"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingProgram.olean.hash",
+        "bytes": 16,
+        "sha256": "feb10cd6d39dc591f72fa83d8f2c61f50a41e51c4f87c09d8c5d4b8ece22196a"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingProgram.trace",
+        "bytes": 3289,
+        "sha256": "c31d7edd49fdf5967f48a84fcaef5e472adf08d3da11cde2d7aab65c3ffea7c1"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingProgramLoop.ilean",
+        "bytes": 9063,
+        "sha256": "24f32a9f50af3be7210bc539a46be81ed60f17556c98e597c8d8223d32b9a103"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingProgramLoop.ilean.hash",
+        "bytes": 16,
+        "sha256": "422fc0f5635dc8c4f6ccf387c10dfa224ca58396116f61169e2f46746586a147"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingProgramLoop.olean",
+        "bytes": 82416,
+        "sha256": "1429219cd09eb529819e315d47608b0ccd5e346081ad213697725c8dacfaee70"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingProgramLoop.olean.hash",
+        "bytes": 16,
+        "sha256": "8c9abdf7323cc432cb46b4cbeb9a96056ead071d62f861704553937e5616e470"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingProgramLoop.trace",
+        "bytes": 2595,
+        "sha256": "195915808e2b221a35c77793c50b12a4f0c24f0a60758918fedba3b4db6e605d"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingProgramState.ilean",
+        "bytes": 21488,
+        "sha256": "88889564cb5a194a9ef05d6e2553942461c1af610e60ad655d3faaac6fa026e8"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingProgramState.ilean.hash",
+        "bytes": 16,
+        "sha256": "4c2111f19da11addd207d3701d2ee5de4a0c2825566fc5419b12b84d029137a4"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingProgramState.olean",
+        "bytes": 236776,
+        "sha256": "6c4c0b97007b20046af00fd10f68a76a9f9c4ee5d1c55f8e547096a827768487"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingProgramState.olean.hash",
+        "bytes": 16,
+        "sha256": "a01d2211f4ca439423f8868edbe6b2e9066ce5000dd3204bac93f78394cc5e41"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingProgramState.trace",
+        "bytes": 2580,
+        "sha256": "71582c2861bbc77ba9139469499184bd12d1a6d44b2b4026242fce5d70112e75"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingQuery.ilean",
+        "bytes": 35222,
+        "sha256": "d67ff00e63ab663221cc7d82b2a8da65b541d2f4c68895bd41473bfaab7641d1"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingQuery.ilean.hash",
+        "bytes": 16,
+        "sha256": "c0a49e65042443a95fae99dd281b7db8b9d0bd13a0fd29d7f9e60be9bd9460a6"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingQuery.olean",
+        "bytes": 446184,
+        "sha256": "502487827d8bda02860a4fba3ef3d869515b735573b9f77562b13752958829c8"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingQuery.olean.hash",
+        "bytes": 16,
+        "sha256": "4cd0e7b60a53a28ac61e9a4b423d9d2c09d6130c6ae9e1ba885e442c583e97a1"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingQuery.trace",
+        "bytes": 2881,
+        "sha256": "11d7b20e6e3deec8b176a9a8607cf18d6bcb7d1e58adf554b959c21d3f72ec4f"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingRecord.ilean",
+        "bytes": 16193,
+        "sha256": "50ef38ae4c44d6119e77974afd74a3add777d77b542b0bbf9efcbcb3331fc7a3"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingRecord.ilean.hash",
+        "bytes": 16,
+        "sha256": "219ce2e2fd876b1cbec8fbe7a37e1fc2c6def1348e7f3752d41bf8af4c293264"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingRecord.olean",
+        "bytes": 156224,
+        "sha256": "391efa6a5ee7c113cdf1b565a07bff862942fda67d7f9456d7318ffb2f39eb82"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingRecord.olean.hash",
+        "bytes": 16,
+        "sha256": "b849849517950daed4b2bf4426b0eceee9acc1dc1cbf4af26aa390b86a0a3a64"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingRecord.trace",
+        "bytes": 2540,
+        "sha256": "4692414ebe796ba19cf0d87759d72e68dc69d55de8e401af5f9a22d0aa6a52f8"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingSelect.ilean",
+        "bytes": 20481,
+        "sha256": "0897971d93b8be9d2aa9c19eca8fe5df3297c0f8ae78b698e0feceea047e2aaf"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingSelect.ilean.hash",
+        "bytes": 16,
+        "sha256": "58dd4e81cd50cfb5ce077f5eb750136e43a153671ed67030ee36281112dcc5d8"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingSelect.olean",
+        "bytes": 450704,
+        "sha256": "62cd383a23cf751d27a71c44abd6248eefeb57c9fbde3b4f574858a6b70512ac"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingSelect.olean.hash",
+        "bytes": 16,
+        "sha256": "66e7eeb9fe21f9925d99d2e970f0d2cb82cd0015e7dad43fb09cdd1e560c2d51"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingSelect.trace",
+        "bytes": 2527,
+        "sha256": "846613548db7b794e30651b48892a633000b746da77b2874760587f72fd84391"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingSetup.ilean",
+        "bytes": 26065,
+        "sha256": "a5e29b14bbf9bc2f720bcb66bb43d9f95df088003dfbe659fed98e3d97692392"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingSetup.ilean.hash",
+        "bytes": 16,
+        "sha256": "68a82815a080f2ea29203673f0a12d5aa3e2204794869bbb7d25f41dfdf74269"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingSetup.olean",
+        "bytes": 321704,
+        "sha256": "f0b71dc882214fb074e2f2002cda98558e8adccf0d99efa5dcb2259ead295d58"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingSetup.olean.hash",
+        "bytes": 16,
+        "sha256": "1c46bdedab8cfb65a02808a445f1f80c1e1de4cb1bb251288a781465b4e1542a"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingSetup.trace",
+        "bytes": 3452,
+        "sha256": "716cd9b301eb880ebb03e5d543bee6b969c131755d74a4c7168eee25f8337587"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingTake.ilean",
+        "bytes": 23755,
+        "sha256": "ff3e7dae6aad5ee4f1f2a50091874d6e36dcfe33fef11926d9ebe04db8a37f23"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingTake.ilean.hash",
+        "bytes": 16,
+        "sha256": "3159b98defc00f53469dbcbe3589d3c45d1b195b25c5fee336d8cb68f9af2ece"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingTake.olean",
+        "bytes": 389600,
+        "sha256": "22066e73b0338e0a0f65d7a19f2c8278fa29b7887fa83bcfb73396ceadd24a13"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingTake.olean.hash",
+        "bytes": 16,
+        "sha256": "9f41d80bce4914fbf6e170c6c8f1e80a876c13b4368fe2276d8a78b657f795e9"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/CountingTake.trace",
+        "bytes": 2699,
+        "sha256": "4ddcab15aaeb53bedace52df77d018fe4dd6244dab849b3cff902386463c6910"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ExecutionTree.ilean",
+        "bytes": 11484,
+        "sha256": "c68e991084fae0ed41105ef0785739c681a5468f56569c2b51d1b38b5c7cbf80"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ExecutionTree.ilean.hash",
+        "bytes": 16,
+        "sha256": "469e8a0e98bf34a3bb3f02db22b1afe4812a9855bea6474d39614b31bb0fd9f0"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ExecutionTree.olean",
+        "bytes": 219760,
+        "sha256": "9b987201b00ea7aa2702e2b1e0c15a550f59807f61682338fc1e1101fa3e41cb"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ExecutionTree.olean.hash",
+        "bytes": 16,
+        "sha256": "1435a37afdfd5e3ef0af555f092ebba7ded61581719e79c05cd15a8129fc1bdf"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/ExecutionTree.trace",
+        "bytes": 2519,
+        "sha256": "dc8b0c08d2283eab3e0ed4cfce9b57dbbbd4d76dffd2fa01c345559a0ae4fd28"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/GrowingBinary.ilean",
+        "bytes": 22281,
+        "sha256": "4c2ff93a4189bc25a6619dce6bc05b1e8a9322a3898fc3506b5d9e75f43c3ff4"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/GrowingBinary.ilean.hash",
+        "bytes": 16,
+        "sha256": "fb8ca1367778dbcb1207717b40f82a964edcda6dd6ae06161e237206758585b5"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/GrowingBinary.olean",
+        "bytes": 550320,
+        "sha256": "6f75629645426f4875c10fb9cc77867ce44c697a8a89bca7d9b09e0a184b439d"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/GrowingBinary.olean.hash",
+        "bytes": 16,
+        "sha256": "7afde2b2e58af94f59390b60ae37abfbdb238b1d5c2b459e1d29aeb5d640b2ad"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/GrowingBinary.trace",
+        "bytes": 3829,
+        "sha256": "efcf4f06a44df7643f8a608aa06870b1188e76ed70c11932c14637c5852ccfd4"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/GuessWord.ilean",
+        "bytes": 20362,
+        "sha256": "e2327cf98090c0994d09d8a9b1fb2ee33bd6e06bea1567ea8ee0b8eceb1422cf"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/GuessWord.ilean.hash",
+        "bytes": 16,
+        "sha256": "7458c12581be5214bdb5b118f9405ebf2f0040f246b9fc752d3646c8d227af79"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/GuessWord.olean",
+        "bytes": 473136,
+        "sha256": "5bf55534da7c294b838a81bb5e305146ddbf02411025a64071790db4f1afce97"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/GuessWord.olean.hash",
+        "bytes": 16,
+        "sha256": "0ae9433289c06de95dac18718a93f3074ee346702c825474eefabb0aa44a9982"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/GuessWord.trace",
+        "bytes": 2500,
+        "sha256": "004a301d2c83ee95efe4e604e791dc49bb3d8ad5d90061e74e04fb316c80ef6c"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/GuessWordCorrectness.ilean",
+        "bytes": 20648,
+        "sha256": "5bc7618c017626efd130d767133d2e0dabc63c5b6ef5aba593be672b897c5edd"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/GuessWordCorrectness.ilean.hash",
+        "bytes": 16,
+        "sha256": "e5c07d3bfaa2058398e32a292582bbe336315ba28d96852efb39529c5f387331"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/GuessWordCorrectness.olean",
+        "bytes": 517056,
+        "sha256": "d1fd45f70826e2c8e8a2201aa66007d2e52c354500d46a8bc86941f6a0ec46b9"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/GuessWordCorrectness.olean.hash",
+        "bytes": 16,
+        "sha256": "53aca498b33f8a03efcffe8fb3afcc75522dea421834136a45da38da41183b8f"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/GuessWordCorrectness.trace",
+        "bytes": 2853,
+        "sha256": "e083dac744fcccbd294015b8db740d7968e4534c2b3d2efc0640c1b0bb302c9b"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/LogarithmicWidth.ilean",
+        "bytes": 10803,
+        "sha256": "25c61a0c3eed5dff630a426cbcf22a7c8175ee921197034a65d0dcfaa8fd00cb"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/LogarithmicWidth.ilean.hash",
+        "bytes": 16,
+        "sha256": "fb20422a6f015295ce206a7b57a3243d8c0b093e96f1962bcf38c35b37de33f0"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/LogarithmicWidth.olean",
+        "bytes": 320152,
+        "sha256": "c64290aa418075828f2134c83ab22cf23d94fa6c6213aeb0bfe949cc83f166e2"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/LogarithmicWidth.olean.hash",
+        "bytes": 16,
+        "sha256": "4dd6c6199c4669cdfe7dd7e3232449a75c1451f57876d472b01862bcb9990f54"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/LogarithmicWidth.trace",
+        "bytes": 2560,
+        "sha256": "864a5107c9b87f96c27d8ec24069c0be42ce4316481bad0d3b11eb3ca041354e"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/NondeterministicStack.ilean",
+        "bytes": 29145,
+        "sha256": "db2ed39fb97a9d85e041c3003c83e76a3a137a511ea4ca75a7572f5241f4ed3f"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/NondeterministicStack.ilean.hash",
+        "bytes": 16,
+        "sha256": "e8b40ea05eed8ba84e73e94529320195db60a6acc3e3630399ffc4d8b0fd6f16"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/NondeterministicStack.olean",
+        "bytes": 444736,
+        "sha256": "e2f6459dfdb693789e56c5686fdabce4687725a6936b8cb5f48f973811df1307"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/NondeterministicStack.olean.hash",
+        "bytes": 16,
+        "sha256": "27d42315f7f3f118b0a44e0918763ba8ba9b519b290750a143a9b8ccad9313f5"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/NondeterministicStack.trace",
+        "bytes": 2763,
+        "sha256": "adb2b53c1ec87fdb82b9a1f676d43b59b5b2597e74a07fe773cfc4b81b1c8ce3"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/StackCompilation.ilean",
+        "bytes": 29570,
+        "sha256": "07ea19c70f6f8c726207dffe05464494f48327c54db141acbbe8cae77f1c49a4"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/StackCompilation.ilean.hash",
+        "bytes": 16,
+        "sha256": "cd71db2d2cfbd47610cb4ca4508753b3591816f1b113660123f5d0e46536082b"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/StackCompilation.olean",
+        "bytes": 389400,
+        "sha256": "ebfbaf0343359058478fa060c9121ebbd32002e09926067cd6a8f19dfdd8e19e"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/StackCompilation.olean.hash",
+        "bytes": 16,
+        "sha256": "7c37d5c2170d854f6c3dbc42f19b83b8c35432be22be680bd34e8ce3931693a8"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/StackCompilation.trace",
+        "bytes": 2556,
+        "sha256": "073957ae8d8a3a1035b45e8ca82be52d8b001dc45b01ea736cf6dedf8784d8ba"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/StackMicrocode.ilean",
+        "bytes": 33790,
+        "sha256": "b77727a06513e70a5c540d9f5cad0551339fc58d269385a74d8a13294c1facd9"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/StackMicrocode.ilean.hash",
+        "bytes": 16,
+        "sha256": "7d30a3d7c69e7e45e1d6bd5744608d30181d1a4431b7e3cb2a0e9bcafd9e29e3"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/StackMicrocode.olean",
+        "bytes": 499136,
+        "sha256": "7e8edd649e553c50864829cad4b725a57ef1fe6a424a7869b912c796ee908668"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/StackMicrocode.olean.hash",
+        "bytes": 16,
+        "sha256": "717bb9e6f8ebfe9298ba07772fe511e811f9ace6ff3b4549546f181166da55e9"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/StackMicrocode.trace",
+        "bytes": 2554,
+        "sha256": "ed0e9c97de0ece16a44bad920d18d72ce6b176a7abc21ca5426875f7269a1c2c"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/StreamingCensus.ilean",
+        "bytes": 17902,
+        "sha256": "eab211a992062a66c8a3cc81070741471d0fd6ab105a82cfcfeb1e75f4363d08"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/StreamingCensus.ilean.hash",
+        "bytes": 16,
+        "sha256": "d2be3a28cdd541e6d2c6fa610b02c72f7af22b51546b3822820ae2713b650698"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/StreamingCensus.olean",
+        "bytes": 253872,
+        "sha256": "963ea09a5df836fcc074be24a10435288791a2377b25f087ed03464eeb39b209"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/StreamingCensus.olean.hash",
+        "bytes": 16,
+        "sha256": "5e55ec3c83d86e7e25750965cdb3f0d0ce1eb40eb2a4a118778cf842a3cdd29b"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs/StreamingCensus.trace",
+        "bytes": 3370,
+        "sha256": "f5e0e176c2f0ba0e03ae769f2769a18913777978c983f91188f7aa5245c60fb3"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs.ilean",
+        "bytes": 2848,
+        "sha256": "86e1238262dd961987604db664a28e85884202e35d1e5e037fc5f730899f7e18"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "508e77a220402ba514597f1ec6db690fbf6477ffb29f067111b636e1e91a722e"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs.olean",
+        "bytes": 7136,
+        "sha256": "e83fab59e802351725d385b07f7eb62c82826ec4527e055616788c3d7cd44ad6"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "cadaebb27c5931b66723b436a4a93bcf118de99914f3430f6923e24a0869e5c4"
+      },
+      {
+        "path": "proofs/lib/Lax733996Proofs.trace",
+        "bytes": 11607,
+        "sha256": "2d5aa35527e424faea21203d6e6f812b81d57d12a01dfe3897cbbed12ce9c1e5"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 4204,
+        "sha256": "d26fcd7e8f479138230a5c4406f4906beeda3bad81a875be488b7f0684e0142f"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 948,
+        "sha256": "95a8dec7a8dc8b078ed31a8d511716fda3df531428c2c91995035cf2d4936822"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/BinaryInputCount.lean",
+        "bytes": 7431,
+        "sha256": "b750fa88fddcbbfe9fde6d59aba9986a9fc07038bf6c9efe5c9c7e4673ada400"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/BoundedLoop.lean",
+        "bytes": 3485,
+        "sha256": "4cd0576616c73016125ed3ee91b5629340f7e89acf8a757c4900c0762b09cfed"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/ChoiceBlocks.lean",
+        "bytes": 5708,
+        "sha256": "0227956d9775da8d0701f36935334fd9134ed5ab479887a26c3a39738c6d7152"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/ChoiceComposition.lean",
+        "bytes": 6224,
+        "sha256": "e9908bb7ad38545b1ae5d8d6d7d05dfa7f0c73076c6640ac8ef6fa2e9f75230c"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/ChoiceLanguage.lean",
+        "bytes": 4657,
+        "sha256": "03b547e3292455acb26613ff6018e7d1d2d9167730115c7477214d459b475357"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/ChoiceMachine.lean",
+        "bytes": 3100,
+        "sha256": "d70b536f45edc5173dcc7fd0a4d7d72bc14964b45152d271e218cfb5fdbf0f13"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/ChoicePaths.lean",
+        "bytes": 7030,
+        "sha256": "49dd21b3be7c3825a04a021623746563d480d2acef50000b3da57321ba916937"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/ChoiceRoutines.lean",
+        "bytes": 4222,
+        "sha256": "cc2ec67b1706438ace6d2c38b1d8ca8e31b154f26bd597185e30324cb3734e00"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/ChoiceTrees.lean",
+        "bytes": 3882,
+        "sha256": "bbd65ec46162c04c18b17342d2756f3ceec4f44a1dd55f9066f2325464cc036b"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/Complement.lean",
+        "bytes": 1900,
+        "sha256": "89cc8c9021e90899094c90855fcee7be00a9137b55496a7a00a1e2658da4200d"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/Counting.lean",
+        "bytes": 6067,
+        "sha256": "23a5bb42a91c3b5ec79c15af79e71b5972e2f47b512c13d28f603ba09af212ca"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingBounds.lean",
+        "bytes": 2963,
+        "sha256": "089582b8cf306726356632b80376284e28d7fdfd70108da8caaf80d6e34e7999"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingCensus.lean",
+        "bytes": 6127,
+        "sha256": "258465438c9f4df661fc74c50aab9bcec1aa0587d60e20774d841cca30117258"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingCensusComplete.lean",
+        "bytes": 3860,
+        "sha256": "5e106ec38102006710cbf54e9ea866cf91020b1ba5878f9882b97094b290de0b"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingCensusLoop.lean",
+        "bytes": 2299,
+        "sha256": "fa8ca7540fa42252ac368592d43da13d013b5a2de0ee46881065fc8013e21b67"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingCensusSetup.lean",
+        "bytes": 4014,
+        "sha256": "caaaa9a64bf607a260fc8199f43484dc566019ac8a8d4b99cac31db5d2081fec"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingCensusState.lean",
+        "bytes": 2535,
+        "sha256": "dff871b8e6ec0b9156141e6531d760ff7e0689f56664edf870df782f904f60c3"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingCensusStep.lean",
+        "bytes": 6420,
+        "sha256": "9a4ecc586a6239b640430454e373f7efd3397455262d11ee20d8f43a262dc8fd"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingExecution.lean",
+        "bytes": 3176,
+        "sha256": "6fc7e6d3ce61a64e1e76c682569e8888fa0ab50e3d2f4d45195ad9d5d0ae6f19"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingFrames.lean",
+        "bytes": 4665,
+        "sha256": "d7f1b328b6bfd21a9036d7c4b4f7a14a3bebd3b7ae3b953d56b683b92bf8b276"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingGuess.lean",
+        "bytes": 5695,
+        "sha256": "30bb7cb0a918afe69fd7f8d784de65d965936211a7ba28f919c3024f6a5788d6"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingLayer.lean",
+        "bytes": 4640,
+        "sha256": "a98ec63f9ebec6d944808a1b5e8ecc04cfd1237603506f54ad8ae1c01e6d137f"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingLayerLoop.lean",
+        "bytes": 3112,
+        "sha256": "49285e3942ea3d4440a19c344f2b1d376d2556c47176a592bf2309537454aee3"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingLayerRecord.lean",
+        "bytes": 3003,
+        "sha256": "85f2dbf2b7f3c9214a960c0e2f1e4b7d2a6a16558b012917857bb24457b337e7"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingLayerSetup.lean",
+        "bytes": 2704,
+        "sha256": "4689bf75d4d669c8208770b9928ea0430b0d3e75e7f5b60cade26f484db2d904"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingLayerState.lean",
+        "bytes": 3953,
+        "sha256": "c5b3748f5d886fdcf99b1e6a0cedcc1249fad29ebe9c8a060ad2ec77c803edc5"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingLayerStep.lean",
+        "bytes": 4522,
+        "sha256": "a44a923a3834f7ef43fdfe1aba1f6d54b1eec3b8bdde67f5c9470a5f726a2e9d"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingMachine.lean",
+        "bytes": 1883,
+        "sha256": "b14b329213dfc3d34359a0d451701fd934fd6bd9572ad39cf6acf6a21be5728f"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingPath.lean",
+        "bytes": 4536,
+        "sha256": "e58f6618583cc6595e2e4183220e688834299e2114f37f863cee0701c8c2ce7a"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingPathBody.lean",
+        "bytes": 4492,
+        "sha256": "9f1f38cd3e369d85415dcc75299bfe86aa81455b19bd887ced7ef7b5a83527e9"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingPathLoop.lean",
+        "bytes": 4605,
+        "sha256": "bfdec48862f46d6568dfeea1b28fc7ec7a4b8b99387a4a08940b6c8a5e2e695b"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingPathSetup.lean",
+        "bytes": 2999,
+        "sha256": "585658f5f6eeee6ca0c76c52f2bbecfc6d2c08e5a32dc60fad9545f519c607a0"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingPathStep.lean",
+        "bytes": 6458,
+        "sha256": "d726b239b596a6ee8a16e2bc6e09535355e3567e57a93e908b5f195aa2f03dd3"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingPrimitives.lean",
+        "bytes": 6912,
+        "sha256": "c4bc78772d0e4cf9f0a483ef92801fecbe317b325afd0dee088c038bd2b53a64"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingProgram.lean",
+        "bytes": 6793,
+        "sha256": "8770c5cf87fb374cdb3b0c29bafb9208e0f1f20eef942567825af286424342b4"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingProgramLoop.lean",
+        "bytes": 2913,
+        "sha256": "698eb8c1530c91752d1ce4a6c6cd1510e774ff17bb5877e6f1a1e8484790999b"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingProgramState.lean",
+        "bytes": 4081,
+        "sha256": "05f8a7d83ba57e2a5f083960accbf30cec49536fd05fb06e8f7bda84880562a5"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingQuery.lean",
+        "bytes": 7214,
+        "sha256": "9576e2aa76ec3ca34c6b83d0228e16968d811e699118dc977341f8f2bfe18067"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingRecord.lean",
+        "bytes": 3372,
+        "sha256": "ec40aeba7cf9165a2a697b4da1ecd62220ab9faced39f6aacd6f36fcf608e5de"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingSelect.lean",
+        "bytes": 4604,
+        "sha256": "0973e9a3273db5b3589b6c34a047d2705012468316f2eee9ebdc333623f703ff"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingSetup.lean",
+        "bytes": 5754,
+        "sha256": "8e725b70a17eaa82a7e01196e984cd17c444f5c81d5554df7f34e125f28ff9cf"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/CountingTake.lean",
+        "bytes": 5297,
+        "sha256": "4c949a7f6018eea2e5fce22c7cd5c50993bd7dbfdf9b1ebe1df90bf00f56cdb8"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/ExecutionTree.lean",
+        "bytes": 3688,
+        "sha256": "0441c6478f86b787d59e26f8a2e2040e217401c73cef19b68fabbf09eb1085f8"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/GrowingBinary.lean",
+        "bytes": 5880,
+        "sha256": "2b60976216ff0ddfb27d24d58c91d2b7d6d1424021de7eea744acd6798c1f962"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/GuessWord.lean",
+        "bytes": 6095,
+        "sha256": "bfd7e38ff930cfc2ffffb5f896bee5c32dfe14571cf7007c4f0e0916f4f14640"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/GuessWordCorrectness.lean",
+        "bytes": 6698,
+        "sha256": "5db0c2fe62ed1b810ab88adad851788257f73f1a6521416aec8b6a7f3e4f0acc"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/LogarithmicWidth.lean",
+        "bytes": 3168,
+        "sha256": "3b1feb2817e23a2b4532657205f57da5dbc558494b77de9bd157a0d46b3001fe"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/NondeterministicStack.lean",
+        "bytes": 5525,
+        "sha256": "23e98b270cc86f89e17057191027139e44f551d15f94e52b2d9de6bcb03fa4ee"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/StackCompilation.lean",
+        "bytes": 7387,
+        "sha256": "beddc7122f6a61de5a9d80bc6eaa5c06d0a2b9b3e57224850b87fd06d6629638"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/StackMicrocode.lean",
+        "bytes": 9810,
+        "sha256": "31d6be7370348d03557e46e064e2a036b9a2a84709acd99b2386825b8fd60c48"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs/StreamingCensus.lean",
+        "bytes": 4680,
+        "sha256": "fcf624b13928ee55a416202d13affc255b133147946b99b84e7988718ba4feb6"
+      },
+      {
+        "path": "proofs/package/Lax733996Proofs.lean",
+        "bytes": 1998,
+        "sha256": "0430253cb0fdac84d5fdecbd4689d6681a9e485924a59487737f2dc45884201d"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:19fc61dbb81903a635bfe65203e201306030c2957c84f3532733d539ae95b47d"
   }
 }
