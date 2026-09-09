@@ -4,5 +4,1321 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 89
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-307052",
+      "leanVersion": "v4.30.0",
+      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "title": "Savitch's Theorem",
+      "authors": [
+        {
+          "name": "Édouard Bonnet"
+        },
+        {
+          "name": "gpt-6-astra"
+        }
+      ],
+      "bibEntries": [
+        "@article{Savitch1970,\n  author = {Walter J. Savitch},\n  title = {Relationships between Nondeterministic and Deterministic Tape Complexities},\n  journal = {Journal of Computer and System Sciences},\n  volume = {4},\n  number = {2},\n  pages = {177--192},\n  year = {1970},\n  doi = {10.1016/S0022-0000(70)80006-X}\n}\n"
+      ]
+    },
+    "abstract": "Savitch's theorem states that nondeterministic space $s(n)$ can be simulated in deterministic space $O(s(n)^2)$, for space-constructible $s(n)\\geq\\log n$. We state this result for the machines of lax-434930 and derive $\\mathrm{PSPACE}=\\mathrm{NPSPACE}$. The proof separates bounded configurations, recursive reachability, and its machine implementation. The machine implementation and constructibility obligations remain open.\n"
+  },
+  "requiredByConcepts": [
+    "Lax434930",
+    "Lax554803"
+  ],
+  "requiredByProofs": [
+    "Lax434930",
+    "Lax554803"
+  ],
+  "concepts": [
+    {
+      "id": "Lax307052.BoundedConfigurations",
+      "path": "concepts/Lax307052/BoundedConfigurations.lean",
+      "title": "Bounded machine configurations",
+      "type": "definition",
+      "description": "A configuration using at most $s$ work cells consists of a control state,\nan input-head position, a work-head position, and $s$ work symbols.\nCells beyond this prefix are blank.",
+      "imports": [
+        "Lax434930.SpaceMachines"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Fintype.Pi"
+      ],
+      "sourceText": "import Lax434930.SpaceMachines\nimport Mathlib.Data.Fintype.Pi\n\n/-!\n---\ntitle: Bounded machine configurations\ntype: definition\n---\nA configuration using at most $s$ work cells consists of a control state,\nan input-head position, a work-head position, and $s$ work symbols.\nCells beyond this prefix are blank.\n-/\n\nnamespace Lax307052.BoundedConfigurations\n\nopen Lax434930.SpaceMachines\n\nstructure Config (M : Machine) (n s : ℕ) where\n  state : M.Q\n  inputHead : Fin (n + 2)\n  workHead : Fin s\n  tape : Fin s → M.Γ\n  deriving Fintype\n\ndef expand {M : Machine} {n s : ℕ} (c : Config M n s) : M.Config :=\n  ⟨c.state, c.inputHead.val, c.workHead.val,\n    fun i => if h : i < s then c.tape ⟨i, h⟩ else M.blank⟩\n\nend Lax307052.BoundedConfigurations\n",
+      "statements": []
+    },
+    {
+      "id": "Lax307052.ConfigurationCorrespondence",
+      "path": "concepts/Lax307052/ConfigurationCorrespondence.lean",
+      "title": "Runs and configuration reachability",
+      "type": "lemma",
+      "description": "For a machine whose runs stay within the space bound, bounded configuration\nreachability agrees with machine acceptance.",
+      "imports": [
+        "Lax307052.ConfigurationGraph"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax307052.ConfigurationGraph\n\n/-!\n---\ntitle: Runs and configuration reachability\ntype: lemma\n---\nFor a machine whose runs stay within the space bound, bounded configuration\nreachability agrees with machine acceptance.\n-/\n\nnamespace Lax307052.ConfigurationCorrespondence\n\nopen Lax434930.PolynomialTime Lax434930.SpaceMachines ConfigurationGraph\n\naxiom acceptance (M : Machine) (w : Word) (s : ℕ) (hs : M.UsesSpace w s) :\n  AcceptsBounded M w s ↔ M.Accepts w\n\nend Lax307052.ConfigurationCorrespondence\n",
+      "statements": [
+        {
+          "id": "Lax307052.ConfigurationCorrespondence.acceptance",
+          "signature": "acceptance : ∀ (M : Lax434930.SpaceMachines.Machine) (w : Lax434930.PolynomialTime.Word) (s : Nat),\n  M.UsesSpace w s → Iff (Lax307052.ConfigurationGraph.AcceptsBounded M w s) (M.Accepts w)",
+          "startLine": 16,
+          "endLine": 17
+        }
+      ]
+    },
+    {
+      "id": "Lax307052.ConfigurationCount",
+      "path": "concepts/Lax307052/ConfigurationCount.lean",
+      "title": "Number of bounded configurations",
+      "type": "lemma",
+      "description": "For input length $n$ and work bound $s$, a machine with state set $Q$\nand work alphabet $\\Gamma$ has $|Q|(n+2)s|\\Gamma|^s$ bounded configurations.",
+      "imports": [
+        "Lax307052.BoundedConfigurations"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax307052.BoundedConfigurations\n\n/-!\n---\ntitle: Number of bounded configurations\ntype: lemma\n---\nFor input length $n$ and work bound $s$, a machine with state set $Q$\nand work alphabet $\\Gamma$ has $|Q|(n+2)s|\\Gamma|^s$ bounded configurations.\n-/\n\nnamespace Lax307052.ConfigurationCount\n\nopen Lax434930.SpaceMachines BoundedConfigurations\n\naxiom count (M : Machine) (n s : ℕ) :\n  Fintype.card (Config M n s) =\n    Fintype.card M.Q * (n + 2) * s * Fintype.card M.Γ ^ s\n\nend Lax307052.ConfigurationCount\n",
+      "statements": [
+        {
+          "id": "Lax307052.ConfigurationCount.count",
+          "signature": "count : ∀ (M : Lax434930.SpaceMachines.Machine) (n s : Nat),\n  Eq (Fintype.card (Lax307052.BoundedConfigurations.Config M n s))\n    (instHMul.hMul (instHMul.hMul (instHMul.hMul (Fintype.card M.Q) (instHAdd.hAdd n 2)) s)\n      (instHPow.hPow (Fintype.card M.Γ) s))",
+          "startLine": 16,
+          "endLine": 18
+        }
+      ]
+    },
+    {
+      "id": "Lax307052.ConfigurationGraph",
+      "path": "concepts/Lax307052/ConfigurationGraph.lean",
+      "title": "The bounded configuration graph",
+      "type": "definition",
+      "description": "Vertices are configurations whose work tape has a fixed finite bound.\nEdges are machine transitions. Acceptance is reachability from the initial\nconfiguration to a terminal accepting configuration. The search predicate\nreplaces reachability by the recursive finite graph test.",
+      "imports": [
+        "Lax307052.BoundedConfigurations",
+        "Lax307052.Reachability"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Fintype.EquivFin",
+        "Mathlib.Data.Nat.Log"
+      ],
+      "sourceText": "import Lax307052.BoundedConfigurations\nimport Lax307052.Reachability\nimport Mathlib.Data.Fintype.EquivFin\nimport Mathlib.Data.Nat.Log\n\n/-!\n---\ntitle: The bounded configuration graph\ntype: definition\n---\nVertices are configurations whose work tape has a fixed finite bound.\nEdges are machine transitions. Acceptance is reachability from the initial\nconfiguration to a terminal accepting configuration. The search predicate\nreplaces reachability by the recursive finite graph test.\n-/\n\nnamespace Lax307052.ConfigurationGraph\n\nopen Lax434930.PolynomialTime Lax434930.SpaceMachines BoundedConfigurations Reachability\n\nnoncomputable def numbering (M : Machine) (n s : ℕ) :\n    Config M n s ≃ Fin (Fintype.card (Config M n s)) := Fintype.equivFin _\n\nnoncomputable def graph (M : Machine) (w : Word) (s : ℕ) :\n    Graph (Fintype.card (Config M w.length s)) := by\n  classical\n  exact fun a b => decide (M.Step w (expand ((numbering M w.length s).symm a))\n    (expand ((numbering M w.length s).symm b)))\n\ndef AcceptsBounded (M : Machine) (w : Word) (s : ℕ) : Prop :=\n  ∃ a b : Config M w.length s,\n    expand a = M.initial ∧ M.Terminal w (expand b) ∧ M.accept b.state = true ∧\n    Reachable (graph M w s) (numbering M w.length s a) (numbering M w.length s b)\n\ndef SearchAccepts (M : Machine) (w : Word) (s : ℕ) : Prop :=\n  ∃ a b : Config M w.length s,\n    expand a = M.initial ∧ M.Terminal w (expand b) ∧ M.accept b.state = true ∧\n    search (graph M w s) (Nat.clog 2 (Fintype.card (Config M w.length s)))\n      (numbering M w.length s a) (numbering M w.length s b) = true\n\nend Lax307052.ConfigurationGraph\n",
+      "statements": []
+    },
+    {
+      "id": "Lax307052.FiniteReachability",
+      "path": "concepts/Lax307052/FiniteReachability.lean",
+      "title": "Deciding finite reachability",
+      "type": "lemma",
+      "description": "Recursion depth $\\lceil\\log_2 N\\rceil$ suffices to decide reachability\nin a graph with $N$ vertices.",
+      "imports": [
+        "Lax307052.RecursiveReachability",
+        "Lax307052.ShortPaths"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Nat.Log"
+      ],
+      "sourceText": "import Lax307052.RecursiveReachability\nimport Lax307052.ShortPaths\nimport Mathlib.Data.Nat.Log\n\n/-!\n---\ntitle: Deciding finite reachability\ntype: lemma\n---\nRecursion depth $\\lceil\\log_2 N\\rceil$ suffices to decide reachability\nin a graph with $N$ vertices.\n-/\n\nnamespace Lax307052.FiniteReachability\n\nopen Reachability\n\naxiom decides_reachability {N : ℕ} (G : Graph N) (a b : Fin N) :\n  search G (Nat.clog 2 N) a b = true ↔ Reachable G a b\n\nend Lax307052.FiniteReachability\n",
+      "statements": [
+        {
+          "id": "Lax307052.FiniteReachability.decides_reachability",
+          "signature": "decides_reachability : ∀ {N : Nat} (G : Lax307052.Reachability.Graph N) (a b : Fin N),\n  Iff (Eq (Lax307052.Reachability.search G (Nat.clog 2 N) a b) Bool.true) (Lax307052.Reachability.Reachable G a b)",
+          "startLine": 18,
+          "endLine": 19
+        }
+      ]
+    },
+    {
+      "id": "Lax307052.PathSplitting",
+      "path": "concepts/Lax307052/PathSplitting.lean",
+      "title": "Splitting a bounded walk",
+      "type": "lemma",
+      "description": "A walk of length at most $r+s$ can be split at a vertex into walks of\nlength at most $r$ and at most $s$.",
+      "imports": [
+        "Lax307052.Reachability"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax307052.Reachability\n\n/-!\n---\ntitle: Splitting a bounded walk\ntype: lemma\n---\nA walk of length at most $r+s$ can be split at a vertex into walks of\nlength at most $r$ and at most $s$.\n-/\n\nnamespace Lax307052.PathSplitting\n\nopen Reachability\n\naxiom split {α : Type} (R : α → α → Prop) (r s : ℕ) (a b : α) :\n  Within R (r + s) a b ↔ ∃ m, Within R r a m ∧ Within R s m b\n\nend Lax307052.PathSplitting\n",
+      "statements": [
+        {
+          "id": "Lax307052.PathSplitting.split",
+          "signature": "split : ∀ {α : Type} (R : α → α → Prop) (r s : Nat) (a b : α),\n  Iff (Lax307052.Reachability.Within R (instHAdd.hAdd r s) a b)\n    (Exists fun m => And (Lax307052.Reachability.Within R r a m) (Lax307052.Reachability.Within R s m b))",
+          "startLine": 16,
+          "endLine": 17
+        }
+      ]
+    },
+    {
+      "id": "Lax307052.PolynomialBounds",
+      "path": "concepts/Lax307052/PolynomialBounds.lean",
+      "title": "Constructing polynomial space bounds",
+      "type": "lemma",
+      "description": "For every polynomial $p$ with natural coefficients, the positive bound\n$p(n)+n+2$ is fully space-constructible.\nThe machine construction is an open proof obligation.",
+      "imports": [
+        "Lax307052.SpaceConstructibility"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax307052.SpaceConstructibility\n\n/-!\n---\ntitle: Constructing polynomial space bounds\ntype: lemma\n---\nFor every polynomial $p$ with natural coefficients, the positive bound\n$p(n)+n+2$ is fully space-constructible.\nThe machine construction is an open proof obligation.\n-/\n\nnamespace Lax307052.PolynomialBounds\n\nopen SpaceConstructibility\n\naxiom polynomial_constructible (p : Polynomial ℕ) :\n  Constructible (fun n => p.eval n + n + 2)\n\nend Lax307052.PolynomialBounds\n",
+      "statements": [
+        {
+          "id": "Lax307052.PolynomialBounds.polynomial_constructible",
+          "signature": "polynomial_constructible : ∀ (p : Polynomial Nat),\n  Lax307052.SpaceConstructibility.Constructible fun n => instHAdd.hAdd (instHAdd.hAdd (Polynomial.eval n p) n) 2",
+          "startLine": 17,
+          "endLine": 18
+        }
+      ]
+    },
+    {
+      "id": "Lax307052.PolynomialSpace",
+      "path": "concepts/Lax307052/PolynomialSpace.lean",
+      "title": "PSPACE equals NPSPACE",
+      "type": "theorem",
+      "description": "Deterministic and nondeterministic polynomial space define the same class\nof binary languages.",
+      "imports": [
+        "Lax307052.PolynomialBounds",
+        "Lax307052.Savitch",
+        "Lax434930.NondeterministicPolynomialSpace",
+        "Lax434930.PolynomialSpace"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax307052.Savitch\nimport Lax307052.PolynomialBounds\nimport Lax434930.PolynomialSpace\nimport Lax434930.NondeterministicPolynomialSpace\n\n/-!\n---\ntitle: PSPACE equals NPSPACE\ntype: theorem\n---\nDeterministic and nondeterministic polynomial space define the same class\nof binary languages.\n-/\n\nnamespace Lax307052.PolynomialSpace\n\nopen Lax434930.PolynomialSpace Lax434930.NondeterministicPolynomialSpace\n\naxiom pspace_eq_npspace : PSPACE = NPSPACE\n\nend Lax307052.PolynomialSpace\n",
+      "statements": [
+        {
+          "id": "Lax307052.PolynomialSpace.pspace_eq_npspace",
+          "signature": "pspace_eq_npspace : Eq Lax434930.PolynomialSpace.PSPACE Lax434930.NondeterministicPolynomialSpace.NPSPACE",
+          "startLine": 19,
+          "endLine": 19
+        }
+      ]
+    },
+    {
+      "id": "Lax307052.Reachability",
+      "path": "concepts/Lax307052/Reachability.lean",
+      "title": "Bounded reachability",
+      "type": "definition",
+      "description": "A directed graph on $N$ vertices is given by its Boolean adjacency matrix.\nA walk may repeat vertices. The recursive reachability test divides the\nlength bound in two and enumerates possible middle vertices.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.List.FinRange",
+        "Mathlib.Logic.Relation"
+      ],
+      "sourceText": "import Mathlib.Data.List.FinRange\nimport Mathlib.Logic.Relation\n\n/-!\n---\ntitle: Bounded reachability\ntype: definition\n---\nA directed graph on $N$ vertices is given by its Boolean adjacency matrix.\nA walk may repeat vertices. The recursive reachability test divides the\nlength bound in two and enumerates possible middle vertices.\n-/\n\nnamespace Lax307052.Reachability\n\nabbrev Graph (N : ℕ) := Fin N → Fin N → Bool\n\ninductive Walk {α : Type} (R : α → α → Prop) : ℕ → α → α → Prop\n  | nil (a : α) : Walk R 0 a a\n  | tail {n : ℕ} {a b c : α} : Walk R n a b → R b c → Walk R (n + 1) a c\n\ndef Within {α : Type} (R : α → α → Prop) (n : ℕ) (a b : α) : Prop :=\n  ∃ k ≤ n, Walk R k a b\n\ndef Reachable {N : ℕ} (G : Graph N) (a b : Fin N) : Prop :=\n  Relation.ReflTransGen (fun u v => G u v = true) a b\n\ndef search {N : ℕ} (G : Graph N) : ℕ → Fin N → Fin N → Bool\n  | 0, a, b => decide (a = b) || G a b\n  | k + 1, a, b => (List.finRange N).any fun m => search G k a m && search G k m b\n\nend Lax307052.Reachability\n",
+      "statements": []
+    },
+    {
+      "id": "Lax307052.RecursiveReachability",
+      "path": "concepts/Lax307052/RecursiveReachability.lean",
+      "title": "Correctness of recursive reachability",
+      "type": "lemma",
+      "description": "At recursion depth $k$, the search accepts exactly the vertex pairs\njoined by a walk of length at most $2^k$.",
+      "imports": [
+        "Lax307052.PathSplitting"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax307052.PathSplitting\n\n/-!\n---\ntitle: Correctness of recursive reachability\ntype: lemma\n---\nAt recursion depth $k$, the search accepts exactly the vertex pairs\njoined by a walk of length at most $2^k$.\n-/\n\nnamespace Lax307052.RecursiveReachability\n\nopen Reachability\n\naxiom search_correct {N : ℕ} (G : Graph N) (k : ℕ) (a b : Fin N) :\n  search G k a b = true ↔ Within (fun u v => G u v = true) (2 ^ k) a b\n\nend Lax307052.RecursiveReachability\n",
+      "statements": [
+        {
+          "id": "Lax307052.RecursiveReachability.search_correct",
+          "signature": "search_correct : ∀ {N : Nat} (G : Lax307052.Reachability.Graph N) (k : Nat) (a b : Fin N),\n  Iff (Eq (Lax307052.Reachability.search G k a b) Bool.true)\n    (Lax307052.Reachability.Within (fun u v => Eq (G u v) Bool.true) (instHPow.hPow 2 k) a b)",
+          "startLine": 16,
+          "endLine": 17
+        }
+      ]
+    },
+    {
+      "id": "Lax307052.Savitch",
+      "path": "concepts/Lax307052/Savitch.lean",
+      "title": "Savitch's theorem",
+      "type": "theorem",
+      "description": "If $s$ is fully space-constructible and at least logarithmic, every\nnondeterministic $s(n)$-space decider has a deterministic decider using\n$O(s(n)^2)$ space.",
+      "imports": [
+        "Lax307052.SpaceConstructibility"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax307052.SpaceConstructibility\n\n/-!\n---\ntitle: Savitch's theorem\ntype: theorem\n---\nIf $s$ is fully space-constructible and at least logarithmic, every\nnondeterministic $s(n)$-space decider has a deterministic decider using\n$O(s(n)^2)$ space.\n-/\n\nnamespace Lax307052.Savitch\n\nopen Lax434930.PolynomialTime Lax434930.SpaceBounds SpaceConstructibility\n\naxiom savitch (s : ℕ → ℕ) (hs : Constructible s)\n    (hlog : ∀ n, logSpace n ≤ s n) (A : Language) :\n  A ∈ NSPACE s → ∃ c : ℕ, 0 < c ∧ A ∈ DSPACE (fun n => c * (s n) ^ 2)\n\nend Lax307052.Savitch\n",
+      "statements": [
+        {
+          "id": "Lax307052.Savitch.savitch",
+          "signature": "savitch : ∀ (s : Nat → Nat),\n  Lax307052.SpaceConstructibility.Constructible s →\n    (∀ (n : Nat), instLENat.le (Lax434930.SpaceBounds.logSpace n) (s n)) →\n      ∀ (A : Lax434930.PolynomialTime.Language),\n        Set.instMembership.mem (Lax434930.SpaceBounds.NSPACE s) A →\n          Exists fun c =>\n            And (instLTNat.lt 0 c)\n              (Set.instMembership.mem (Lax434930.SpaceBounds.DSPACE fun n => instHMul.hMul c (instHPow.hPow (s n) 2)) A)",
+          "startLine": 17,
+          "endLine": 19
+        }
+      ]
+    },
+    {
+      "id": "Lax307052.SearchAcceptance",
+      "path": "concepts/Lax307052/SearchAcceptance.lean",
+      "title": "Correctness of the configuration search",
+      "type": "lemma",
+      "description": "On space-bounded computations, the recursive configuration search accepts\nexactly when the original machine does.",
+      "imports": [
+        "Lax307052.ConfigurationGraph"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax307052.ConfigurationGraph\n\n/-!\n---\ntitle: Correctness of the configuration search\ntype: lemma\n---\nOn space-bounded computations, the recursive configuration search accepts\nexactly when the original machine does.\n-/\n\nnamespace Lax307052.SearchAcceptance\n\nopen Lax434930.PolynomialTime Lax434930.SpaceMachines ConfigurationGraph\n\naxiom correct (M : Machine) (w : Word) (s : ℕ) (hs : M.UsesSpace w s) :\n  SearchAccepts M w s ↔ M.Accepts w\n\nend Lax307052.SearchAcceptance\n",
+      "statements": [
+        {
+          "id": "Lax307052.SearchAcceptance.correct",
+          "signature": "correct : ∀ (M : Lax434930.SpaceMachines.Machine) (w : Lax434930.PolynomialTime.Word) (s : Nat),\n  M.UsesSpace w s → Iff (Lax307052.ConfigurationGraph.SearchAccepts M w s) (M.Accepts w)",
+          "startLine": 16,
+          "endLine": 17
+        }
+      ]
+    },
+    {
+      "id": "Lax307052.SearchImplementation",
+      "path": "concepts/Lax307052/SearchImplementation.lean",
+      "title": "Space bound for the search machine",
+      "type": "lemma",
+      "description": "The recursive configuration search can be implemented by a deterministic\nmachine using $O(s(n)^2)$ work cells. Each recursion frame stores a constant\nnumber of configurations and enumeration counters. This machine construction\nis an open proof obligation.",
+      "imports": [
+        "Lax307052.ConfigurationGraph",
+        "Lax307052.SpaceConstructibility"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax307052.ConfigurationGraph\nimport Lax307052.SpaceConstructibility\n\n/-!\n---\ntitle: Space bound for the search machine\ntype: lemma\n---\nThe recursive configuration search can be implemented by a deterministic\nmachine using $O(s(n)^2)$ work cells. Each recursion frame stores a constant\nnumber of configurations and enumeration counters. This machine construction\nis an open proof obligation.\n-/\n\nnamespace Lax307052.SearchImplementation\n\nopen Lax434930.PolynomialTime Lax434930.SpaceMachines Lax434930.SpaceBounds\nopen ConfigurationGraph SpaceConstructibility\n\naxiom implement (M : Machine) (s : ℕ → ℕ) (hs : Constructible s)\n    (hlog : ∀ n, logSpace n ≤ s n) :\n  ∃ (c : ℕ) (D : Machine), 0 < c ∧ D.Deterministic ∧\n    (∀ w, D.HaltsOn w ∧ (D.Accepts w ↔ SearchAccepts M w (s w.length))) ∧\n    ∀ w, D.UsesSpace w (c * (s w.length) ^ 2)\n\nend Lax307052.SearchImplementation\n",
+      "statements": [
+        {
+          "id": "Lax307052.SearchImplementation.implement",
+          "signature": "implement : ∀ (M : Lax434930.SpaceMachines.Machine) (s : Nat → Nat),\n  Lax307052.SpaceConstructibility.Constructible s →\n    (∀ (n : Nat), instLENat.le (Lax434930.SpaceBounds.logSpace n) (s n)) →\n      Exists fun c =>\n        Exists fun D =>\n          And (instLTNat.lt 0 c)\n            (And D.Deterministic\n              (And\n                (∀ (w : Lax434930.PolynomialTime.Word),\n                  And (D.HaltsOn w)\n                    (Iff (D.Accepts w) (Lax307052.ConfigurationGraph.SearchAccepts M w (s (List.length w)))))\n                (∀ (w : Lax434930.PolynomialTime.Word),\n                  D.UsesSpace w (instHMul.hMul c (instHPow.hPow (s (List.length w)) 2)))))",
+          "startLine": 20,
+          "endLine": 24
+        }
+      ]
+    },
+    {
+      "id": "Lax307052.ShortPaths",
+      "path": "concepts/Lax307052/ShortPaths.lean",
+      "title": "Short paths in a finite graph",
+      "type": "lemma",
+      "description": "If one vertex reaches another in a graph with $N$ vertices, a walk of\nlength less than $N$ suffices.",
+      "imports": [
+        "Lax307052.Reachability"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax307052.Reachability\n\n/-!\n---\ntitle: Short paths in a finite graph\ntype: lemma\n---\nIf one vertex reaches another in a graph with $N$ vertices, a walk of\nlength less than $N$ suffices.\n-/\n\nnamespace Lax307052.ShortPaths\n\nopen Reachability\n\naxiom short_path {N : ℕ} (G : Graph N) (a b : Fin N) :\n  Reachable G a b ↔ ∃ k < N, Walk (fun u v => G u v = true) k a b\n\nend Lax307052.ShortPaths\n",
+      "statements": [
+        {
+          "id": "Lax307052.ShortPaths.short_path",
+          "signature": "short_path : ∀ {N : Nat} (G : Lax307052.Reachability.Graph N) (a b : Fin N),\n  Iff (Lax307052.Reachability.Reachable G a b)\n    (Exists fun k => And (instLTNat.lt k N) (Lax307052.Reachability.Walk (fun u v => Eq (G u v) Bool.true) k a b))",
+          "startLine": 16,
+          "endLine": 17
+        }
+      ]
+    },
+    {
+      "id": "Lax307052.SpaceConstructibility",
+      "path": "concepts/Lax307052/SpaceConstructibility.lean",
+      "title": "Space-constructible bounds",
+      "type": "definition",
+      "description": "A positive bound $s$ is fully space-constructible if a deterministic\nmachine, on each input of length $n$, halts at work position $s(n)-1$\nwithout leaving the first $s(n)$ work cells. The input tape is read-only.",
+      "imports": [
+        "Lax434930.SpaceBounds"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax434930.SpaceBounds\n\n/-!\n---\ntitle: Space-constructible bounds\ntype: definition\n---\nA positive bound $s$ is fully space-constructible if a deterministic\nmachine, on each input of length $n$, halts at work position $s(n)-1$\nwithout leaving the first $s(n)$ work cells. The input tape is read-only.\n-/\n\nnamespace Lax307052.SpaceConstructibility\n\nopen Lax434930.PolynomialTime Lax434930.SpaceMachines\n\ndef Constructible (s : ℕ → ℕ) : Prop :=\n  ∃ M : Machine, M.Deterministic ∧ ∀ w : Word,\n    M.HaltsOn w ∧ M.UsesSpace w (s w.length) ∧\n    ∃ (t : ℕ) (c : M.Config), M.Run w t c ∧ M.Terminal w c ∧\n      c.workHead + 1 = s w.length\n\nend Lax307052.SpaceConstructibility\n",
+      "statements": []
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax307052Proofs.configuration_acceptance",
+      "path": "proofs/Lax307052Proofs/Configurations.lean",
+      "conclusion": "Lax307052.ConfigurationCorrespondence.acceptance",
+      "assumptions": [],
+      "description": "Encode each reachable configuration by its bounded tape prefix and decode each graph edge."
+    },
+    {
+      "id": "Lax307052Proofs.configuration_count",
+      "path": "proofs/Lax307052Proofs/ConfigurationCount.lean",
+      "conclusion": "Lax307052.ConfigurationCount.count",
+      "assumptions": [],
+      "description": "Count the four components of a bounded configuration."
+    },
+    {
+      "id": "Lax307052Proofs.finite_reachability",
+      "path": "proofs/Lax307052Proofs/Reachability.lean",
+      "conclusion": "Lax307052.FiniteReachability.decides_reachability",
+      "assumptions": [
+        "Lax307052.RecursiveReachability.search_correct",
+        "Lax307052.ShortPaths.short_path"
+      ],
+      "description": "The recursion covers every simple path because $N\\leq 2^{\\lceil\\log_2 N\\rceil}$."
+    },
+    {
+      "id": "Lax307052Proofs.path_splitting",
+      "path": "proofs/Lax307052Proofs/Reachability.lean",
+      "conclusion": "Lax307052.PathSplitting.split",
+      "assumptions": [],
+      "description": "Split at the $r$th edge, or at the endpoint when the walk is shorter."
+    },
+    {
+      "id": "Lax307052Proofs.polynomial_space",
+      "path": "proofs/Lax307052Proofs/Savitch.lean",
+      "conclusion": "Lax307052.PolynomialSpace.pspace_eq_npspace",
+      "assumptions": [
+        "Lax307052.PolynomialBounds.polynomial_constructible",
+        "Lax307052.Savitch.savitch"
+      ],
+      "description": "Enlarge the original polynomial bound to $p(n)+n+2$ and square it."
+    },
+    {
+      "id": "Lax307052Proofs.recursive_reachability",
+      "path": "proofs/Lax307052Proofs/Reachability.lean",
+      "conclusion": "Lax307052.RecursiveReachability.search_correct",
+      "assumptions": [
+        "Lax307052.PathSplitting.split"
+      ],
+      "description": "Induction on the recursion depth, using the midpoint decomposition."
+    },
+    {
+      "id": "Lax307052Proofs.savitch",
+      "path": "proofs/Lax307052Proofs/Savitch.lean",
+      "conclusion": "Lax307052.Savitch.savitch",
+      "assumptions": [
+        "Lax307052.SearchAcceptance.correct",
+        "Lax307052.SearchImplementation.implement"
+      ],
+      "description": "Apply the deterministic search machine to a space-bounded nondeterministic decider."
+    },
+    {
+      "id": "Lax307052Proofs.search_acceptance",
+      "path": "proofs/Lax307052Proofs/Configurations.lean",
+      "conclusion": "Lax307052.SearchAcceptance.correct",
+      "assumptions": [
+        "Lax307052.ConfigurationCorrespondence.acceptance",
+        "Lax307052.FiniteReachability.decides_reachability"
+      ],
+      "description": "Replace each recursive search by graph reachability and apply the configuration correspondence."
+    },
+    {
+      "id": "Lax307052Proofs.short_paths",
+      "path": "proofs/Lax307052Proofs/ShortPaths.lean",
+      "conclusion": "Lax307052.ShortPaths.short_path",
+      "assumptions": [],
+      "description": "Reachable layers grow strictly until they contain the target; there are only $N$ vertices."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "feda3bf476c61d9fdb767e28e113ed2c77514997dc41c30c15b517136e22fa79",
+    "sourceCommit": "c1b089ec54b184229d71169ef919858612bc1072",
+    "leanToolchain": "leanprover/lean4:v4.30.0",
+    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "files": [
+      {
+        "path": "concepts/ir/Lax307052/BoundedConfigurations.c",
+        "bytes": 18087,
+        "sha256": "cb62f4fddffdf63cc1844b40198e9c53a85335d4e68bc8bc5549974dfb2ac513"
+      },
+      {
+        "path": "concepts/ir/Lax307052/BoundedConfigurations.c.hash",
+        "bytes": 16,
+        "sha256": "e5d37c54c6939502e9438fd45b09d61bf964aac29a8153b4df69e8e7cc399e97"
+      },
+      {
+        "path": "concepts/ir/Lax307052/ConfigurationCorrespondence.c",
+        "bytes": 1388,
+        "sha256": "697d40cee4b47efe4f9474e236e6b2e7db64cacd9a877dcbd648d229e53137c7"
+      },
+      {
+        "path": "concepts/ir/Lax307052/ConfigurationCorrespondence.c.hash",
+        "bytes": 16,
+        "sha256": "a880a51b5e51f9a939af368b7ef224ff374cf5974cc3c80fa68ab8453388e235"
+      },
+      {
+        "path": "concepts/ir/Lax307052/ConfigurationCount.c",
+        "bytes": 1379,
+        "sha256": "08bdde9fe0aa199984219ec7d503ce74ed26ecf9c06affb3ab03047257973535"
+      },
+      {
+        "path": "concepts/ir/Lax307052/ConfigurationCount.c.hash",
+        "bytes": 16,
+        "sha256": "f3404f1759312c1ea3242315ff056aa8a617e9e5352b6a092476d9bcc3aa54f6"
+      },
+      {
+        "path": "concepts/ir/Lax307052/ConfigurationGraph.c",
+        "bytes": 2097,
+        "sha256": "2d32a03e76dc6de1f76b874e7f930be9b8d677ed1bb159177afaa49ecc1e207d"
+      },
+      {
+        "path": "concepts/ir/Lax307052/ConfigurationGraph.c.hash",
+        "bytes": 16,
+        "sha256": "309b0c092e9691aa3b73bd8fc3efe89f86b6ae65eebb21553e82bbcde33c3c4c"
+      },
+      {
+        "path": "concepts/ir/Lax307052/FiniteReachability.c",
+        "bytes": 1837,
+        "sha256": "f3c84dd5c306e0fd935d3b86f4eed8fc36301d0dde7459effee5c99c1fcc385b"
+      },
+      {
+        "path": "concepts/ir/Lax307052/FiniteReachability.c.hash",
+        "bytes": 16,
+        "sha256": "c8973c80e859fd1e67eb2291608b34de9f4ec40cec40df3f0186cceeb0dc339f"
+      },
+      {
+        "path": "concepts/ir/Lax307052/PathSplitting.c",
+        "bytes": 1342,
+        "sha256": "c6e10e522b16466a84309ea07ed50d326aedefbe3f2580eae3c7b43dc5a182cb"
+      },
+      {
+        "path": "concepts/ir/Lax307052/PathSplitting.c.hash",
+        "bytes": 16,
+        "sha256": "a7405164f6fd057dccf11918956fbf0f8e407f3356c5262f19c9e3a17902c5d1"
+      },
+      {
+        "path": "concepts/ir/Lax307052/PolynomialBounds.c",
+        "bytes": 1375,
+        "sha256": "f499eea4e7169ad7c5e690f7f21aad420bcc78525f3b4d67c3d26b04745efcd6"
+      },
+      {
+        "path": "concepts/ir/Lax307052/PolynomialBounds.c.hash",
+        "bytes": 16,
+        "sha256": "e6a7d70be5bc6a73287db263559cdc703d354db1eca1abbff3474658df7a077f"
+      },
+      {
+        "path": "concepts/ir/Lax307052/PolynomialSpace.c",
+        "bytes": 2120,
+        "sha256": "4aa654231351908fa56d94e16d1e58b903f54b53b9dfa3070f139c29e17230cf"
+      },
+      {
+        "path": "concepts/ir/Lax307052/PolynomialSpace.c.hash",
+        "bytes": 16,
+        "sha256": "e9444d204d5144648c0874edf3162f176c2ca1c20d980c9968a1c373b446b712"
+      },
+      {
+        "path": "concepts/ir/Lax307052/Reachability.c",
+        "bytes": 5265,
+        "sha256": "b1dd30a694c29a81917097446e6704eeeecd8055416164489427e56742cc0717"
+      },
+      {
+        "path": "concepts/ir/Lax307052/Reachability.c.hash",
+        "bytes": 16,
+        "sha256": "9db1ac07b576d5e36641055d5c6ca1e0f88efaa6b59c3f594229f0e241cccd55"
+      },
+      {
+        "path": "concepts/ir/Lax307052/RecursiveReachability.c",
+        "bytes": 1361,
+        "sha256": "6d1857ea0332701d3303d42af439bd7db6a26ca1dafbdbc9440f4ab6ef309196"
+      },
+      {
+        "path": "concepts/ir/Lax307052/RecursiveReachability.c.hash",
+        "bytes": 16,
+        "sha256": "70d04ee92b3097f2774cd669ebdaa7abbeba83a4d67782aa8a0d9c3e77a627b1"
+      },
+      {
+        "path": "concepts/ir/Lax307052/Savitch.c",
+        "bytes": 1357,
+        "sha256": "cd24bc6762b5f650a6d69b5ea1f8d502a8fcb8288a9ef1141ee57ae80cade698"
+      },
+      {
+        "path": "concepts/ir/Lax307052/Savitch.c.hash",
+        "bytes": 16,
+        "sha256": "6c6092e81a6e9775e128125ccd4a2bc1dee5b45951983916299a6e1c287e3177"
+      },
+      {
+        "path": "concepts/ir/Lax307052/SearchAcceptance.c",
+        "bytes": 1366,
+        "sha256": "523bd42f7f3d5727d58c7e29cb4067dcb83c16a2793949a4b5ab7fd023914a0a"
+      },
+      {
+        "path": "concepts/ir/Lax307052/SearchAcceptance.c.hash",
+        "bytes": 16,
+        "sha256": "653c0e874f21bf72cdf9b7057f944af546a4a345ff0e25ec6c89d1e3b9182e3c"
+      },
+      {
+        "path": "concepts/ir/Lax307052/SearchImplementation.c",
+        "bytes": 1638,
+        "sha256": "6e3b1049f00bd339ab79106a3c73d95bf4b10ad1cac7d6ee2dc2177c39af85be"
+      },
+      {
+        "path": "concepts/ir/Lax307052/SearchImplementation.c.hash",
+        "bytes": 16,
+        "sha256": "4281c86bc4b09124d9f635720f1da4299ce2856b4e3a6eb28a384e2b259afb8c"
+      },
+      {
+        "path": "concepts/ir/Lax307052/ShortPaths.c",
+        "bytes": 1336,
+        "sha256": "64ced3628962be0b12a5f36d3661b72cded32f209f1cec549ad4bb14d43dc52a"
+      },
+      {
+        "path": "concepts/ir/Lax307052/ShortPaths.c.hash",
+        "bytes": 16,
+        "sha256": "71747b0d506e5bd1a56d2d01f4e5d67d694aa716aafb88621357b79d8b65c8dc"
+      },
+      {
+        "path": "concepts/ir/Lax307052/SpaceConstructibility.c",
+        "bytes": 1355,
+        "sha256": "10d5ff79efbceeda31d1d23f5965af7fafa7ed5c7683ccc4635f079e8ee03b33"
+      },
+      {
+        "path": "concepts/ir/Lax307052/SpaceConstructibility.c.hash",
+        "bytes": 16,
+        "sha256": "828e259983e5be445df0ecac1b9dbaf7fc6d9e5edbe8f8969d8ba6c3ca3782d2"
+      },
+      {
+        "path": "concepts/ir/Lax307052.c",
+        "bytes": 4851,
+        "sha256": "d50efc6605f0f41191149490d2e7d5a2a63175da24411e43fbf5d8b28dd0d8a4"
+      },
+      {
+        "path": "concepts/ir/Lax307052.c.hash",
+        "bytes": 16,
+        "sha256": "e360c50630bf2add19594136c61f071ef575373ba85defd0d4ef6c9bd672de10"
+      },
+      {
+        "path": "concepts/lib/Lax307052/BoundedConfigurations.ilean",
+        "bytes": 3201,
+        "sha256": "fa3a9a9a5ca2ff52316acd2c58ade1e43da6152f5e7fe7937646758ba30fecad"
+      },
+      {
+        "path": "concepts/lib/Lax307052/BoundedConfigurations.ilean.hash",
+        "bytes": 16,
+        "sha256": "266b39764b919117f5c62ec6a1c5e9a5546af5428f6fa8432826ce7cd9909d8e"
+      },
+      {
+        "path": "concepts/lib/Lax307052/BoundedConfigurations.olean",
+        "bytes": 137208,
+        "sha256": "a083d1346b22ed3a008e2b195d771b6071bf25b5c2f1cfeb8d7ecf93080335b0"
+      },
+      {
+        "path": "concepts/lib/Lax307052/BoundedConfigurations.olean.hash",
+        "bytes": 16,
+        "sha256": "e0595772fc85e6b239d8dcd34e0d6b26c87a96c10eb6a493a8d1443a55128190"
+      },
+      {
+        "path": "concepts/lib/Lax307052/BoundedConfigurations.trace",
+        "bytes": 2534,
+        "sha256": "ce0da700b06846278ea4af3808865da3028ffd1b07b53a9391c79eb5f446db2e"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ConfigurationCorrespondence.ilean",
+        "bytes": 1539,
+        "sha256": "b7287824145e23693fcbc9792c0ed3aacbbc4ee1931d6511062940dd085f2db7"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ConfigurationCorrespondence.ilean.hash",
+        "bytes": 16,
+        "sha256": "ffa6ef9fb5155fdadb7dfaf0a84af0602deb4588390a72fb4a2a89672645f9c7"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ConfigurationCorrespondence.olean",
+        "bytes": 6280,
+        "sha256": "357ec81521ea1660f3c0563b442a4c92fca51542f53ee136231e6e352c81b3fa"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ConfigurationCorrespondence.olean.hash",
+        "bytes": 16,
+        "sha256": "cc8a941890454200c5f7fd43cf453a3243236be7587a7c82096fd5684fb96f1f"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ConfigurationCorrespondence.trace",
+        "bytes": 2430,
+        "sha256": "3b985914abc82fbe35524a660e6d303ed4e37c9a79ccfcdb9daee6257c19ab22"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ConfigurationCount.ilean",
+        "bytes": 1468,
+        "sha256": "98599c1c9ab797e83ec48f946f9134b3b617791f8fcb8185c0aa8d994ce13c81"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ConfigurationCount.ilean.hash",
+        "bytes": 16,
+        "sha256": "e7d7ad79f859542e469a892a6d6f7e2ab955faa13702546194e824cbe0c61fee"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ConfigurationCount.olean",
+        "bytes": 9648,
+        "sha256": "393450f476a5d59f99b5f5b70a27b664b72268affa0f8a4afb3057ea4b953032"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ConfigurationCount.olean.hash",
+        "bytes": 16,
+        "sha256": "12f1e0bd77ec2b46cffccedd0c8e25cb9a788bf4df44cbc9476f8c5be7ad0952"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ConfigurationCount.trace",
+        "bytes": 2370,
+        "sha256": "f4b57dbe778f7eec06bc6874e146fd2b0e00f43d2a916230015903c04472b845"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ConfigurationGraph.ilean",
+        "bytes": 7133,
+        "sha256": "cba5f7d46cfa49803abfbfaa36f023e7e6daffde9f95992148dbde9afb303a0c"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ConfigurationGraph.ilean.hash",
+        "bytes": 16,
+        "sha256": "2fbd89f12094e5f9de14a4cd58f637749499b7be3d6c9628d8701d972e66570c"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ConfigurationGraph.olean",
+        "bytes": 19072,
+        "sha256": "f3cfce3cf1cb32240336b77114b9ba02b67582225bdb5610fe3745079647c9e1"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ConfigurationGraph.olean.hash",
+        "bytes": 16,
+        "sha256": "156dab2071358f9b0c15d2b499b501b48d4f69113d2ec87331650027ff09247d"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ConfigurationGraph.trace",
+        "bytes": 2860,
+        "sha256": "08b6ea4b14f13ca65b6598a3af4339d2dfe74d035b58ee3f491685888b39d0e2"
+      },
+      {
+        "path": "concepts/lib/Lax307052/FiniteReachability.ilean",
+        "bytes": 1664,
+        "sha256": "e79e0c5323de73a2fbcd483ee847a91b2465319bc9c4b9a4f80a21ac70cd5be0"
+      },
+      {
+        "path": "concepts/lib/Lax307052/FiniteReachability.ilean.hash",
+        "bytes": 16,
+        "sha256": "62c52f121a31ef63c0c46c285352fd9d3841ee32088888420867e5206e4ff2df"
+      },
+      {
+        "path": "concepts/lib/Lax307052/FiniteReachability.olean",
+        "bytes": 7072,
+        "sha256": "9060934cae569fa6211d9380d70a726d81251caa66d7563d3654116d0002d646"
+      },
+      {
+        "path": "concepts/lib/Lax307052/FiniteReachability.olean.hash",
+        "bytes": 16,
+        "sha256": "4cec034c5d30c3860aa793d4e3d862d812bc894ba1823414e83daabf11110851"
+      },
+      {
+        "path": "concepts/lib/Lax307052/FiniteReachability.trace",
+        "bytes": 2679,
+        "sha256": "af377af25d72115327b57edc775857f630219879389b1f68ced4d213b385dcc3"
+      },
+      {
+        "path": "concepts/lib/Lax307052/PathSplitting.ilean",
+        "bytes": 728,
+        "sha256": "f3a95453fb298bcc71876d328f6d0bb77e296c906fc3ccbb583a05e5ad2b692f"
+      },
+      {
+        "path": "concepts/lib/Lax307052/PathSplitting.ilean.hash",
+        "bytes": 16,
+        "sha256": "d74d4c00fa3c8b12a3503f53102b9a0cc15573bbb18d320d000039f888a69f58"
+      },
+      {
+        "path": "concepts/lib/Lax307052/PathSplitting.olean",
+        "bytes": 7408,
+        "sha256": "311ca1942289392dbf33f32847e7f9c1b50b54e4096322e4ac0f609b9ac360a1"
+      },
+      {
+        "path": "concepts/lib/Lax307052/PathSplitting.olean.hash",
+        "bytes": 16,
+        "sha256": "19685ae7ce9cd2d23b8a38d473928849b4fc108a6ce532f0a864ee24b8dd1956"
+      },
+      {
+        "path": "concepts/lib/Lax307052/PathSplitting.trace",
+        "bytes": 2303,
+        "sha256": "eda1cbe2dc9402347119b0875c5824885460a15ee8a83c93b91e22c620fedf3a"
+      },
+      {
+        "path": "concepts/lib/Lax307052/PolynomialBounds.ilean",
+        "bytes": 1146,
+        "sha256": "723f93c4d28440ba10258346cec4c6938d385b09e4418649fbca405c9056de85"
+      },
+      {
+        "path": "concepts/lib/Lax307052/PolynomialBounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "6bbe90eba940a9f16e624f09618e2fcae71623761bcf15d8503efe53f6734410"
+      },
+      {
+        "path": "concepts/lib/Lax307052/PolynomialBounds.olean",
+        "bytes": 6560,
+        "sha256": "483590a840996dc0758dd287a7aca8557475618272b96d42ef87369f298bc63f"
+      },
+      {
+        "path": "concepts/lib/Lax307052/PolynomialBounds.olean.hash",
+        "bytes": 16,
+        "sha256": "8aad03ca0fd6ffb7319b991d2cc61cd1e97439bd49be8382b43a47935314fd1b"
+      },
+      {
+        "path": "concepts/lib/Lax307052/PolynomialBounds.trace",
+        "bytes": 2354,
+        "sha256": "723115cbf057230a0ea558a28fcb84c8b7769b7b8b634594ddc167a5468a8755"
+      },
+      {
+        "path": "concepts/lib/Lax307052/PolynomialSpace.ilean",
+        "bytes": 949,
+        "sha256": "4fab8ab05e758eccd40379fafa204f9b013402175ee42302b24b1c90b0bd1064"
+      },
+      {
+        "path": "concepts/lib/Lax307052/PolynomialSpace.ilean.hash",
+        "bytes": 16,
+        "sha256": "5bdd43255de15264b15c81c1f1a8e365db7d9e1d74a341142af64654e682b74c"
+      },
+      {
+        "path": "concepts/lib/Lax307052/PolynomialSpace.olean",
+        "bytes": 5096,
+        "sha256": "d45789c4e07488466872d7cde9af90d6a7e7bcaa29cc61f5c5c0a76d37c8104e"
+      },
+      {
+        "path": "concepts/lib/Lax307052/PolynomialSpace.olean.hash",
+        "bytes": 16,
+        "sha256": "22bee4a453784b8722db394e82ed7360903fabb1b742fb8336f288d02410d8e9"
+      },
+      {
+        "path": "concepts/lib/Lax307052/PolynomialSpace.trace",
+        "bytes": 2850,
+        "sha256": "75bceb537c94e69b87474f60746f6a142842c9f9898a0dd6fb4c9a1ebfa37641"
+      },
+      {
+        "path": "concepts/lib/Lax307052/Reachability.ilean",
+        "bytes": 3395,
+        "sha256": "da474fb85e9c5d490fb63fcd51e1ac83902dc72119f3725e37605a8eda057257"
+      },
+      {
+        "path": "concepts/lib/Lax307052/Reachability.ilean.hash",
+        "bytes": 16,
+        "sha256": "940e553cc8aea14d982f7c6607b585bd1cec2828a7f414ba0e5344c2bcfb0d80"
+      },
+      {
+        "path": "concepts/lib/Lax307052/Reachability.olean",
+        "bytes": 73504,
+        "sha256": "e1ceb52bb490363da0ffc804d9fae50fe42bdaf0e95d62d93e6a4e9bd211544c"
+      },
+      {
+        "path": "concepts/lib/Lax307052/Reachability.olean.hash",
+        "bytes": 16,
+        "sha256": "33ba04d7830705380f46acbf715fdb2187c9492f473f2697607919bdb8d60e47"
+      },
+      {
+        "path": "concepts/lib/Lax307052/Reachability.trace",
+        "bytes": 2466,
+        "sha256": "bd77acc38d96f475a6ec2871738a4998df691d5ce80c3db8a47d27297914d8f3"
+      },
+      {
+        "path": "concepts/lib/Lax307052/RecursiveReachability.ilean",
+        "bytes": 1513,
+        "sha256": "6b091379e976258905ebe5fb223dff2de6fe10f8dbbfe571c10cd4d3aeb5c3c4"
+      },
+      {
+        "path": "concepts/lib/Lax307052/RecursiveReachability.ilean.hash",
+        "bytes": 16,
+        "sha256": "337ed75001e882da46a510d8bf4f4baffc5c7668d6d12c0a6893a44fdd777e61"
+      },
+      {
+        "path": "concepts/lib/Lax307052/RecursiveReachability.olean",
+        "bytes": 8224,
+        "sha256": "26fc188dcf1c78136a5f4f1d1b2501d0f80e1c5b7268190eb0ad91330cb32db8"
+      },
+      {
+        "path": "concepts/lib/Lax307052/RecursiveReachability.olean.hash",
+        "bytes": 16,
+        "sha256": "73e365c95bc02bce24c4b1789099b4ce5ec5b36af0d4bce29e697a02a5519264"
+      },
+      {
+        "path": "concepts/lib/Lax307052/RecursiveReachability.trace",
+        "bytes": 2369,
+        "sha256": "b80efe683c75e8127f209890384a89e2886f5d387e7c2ca562982f4bd22243e7"
+      },
+      {
+        "path": "concepts/lib/Lax307052/Savitch.ilean",
+        "bytes": 1357,
+        "sha256": "570d793ebb602ff9fbc9e2ebf7f5867852176e8f571832a15e0e91f4cc2c64cb"
+      },
+      {
+        "path": "concepts/lib/Lax307052/Savitch.ilean.hash",
+        "bytes": 16,
+        "sha256": "b9245026a02a0e0b4f5d7261da2d550d65434342ae7cba6162fa1003f4b31627"
+      },
+      {
+        "path": "concepts/lib/Lax307052/Savitch.olean",
+        "bytes": 10848,
+        "sha256": "5d103db51a13734575fa913b2afd521e70d009b5cadc44157aafb772e004a106"
+      },
+      {
+        "path": "concepts/lib/Lax307052/Savitch.olean.hash",
+        "bytes": 16,
+        "sha256": "d6471ae02709b8f7b092e72758399275c6094cbac610357db684ce1506ec1ad1"
+      },
+      {
+        "path": "concepts/lib/Lax307052/Savitch.trace",
+        "bytes": 2282,
+        "sha256": "432870ba6cf83304370cf6b48fff285dbabf8f024120657416cef6624f34c492"
+      },
+      {
+        "path": "concepts/lib/Lax307052/SearchAcceptance.ilean",
+        "bytes": 1390,
+        "sha256": "fb396fc1a177a0e9279a6f64606b728d9cd2464e5d0bcf2ef9be8c7d49b450c1"
+      },
+      {
+        "path": "concepts/lib/Lax307052/SearchAcceptance.ilean.hash",
+        "bytes": 16,
+        "sha256": "c59fcc7a3405d61fae18dd0193fe8c2b1f3f4454d852ea882fb799c4c35babc5"
+      },
+      {
+        "path": "concepts/lib/Lax307052/SearchAcceptance.olean",
+        "bytes": 6264,
+        "sha256": "f4b3716e3594ed0ba5eed256a25a04b38be1bd6441f09a74088ae7c0589b8e59"
+      },
+      {
+        "path": "concepts/lib/Lax307052/SearchAcceptance.olean.hash",
+        "bytes": 16,
+        "sha256": "99690ff18d2999faddbd81f9db67d5d7b0117c0d57527f25888a94de97055014"
+      },
+      {
+        "path": "concepts/lib/Lax307052/SearchAcceptance.trace",
+        "bytes": 2339,
+        "sha256": "c3028758f300d974cf74d2de95c0de11543038953bc6849beec5d66750fac14e"
+      },
+      {
+        "path": "concepts/lib/Lax307052/SearchImplementation.ilean",
+        "bytes": 2449,
+        "sha256": "2698e836ff98171aa9fb379f56e89d6e28405e74a93524adbfcb1181470b3b86"
+      },
+      {
+        "path": "concepts/lib/Lax307052/SearchImplementation.ilean.hash",
+        "bytes": 16,
+        "sha256": "f5c6f0fd46492cf3e531b422b9bfc1bc7661b4fee82d290eb3a9bc60ff164481"
+      },
+      {
+        "path": "concepts/lib/Lax307052/SearchImplementation.olean",
+        "bytes": 12520,
+        "sha256": "bf60b95edaa1e1c32cd9bb2b1074f5c2068d427eade149259ec311b8a4890747"
+      },
+      {
+        "path": "concepts/lib/Lax307052/SearchImplementation.olean.hash",
+        "bytes": 16,
+        "sha256": "630f73cba04525c267f6b27fd7bb51d37cb0c3843731fc3fd84b6a3348ef9512"
+      },
+      {
+        "path": "concepts/lib/Lax307052/SearchImplementation.trace",
+        "bytes": 2561,
+        "sha256": "3148751db3a99dd6773f7ade7b625353d32d9320f1d451b8ba7fc569571f4348"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ShortPaths.ilean",
+        "bytes": 1231,
+        "sha256": "a15eec52578d1386a0ec1adb458fecc9b6c52a89023f22deb71580e11b8f25cc"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ShortPaths.ilean.hash",
+        "bytes": 16,
+        "sha256": "fc02717398d52732ee0d48000cd4859adda8a002f83c19aec4a3474bfda5ab36"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ShortPaths.olean",
+        "bytes": 7648,
+        "sha256": "0a6320c9d617ddf9cb3f45d91a4d140698ffb8147e35929d6ed237d7a72a672d"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ShortPaths.olean.hash",
+        "bytes": 16,
+        "sha256": "01bb6e38a74a464405ab54f0f5d7c2b211cce8b4e909798c97d16041d2587e3b"
+      },
+      {
+        "path": "concepts/lib/Lax307052/ShortPaths.trace",
+        "bytes": 2279,
+        "sha256": "d0206a9872f8578db17555b36ddaec012bb17eaa211d4de67618011cdcadc3c8"
+      },
+      {
+        "path": "concepts/lib/Lax307052/SpaceConstructibility.ilean",
+        "bytes": 2535,
+        "sha256": "40047bd5dc44da2e3ffe7596649ab3fe3867947e86d466163aaee5e598a70848"
+      },
+      {
+        "path": "concepts/lib/Lax307052/SpaceConstructibility.ilean.hash",
+        "bytes": 16,
+        "sha256": "b0ba0f9346b92246a19fe00af851661d356c6b4ce8913967d67aca3d59ef1c90"
+      },
+      {
+        "path": "concepts/lib/Lax307052/SpaceConstructibility.olean",
+        "bytes": 10488,
+        "sha256": "86173d280dbe86f6a1d9cca459098415557e2a39b0f538e223f9fa9b87de3e19"
+      },
+      {
+        "path": "concepts/lib/Lax307052/SpaceConstructibility.olean.hash",
+        "bytes": 16,
+        "sha256": "ae1fb95d2a9b0ec2295a648bce43bf412b9cc2b9b5596fb579eb0418cb65a1f9"
+      },
+      {
+        "path": "concepts/lib/Lax307052/SpaceConstructibility.trace",
+        "bytes": 2365,
+        "sha256": "8038d6064703f72e9c439ee4697f75c86979cc86be5bbf8bb3eae5e629233c2a"
+      },
+      {
+        "path": "concepts/lib/Lax307052.ilean",
+        "bytes": 827,
+        "sha256": "b9c53fc961f897dfd8144d800b743771b3499ec151580b6bb70c2a4d29f8b86b"
+      },
+      {
+        "path": "concepts/lib/Lax307052.ilean.hash",
+        "bytes": 16,
+        "sha256": "dc8eea92413afd2c0db796049ee7cb8993be60bc0ddf7b3d66d85ab1021f8057"
+      },
+      {
+        "path": "concepts/lib/Lax307052.olean",
+        "bytes": 2992,
+        "sha256": "6f678279e572684ef2db2c03fd07e9c6a9be4eec90f1c57e7ebf4635ef152ae3"
+      },
+      {
+        "path": "concepts/lib/Lax307052.olean.hash",
+        "bytes": 16,
+        "sha256": "a24d180cee6aae5fd8fae8fd924357687aadfd0f13c4a337cc57a315db968b55"
+      },
+      {
+        "path": "concepts/lib/Lax307052.trace",
+        "bytes": 4628,
+        "sha256": "58603164b81395dec08057e8d63984437246d9ed8d5a848b07a99e8e5cc455c2"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3586,
+        "sha256": "3317103af365410422c975742b91ddfafc8fed8aa6b17c4199b8415143196abe"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 573,
+        "sha256": "5ba04b0385ea88081ed2ba071737bde44914ff57ae6bb17902f502dccbc8feac"
+      },
+      {
+        "path": "concepts/package/Lax307052/BoundedConfigurations.lean",
+        "bytes": 756,
+        "sha256": "925414c1a7e72d9bb58305779af3c619273a17c8fd5728be8b3d357028af0171"
+      },
+      {
+        "path": "concepts/package/Lax307052/ConfigurationCorrespondence.lean",
+        "bytes": 511,
+        "sha256": "62996eb8e97cbce5f8bcfdfa873f2b13f401a2205aad4916600cef34df5500ad"
+      },
+      {
+        "path": "concepts/package/Lax307052/ConfigurationCount.lean",
+        "bytes": 512,
+        "sha256": "943cc6cb332bd13f2b14d4fba91e688ad08fd0fab7e32a795b0eaac0c69ba347"
+      },
+      {
+        "path": "concepts/package/Lax307052/ConfigurationGraph.lean",
+        "bytes": 1624,
+        "sha256": "1568b9f95d3a8bf06d0e4ffccfbcac9f7457b2d15ec90bb7eaae4bc15b1cc5dd"
+      },
+      {
+        "path": "concepts/package/Lax307052/FiniteReachability.lean",
+        "bytes": 478,
+        "sha256": "8f9e21f719d972527385848dd18232a7eee930f29d9ecdb36fd2382fc3b57e6e"
+      },
+      {
+        "path": "concepts/package/Lax307052/PathSplitting.lean",
+        "bytes": 422,
+        "sha256": "1e25e78f72999b9dbbb24675777e82f819c237696b2f3531992065d91c195540"
+      },
+      {
+        "path": "concepts/package/Lax307052/PolynomialBounds.lean",
+        "bytes": 474,
+        "sha256": "34d2fc7db80f0e54fc169cffbdc5a0478c66237f42fab14f2d66427b40f7daed"
+      },
+      {
+        "path": "concepts/package/Lax307052/PolynomialSpace.lean",
+        "bytes": 481,
+        "sha256": "7c2a54bd62656b6f557499f81f71eaa8f852b04bf3bfc0ca60041fc3f8745f41"
+      },
+      {
+        "path": "concepts/package/Lax307052/Reachability.lean",
+        "bytes": 1059,
+        "sha256": "1b2a99838981ab6dc87fb951b25224848f64860dc1e93c0e760624fe00ec3012"
+      },
+      {
+        "path": "concepts/package/Lax307052/RecursiveReachability.lean",
+        "bytes": 458,
+        "sha256": "e80b570070c27859841b660a7d05b6093b8025247a3921501695d026f21348c8"
+      },
+      {
+        "path": "concepts/package/Lax307052/Savitch.lean",
+        "bytes": 574,
+        "sha256": "6308ca987c102558100eb0acdf002783a6db0dfd330c15242b91fc21cc5a91ae"
+      },
+      {
+        "path": "concepts/package/Lax307052/SearchAcceptance.lean",
+        "bytes": 482,
+        "sha256": "cd079a91675c1ad8ed45f22cc1857410786f151594b8bbe92d326fde897d963d"
+      },
+      {
+        "path": "concepts/package/Lax307052/SearchImplementation.lean",
+        "bytes": 906,
+        "sha256": "c82a8633c6fd13cc8118cd6db4bd31ae10b162be9c5298948547bdfd73c26575"
+      },
+      {
+        "path": "concepts/package/Lax307052/ShortPaths.lean",
+        "bytes": 401,
+        "sha256": "aff40aa94939ca2187e068e67353dd3ed1bbcbe543b131a9cc31ccd9be9fc4a8"
+      },
+      {
+        "path": "concepts/package/Lax307052/SpaceConstructibility.lean",
+        "bytes": 698,
+        "sha256": "32df0ac412d6067c85b86be74c04067146eb5f0c9fb1bae139ed37eab0409ffe"
+      },
+      {
+        "path": "concepts/package/Lax307052.lean",
+        "bytes": 523,
+        "sha256": "b0492e150f942f5b4365b76f662fa611f70877678e2fe58da1fa2b90b07a6fe7"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      },
+      {
+        "path": "proofs/ir/Lax307052Proofs/ConfigurationCount.c",
+        "bytes": 6951,
+        "sha256": "522861bcd040ad00c24b7bcb3d683fb8a53a0593da05b0cce627a42a016ca71c"
+      },
+      {
+        "path": "proofs/ir/Lax307052Proofs/ConfigurationCount.c.hash",
+        "bytes": 16,
+        "sha256": "0bcee735a0acc6d3ecfb86537f02e47fd25e9f725b5a80b8797e39d1b708033a"
+      },
+      {
+        "path": "proofs/ir/Lax307052Proofs/Configurations.c",
+        "bytes": 5267,
+        "sha256": "bd87efcc28353955dab0ecc1cf41df472ad9023aeb6afa8d9ebb8031d6be03cf"
+      },
+      {
+        "path": "proofs/ir/Lax307052Proofs/Configurations.c.hash",
+        "bytes": 16,
+        "sha256": "b16f0fcd05da7b30f2e16816d5dbe85e300dd1a725d1af745d67a9aafcbf5805"
+      },
+      {
+        "path": "proofs/ir/Lax307052Proofs/Reachability.c",
+        "bytes": 5399,
+        "sha256": "5fa0e50bc65f1d64cd0a7ef8e2a1d09450cbcdb48acec61f23e8b59f2b0d6139"
+      },
+      {
+        "path": "proofs/ir/Lax307052Proofs/Reachability.c.hash",
+        "bytes": 16,
+        "sha256": "868c9ec09af141cd33756d450bfb56fd5dfcd5d9ec4ca38724b5192dfc455481"
+      },
+      {
+        "path": "proofs/ir/Lax307052Proofs/Savitch.c",
+        "bytes": 2298,
+        "sha256": "a467618a8b44ab29ee210b3efff80e616e62c9a959a1921dde56e400e7ebe804"
+      },
+      {
+        "path": "proofs/ir/Lax307052Proofs/Savitch.c.hash",
+        "bytes": 16,
+        "sha256": "372962d4ad890dba8653b0e040a9916c6d362ca5eef9a1bee382ed48a46d207b"
+      },
+      {
+        "path": "proofs/ir/Lax307052Proofs/ShortPaths.c",
+        "bytes": 1384,
+        "sha256": "a5b2d7b17d4e3585e7c4e24b6ae0c05a77d691493c8adcb0f317b56ec4919dd8"
+      },
+      {
+        "path": "proofs/ir/Lax307052Proofs/ShortPaths.c.hash",
+        "bytes": 16,
+        "sha256": "ccf7d06d58ed437537088a4964b0c164805504c2fdfc95c772130908d22627c6"
+      },
+      {
+        "path": "proofs/ir/Lax307052Proofs.c",
+        "bytes": 2433,
+        "sha256": "a66ec6ac5d9a1fe63c736d3c84b9ed78c241b18d732ac4ec43f9dc85e4892f51"
+      },
+      {
+        "path": "proofs/ir/Lax307052Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "6faeb5068b7a5673f9edafd673e24fdee2e79d2044f0d4546b1f1e68b4348349"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/ConfigurationCount.ilean",
+        "bytes": 4691,
+        "sha256": "9782a5a3d74c1556ecb8a480684d099e128f565ec013c3425d13d3611f3a06d9"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/ConfigurationCount.ilean.hash",
+        "bytes": 16,
+        "sha256": "70d6bfce8edd75ece5038669672cec0feac06150b213f4c4ed56bc470ddb7405"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/ConfigurationCount.olean",
+        "bytes": 50096,
+        "sha256": "226c4e327f14297177bdaa202eba3b24eb28ab33e45406eedeb0f40ff64e3b57"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/ConfigurationCount.olean.hash",
+        "bytes": 16,
+        "sha256": "2796535c4eeb011315da10c5b7a1bb56c2458c014de0b68213fbaf06dec16ace"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/ConfigurationCount.trace",
+        "bytes": 2592,
+        "sha256": "25971b950cd60261c79d77bf475db22c9a355ee87369cb2de0f9de940121699a"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/Configurations.ilean",
+        "bytes": 14380,
+        "sha256": "f33084903fe0801bfca0c4d1126fe5e9fd039d3bca29a9c3725cff29430ed8d1"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/Configurations.ilean.hash",
+        "bytes": 16,
+        "sha256": "9b8d4fabe18724ea4cec24b4df506dedad453ef45a4f34639e3cac04bd22f9c2"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/Configurations.olean",
+        "bytes": 207568,
+        "sha256": "24850af3ba77996885aee26cbd53974ef6058bdbdf2d218c861b2b742e9cb6ee"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/Configurations.olean.hash",
+        "bytes": 16,
+        "sha256": "b28e8fdaf1a9ccd585b316f2bf03258a1af171f471af3c46b686d68573167548"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/Configurations.trace",
+        "bytes": 2930,
+        "sha256": "35eb86537d7c810b4a31817f3a67cac4978a81de6fa992d2a410cbed302fead8"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/Reachability.ilean",
+        "bytes": 9553,
+        "sha256": "87d8f2da0b1522e87cc4786c04c14f148ec19b0d6145d27795cd574249c48f0b"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/Reachability.ilean.hash",
+        "bytes": 16,
+        "sha256": "faeee3381499af5c651280484ba9a629bea23e8804f1fc4be1e8047440fbe4a5"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/Reachability.olean",
+        "bytes": 258232,
+        "sha256": "d3462e4c52d03d6de1588ead8efa2323b677a3acc50f6d86daac5d2914c9aeec"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/Reachability.olean.hash",
+        "bytes": 16,
+        "sha256": "b3f77c9aeed781d66f0c464754186e483cee6673ac88f3e71db6cd2c4931950b"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/Reachability.trace",
+        "bytes": 2541,
+        "sha256": "8706bf212e5b194ad499d2a3cc6e6810face7d59b3a9f7904f29af167eb09629"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/Savitch.ilean",
+        "bytes": 4442,
+        "sha256": "749f1f5e5fecf9aeb2f9f8f4d29da74158bc1047fc54543261fafe5f08631837"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/Savitch.ilean.hash",
+        "bytes": 16,
+        "sha256": "7861eb2c8c1392f2eaa1bc11b4e26b5f1979a4fc6250dabc064f9ea8de395db8"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/Savitch.olean",
+        "bytes": 106272,
+        "sha256": "40a24619012c972bfff0e23c7654fa3a201e600f96f92fa93a96e0eb87471d78"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/Savitch.olean.hash",
+        "bytes": 16,
+        "sha256": "a3f16f5bdc239434b7a4f7ff27ed3f299ac81f2e64a91fc0a01901382ae93a07"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/Savitch.trace",
+        "bytes": 2989,
+        "sha256": "c729d33ea61896d6d4106a6bf39d50ba19cc8d48579b8261746b5d33151b739f"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/ShortPaths.ilean",
+        "bytes": 6430,
+        "sha256": "142bcef7b6103afaf3beaff94bf927bc1509564117bfb15ecf02abf2bd76c298"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/ShortPaths.ilean.hash",
+        "bytes": 16,
+        "sha256": "b5ae8f5b7217d5f7a32dddabb82ed6c56db57e5ffdd9fcfa5feaa731c187e7b5"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/ShortPaths.olean",
+        "bytes": 129184,
+        "sha256": "164fc32c43dca392919dd96deccf739f396e0f223688e203f4eddda4d3fb8393"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/ShortPaths.olean.hash",
+        "bytes": 16,
+        "sha256": "dd2e63446eece10c2460b90d5b09019288546e6ffc0e11922a42e1009da674e7"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs/ShortPaths.trace",
+        "bytes": 2387,
+        "sha256": "ac68d704f70295e6ec0661c94a1c8ae2247ac3d141f140d57c4a91631bcc81fa"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs.ilean",
+        "bytes": 341,
+        "sha256": "dfd8ac3b84dc94899e1265543c538f7d2c65d14e06a768d962933acf8a808c90"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "ae02c2fdb2893d66983706a0a18cfbb037318b8822ad860e40648e5d1e733704"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs.olean",
+        "bytes": 1792,
+        "sha256": "72939198fb24aa8355159ba3d2e194c881c088633c261a47b0f720add769f33c"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "ff9171f691a5dc4a1fa7a04baf4e43a58e3af644f17bfaceac9aaeb601b6f256"
+      },
+      {
+        "path": "proofs/lib/Lax307052Proofs.trace",
+        "bytes": 3010,
+        "sha256": "ec2aa8dd3e87fbcecd87c24fcf0067507cf937dc8adb25fd77c297fb18210e2d"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3776,
+        "sha256": "cd71815533ea00a35a96d5664fa6fd593fbd025f22dc827f2fbd9ae869c4e6b0"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 644,
+        "sha256": "c278a3af6d0e6b6cfc53600b8518d51983849b2219d82a550fe683869a2063f1"
+      },
+      {
+        "path": "proofs/package/Lax307052Proofs/ConfigurationCount.lean",
+        "bytes": 802,
+        "sha256": "3208b648c948f11b57e1ad3b8a9033c3890b3e9239bc4071034609f0173eaf9b"
+      },
+      {
+        "path": "proofs/package/Lax307052Proofs/Configurations.lean",
+        "bytes": 4146,
+        "sha256": "6f2d32dec91f03d51e7691cb5a352148ffa2a86963dd76c8ced00bdac66e1806"
+      },
+      {
+        "path": "proofs/package/Lax307052Proofs/Reachability.lean",
+        "bytes": 3721,
+        "sha256": "5f0bbd8bd21fc7a327d0e7a6f3d6ac00a6f7618aa16c6e750d243d7d9cca24e7"
+      },
+      {
+        "path": "proofs/package/Lax307052Proofs/Savitch.lean",
+        "bytes": 2154,
+        "sha256": "d8f57d63d1af03970f29237f1de334d4b2171ac672f72dcf3af6b796e52a7afa"
+      },
+      {
+        "path": "proofs/package/Lax307052Proofs/ShortPaths.lean",
+        "bytes": 2593,
+        "sha256": "7678e5e76844ac2af43a2304a99f4023719029c466c70680a233fae3bdc6b997"
+      },
+      {
+        "path": "proofs/package/Lax307052Proofs.lean",
+        "bytes": 181,
+        "sha256": "331a2409b8944a5ae6aa7a3870704c544f09a78ab3c23f8174bdb9306bcd4fc1"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:feda3bf476c61d9fdb767e28e113ed2c77514997dc41c30c15b517136e22fa79"
   }
 }
