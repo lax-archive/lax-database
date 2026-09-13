@@ -4,5 +4,673 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 105
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-345067",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "Finite Ramsey Theorems for Pairs and Tuples",
+      "authors": [
+        {
+          "name": "Jan Dreier"
+        },
+        {
+          "name": "Claude Fable 5 (Anthropic)"
+        }
+      ],
+      "bibEntries": [
+        "@article{Ramsey1930,\n  author  = {Ramsey, Frank P.},\n  title   = {On a Problem of Formal Logic},\n  journal = {Proceedings of the London Mathematical Society},\n  series  = {2},\n  volume  = {30},\n  pages   = {264--286},\n  year    = {1930},\n  doi     = {10.1112/plms/s2-30.1.264}\n}\n",
+        "@article{ErdosRado1952,\n  author  = {Erd{\\H o}s, Paul and Rado, Richard},\n  title   = {Combinatorial Theorems on Classifications of Subsets of a\n             Given Set},\n  journal = {Proceedings of the London Mathematical Society},\n  series  = {3},\n  volume  = {2},\n  pages   = {417--439},\n  year    = {1952},\n  doi     = {10.1112/plms/s3-2.1.417}\n}\n",
+        "@phdthesis{Mahlmann2024,\n  author = {M{\\\"a}hlmann, Nikolas},\n  title  = {Monadically Stable and Monadically Dependent Graph Classes:\n            Characterizations and Algorithmic Meta-Theorems},\n  school = {Universit{\\\"a}t Bremen},\n  year   = {2024}\n}\n"
+      ],
+      "supersedes": "lax-14"
+    },
+    "abstract": "This submission puts the finite Ramsey theorems for pairs and for tuples\non the archive as citable, dependency-free statements: a colouring of the\npairs or of the ordered tuples of a large enough finite set admits a\nlarge homogeneous subset. Mathlib states no finite Ramsey theorem at the\npinned revision.\n\nThree theorems are stated over one definition, the order type of a tuple\nover a linearly ordered set: the multicolour Ramsey theorem for pairs,\nthat every colouring of the unordered pairs of a large enough finite set\nwith *k* colours has a monochromatic subset of any requested size;\nRamsey's theorem in the graph form the literature cites, that every large\nenough graph has a clique on *a* vertices or an independent set on *b*\nvertices; and the Erdős–Rado theorem for tuples, that every colouring of\nthe *l*-tuples over a large enough linearly ordered finite set has a\nlarge subset on which the colour of a tuple depends only on its order\ntype. All three are existential bounds over the canonical carriers\n`Fin n`, with sizes counted by `Set.ncard`; no Ramsey number is defined,\nsince no statement here consumes a numeric bound.\n\nThe graph form is discharged by a glue proof from the multicolour\nstatement alone: a pair is coloured by whether it is an edge, and the two\ncolour classes are read as a clique and as an independent set. The\nmulticolour statement is proved by induction on the list of colours from\nthe two-colour case, the Erdős–Szekeres neighbourhood-splitting\ninduction; the tuple statement by Erdős–Rado chain building for\nstrict-monotone tuples, followed by factoring an arbitrary tuple through\nits rank pattern and iterating over the finitely many patterns.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax345067.MulticolorRamsey",
+      "path": "concepts/Lax345067/MulticolorRamsey.lean",
+      "title": "Ramsey's theorem for colourings of pairs",
+      "type": "theorem",
+      "description": "For every number of colours *k* and every size *s* there is an *N* such\nthat for every colouring of the unordered pairs of an *N*-element set with\n*k* colours there is a monochromatic subset of size *s*: a set of *s*\nelements all of whose pairs receive one and the same colour. This is\nRamsey's theorem for pairs in its multicolour form; the number of colours\nand the requested size are arbitrary and the bound *N* depends only on\nthem.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The colouring is a plain function on `Sym2 (Fin n)`, mathlib's type of\nunordered pairs; no notion of colouring is introduced. Colourings assign a\ncolour to the degenerate pairs `s(u, u)` as well, and the conclusion\nignores them — `Set.Pairwise` constrains distinct elements only — so\ncolourings of the edges of the complete graph are exactly the functions\nconsidered here, restricted along an inclusion that changes nothing.\n\nSizes are stated as \"at least\": a monochromatic set of size at least *s*\ncontains one of size exactly *s*, and the stated form is what every\napplication uses. All statements of this submission range over the\ncanonical carriers `Fin n` and over all `n` beyond the bound, so the\ntheorem applies to a set of any size by transport along a bijection.\n\nThe Ramsey number itself is deliberately not defined. The archive's\nconvention for a numeric parameter would be `sInf {N | …}`, but no\nstatement of this submission consumes a numeric bound, so such a\ndefinition would be endorsement surface that nothing uses; the existential\ncarries the whole content.\n\nNo hypothesis is placed on the number of colours: for `k = 0` there is no\ncolouring of the pairs of a nonempty set at all, so the statement holds\nvacuously with `N = 1`."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.Set.Card",
+        "Mathlib.Data.Sym.Sym2"
+      ],
+      "sourceText": "import Mathlib.Data.Sym.Sym2\nimport Mathlib.Data.Set.Card\n\n/-!\n---\ntitle: Ramsey's theorem for colourings of pairs\ntype: theorem\n---\nFor every number of colours *k* and every size *s* there is an *N* such\nthat for every colouring of the unordered pairs of an *N*-element set with\n*k* colours there is a monochromatic subset of size *s*: a set of *s*\nelements all of whose pairs receive one and the same colour. This is\nRamsey's theorem for pairs in its multicolour form; the number of colours\nand the requested size are arbitrary and the bound *N* depends only on\nthem.\n\n# Formalization notes\n\nThe colouring is a plain function on `Sym2 (Fin n)`, mathlib's type of\nunordered pairs; no notion of colouring is introduced. Colourings assign a\ncolour to the degenerate pairs `s(u, u)` as well, and the conclusion\nignores them — `Set.Pairwise` constrains distinct elements only — so\ncolourings of the edges of the complete graph are exactly the functions\nconsidered here, restricted along an inclusion that changes nothing.\n\nSizes are stated as \"at least\": a monochromatic set of size at least *s*\ncontains one of size exactly *s*, and the stated form is what every\napplication uses. All statements of this submission range over the\ncanonical carriers `Fin n` and over all `n` beyond the bound, so the\ntheorem applies to a set of any size by transport along a bijection.\n\nThe Ramsey number itself is deliberately not defined. The archive's\nconvention for a numeric parameter would be `sInf {N | …}`, but no\nstatement of this submission consumes a numeric bound, so such a\ndefinition would be endorsement surface that nothing uses; the existential\ncarries the whole content.\n\nNo hypothesis is placed on the number of colours: for `k = 0` there is no\ncolouring of the pairs of a nonempty set at all, so the statement holds\nvacuously with `N = 1`.\n-/\n\nnamespace Lax345067.MulticolorRamsey\n\n/-- Ramsey's theorem for pairs: every `k`-colouring of the unordered pairs\nof a large enough finite set has a monochromatic subset of size `s`. -/\naxiom exists_monochromatic_set (k s : ℕ) :\n    ∃ N : ℕ, ∀ (n : ℕ) (c : Sym2 (Fin n) → Fin k), N ≤ n →\n      ∃ (i : Fin k) (S : Set (Fin n)), s ≤ S.ncard ∧\n        S.Pairwise fun u v => c s(u, v) = i\n\nend Lax345067.MulticolorRamsey\n",
+      "statements": [
+        {
+          "id": "Lax345067.MulticolorRamsey.exists_monochromatic_set",
+          "signature": "exists_monochromatic_set : ∀ (k s : Nat),\n  Exists fun N =>\n    ∀ (n : Nat) (c : Sym2 (Fin n) → Fin k),\n      instLENat.le N n →\n        Exists fun i => Exists fun S => And (instLENat.le s S.ncard) (S.Pairwise fun u v => Eq (c (Sym2.mk u v)) i)",
+          "startLine": 45,
+          "endLine": 50,
+          "doc": "Ramsey's theorem for pairs: every `k`-colouring of the unordered pairs\nof a large enough finite set has a monochromatic subset of size `s`."
+        }
+      ]
+    },
+    {
+      "id": "Lax345067.OrderTypes",
+      "path": "concepts/Lax345067/OrderTypes.lean",
+      "title": "Order type of a tuple",
+      "type": "definition",
+      "description": "Fix a linearly ordered set and a tuple *a* = (*a*₁, …, *a*_ℓ) of its\nelements. The order type of *a* records which coordinates carry strictly\nsmaller entries than which: it is the relation that holds of *i* and *j*\nwhen *a*ᵢ < *a*ⱼ. Two tuples have the same order type when they are\narranged in the same way — in particular they then agree on which\ncoordinates carry equal entries, since a linear order is total.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The order type is a `Prop`-valued relation on coordinates rather than a\nthree-valued code: in a linear order the strict-order pattern determines\nthe equality pattern (`a i = a j` exactly when neither `a i < a j` nor\n`a j < a i`), so recording `<` alone loses nothing and keeps\ndecidability, `compare` and `Ordering` off the endorsement surface.\n\nThe definition is stated for an arbitrary linearly ordered vertex type,\nnot only for `Fin n`: it is a pointwise notion, and proofs that consume it\nwork over intermediate carriers. Statements of this submission still\ninstantiate it at the canonical carriers."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.Fin.Basic",
+        "Mathlib.Order.Basic"
+      ],
+      "sourceText": "import Mathlib.Order.Basic\nimport Mathlib.Data.Fin.Basic\n\n/-!\n---\ntitle: Order type of a tuple\ntype: definition\n---\nFix a linearly ordered set and a tuple *a* = (*a*₁, …, *a*_ℓ) of its\nelements. The order type of *a* records which coordinates carry strictly\nsmaller entries than which: it is the relation that holds of *i* and *j*\nwhen *a*ᵢ < *a*ⱼ. Two tuples have the same order type when they are\narranged in the same way — in particular they then agree on which\ncoordinates carry equal entries, since a linear order is total.\n\n# Formalization notes\n\nThe order type is a `Prop`-valued relation on coordinates rather than a\nthree-valued code: in a linear order the strict-order pattern determines\nthe equality pattern (`a i = a j` exactly when neither `a i < a j` nor\n`a j < a i`), so recording `<` alone loses nothing and keeps\ndecidability, `compare` and `Ordering` off the endorsement surface.\n\nThe definition is stated for an arbitrary linearly ordered vertex type,\nnot only for `Fin n`: it is a pointwise notion, and proofs that consume it\nwork over intermediate carriers. Statements of this submission still\ninstantiate it at the canonical carriers.\n-/\n\nnamespace Lax345067.OrderTypes\n\n/-- The order type of a tuple: the relation holding of coordinates `i` and\n`j` when the `i`-th entry is strictly smaller than the `j`-th. Two tuples\nhave the same order type when this relation is the same. -/\ndef orderType {V : Type*} [LinearOrder V] {ℓ : ℕ} (a : Fin ℓ → V) :\n    Fin ℓ → Fin ℓ → Prop :=\n  fun i j => a i < a j\n\nend Lax345067.OrderTypes\n",
+      "statements": []
+    },
+    {
+      "id": "Lax345067.Ramsey",
+      "path": "concepts/Lax345067/Ramsey.lean",
+      "title": "Ramsey's theorem",
+      "type": "theorem",
+      "description": "For all *a* and *b* there is an *N* such that every graph on at least *N*\nvertices contains a clique on *a* vertices or an independent set on *b*\nvertices. Equivalently: colouring the edges of a large enough complete\ngraph with two colours always leaves a monochromatic clique.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "A clique is a set of pairwise adjacent vertices and an independent set a\nset of pairwise non-adjacent vertices, both in mathlib's `Set`-valued,\n`Prop`-valued form (`IsIndepSet` is by definition pairwise\nnon-adjacency, so no complement graph and no decidability appear in the\nstatement). Sizes are counted with `Set.ncard` and stated as \"at least\",\nas everywhere in this submission.\n\nGraphs range over the canonical carriers `Fin n` for all `n` beyond the\nbound, so the statement applies to a graph on any finite vertex set by\ntransport along a bijection.\n\nThis is the two-colour case of the multicolour concept of this\nsubmission — colour a pair by whether it is an edge — and it is proved\nthat way, by a glue proof assuming that statement. It gets its own\nstatement because it is the form the literature cites and the form\ngraph-theoretic applications consume, and because a submission's headline\nshould not be reachable only through a strengthening."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Clique",
+        "Mathlib.Data.Set.Card"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Clique\nimport Mathlib.Data.Set.Card\n\n/-!\n---\ntitle: Ramsey's theorem\ntype: theorem\n---\nFor all *a* and *b* there is an *N* such that every graph on at least *N*\nvertices contains a clique on *a* vertices or an independent set on *b*\nvertices. Equivalently: colouring the edges of a large enough complete\ngraph with two colours always leaves a monochromatic clique.\n\n# Formalization notes\n\nA clique is a set of pairwise adjacent vertices and an independent set a\nset of pairwise non-adjacent vertices, both in mathlib's `Set`-valued,\n`Prop`-valued form (`IsIndepSet` is by definition pairwise\nnon-adjacency, so no complement graph and no decidability appear in the\nstatement). Sizes are counted with `Set.ncard` and stated as \"at least\",\nas everywhere in this submission.\n\nGraphs range over the canonical carriers `Fin n` for all `n` beyond the\nbound, so the statement applies to a graph on any finite vertex set by\ntransport along a bijection.\n\nThis is the two-colour case of the multicolour concept of this\nsubmission — colour a pair by whether it is an edge — and it is proved\nthat way, by a glue proof assuming that statement. It gets its own\nstatement because it is the form the literature cites and the form\ngraph-theoretic applications consume, and because a submission's headline\nshould not be reachable only through a strengthening.\n-/\n\nnamespace Lax345067.Ramsey\n\n/-- Ramsey's theorem: a large enough graph contains a clique on `a`\nvertices or an independent set on `b` vertices. -/\naxiom exists_clique_or_indepSet (a b : ℕ) :\n    ∃ N : ℕ, ∀ (n : ℕ) (G : SimpleGraph (Fin n)), N ≤ n →\n      (∃ S : Set (Fin n), G.IsClique S ∧ a ≤ S.ncard) ∨\n      (∃ S : Set (Fin n), G.IsIndepSet S ∧ b ≤ S.ncard)\n\nend Lax345067.Ramsey\n",
+      "statements": [
+        {
+          "id": "Lax345067.Ramsey.exists_clique_or_indepSet",
+          "signature": "exists_clique_or_indepSet : ∀ (a b : Nat),\n  Exists fun N =>\n    ∀ (n : Nat) (G : SimpleGraph (Fin n)),\n      instLENat.le N n →\n        Or (Exists fun S => And (G.IsClique S) (instLENat.le a S.ncard))\n          (Exists fun S => And (G.IsIndepSet S) (instLENat.le b S.ncard))",
+          "startLine": 37,
+          "endLine": 42,
+          "doc": "Ramsey's theorem: a large enough graph contains a clique on `a`\nvertices or an independent set on `b` vertices."
+        }
+      ]
+    },
+    {
+      "id": "Lax345067.TupleRamsey",
+      "path": "concepts/Lax345067/TupleRamsey.lean",
+      "title": "Ramsey's theorem for tuples",
+      "type": "theorem",
+      "description": "For every number of colours *k*, every arity ℓ and every size *s* there is\nan *N* such that for every colouring of the ℓ-tuples over a linearly\nordered *N*-element set with *k* colours there is a subset *I* of size *s*\non which the colour of a tuple depends only on its order type: any two\ntuples with entries in *I* that are arranged in the same way receive the\nsame colour. This is the finite Ramsey theorem for hypergraphs of\nErdős and Rado, in the order-type form used in model theory.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Tuples are arbitrary functions `Fin ℓ → Fin n`, so repeated entries and\nevery ordering of the entries are allowed. This is stronger than colouring\nthe ℓ-element *subsets* of the ground set — that classical form is the\nspecial case where the colouring only depends on the increasing\nenumeration — and it is the form that applications consume, since the\ntuples they colour arise from arbitrary indexed families.\n\nHomogeneity is stated as \"tuples with entries in *I* and equal order types\nreceive equal colours\", rather than as the existence of a function from\norder types to colours through which the colouring factors. The two are\nequivalent — such a function is obtained by choice — and the stated form\ncarries no choice and needs no default colour for the order types that no\ntuple over *I* realizes.\n\nThe ground set is `Fin n` with its standard linear order, the canonical\ncarrier of this submission; sizes are `Set.ncard`, stated as \"at least\".\nAs in the other statements, no hypothesis is placed on the number of\ncolours: with `k = 0` there is no colouring at all."
+        }
+      ],
+      "imports": [
+        "Lax345067.OrderTypes"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Set.Card"
+      ],
+      "sourceText": "import Lax345067.OrderTypes\nimport Mathlib.Data.Set.Card\n\n/-!\n---\ntitle: Ramsey's theorem for tuples\ntype: theorem\n---\nFor every number of colours *k*, every arity ℓ and every size *s* there is\nan *N* such that for every colouring of the ℓ-tuples over a linearly\nordered *N*-element set with *k* colours there is a subset *I* of size *s*\non which the colour of a tuple depends only on its order type: any two\ntuples with entries in *I* that are arranged in the same way receive the\nsame colour. This is the finite Ramsey theorem for hypergraphs of\nErdős and Rado, in the order-type form used in model theory.\n\n# Formalization notes\n\nTuples are arbitrary functions `Fin ℓ → Fin n`, so repeated entries and\nevery ordering of the entries are allowed. This is stronger than colouring\nthe ℓ-element *subsets* of the ground set — that classical form is the\nspecial case where the colouring only depends on the increasing\nenumeration — and it is the form that applications consume, since the\ntuples they colour arise from arbitrary indexed families.\n\nHomogeneity is stated as \"tuples with entries in *I* and equal order types\nreceive equal colours\", rather than as the existence of a function from\norder types to colours through which the colouring factors. The two are\nequivalent — such a function is obtained by choice — and the stated form\ncarries no choice and needs no default colour for the order types that no\ntuple over *I* realizes.\n\nThe ground set is `Fin n` with its standard linear order, the canonical\ncarrier of this submission; sizes are `Set.ncard`, stated as \"at least\".\nAs in the other statements, no hypothesis is placed on the number of\ncolours: with `k = 0` there is no colouring at all.\n-/\n\nnamespace Lax345067.TupleRamsey\n\nopen Lax345067.OrderTypes\n\n/-- Ramsey's theorem for tuples: every `k`-colouring of the `ℓ`-tuples\nover a large enough linearly ordered finite set has a subset of size `s`\non which the colour of a tuple depends only on its order type. -/\naxiom exists_orderType_homogeneous (k ℓ s : ℕ) :\n    ∃ N : ℕ, ∀ (n : ℕ) (c : (Fin ℓ → Fin n) → Fin k), N ≤ n →\n      ∃ I : Set (Fin n), s ≤ I.ncard ∧\n        ∀ a b : Fin ℓ → Fin n, (∀ i, a i ∈ I) → (∀ i, b i ∈ I) →\n          orderType a = orderType b → c a = c b\n\nend Lax345067.TupleRamsey\n",
+      "statements": [
+        {
+          "id": "Lax345067.TupleRamsey.exists_orderType_homogeneous",
+          "signature": "exists_orderType_homogeneous : ∀ (k ℓ s : Nat),\n  Exists fun N =>\n    ∀ (n : Nat) (c : (Fin ℓ → Fin n) → Fin k),\n      instLENat.le N n →\n        Exists fun I =>\n          And (instLENat.le s I.ncard)\n            (∀ (a b : Fin ℓ → Fin n),\n              (∀ (i : Fin ℓ), Set.instMembership.mem I (a i)) →\n                (∀ (i : Fin ℓ), Set.instMembership.mem I (b i)) →\n                  Eq (Lax345067.OrderTypes.orderType a) (Lax345067.OrderTypes.orderType b) → Eq (c a) (c b))",
+          "startLine": 43,
+          "endLine": 50,
+          "doc": "Ramsey's theorem for tuples: every `k`-colouring of the `ℓ`-tuples\nover a large enough linearly ordered finite set has a subset of size `s`\non which the colour of a tuple depends only on its order type."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax345067Proofs.MulticolorRamsey.exists_monochromatic_set",
+      "path": "proofs/Lax345067Proofs/MulticolorRamsey.lean",
+      "conclusion": "Lax345067.MulticolorRamsey.exists_monochromatic_set",
+      "assumptions": [],
+      "description": "Every colouring of the unordered pairs of a large enough finite set with `k`\ncolours admits a monochromatic subset of size `s`: the multicolour Ramsey\ntheorem for pairs, over the canonical carriers `Fin n` and with no hypothesis\non the number of colours.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "The mathematical content is the ported `Lax345067Proofs.PairRamsey.multicolor_ramsey`,\nwhich asks for a *list* of requested sizes, one per colour, and produces a\n`Finset` monochromatic in the colour whose entry it meets.  That statement is\nproved by induction on the list of colours from the two-colour graph form\n`Lax345067Proofs.PairRamsey.ramsey` (Erdős–Szekeres neighbourhood splitting): the\nfirst colour is turned into a graph, a clique in it is monochromatic of the\nfirst colour, and an independent set carries a colouring by the remaining\ncolours to which the induction hypothesis applies.\n\nThe bridge to the submitted statement instantiates the list as\n`List.replicate k s`, so that all colours request the same size `s`, and\ntransports along `List.length_replicate : (List.replicate k s).length = k`,\nprecomposing the given colouring with `Fin.cast` in one direction and casting\nthe returned colour index back in the other.  The carrier is `Fin n`, whose\n`Fintype.card` is `n`, and the returned `Finset` is coerced to a `Set`, its\ncardinality translated by `Set.ncard_coe_finset`.\n\nThe submitted statement carries no positivity hypothesis on the number of\ncolours, whereas the ported one needs a nonempty list.  The case `k = 0` is\ntherefore split off first and closed outright: with `N := 1` the carrier\n`Fin n` is nonempty, so the assumed colouring produces an element of `Fin 0`,\nwhich is absurd."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "The proof is ported from the proof package of the submission\n*Monadic dependence and neighborhood complexity* (`Lax5Proofs/Ramsey.lean`),\nwhere it appears as Theorems 3.7 and 3.8 of the source lecture notes.  The\ntheorem is due to Ramsey, *On a problem of formal logic* (Proc. London Math.\nSoc. 1930); the two-colour induction used here is the Erdős–Szekeres argument."
+        }
+      ]
+    },
+    {
+      "id": "Lax345067Proofs.Ramsey.exists_clique_or_indepSet",
+      "path": "proofs/Lax345067Proofs/Ramsey.lean",
+      "conclusion": "Lax345067.Ramsey.exists_clique_or_indepSet",
+      "assumptions": [
+        "Lax345067.MulticolorRamsey.exists_monochromatic_set"
+      ],
+      "description": "Every large enough graph contains a clique on `a` vertices or an independent\nset on `b` vertices, derived from the multicolour Ramsey theorem for pairs of\nthis submission.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "The graph form is the two-colour case of the multicolour statement, and this\nmodule derives it that way rather than reproving it, so that the archive\nrecords the derivation.\n\nApply `Lax345067.MulticolorRamsey.exists_monochromatic_set` with two colours and\nrequested size `max a b`, and colour a pair of vertices by `0` when it is an\nedge of the graph and by `1` otherwise.  The colouring is well defined on\nunordered pairs because adjacency is symmetric, which is what `Sym2.lift`\nrequires.  The resulting monochromatic set of size at least `max a b` is a\nclique when its colour is `0` and an independent set when its colour is `1`,\nsince `Set.Pairwise` in either case says exactly that distinct members are\nadjacent, respectively non-adjacent; `max` then supplies the requested bound\n`a` in the first branch and `b` in the second."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Ramsey, *On a problem of formal logic* (Proc. London Math. Soc. 1930).  The\nmathematical content sits in the proof of the multicolour statement\n(`Lax345067Proofs.MulticolorRamsey`), ported from the proof package of the\nsubmission *Monadic dependence and neighborhood complexity*; this module is\nonly the two-colour specialization."
+        }
+      ]
+    },
+    {
+      "id": "Lax345067Proofs.TupleRamsey.exists_orderType_homogeneous",
+      "path": "proofs/Lax345067Proofs/TupleRamsey.lean",
+      "conclusion": "Lax345067.TupleRamsey.exists_orderType_homogeneous",
+      "assumptions": [],
+      "description": "Every colouring of the `ℓ`-tuples over a large enough linearly ordered finite\nset with `k` colours admits a subset of size `s` on which the colour of a\ntuple depends only on its order type: the finite Ramsey theorem for\nhypergraphs of Erdős and Rado, in the order-type form.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "The mathematical content is the ported `Lax345067Proofs.TupleCore.tupleRamseyAtSize`.\nThat development first proves Ramsey for *strict-monotone* tuples by the\nErdős–Rado chain-building induction on the arity: for arity `m + 1` one\nrepeatedly extracts the minimum `v` of the current set, applies the arity-`m`\nstatement to the colouring `b ↦ c (v ::ᵥ b)` on the rest, and thereby colours\nthe elements of a long chain by the colour their tuples receive; a pigeonhole\non that colouring of elements produces the homogeneous set.  An arbitrary\ntuple is then factored as `a = e ∘ σ` with `σ : Fin ℓ → Fin m` surjective (its\nrank pattern, determined by the order type) and `e` strict-monotone, and the\nstrict-monotone statement is applied once per *shape* `(m, σ)` — a finite type\n— shrinking the set each time.  The resulting set is homogeneous for every\nshape at once, so the colour of a tuple is read off its shape alone.\n\nTwo bridges lead from there to the submitted statement.  The ground set is\ntaken to be all of `Fin n`, so the ported hypothesis `Nfin ≤ S.card` becomes\n`Nfin ≤ n` and the returned `Finset` is coerced to a `Set` with\n`Set.ncard_coe_finset`.  And the ported statement concludes with a function\n`f` from `Ordering`-valued order types to colours through which the colouring\nfactors, while the submitted statement says instead that tuples with equal\n`Prop`-valued order types get equal colours.  The lemma\n`otp_eq_of_orderType_eq` closes that gap in the direction needed: if the\nstrict-order patterns of two tuples agree then so do their `Ordering`-valued\npatterns, because in a linear order `a i = a j` holds exactly when neither\n`a i < a j` nor `a j < a i` does.  Both colours are then rewritten through `f`\nand coincide.\n\nThe submitted statement carries no positivity hypothesis on the number of\ncolours, whereas the ported one needs one to have a default colour available.\nThe case `k = 0` is split off first and closed outright: with `N := 1` the\ncarrier `Fin n` is nonempty, so the assumed colouring applied to the constant\ntuple produces an element of `Fin 0`, which is absurd."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "The proof is ported from the proof package of the submission\n*Monadic dependence and neighborhood complexity*\n(`Lax5Proofs/TupleRamsey.lean`).  The theorem is due to Erdős and Rado,\n*Combinatorial theorems on classifications of subsets of a given set* (Proc.\nLondon Math. Soc. 1952); the order-type formulation followed here is the one\nof Mählmann, *Monadically stable and monadically dependent graph classes*\n(PhD thesis, TU Wien 2024), Section 4."
+        }
+      ]
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "c57c0ad5bf2898fd8e9b6ed68b0ea2680fe46d55f582775f2c59c3ddfd6a6a46",
+    "sourceCommit": "feabf43dcd6967ac912b2064003ea715e06e58f9",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax345067/MulticolorRamsey.c",
+        "bytes": 1571,
+        "sha256": "33cae307ddb74501ed3493afc8746171bf4f79d0a7d60e654aadfc178a48863f"
+      },
+      {
+        "path": "concepts/ir/Lax345067/MulticolorRamsey.c.hash",
+        "bytes": 16,
+        "sha256": "e07e46c2887dc4e5ff006fc6774265970f7d6c24e70780ca65adbf56d87c0bc7"
+      },
+      {
+        "path": "concepts/ir/Lax345067/OrderTypes.c",
+        "bytes": 1556,
+        "sha256": "32816bdaf6b27c940fa3d8a79d18abf013b29d042c9a14ac5b967240f21996ea"
+      },
+      {
+        "path": "concepts/ir/Lax345067/OrderTypes.c.hash",
+        "bytes": 16,
+        "sha256": "179aa1ada0cd0b0c8220c3d77eb6ffd6696633e47bbe138af6ffa27ca0543717"
+      },
+      {
+        "path": "concepts/ir/Lax345067/Ramsey.c",
+        "bytes": 1608,
+        "sha256": "28bc8fc1b588b8e7671d8a60df67a69e65cffc5f676fa55125916ae2164c1d85"
+      },
+      {
+        "path": "concepts/ir/Lax345067/Ramsey.c.hash",
+        "bytes": 16,
+        "sha256": "7dbe4fdbe2279f5d469b01b90722554c72a902e8ae284d0f750cf90af1cbb1a7"
+      },
+      {
+        "path": "concepts/ir/Lax345067/TupleRamsey.c",
+        "bytes": 1562,
+        "sha256": "943b5e79017edef629d1ccac568942811937921f7143234ec1d55f67224f1306"
+      },
+      {
+        "path": "concepts/ir/Lax345067/TupleRamsey.c.hash",
+        "bytes": 16,
+        "sha256": "fb818a5dce3d03ff8c305304d731a5e5de319b0fd6dc5b69b95a120fed751a33"
+      },
+      {
+        "path": "concepts/ir/Lax345067.c",
+        "bytes": 2010,
+        "sha256": "f911feab87b78da006a182fa3cadb263759d80f8a6c93db3e70021b2d19404b5"
+      },
+      {
+        "path": "concepts/ir/Lax345067.c.hash",
+        "bytes": 16,
+        "sha256": "3a9285b26ebe62ef8068546ed07dc1590a65cc7de44dd9d083a1cc835f280401"
+      },
+      {
+        "path": "concepts/lib/Lax345067/MulticolorRamsey.ilean",
+        "bytes": 1746,
+        "sha256": "00b648e31bfa25faa8500de012e134f4254304a4c55a570b7948dd120d6d3d42"
+      },
+      {
+        "path": "concepts/lib/Lax345067/MulticolorRamsey.ilean.hash",
+        "bytes": 16,
+        "sha256": "7bfccdbeb541f3f0818ff764bcb71ae717d7caa496398b4ce879b6dd77136c28"
+      },
+      {
+        "path": "concepts/lib/Lax345067/MulticolorRamsey.olean",
+        "bytes": 11096,
+        "sha256": "e55e3e4230c9839849322d467e0c809f1856342c244884a5f36fdf508e9694c3"
+      },
+      {
+        "path": "concepts/lib/Lax345067/MulticolorRamsey.olean.hash",
+        "bytes": 16,
+        "sha256": "cc3fe0ea948a93bdef48f740bc7707249fa0e2e8e9846a48694e2ab80f0f71c8"
+      },
+      {
+        "path": "concepts/lib/Lax345067/MulticolorRamsey.trace",
+        "bytes": 2435,
+        "sha256": "da6f7fad66ab7230a265ef351451588f3d690fa9d5fc3e35e8a3dd624888ef76"
+      },
+      {
+        "path": "concepts/lib/Lax345067/OrderTypes.ilean",
+        "bytes": 855,
+        "sha256": "18ecbd8d3497b9f77a69971acfb0ed38e7d358d63f79f5f91f8fe3c07eecc0d0"
+      },
+      {
+        "path": "concepts/lib/Lax345067/OrderTypes.ilean.hash",
+        "bytes": 16,
+        "sha256": "704828038384e3aee2be3ca5201026d3d3c277fff128c9ae9fb42a223635ddac"
+      },
+      {
+        "path": "concepts/lib/Lax345067/OrderTypes.olean",
+        "bytes": 10264,
+        "sha256": "1a176dfaa61e9b029ca27f84a82a6803f9102ef6c0705dd36f8da9474c2424b5"
+      },
+      {
+        "path": "concepts/lib/Lax345067/OrderTypes.olean.hash",
+        "bytes": 16,
+        "sha256": "cd59ad92e8083ff9c5c0cdb0ae9765adfae58f72c67a255200cf610e5a18879d"
+      },
+      {
+        "path": "concepts/lib/Lax345067/OrderTypes.trace",
+        "bytes": 2398,
+        "sha256": "a90d426ad545ea5e853f70d91dba1de7795ddfffe7e7a7951e36b6928ac6e906"
+      },
+      {
+        "path": "concepts/lib/Lax345067/Ramsey.ilean",
+        "bytes": 1915,
+        "sha256": "56d26be669d7407ca1a32146191783fd582925f6d707fc463bbd721947148b1b"
+      },
+      {
+        "path": "concepts/lib/Lax345067/Ramsey.ilean.hash",
+        "bytes": 16,
+        "sha256": "f5e09b289bf2e3ff09678d2581f3b3cd81f2966a0bc8395bfbe85673451dac96"
+      },
+      {
+        "path": "concepts/lib/Lax345067/Ramsey.olean",
+        "bytes": 10096,
+        "sha256": "ffa62df541784afc8e3e46caad37804b43195e0c2952d240ce7351a42d88180f"
+      },
+      {
+        "path": "concepts/lib/Lax345067/Ramsey.olean.hash",
+        "bytes": 16,
+        "sha256": "84653b3f1a160a89cc73876dae1719a03371808752d8456bc63c9e54eeb7f447"
+      },
+      {
+        "path": "concepts/lib/Lax345067/Ramsey.trace",
+        "bytes": 2417,
+        "sha256": "232fdad5308531a76540d05cdbe349f45714ca7977617c2c03c362315aba64bb"
+      },
+      {
+        "path": "concepts/lib/Lax345067/TupleRamsey.ilean",
+        "bytes": 1781,
+        "sha256": "423739f56ef6405efddd90e6e34ded37dc6bc143d4edc56ec23fcc3996b63035"
+      },
+      {
+        "path": "concepts/lib/Lax345067/TupleRamsey.ilean.hash",
+        "bytes": 16,
+        "sha256": "b23529515c1c401bd8f7f601fb62962cca7e0b3491a993ec46b266ebd1376988"
+      },
+      {
+        "path": "concepts/lib/Lax345067/TupleRamsey.olean",
+        "bytes": 12520,
+        "sha256": "b0a6a39a2a4d3d59295bdae5781dcfa478fa53e3723732eb13100031242e540e"
+      },
+      {
+        "path": "concepts/lib/Lax345067/TupleRamsey.olean.hash",
+        "bytes": 16,
+        "sha256": "633ee02ce82a13c3f02bc0970713c702251c12277de543cf7064bb8814fb9609"
+      },
+      {
+        "path": "concepts/lib/Lax345067/TupleRamsey.trace",
+        "bytes": 2398,
+        "sha256": "94d6a1f8ec1074b785091791ebfcf838eb5a8db1f85fd54a23875230265269f5"
+      },
+      {
+        "path": "concepts/lib/Lax345067.ilean",
+        "bytes": 254,
+        "sha256": "0d82eaac796c100f6b1e6c71e71c88992a6efc5788c7d7e0ba60621810530d98"
+      },
+      {
+        "path": "concepts/lib/Lax345067.ilean.hash",
+        "bytes": 16,
+        "sha256": "5d63ac00ac9e5c0a17cac6777b553ae92c1c6de749d7575eddc4adb60b0f83da"
+      },
+      {
+        "path": "concepts/lib/Lax345067.olean",
+        "bytes": 1864,
+        "sha256": "19ab34a2a8c5a4cc2bbd8ab5ddb78d8d2f2393648adaf85ff9ad42ea8b4739f0"
+      },
+      {
+        "path": "concepts/lib/Lax345067.olean.hash",
+        "bytes": 16,
+        "sha256": "e38e4e3b27dd1282c4ed26081d0f8e24c024746baa24821cf9945e076e77bac0"
+      },
+      {
+        "path": "concepts/lib/Lax345067.trace",
+        "bytes": 2614,
+        "sha256": "bad85e3895a9eaae41957b890f763c4d7d6041824b85a1466ac3c6d99a825fed"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "84f72b74e84989bd409bd08d92aa88286a24971f1796c35f0764d818b33501e0"
+      },
+      {
+        "path": "concepts/package/Lax345067/MulticolorRamsey.lean",
+        "bytes": 2288,
+        "sha256": "a461f32652fe32513bf8594a180f52542799d3935bd730e46f63337c0300de66"
+      },
+      {
+        "path": "concepts/package/Lax345067/OrderTypes.lean",
+        "bytes": 1575,
+        "sha256": "33e3eac6e291c241a2e15bcc55ddb63e53b3c530f5769eeab9d0d99892ced2fd"
+      },
+      {
+        "path": "concepts/package/Lax345067/Ramsey.lean",
+        "bytes": 1801,
+        "sha256": "41b34fe65418af1b098aab050a63cb9551db69df88726db8cfd159b76399e88f"
+      },
+      {
+        "path": "concepts/package/Lax345067/TupleRamsey.lean",
+        "bytes": 2335,
+        "sha256": "56a1df6b73d8f7a02d2c95376d6f33b0788ed8f4ca8f237fcee3a63595b88a7c"
+      },
+      {
+        "path": "concepts/package/Lax345067.lean",
+        "bytes": 115,
+        "sha256": "5dcd71a026a13415272579ad6ba631a873a808d30eddff3fe06afe66d6896ee2"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax345067Proofs/MulticolorRamsey.c",
+        "bytes": 1639,
+        "sha256": "57924c325f2bb80443c5a12deb11f4adde5a7d25460b39f122fc682f97b92bc0"
+      },
+      {
+        "path": "proofs/ir/Lax345067Proofs/MulticolorRamsey.c.hash",
+        "bytes": 16,
+        "sha256": "39789550f9ada67583e3ab07b3df57ef0e7308d1933a2f44c634d8c875ec7a07"
+      },
+      {
+        "path": "proofs/ir/Lax345067Proofs/PairRamsey.c",
+        "bytes": 2181,
+        "sha256": "60b64a233acf0166881370050e01eba5dd5eafabd4e6ce113bd91e66df3fee84"
+      },
+      {
+        "path": "proofs/ir/Lax345067Proofs/PairRamsey.c.hash",
+        "bytes": 16,
+        "sha256": "d1322c3f4ed0ad22a2ba8210350025eccf392fdf28fb72de86e61e3162e8c9cb"
+      },
+      {
+        "path": "proofs/ir/Lax345067Proofs/Ramsey.c",
+        "bytes": 1813,
+        "sha256": "b33a8789018e8a0f9420ac0b52754a7c22c1e08d802d526cb05e60dce16c699a"
+      },
+      {
+        "path": "proofs/ir/Lax345067Proofs/Ramsey.c.hash",
+        "bytes": 16,
+        "sha256": "08481a116204299a258151941db9570599adfdc00dc189838f3dd216547ecf6d"
+      },
+      {
+        "path": "proofs/ir/Lax345067Proofs/TupleCore.c",
+        "bytes": 15690,
+        "sha256": "e79328120cb7c1f0f3563a59dc0360c6b0c87294f7fa00b06cb34d65986c5499"
+      },
+      {
+        "path": "proofs/ir/Lax345067Proofs/TupleCore.c.hash",
+        "bytes": 16,
+        "sha256": "35128ab1658d863803921ca7402866e56b46a02da6a87261328f1610dd412c9f"
+      },
+      {
+        "path": "proofs/ir/Lax345067Proofs/TupleRamsey.c",
+        "bytes": 1611,
+        "sha256": "cab78b5a7296e919ae53728a684315e88486073f37b8215c332bcde5e8b5d48b"
+      },
+      {
+        "path": "proofs/ir/Lax345067Proofs/TupleRamsey.c.hash",
+        "bytes": 16,
+        "sha256": "7d8ffa9843a52b3af483a151874aa48b1cd6a9e7e306aa5955144304078e0f09"
+      },
+      {
+        "path": "proofs/ir/Lax345067Proofs.c",
+        "bytes": 2406,
+        "sha256": "6a0fa340134d617621cbfe1ace2dfd59fa85893e61bc5311bc9a4497c046b257"
+      },
+      {
+        "path": "proofs/ir/Lax345067Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "045d7edfb1826a4aec9288d601df538b71c1e4755f0fbc10e2071804eeb903df"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/MulticolorRamsey.ilean",
+        "bytes": 4974,
+        "sha256": "b581ea7e705a726b33d8ecaa152878f90cce17a039b5fefaf1bb5803087e669b"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/MulticolorRamsey.ilean.hash",
+        "bytes": 16,
+        "sha256": "4e5d9267563b44aaf9a1d562b51216da4c387547be3a9237843d1d27bb2de73d"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/MulticolorRamsey.olean",
+        "bytes": 52760,
+        "sha256": "23f2071771411a158f4c41c21a226968787a582d8f04ee4ed2e87b022c06094a"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/MulticolorRamsey.olean.hash",
+        "bytes": 16,
+        "sha256": "dc5c1dae78297df452ba508eb5097ca2fafa8edf71af17a550f432c93b76723b"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/MulticolorRamsey.trace",
+        "bytes": 2579,
+        "sha256": "9a7b0a246cdd8749cf5690fc29c563ddac8629d4a06d6789a90453676bbaff03"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/PairRamsey.ilean",
+        "bytes": 24480,
+        "sha256": "5e11baff2d9f1f0fa71cc1762526f1f177fb06035e2650648916198f5b65f69b"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/PairRamsey.ilean.hash",
+        "bytes": 16,
+        "sha256": "ec3bf0b46abf3d8c4e2ba188cfabdadd218350158b5ed6aef42e0bebaf7d80a1"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/PairRamsey.olean",
+        "bytes": 391192,
+        "sha256": "521eb3becbcfae419663484d5c4091de4ca2298fce409810f50b46b870c3d3ca"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/PairRamsey.olean.hash",
+        "bytes": 16,
+        "sha256": "73f07a1f18bf4d76152ebd8548a2e2ea194ce4b0ebd46422a5804c18b92ad10f"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/PairRamsey.trace",
+        "bytes": 3333,
+        "sha256": "2e506deb836ff7444594d2ecb004be35b3f719bd098c23384ab09c3e4d5dafa0"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/Ramsey.ilean",
+        "bytes": 4305,
+        "sha256": "1a5bee5fcb54b2e6b270bd96bde4ff468c856c98c06c218d8a79b319fd0a8ead"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/Ramsey.ilean.hash",
+        "bytes": 16,
+        "sha256": "be7cc4a7af7098a90e6a8b53b7c1fbe72dec8cb54014f2fc7139f5f6fbd7f79b"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/Ramsey.olean",
+        "bytes": 100080,
+        "sha256": "034184a938c99d9590db7e5a491edd3b361f40c4bbcc5e4afb0d43c196c71d0f"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/Ramsey.olean.hash",
+        "bytes": 16,
+        "sha256": "fca27b28082aa3a24e89e4f168d5554637575a57ac727bebc200b6616cbf4505"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/Ramsey.trace",
+        "bytes": 2641,
+        "sha256": "3d2e4d9e331367bae245743919c5b7bafe3f20f0b6ca25c2454b27a9dcfc25be"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/TupleCore.ilean",
+        "bytes": 53114,
+        "sha256": "dd73b4c6276d0acc07016b881d82d24d7df94118f7bdea9111746d8e8f5e6217"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/TupleCore.ilean.hash",
+        "bytes": 16,
+        "sha256": "036cd39925c1b950ccc73107839cb4601c227c9c45f1a6f42d3fd1b0f9727b2b"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/TupleCore.olean",
+        "bytes": 540296,
+        "sha256": "dc1d149c707c415ab0e35b5a4a3b51e33ae0eab476e028f7a85ca762666518b3"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/TupleCore.olean.hash",
+        "bytes": 16,
+        "sha256": "3098e0b05ff230a8d5c17374b3096e937cd940b3424660338e1d159b068116c8"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/TupleCore.trace",
+        "bytes": 3196,
+        "sha256": "c1d9cbaace08021a19054a2a12f6808e15dbbe4784f333827c0132235c0b7cc8"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/TupleRamsey.ilean",
+        "bytes": 8249,
+        "sha256": "bfd0ff7a71dff0fd37ee383ccdbc9c6dfddcc608baf16397e12ba2d4fceea062"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/TupleRamsey.ilean.hash",
+        "bytes": 16,
+        "sha256": "657e8c3b2d50458ca3a0add73999a5b8fc061c24b2a1779822b671c3ccc47a2f"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/TupleRamsey.olean",
+        "bytes": 85728,
+        "sha256": "694d63f595a552394cfde76ad72d7346150457b280cf8c5bad66fcd7404e29a6"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/TupleRamsey.olean.hash",
+        "bytes": 16,
+        "sha256": "d69bc9e4fdacb78c376454e69652006e8f44ddd2ae0cc5bcda7ea96e0ab45554"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs/TupleRamsey.trace",
+        "bytes": 2525,
+        "sha256": "404d4f915cb0a46cc32711e6803974ea70407f680569d36326fa31f9815641d0"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs.ilean",
+        "bytes": 332,
+        "sha256": "51d2b6c8419b9c2c99cd1757885e8e8dcd7d8b45f812bae5819fbb0024e00657"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "62284f878045993efa5fa4a7ed728505aed089b048916d124fad9c60b04a9053"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs.olean",
+        "bytes": 1976,
+        "sha256": "5d87ddaaaf2798272c4ee26d10c191213ba2d62463a443cc51c0a4e0c3ceca9a"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "f3c0608ed04cc5a3105d17554de2675f18c001e740ff9d260c741bf1ba312a7c"
+      },
+      {
+        "path": "proofs/lib/Lax345067Proofs.trace",
+        "bytes": 2959,
+        "sha256": "34f437a383d9a14980af1ef8d05ce6ed72abf46163a804501b9704ad4db665ae"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "e807d3f21bb4e62b5fa999a11c86fa158c0526b04b7f69ab52b4ebba02027abe"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 397,
+        "sha256": "8da7bc5217df2b7fa56ec8d5194a9f3b7057ed22f3afb6d2793c484368ee7a58"
+      },
+      {
+        "path": "proofs/package/Lax345067Proofs/MulticolorRamsey.lean",
+        "bytes": 3659,
+        "sha256": "658ff61eeeda17443e218fcb695d4c9c50c79800744a616069c380bf941b7083"
+      },
+      {
+        "path": "proofs/package/Lax345067Proofs/PairRamsey.lean",
+        "bytes": 10691,
+        "sha256": "80956304724012248a01a247b57c5bd0104e82b87a77963662ae3ade789e8a22"
+      },
+      {
+        "path": "proofs/package/Lax345067Proofs/Ramsey.lean",
+        "bytes": 3060,
+        "sha256": "7525b9c8240a84dee4dd57478ee449212eb667424f437f85a871311d80b8454b"
+      },
+      {
+        "path": "proofs/package/Lax345067Proofs/TupleCore.lean",
+        "bytes": 16956,
+        "sha256": "ce9a4805aca58928bb319a2ca59d338676aaecced8558c4cb8cef6a1a593fee5"
+      },
+      {
+        "path": "proofs/package/Lax345067Proofs/TupleRamsey.lean",
+        "bytes": 5616,
+        "sha256": "50fa644e1d2119a82679ba84486b572d0d323f5c443a2d1e59ef9ad1db2ecd78"
+      },
+      {
+        "path": "proofs/package/Lax345067Proofs.lean",
+        "bytes": 224,
+        "sha256": "c455aa53bb4b94ecf29cbc3a59525fbec0cdad3fc9d553d5da01c13b3d33d82b"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:c57c0ad5bf2898fd8e9b6ed68b0ea2680fe46d55f582775f2c59c3ddfd6a6a46"
   }
 }
