@@ -4,5 +4,984 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 111
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-146103",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "MSO-automata",
+      "authors": [
+        {
+          "name": "Szymon Toruńczyk",
+          "github": "szymtor"
+        },
+        {
+          "name": "Codex 5.6"
+        }
+      ],
+      "bibEntries": []
+    },
+    "abstract": "We formalize monadic second-order logic over arbitrary first-order languages,\nusing mathlib's structures and term semantics for the first-order fragment and\nset-valued valuations for monadic variables.  We then represent a finite word\nas its linearly ordered set of positions, with one unary predicate for each\nalphabet letter.\n\nFor a finite alphabet, we prove the Büchi--Elgot--Trakhtenbrot correspondence\nbetween MSO-definable languages of finite words and languages recognized by\nnondeterministic finite automata.  The MSO-to-automata proof uses marked words\nfor valuations of free first- and second-order variables and proves regularity\nby structural induction, with union, complement, and projection constructions.\nThe automata-to-MSO proof existentially guesses the state at every position and\nexpresses that these state predicates encode an initial, transition-respecting,\naccepting run.  Empty words are handled separately in the constructed sentence.\n\nThis is a Lean 4.33 port of [the original Lean 4.30 draft](https://laxarchive.org/lax-52/).\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax146103.MSOAutomataEquivalence",
+      "path": "concepts/Lax146103/MSOAutomataEquivalence.lean",
+      "title": "Büchi-Elgot-Trakhtenbrot theorem for finite words",
+      "type": "theorem",
+      "description": "Over a finite alphabet, a language of finite words is recognizable by a\nnondeterministic finite automaton if and only if it is definable by a monadic\nsecond-order sentence in the ordered word structure with one unary predicate\nfor each letter.",
+      "imports": [
+        "Lax146103.MSOToNFA",
+        "Lax146103.NFAToMSO"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax146103.NFAToMSO\nimport Lax146103.MSOToNFA\n\n/-!\n---\ntitle: Büchi-Elgot-Trakhtenbrot theorem for finite words\ntype: theorem\n---\n\nOver a finite alphabet, a language of finite words is recognizable by a\nnondeterministic finite automaton if and only if it is definable by a monadic\nsecond-order sentence in the ordered word structure with one unary predicate\nfor each letter.\n-/\n\nnamespace Lax146103.MSOAutomataEquivalence\n\nopen Lax146103.MSOSyntax\nopen Lax146103.WordStructure\nopen Lax146103.NFARecognizable\n\nuniverse u\n\naxiom nfaRecognizable_iff_msoDefinable {Sigma : Type u} [Fintype Sigma]\n    (L : _root_.Language Sigma) :\n  NFARecognizable L ↔\n    ∃ phi : MSOSyntax.Sentence (wordLanguage Sigma), L = sentenceLanguage phi\n\nend Lax146103.MSOAutomataEquivalence\n",
+      "statements": [
+        {
+          "id": "Lax146103.MSOAutomataEquivalence.nfaRecognizable_iff_msoDefinable",
+          "signature": "nfaRecognizable_iff_msoDefinable : ∀ {Sigma : Type u} [Fintype Sigma] (L : Language Sigma),\n  Iff (Lax146103.NFARecognizable.NFARecognizable L)\n    (Exists fun phi => Eq L (Lax146103.WordStructure.sentenceLanguage phi))",
+          "startLine": 24,
+          "endLine": 27
+        }
+      ]
+    },
+    {
+      "id": "Lax146103.MSOSemantics",
+      "path": "concepts/Lax146103/MSOSemantics.lean",
+      "title": "Semantics of monadic second-order logic",
+      "type": "definition",
+      "description": "The satisfaction relation for monadic second-order formulas over an arbitrary\nfirst-order structure.  First-order terms and relation symbols are interpreted\nby mathlib's first-order semantics, while a monadic valuation assigns a set of\nelements to every monadic variable.",
+      "imports": [
+        "Lax146103.MSOSyntax"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax146103.MSOSyntax\n\n/-!\n---\ntitle: Semantics of monadic second-order logic\ntype: definition\n---\n\nThe satisfaction relation for monadic second-order formulas over an arbitrary\nfirst-order structure.  First-order terms and relation symbols are interpreted\nby mathlib's first-order semantics, while a monadic valuation assigns a set of\nelements to every monadic variable.\n-/\n\nnamespace Lax146103.MSOSemantics\n\nopen FirstOrder\nopen FirstOrder.Language\nopen FirstOrder.Language.Structure\nopen Lax146103.MSOSyntax\n\nuniverse u v w\n\nvariable {L : Language.{u, v}} {M : Type w} [L.Structure M]\n\n/-- Extend a valuation by putting a newly bound variable at index zero. -/\ndef consVal {n : Nat} (x : M) (v : Fin n → M) : Fin (n + 1) → M :=\n  Fin.cases x v\n\n/-- Satisfaction of an MSO formula under first-order and monadic valuations. -/\ndef Realize : {n m : Nat} → Formula L n m → (Fin n → M) →\n    (Fin m → Set M) → Prop\n  | _, _, .falsum, _, _ => False\n  | _, _, .equal t₁ t₂, v, _ => t₁.realize v = t₂.realize v\n  | _, _, .rel r ts, v, _ => RelMap r (fun i => (ts i).realize v)\n  | _, _, .mem t X, v, V => t.realize v ∈ V X\n  | _, _, .or phi psi, v, V => Realize phi v V ∨ Realize psi v V\n  | _, _, .neg phi, v, V => ¬Realize phi v V\n  | _, _, .exFO phi, v, V => ∃ x : M, Realize phi (consVal x v) V\n  | _, _, .exSO phi, v, V => ∃ X : Set M, Realize phi v (consVal X V)\n\nend Lax146103.MSOSemantics\n",
+      "statements": []
+    },
+    {
+      "id": "Lax146103.MSOSyntax",
+      "path": "concepts/Lax146103/MSOSyntax.lean",
+      "title": "Monadic second-order syntax",
+      "type": "definition",
+      "description": "Monadic second-order formulas over an arbitrary first-order language.  A formula\nin context `(n, m)` has `n` first-order variables and `m` monadic second-order\nvariables.  First-order terms are the terms of the underlying first-order\nlanguage.  Disjunction and negation are primitive; conjunction and the other\nusual connectives are derived operations.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.ModelTheory.Semantics"
+      ],
+      "sourceText": "import Mathlib.ModelTheory.Semantics\n\n/-!\n---\ntitle: Monadic second-order syntax\ntype: definition\n---\n\nMonadic second-order formulas over an arbitrary first-order language.  A formula\nin context `(n, m)` has `n` first-order variables and `m` monadic second-order\nvariables.  First-order terms are the terms of the underlying first-order\nlanguage.  Disjunction and negation are primitive; conjunction and the other\nusual connectives are derived operations.\n-/\n\nnamespace Lax146103.MSOSyntax\n\nopen FirstOrder\n\nuniverse u v\n\n/-- Monadic second-order formulas over `L`, intrinsically scoped by the numbers\nof available first-order and monadic variables. -/\ninductive Formula (L : Language.{u, v}) : Nat → Nat → Type (max u v)\n  | falsum {n m : Nat} : Formula L n m\n  | equal {n m : Nat} : L.Term (Fin n) → L.Term (Fin n) → Formula L n m\n  | rel {n m k : Nat} : L.Relations k → (Fin k → L.Term (Fin n)) → Formula L n m\n  | mem {n m : Nat} : L.Term (Fin n) → Fin m → Formula L n m\n  | or {n m : Nat} : Formula L n m → Formula L n m → Formula L n m\n  | neg {n m : Nat} : Formula L n m → Formula L n m\n  | exFO {n m : Nat} : Formula L (n + 1) m → Formula L n m\n  | exSO {n m : Nat} : Formula L n (m + 1) → Formula L n m\n\n/-- An MSO sentence has no free variables of either sort. -/\nabbrev Sentence (L : Language.{u, v}) := Formula L 0 0\n\nnamespace Formula\n\nvariable {L : Language.{u, v}} {n m : Nat}\n\n/-- Derived conjunction. -/\ndef and (phi psi : Formula L n m) : Formula L n m :=\n  .neg (.or (.neg phi) (.neg psi))\n\n/-- Derived truth. -/\ndef verum : Formula L n m := .neg .falsum\n\n/-- Derived implication. -/\ndef imp (phi psi : Formula L n m) : Formula L n m :=\n  .or (.neg phi) psi\n\n/-- Derived biconditional. -/\ndef iff (phi psi : Formula L n m) : Formula L n m :=\n  and (imp phi psi) (imp psi phi)\n\n/-- Derived universal first-order quantification. -/\ndef allFO (phi : Formula L (n + 1) m) : Formula L n m :=\n  .neg (.exFO (.neg phi))\n\n/-- Derived universal monadic second-order quantification. -/\ndef allSO (phi : Formula L n (m + 1)) : Formula L n m :=\n  .neg (.exSO (.neg phi))\n\nend Formula\n\nend Lax146103.MSOSyntax\n",
+      "statements": []
+    },
+    {
+      "id": "Lax146103.MSOToNFA",
+      "path": "concepts/Lax146103/MSOToNFA.lean",
+      "title": "MSO-definable word languages are NFA-recognizable",
+      "type": "theorem",
+      "description": "Every monadic second-order sentence over finite words on a finite alphabet is\nrecognized by a nondeterministic finite automaton.",
+      "imports": [
+        "Lax146103.NFARecognizable",
+        "Lax146103.WordStructure"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax146103.NFARecognizable\nimport Lax146103.WordStructure\n\n/-!\n---\ntitle: MSO-definable word languages are NFA-recognizable\ntype: theorem\n---\n\nEvery monadic second-order sentence over finite words on a finite alphabet is\nrecognized by a nondeterministic finite automaton.\n-/\n\nnamespace Lax146103.MSOToNFA\n\nopen Lax146103.MSOSyntax\nopen Lax146103.WordStructure\nopen Lax146103.NFARecognizable\n\nuniverse u\n\naxiom mso_definable_is_nfaRecognizable {Sigma : Type u} [Fintype Sigma]\n    (phi : MSOSyntax.Sentence (wordLanguage Sigma)) :\n  NFARecognizable (sentenceLanguage phi)\n\nend Lax146103.MSOToNFA\n",
+      "statements": [
+        {
+          "id": "Lax146103.MSOToNFA.mso_definable_is_nfaRecognizable",
+          "signature": "mso_definable_is_nfaRecognizable : ∀ {Sigma : Type u} [Fintype Sigma] (phi : Lax146103.MSOSyntax.Sentence (Lax146103.WordStructure.wordLanguage Sigma)),\n  Lax146103.NFARecognizable.NFARecognizable (Lax146103.WordStructure.sentenceLanguage phi)",
+          "startLine": 22,
+          "endLine": 24
+        }
+      ]
+    },
+    {
+      "id": "Lax146103.NFARecognizable",
+      "path": "concepts/Lax146103/NFARecognizable.lean",
+      "title": "Recognition by a finite nondeterministic automaton",
+      "type": "definition",
+      "description": "A language is NFA-recognizable when it is accepted by a mathlib\nnondeterministic automaton whose state type is finite.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Computability.NFA"
+      ],
+      "sourceText": "import Mathlib.Computability.NFA\n\n/-!\n---\ntitle: Recognition by a finite nondeterministic automaton\ntype: definition\n---\n\nA language is NFA-recognizable when it is accepted by a mathlib\nnondeterministic automaton whose state type is finite.\n-/\n\nnamespace Lax146103.NFARecognizable\n\nuniverse u\n\n/-- Recognition by an NFA with a finite state type. -/\ndef NFARecognizable {Sigma : Type u} (L : _root_.Language Sigma) : Prop :=\n  ∃ Q : Type, ∃ _ : Fintype Q, ∃ M : NFA Sigma Q, M.accepts = L\n\nend Lax146103.NFARecognizable\n",
+      "statements": []
+    },
+    {
+      "id": "Lax146103.NFAToMSO",
+      "path": "concepts/Lax146103/NFAToMSO.lean",
+      "title": "Finite automata are MSO-definable",
+      "type": "theorem",
+      "description": "Every nondeterministic finite automaton over a finite alphabet has a monadic\nsecond-order sentence that holds on exactly the words accepted by the\nautomaton.",
+      "imports": [
+        "Lax146103.NFARecognizable",
+        "Lax146103.WordStructure"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax146103.NFARecognizable\nimport Lax146103.WordStructure\n\n/-!\n---\ntitle: Finite automata are MSO-definable\ntype: theorem\n---\n\nEvery nondeterministic finite automaton over a finite alphabet has a monadic\nsecond-order sentence that holds on exactly the words accepted by the\nautomaton.\n-/\n\nnamespace Lax146103.NFAToMSO\n\nopen Lax146103.MSOSyntax\nopen Lax146103.WordStructure\n\nuniverse u\n\naxiom nfa_definable_by_mso {Sigma : Type u} [Fintype Sigma]\n    {Q : Type} [Fintype Q] (M : NFA Sigma Q) :\n  ∃ phi : MSOSyntax.Sentence (wordLanguage Sigma), M.accepts = sentenceLanguage phi\n\nend Lax146103.NFAToMSO\n",
+      "statements": [
+        {
+          "id": "Lax146103.NFAToMSO.nfa_definable_by_mso",
+          "signature": "nfa_definable_by_mso : ∀ {Sigma : Type u} [Fintype Sigma] {Q : Type} [Fintype Q] (M : NFA Sigma Q),\n  Exists fun phi => Eq M.accepts (Lax146103.WordStructure.sentenceLanguage phi)",
+          "startLine": 22,
+          "endLine": 24
+        }
+      ]
+    },
+    {
+      "id": "Lax146103.WordStructure",
+      "path": "concepts/Lax146103/WordStructure.lean",
+      "title": "Words as finite relational structures",
+      "type": "definition",
+      "description": "A word over an alphabet `Sigma` is viewed as a structure whose elements are its\npositions, ordered by their natural order, with one unary predicate for each\nletter.  The predicate belonging to `a` holds exactly at positions carrying\nthe letter `a`.  These properties uniquely determine the structure; no\nparticular construction of it is part of the concept.",
+      "imports": [
+        "Lax146103.MSOSemantics"
+      ],
+      "mathlibImports": [
+        "Mathlib.Computability.NFA"
+      ],
+      "sourceText": "import Lax146103.MSOSemantics\nimport Mathlib.Computability.NFA\n\n/-!\n---\ntitle: Words as finite relational structures\ntype: definition\n---\n\nA word over an alphabet `Sigma` is viewed as a structure whose elements are its\npositions, ordered by their natural order, with one unary predicate for each\nletter.  The predicate belonging to `a` holds exactly at positions carrying\nthe letter `a`.  These properties uniquely determine the structure; no\nparticular construction of it is part of the concept.\n-/\n\nnamespace Lax146103.WordStructure\n\nopen FirstOrder\nopen FirstOrder.Language\nopen Lax146103.MSOSyntax\nopen Lax146103.MSOSemantics\n\nuniverse u\n\n/-- Relation symbols of the language of words over `Sigma`. -/\ninductive WordRelation (Sigma : Type u) : Nat → Type u\n  | letter (a : Sigma) : WordRelation Sigma 1\n  | le : WordRelation Sigma 2\n\n/-- The first-order language with order and one unary predicate per letter. -/\ndef wordLanguage (Sigma : Type u) : FirstOrder.Language.{0, u} where\n  Functions := fun _ => Empty\n  Relations := WordRelation Sigma\n\n/-- A structure has the relational content of `w` when its unary letter\nrelations record exactly the letters of `w` and its order relation is the\nnatural order on positions. -/\ndef IsWordStructure {Sigma : Type u} (w : List Sigma)\n    (S : (wordLanguage Sigma).Structure (Fin w.length)) : Prop :=\n  (∀ (a : Sigma) (xs : Fin 1 → Fin w.length),\n      @FirstOrder.Language.Structure.RelMap\n        (wordLanguage Sigma) (Fin w.length) S 1 (WordRelation.letter a) xs ↔\n        w.get (xs 0) = a) ∧\n  (∀ xs : Fin 2 → Fin w.length,\n      @FirstOrder.Language.Structure.RelMap\n        (wordLanguage Sigma) (Fin w.length) S 2 WordRelation.le xs ↔\n        xs 0 ≤ xs 1)\n\n/-- The relational content of a word determines a unique first-order\nstructure on its positions. -/\naxiom existsUnique_wordStructure {Sigma : Type u} (w : List Sigma) :\n  ∃! S : (wordLanguage Sigma).Structure (Fin w.length), IsWordStructure w S\n\n/-- Satisfaction of a closed MSO sentence by a word, expressed using any\nstructure with the uniquely determined relational content of that word. -/\ndef WordModels {Sigma : Type u} (w : List Sigma)\n    (phi : MSOSyntax.Sentence (wordLanguage Sigma)) : Prop :=\n  ∀ S : (wordLanguage Sigma).Structure (Fin w.length), IsWordStructure w S →\n    @MSOSemantics.Realize (wordLanguage Sigma) (Fin w.length) S 0 0 phi\n      (fun i : Fin 0 => Fin.elim0 i) (fun i : Fin 0 => Fin.elim0 i)\n\n/-- The language of words satisfying an MSO sentence. -/\ndef sentenceLanguage {Sigma : Type u} (phi : MSOSyntax.Sentence (wordLanguage Sigma)) :\n    _root_.Language Sigma :=\n  {w | WordModels w phi}\n\nend Lax146103.WordStructure\n",
+      "statements": [
+        {
+          "id": "Lax146103.WordStructure.existsUnique_wordStructure",
+          "signature": "existsUnique_wordStructure : ∀ {Sigma : Type u} (w : List Sigma), ExistsUnique fun S => Lax146103.WordStructure.IsWordStructure w S",
+          "startLine": 50,
+          "endLine": 53,
+          "doc": "The relational content of a word determines a unique first-order\nstructure on its positions."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax146103Proofs.existsUnique_wordStructure_proof",
+      "path": "proofs/Lax146103Proofs/Structures.lean",
+      "conclusion": "Lax146103.WordStructure.existsUnique_wordStructure",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax146103Proofs.mso_definable_is_nfaRecognizable_proof",
+      "path": "proofs/Lax146103Proofs/MSOToNFA.lean",
+      "conclusion": "Lax146103.MSOToNFA.mso_definable_is_nfaRecognizable",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax146103Proofs.nfa_definable_by_mso_proof",
+      "path": "proofs/Lax146103Proofs/NFAToMSO.lean",
+      "conclusion": "Lax146103.NFAToMSO.nfa_definable_by_mso",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax146103Proofs.nfaRecognizable_iff_msoDefinable_proof",
+      "path": "proofs/Lax146103Proofs/MSOAutomataEquivalence.lean",
+      "conclusion": "Lax146103.MSOAutomataEquivalence.nfaRecognizable_iff_msoDefinable",
+      "assumptions": [],
+      "description": ""
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "b54194cba27145fbcacde4f2085cd46caba1fa89aba0b53ddb9088997d002f26",
+    "sourceCommit": "b7b157e93741492b33a0fa84ec76e24a571e2a98",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax146103/MSOAutomataEquivalence.c",
+        "bytes": 1573,
+        "sha256": "fe65e4e284049f9dbbea7c9974ef0b66005463ea1a4591342bfb3a2654b6d94e"
+      },
+      {
+        "path": "concepts/ir/Lax146103/MSOAutomataEquivalence.c.hash",
+        "bytes": 16,
+        "sha256": "15d9c544d2533d176a6e0a7d88c04295e1655793546f3187609139ed23160934"
+      },
+      {
+        "path": "concepts/ir/Lax146103/MSOSemantics.c",
+        "bytes": 3231,
+        "sha256": "3772aabb623d35fef41e3a7367c44234524884c5d1d05a73b0a376e0a5d0647c"
+      },
+      {
+        "path": "concepts/ir/Lax146103/MSOSemantics.c.hash",
+        "bytes": 16,
+        "sha256": "dc11ed7dc6475e44b95be81948e74754590857a7accaef3011883b9933add41e"
+      },
+      {
+        "path": "concepts/ir/Lax146103/MSOSyntax.c",
+        "bytes": 29609,
+        "sha256": "6a5e4a6bb712617c9bd180e2dc224fe60f473c932816eaad82d58d091137aaca"
+      },
+      {
+        "path": "concepts/ir/Lax146103/MSOSyntax.c.hash",
+        "bytes": 16,
+        "sha256": "ad1d31523c1a0dd74c4a2cf3369ae9cdf5168d4e5fbc7e87d50b5ce7bb59f6ef"
+      },
+      {
+        "path": "concepts/ir/Lax146103/MSOToNFA.c",
+        "bytes": 1581,
+        "sha256": "87d3eb8c2ef4900f7b349c6c9957376eada595e220b202ae7648187d07f55931"
+      },
+      {
+        "path": "concepts/ir/Lax146103/MSOToNFA.c.hash",
+        "bytes": 16,
+        "sha256": "39c2d10906d0fb42280da85aac88a53cf06d181d59230a6b3d48f51d0faa12da"
+      },
+      {
+        "path": "concepts/ir/Lax146103/NFARecognizable.c",
+        "bytes": 1351,
+        "sha256": "fd4f7861d7bb6143db278c337e634ba4b889028989644a956b1cc34182b9afe0"
+      },
+      {
+        "path": "concepts/ir/Lax146103/NFARecognizable.c.hash",
+        "bytes": 16,
+        "sha256": "053db77a3e637a064de5b21ca736fe13d0cbbbfcfc2999f21e7e52cb1c17317c"
+      },
+      {
+        "path": "concepts/ir/Lax146103/NFAToMSO.c",
+        "bytes": 1581,
+        "sha256": "de6514055554764efde6bb46ede8d5817fafd525c1a13e2d6b1520a4c5ba5cfc"
+      },
+      {
+        "path": "concepts/ir/Lax146103/NFAToMSO.c.hash",
+        "bytes": 16,
+        "sha256": "fdbd58fcac6970ac454760d7ad12fc66f41d5bf04b7ca9d0d2cac51d931b2102"
+      },
+      {
+        "path": "concepts/ir/Lax146103/WordStructure.c",
+        "bytes": 8659,
+        "sha256": "8807a3ac6592a015af782e5a388205b5c041d042c23d534cc8f306e220bf0bca"
+      },
+      {
+        "path": "concepts/ir/Lax146103/WordStructure.c.hash",
+        "bytes": 16,
+        "sha256": "bdc973436efe7d447f4e69691e156dde7290c0270a2e676616a234be68448b50"
+      },
+      {
+        "path": "concepts/ir/Lax146103.c",
+        "bytes": 2745,
+        "sha256": "723529ea39d6580b155e27bbd235e660a9696aad4e0e217fb87325a8d9c359ec"
+      },
+      {
+        "path": "concepts/ir/Lax146103.c.hash",
+        "bytes": 16,
+        "sha256": "bdcf5cf38fadf48ecc9bb96a9c1b615c7c592db4e1d167b901f9193ad4fce1fb"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOAutomataEquivalence.ilean",
+        "bytes": 1698,
+        "sha256": "c2e0ac2a837026c8d400637c3d82898be1f5d1625b5f138aa64ed1a892f35a44"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOAutomataEquivalence.ilean.hash",
+        "bytes": 16,
+        "sha256": "4dd7273c26a2a438d7daac7b6dbdc2860ac0c3c87c5d3bb6394e2953da3df7f7"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOAutomataEquivalence.olean",
+        "bytes": 7744,
+        "sha256": "16545bf829b2e022fa36b14ec8cb61d859f41fcbacaf6eada2d4ae0b958ae3b3"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOAutomataEquivalence.olean.hash",
+        "bytes": 16,
+        "sha256": "56e04732d07ba19ee8cf2caceea88b0eacd40feb052349e2de930a7d284ba944"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOAutomataEquivalence.trace",
+        "bytes": 2325,
+        "sha256": "606d09d7f4fb226083481635f74865975803e6db58e175a0b1568356aa1a96c9"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOSemantics.ilean",
+        "bytes": 3934,
+        "sha256": "de69d24afc923518d4b98135f31951724d662ef9c9c60be8571858163c3f5e2d"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOSemantics.ilean.hash",
+        "bytes": 16,
+        "sha256": "48a26d7c43e314a5f9b01c068919e2b733a762873eaf90bfbef50ee4b2e8ccdc"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOSemantics.olean",
+        "bytes": 92848,
+        "sha256": "b31e091600afddc2c4cfee3a4f721f6ea196bbb1adf9a4861416ce8dd0b1a6b8"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOSemantics.olean.hash",
+        "bytes": 16,
+        "sha256": "13fe10ca8f897b978e3bf095959812bbf70607b25c42d6db28f56c220a7099d9"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOSemantics.trace",
+        "bytes": 2112,
+        "sha256": "1a34f760e502993c8338e4f245de349777a02281987765cf08fda6b3bb158152"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOSyntax.ilean",
+        "bytes": 6455,
+        "sha256": "1f835d5a96b77f093fc483fb35661d18de9418b55f33884d682a7cbf537e039f"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOSyntax.ilean.hash",
+        "bytes": 16,
+        "sha256": "890f3d266596905a02369fa79603d373b748d86abda057df6bc481f7a9642ac1"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOSyntax.olean",
+        "bytes": 332328,
+        "sha256": "841fabdac1e4b950dbc7891b1755a6b999ae8a20dbd3ebd814edec34c9cfac12"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOSyntax.olean.hash",
+        "bytes": 16,
+        "sha256": "8a2109224ab6ab37d99cba886e69a148b9484a54199cd1b6dee43b6078892859"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOSyntax.trace",
+        "bytes": 2118,
+        "sha256": "c808df9018b9fe2453363198782f699c81a8ccefdeff9b3d3eef1e267be55cbd"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOToNFA.ilean",
+        "bytes": 1386,
+        "sha256": "7768e6d67eeecc96899243664b32d447a660a05f617ad7c2530562b52567ffea"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOToNFA.ilean.hash",
+        "bytes": 16,
+        "sha256": "24eb12e18aeb6183808e39654c117d74259b9e207d92b890fcee97727f912a5d"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOToNFA.olean",
+        "bytes": 5968,
+        "sha256": "425acc713afd77f7136fe3a18590bb43daacd75f2243e4429a13f01ad7b413c3"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOToNFA.olean.hash",
+        "bytes": 16,
+        "sha256": "e1c8a6da8d1d77bb8e0938af8e46e068ffec892da7f7502f81195f92c46e2e44"
+      },
+      {
+        "path": "concepts/lib/Lax146103/MSOToNFA.trace",
+        "bytes": 2262,
+        "sha256": "def43b72e4819365fa8cead6daac7dcc222d29c56ae69f894b12c7805716a8a3"
+      },
+      {
+        "path": "concepts/lib/Lax146103/NFARecognizable.ilean",
+        "bytes": 975,
+        "sha256": "77dc226d753bfacea98eabfae215a15984fd0807ae48dc3659d351ac8e217503"
+      },
+      {
+        "path": "concepts/lib/Lax146103/NFARecognizable.ilean.hash",
+        "bytes": 16,
+        "sha256": "d9d55ca989dd7c95cebe9cab9fa559386f23835b18a19d3e4633ce1a945fa37a"
+      },
+      {
+        "path": "concepts/lib/Lax146103/NFARecognizable.olean",
+        "bytes": 8544,
+        "sha256": "983aecc87b19b5dba68ea64dfbfdbf26f49230a08690d87fea631ea16e12649c"
+      },
+      {
+        "path": "concepts/lib/Lax146103/NFARecognizable.olean.hash",
+        "bytes": 16,
+        "sha256": "8c9e77ec526ab6149ae99b9ba002a8e0e8fb4a0d5bf10497b9ed0c77256d9546"
+      },
+      {
+        "path": "concepts/lib/Lax146103/NFARecognizable.trace",
+        "bytes": 2424,
+        "sha256": "61b17dfa7204f2781f0999c82c7d3e118bff59ae552e52e4a7689954eacf3b71"
+      },
+      {
+        "path": "concepts/lib/Lax146103/NFAToMSO.ilean",
+        "bytes": 1466,
+        "sha256": "015b3ae037c00455ba4dc9ebbf92125571696f4fae506d8db474cd6f67acfd7e"
+      },
+      {
+        "path": "concepts/lib/Lax146103/NFAToMSO.ilean.hash",
+        "bytes": 16,
+        "sha256": "cc4310890d6ac59cb2fb7653c1d358c595120e7f68e2601d0e92368827cf23d0"
+      },
+      {
+        "path": "concepts/lib/Lax146103/NFAToMSO.olean",
+        "bytes": 7776,
+        "sha256": "61d383d1bc41cc3e6481d63b4e465a10035345626379f8ec3aaa01b13680e2c1"
+      },
+      {
+        "path": "concepts/lib/Lax146103/NFAToMSO.olean.hash",
+        "bytes": 16,
+        "sha256": "babe0671b01f27d76720945762514d1b3161563f39b6f653f822ecb50fdf1b2d"
+      },
+      {
+        "path": "concepts/lib/Lax146103/NFAToMSO.trace",
+        "bytes": 2262,
+        "sha256": "f5fa2baeb0a2abbc7ad42c04de40bc7f19755ac7a62b1cf0cb0b3f81fc0adbde"
+      },
+      {
+        "path": "concepts/lib/Lax146103/WordStructure.ilean",
+        "bytes": 6496,
+        "sha256": "9a05557501af7ff8244af23369eea6b3847756951f8488ee29c49917f2f35ce1"
+      },
+      {
+        "path": "concepts/lib/Lax146103/WordStructure.ilean.hash",
+        "bytes": 16,
+        "sha256": "93c277772d774431ad5d4f79a79f9f72d348101e731dcc6edbf2b08003ac2b45"
+      },
+      {
+        "path": "concepts/lib/Lax146103/WordStructure.olean",
+        "bytes": 82464,
+        "sha256": "6a57c781428bb5b8bb143a8294c240f43b88893d4b6f5ec014aa9bd9508a3477"
+      },
+      {
+        "path": "concepts/lib/Lax146103/WordStructure.olean.hash",
+        "bytes": 16,
+        "sha256": "9aca4b26e57ead97b9fcc80262085994794a42dd30f2fd3509e4406ca83dfff2"
+      },
+      {
+        "path": "concepts/lib/Lax146103/WordStructure.trace",
+        "bytes": 2295,
+        "sha256": "ce930302e7d546d7f52cbba50b2ec0ca1ff633b5305407830305e37948ea98eb"
+      },
+      {
+        "path": "concepts/lib/Lax146103.ilean",
+        "bytes": 397,
+        "sha256": "76047a834488b004dbc773c42e9885e9817a544a1aec2a403e3a659a9e3d12ee"
+      },
+      {
+        "path": "concepts/lib/Lax146103.ilean.hash",
+        "bytes": 16,
+        "sha256": "d7900c3d8a1197c2eb56d289873b146eea1a6c9264ba4bd60e33090db708f83c"
+      },
+      {
+        "path": "concepts/lib/Lax146103.olean",
+        "bytes": 2208,
+        "sha256": "b4b64901c9d72c193320f6c7846840e2d7c490333d09a73f1729ecd9a29297aa"
+      },
+      {
+        "path": "concepts/lib/Lax146103.olean.hash",
+        "bytes": 16,
+        "sha256": "c67516724df162a5cc119bb4d73ee7223882fa17d142b7bfcb6a7efb596bd510"
+      },
+      {
+        "path": "concepts/lib/Lax146103.trace",
+        "bytes": 2968,
+        "sha256": "59c457c3d3392ec9cd26db9e67b865d559ee6fed77d0c0e8ba2f2753a307beb6"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "a72ccc3b4e8a62109579db427804b3f01015b480bdf3c69a46fe517253f0bd2c"
+      },
+      {
+        "path": "concepts/package/Lax146103/MSOAutomataEquivalence.lean",
+        "bytes": 776,
+        "sha256": "33160c383cd76d25ee0176fe90f5911e77888941d6b63f5311cb9277452c222b"
+      },
+      {
+        "path": "concepts/package/Lax146103/MSOSemantics.lean",
+        "bytes": 1430,
+        "sha256": "66dc08601006fd9b101054be0d37eff84f9c6ccc7a54e96ba65792204b6eaaf6"
+      },
+      {
+        "path": "concepts/package/Lax146103/MSOSyntax.lean",
+        "bytes": 2144,
+        "sha256": "24af7545eeb16a7b9d1db0e76039a8d31fd1e987629d83d878066429e35d701c"
+      },
+      {
+        "path": "concepts/package/Lax146103/MSOToNFA.lean",
+        "bytes": 601,
+        "sha256": "d5171158bf0763ab4798c9fb966d8f96461125f0ae21472bf2b3d27ea6d8bf64"
+      },
+      {
+        "path": "concepts/package/Lax146103/NFARecognizable.lean",
+        "bytes": 525,
+        "sha256": "0f32a39345b0e795f8ef0a2e65a06b4908c95cf628a17cb43a485130ae44bf9f"
+      },
+      {
+        "path": "concepts/package/Lax146103/NFAToMSO.lean",
+        "bytes": 609,
+        "sha256": "20e888a8c2900211c6f83c37f5a7938584954f52eb123a811de6833be16b239a"
+      },
+      {
+        "path": "concepts/package/Lax146103/WordStructure.lean",
+        "bytes": 2685,
+        "sha256": "d92384665919d0e7259ea7120630229c6f7ec6aaabbc3abe46d0be450b2becdc"
+      },
+      {
+        "path": "concepts/package/Lax146103.lean",
+        "bytes": 213,
+        "sha256": "cc27b0f34d13c223b8ad707d948a41f0b3c4de19ea4ef845106195db25904d0e"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/MarkedWords.c",
+        "bytes": 1359,
+        "sha256": "86126c348baa6ce9614b92a2c9f328d2db9fcc51c4993530bf6eead137bc818f"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/MarkedWords.c.hash",
+        "bytes": 16,
+        "sha256": "c8db37dd1b9f394ca113e8ee5c9c4607f6bcffebd76fcb9341dc0e3cf9ad9d6f"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/MSOAutomataEquivalence.c",
+        "bytes": 1651,
+        "sha256": "f3d09d939fb966bda43f030dae9ecfd066ea3b7853a426348aa3f160a2495d45"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/MSOAutomataEquivalence.c.hash",
+        "bytes": 16,
+        "sha256": "f79767ab127f0b8233114b55c16bfccf6dcd0fac3ed8596bbf7a37bad7b3c6c6"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/MSOFormulaRegularity.c",
+        "bytes": 34565,
+        "sha256": "4876588e13c3dfbc608fa33a473cb687d09643545f6a71c6e3c7af0cb43f1058"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/MSOFormulaRegularity.c.hash",
+        "bytes": 16,
+        "sha256": "ac073d98dbc9954a6126973f914f2190f4b34ec6f7edc1fccbf2c31f321bdff9"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/MSOSemantics.c",
+        "bytes": 10251,
+        "sha256": "9444875e00bb52209ac1e3f789ab3ef2ddb2b69a117c8267076b9e03f88ed011"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/MSOSemantics.c.hash",
+        "bytes": 16,
+        "sha256": "2c8914ff094ac1e61fe2498089e89e49d4acf0c41a96009df43fa6f7b103863e"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/MSOToNFA.c",
+        "bytes": 2173,
+        "sha256": "95d660ffafda236ce6cf0772898943ff664b03300ed6d462ae44d82d196b0273"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/MSOToNFA.c.hash",
+        "bytes": 16,
+        "sha256": "11dc2c7175f8fa03d6b92723a18aadb5f735cd4fd9a2514c9db42abb66887390"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/NFAToMSO.c",
+        "bytes": 50645,
+        "sha256": "471d4604020ffc96a0eef2efbf3164298b6e4259ec0cce6d8b25747342aaa7d3"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/NFAToMSO.c.hash",
+        "bytes": 16,
+        "sha256": "bd70408712c04630c0c2e60bbcb11c5a4aeb07fa30b9d348129625ec5a9e5ba6"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/Regular.c",
+        "bytes": 2267,
+        "sha256": "c149417e7b1d49ff91ce42d3210af31d244550c6bb0a606079fb489d996d81b4"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/Regular.c.hash",
+        "bytes": 16,
+        "sha256": "8d818e8d6e8590ae7ab839e2f0937a9d7008b88ac6c271d34c5ada8c39f0b88a"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/SemanticTransport.c",
+        "bytes": 1596,
+        "sha256": "73bb6e44be4294f5af3513fc7e90049620ad7315c185ca228b0d347124d75559"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/SemanticTransport.c.hash",
+        "bytes": 16,
+        "sha256": "150a0183af3ffe350a8c418167f213215ac365ff58344804b717d13e67f7a931"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/Structures.c",
+        "bytes": 4747,
+        "sha256": "8a4e26312e933e7a76704d46d6184d007d243c3cbb52e7d71813810021cc8d2c"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/Structures.c.hash",
+        "bytes": 16,
+        "sha256": "9a68b31b30f4386fa579964ef16ae71028383fdeb675ac6f256d299f071ee909"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/ValidMarkedWordsRegular.c",
+        "bytes": 23901,
+        "sha256": "de896845f631cfb8f57f235f2391f695e21e643938503d269bd7afea16351362"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs/ValidMarkedWordsRegular.c.hash",
+        "bytes": 16,
+        "sha256": "eb81b973400a6b6f16f22111fb1075f378d59ed5dd1e6e80a990be71b98686fb"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs.c",
+        "bytes": 3819,
+        "sha256": "9038249b7ff500276088e2e2779846c6d255eea1d8ca307a717e7824e9d343e4"
+      },
+      {
+        "path": "proofs/ir/Lax146103Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "f1e49320213f521398ce51eaa43d65aca39c287ff088d9b7ce68e347146ced0f"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MarkedWords.ilean",
+        "bytes": 8040,
+        "sha256": "f8d15903bbbc4f525d610d132dbe0318c15ca90bb2076ddf6854fb3af05a58ff"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MarkedWords.ilean.hash",
+        "bytes": 16,
+        "sha256": "a95f98de50427a8acdaf055f7ab9afbc9c7736a5488d0cf7c94f241cecb9bb56"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MarkedWords.olean",
+        "bytes": 28360,
+        "sha256": "29f69fbdbb1b62464ed77ad2788d6f2cda8de761e6b1d6ff143b40e9d2cb029b"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MarkedWords.olean.hash",
+        "bytes": 16,
+        "sha256": "d44370bf56c5671b3e474a513f8e8d54b8eb45e39fcac3d814d5d26cc4c46548"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MarkedWords.trace",
+        "bytes": 2210,
+        "sha256": "c384989c9db1173a425f3aa4c1b3ec3903560ef32fcd53e78aebdaf21babfffe"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOAutomataEquivalence.ilean",
+        "bytes": 2364,
+        "sha256": "c4db84a64530892c103a20c060c2b032844ccadce98eef188f4cf9e952720c3e"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOAutomataEquivalence.ilean.hash",
+        "bytes": 16,
+        "sha256": "a5086529d55bcca62b65d584003dd0dc47ada2bc6b671bd59b5017f96c887ddc"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOAutomataEquivalence.olean",
+        "bytes": 20304,
+        "sha256": "ea64ba1abfb000e52b5b16b9206c11f7f9448219a315b6c1a5f92dbc39f09870"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOAutomataEquivalence.olean.hash",
+        "bytes": 16,
+        "sha256": "ae1ebc85adda2d925dda978073029d37353fab38010fa15601860c6539e2e547"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOAutomataEquivalence.trace",
+        "bytes": 2859,
+        "sha256": "f44be18cee14fd601025c88bbb5eb3fc4ca3135a257435204a874cbe878ccd6b"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOFormulaRegularity.ilean",
+        "bytes": 101034,
+        "sha256": "a6d668f78f5bc8444ecf3a60a5bfb49138ad7bbbcdf46e52bd47dca0af5b6659"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOFormulaRegularity.ilean.hash",
+        "bytes": 16,
+        "sha256": "b2f80bf7b03ee7b0718a53f48b086e44998393416b8439902c767ec18d45e9a4"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOFormulaRegularity.olean",
+        "bytes": 1130688,
+        "sha256": "5d8827d7629d29019e35609fd027d88cb505f4d9479329c96e988da9ff98b743"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOFormulaRegularity.olean.hash",
+        "bytes": 16,
+        "sha256": "59700729ff637c97e05cec1db0b899eb9771cefcc5eda14a612f53df2d52c923"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOFormulaRegularity.trace",
+        "bytes": 13937,
+        "sha256": "d04131dcb14cb2ce35cf3e23d8e4d1522048898e94e30adfd4710a4d440dadb2"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOSemantics.ilean",
+        "bytes": 14027,
+        "sha256": "8e91e113c93674d42702b3b0835373c9aaa0005cdbefbcaeea311c49f673e6a2"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOSemantics.ilean.hash",
+        "bytes": 16,
+        "sha256": "539d8635106961e34601b00b9b34c605c6eea6d6ae2278c274d7c790cf338811"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOSemantics.olean",
+        "bytes": 440160,
+        "sha256": "defb46291407b0b5aaf635774d6838dde53e959a06e8b8b80196d036f78d921e"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOSemantics.olean.hash",
+        "bytes": 16,
+        "sha256": "66b15119cca986192028e3d5d295f044e401c4a5c77f57b73b6e2591b08e9616"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOSemantics.trace",
+        "bytes": 2215,
+        "sha256": "03c1404a69864324125f562cf70cc3f40fc7b2fb8352edc0a08bd1ee82a3950b"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOToNFA.ilean",
+        "bytes": 17128,
+        "sha256": "45c3509ae27804beb9f2aadf721d77bdf3e5765b6eaeb97b7caa4c742015fe45"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOToNFA.ilean.hash",
+        "bytes": 16,
+        "sha256": "df1f486bc1724df58213c593147b50d93deca0423a6ceab8bf68a234c9e7583e"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOToNFA.olean",
+        "bytes": 127136,
+        "sha256": "3a41f6ab0c888da3c51113f57b0b263a0d485a9043162ede69b0f2e1ebc109e9"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOToNFA.olean.hash",
+        "bytes": 16,
+        "sha256": "7d6046a3cf5186460a3f3d9b18929c047ecb65baa7b8325176662549b9172438"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/MSOToNFA.trace",
+        "bytes": 3790,
+        "sha256": "6210ccb736427a1c907758994d51fc1b788e4572eebb74135e7fa4136bae6108"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/NFAToMSO.ilean",
+        "bytes": 95774,
+        "sha256": "b731f707555e4e01214abae893b935c2664c9a0da90d6e03acf190ea615ba67a"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/NFAToMSO.ilean.hash",
+        "bytes": 16,
+        "sha256": "39194416bacea53d64c3050e73f044990cda7bee421c744cd8aaa39eb8bb119a"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/NFAToMSO.olean",
+        "bytes": 1263248,
+        "sha256": "162d77b444e531fc13ecc157f86b4e1fe1546c717fe639ca2dce394785228872"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/NFAToMSO.olean.hash",
+        "bytes": 16,
+        "sha256": "5b7178294e2e4fedd7254530d2b044c49da074105884155b8967c6c4a8828905"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/NFAToMSO.trace",
+        "bytes": 7936,
+        "sha256": "83af71aa22035db5ae1320c982063a161f47ee61162dc625985a6e9164717442"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/Regular.ilean",
+        "bytes": 10330,
+        "sha256": "eb0c08e900f82e80cc8a47c0c9f23f15b96926435864e724b76f54472227adcc"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/Regular.ilean.hash",
+        "bytes": 16,
+        "sha256": "4caa1299bc960a191f6d8aa5dbae751b801a7305d16f8affaab6d5c61b28644e"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/Regular.olean",
+        "bytes": 182664,
+        "sha256": "07100854113cdb66f299cfc7398ef2ce6a645f5810fd4fed4702a2c080fd83f4"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/Regular.olean.hash",
+        "bytes": 16,
+        "sha256": "f9442716f7736b031aed8091036e29e37710ae912a74fec823b423e67074a377"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/Regular.trace",
+        "bytes": 2691,
+        "sha256": "ffe62b812fbe053949900106a1ffb7e1ef3a728063c346009182cd6e6e4f3204"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/SemanticTransport.ilean",
+        "bytes": 7450,
+        "sha256": "0967613ebd8ba9f9aa38b374ca9c05e54986ce68691a1c8c8bb2e44f2a2aa784"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/SemanticTransport.ilean.hash",
+        "bytes": 16,
+        "sha256": "89578cc410f798b04825c180dbff72eb6a542310d4923d61e3e3b69af9fec0fd"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/SemanticTransport.olean",
+        "bytes": 158608,
+        "sha256": "222f7f5ed2274d671ed8a3ba194b4436763671887edb0a5d7b243b440dcd5eb2"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/SemanticTransport.olean.hash",
+        "bytes": 16,
+        "sha256": "95e3d962b5e129ed3846165a0b4caec7260bbd1443107554f5d9e9e0acb449a6"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/SemanticTransport.trace",
+        "bytes": 2386,
+        "sha256": "629cb403c76f8298d754d9d56bb8b5b94990cb79ae9dba42c008b14eda5b21ea"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/Structures.ilean",
+        "bytes": 14477,
+        "sha256": "cf27b318a69895e20cfaa30e18941c3218a57df5e07364cccca94b443bc5fc79"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/Structures.ilean.hash",
+        "bytes": 16,
+        "sha256": "a9a2cd9ce2c9ef7571afcddd5616508261134f78828c3989afc2b8831ac3beca"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/Structures.olean",
+        "bytes": 122032,
+        "sha256": "96faed6f9116433026036eae72e255a4101a300c74427bb70998b3f537743fbd"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/Structures.olean.hash",
+        "bytes": 16,
+        "sha256": "6bddec420d1aa07c6b241f037172e2a89cfb3f7a6e7e70929f4dc87bdedcac2d"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/Structures.trace",
+        "bytes": 2335,
+        "sha256": "58122364db22ace5223dd719b54588a456f34503051ee8453b8322e345ea4435"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/ValidMarkedWordsRegular.ilean",
+        "bytes": 22267,
+        "sha256": "abd11e8e044028ffc1a1acc7ea2450ba23e7ff08fb21abb0e1488d1dbe7ede66"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/ValidMarkedWordsRegular.ilean.hash",
+        "bytes": 16,
+        "sha256": "c0ea46b98793282f5bf37b6510ca491b7246a73c5bcaf4a7fec476a949e0d9c3"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/ValidMarkedWordsRegular.olean",
+        "bytes": 318048,
+        "sha256": "de40dd6ffead295010b51a1a2628b9b4568422045b5b7e7183f0cf02e68d4dd1"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/ValidMarkedWordsRegular.olean.hash",
+        "bytes": 16,
+        "sha256": "a1bec84fa7793eed114bb58e471e1b5a8b4acb78ca88bb252049e1e235889afc"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs/ValidMarkedWordsRegular.trace",
+        "bytes": 2788,
+        "sha256": "a78013ce7f349c44a187388c55b72d88180944857d0f95b08fda8250d9158619"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs.ilean",
+        "bytes": 613,
+        "sha256": "49d6d9c0c23a424f5ed0d6ba976298c6f69d55e062a7e29525de023c1f9fb250"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "2ec5525804cba50f0720910dda1ecc89d5fb6c3709f63a2b3298a47fea993720"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs.olean",
+        "bytes": 2560,
+        "sha256": "ed6f6e270b433febfebfa8d74841aa0832be1a84c5016463a7f77ebe0eb31dc0"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "a690b549897f0c2cdae6fe93b438f5a640e82957991101b4a84f13f90da4db23"
+      },
+      {
+        "path": "proofs/lib/Lax146103Proofs.trace",
+        "bytes": 3714,
+        "sha256": "182a3b1bed8a26dc193a93711261664af77b0342a6c4a04e8f0d6c087119d166"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "cf255bde7acaee5dc6154e020efdac51a10b2219e493b1efbe37bdc4ef12aa55"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "7fa3928c120abcedd4ce04b170549815af5b8869ad41e9d61708d938b523d8ea"
+      },
+      {
+        "path": "proofs/package/Lax146103Proofs/MarkedWords.lean",
+        "bytes": 2727,
+        "sha256": "01f2eb2c87f17390e06a3af654249c5a7c3960dd212b4a3a9ba4ded9eaa3927c"
+      },
+      {
+        "path": "proofs/package/Lax146103Proofs/MSOAutomataEquivalence.lean",
+        "bytes": 896,
+        "sha256": "9a49fc7db284475f5187ae3f3a4d9f4a89eaa0c6fb271b0fc90794cd9b44593e"
+      },
+      {
+        "path": "proofs/package/Lax146103Proofs/MSOFormulaRegularity.lean",
+        "bytes": 37432,
+        "sha256": "a2cf2080e039a4a024f43662784d5a703a9323b7a3a10395db4cac3617127feb"
+      },
+      {
+        "path": "proofs/package/Lax146103Proofs/MSOSemantics.lean",
+        "bytes": 3414,
+        "sha256": "6753a357a0bfc7a64cbca1605a5a870508f40351321aa8cb7e8acc2e9c08e0a7"
+      },
+      {
+        "path": "proofs/package/Lax146103Proofs/MSOToNFA.lean",
+        "bytes": 4732,
+        "sha256": "19c26f4659c8cb91200a542273d163543729ba0a722b393b91ea44bcabe6b63f"
+      },
+      {
+        "path": "proofs/package/Lax146103Proofs/NFAToMSO.lean",
+        "bytes": 28522,
+        "sha256": "e8c8ccbb2506f5e0328945d3ec89d9ead054bb3b6666b2d71b692249d6942b51"
+      },
+      {
+        "path": "proofs/package/Lax146103Proofs/Regular.lean",
+        "bytes": 3950,
+        "sha256": "62c609cc321250ac154272cee9b84057b2aade6c6940cfc34292ce5990f452b3"
+      },
+      {
+        "path": "proofs/package/Lax146103Proofs/SemanticTransport.lean",
+        "bytes": 3475,
+        "sha256": "b4398c9d342eda4689f5f43b8af2799210f92e3e979ce6afc60f3d4b7dab8a0a"
+      },
+      {
+        "path": "proofs/package/Lax146103Proofs/Structures.lean",
+        "bytes": 4585,
+        "sha256": "726823b6c20872ce8c32f6b13a45eefcc344c82f3c710feb98d3e8fb98bd1493"
+      },
+      {
+        "path": "proofs/package/Lax146103Proofs/ValidMarkedWordsRegular.lean",
+        "bytes": 7398,
+        "sha256": "73b606e6f480919d0782cfa7642e5cd0126c815c24c1ea35f57cb044997312b0"
+      },
+      {
+        "path": "proofs/package/Lax146103Proofs.lean",
+        "bytes": 378,
+        "sha256": "12a32e4197a211504029ef1ef908557c2139ef38bedeea91f6929aa1afb1e412"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:b54194cba27145fbcacde4f2085cd46caba1fa89aba0b53ddb9088997d002f26"
   }
 }
