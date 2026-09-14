@@ -9,8 +9,8 @@
     "manifest": {
       "specVersion": "1",
       "id": "lax-709149",
-      "leanVersion": "v4.30.0",
-      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
       "title": "Transducers, Part C: Regular Functions in Terms of Combinators",
       "authors": [
         {
@@ -126,9 +126,10 @@
       "imports": [],
       "mathlibImports": [
         "Mathlib.Data.Fintype.Basic",
+        "Mathlib.Data.Fintype.Sum",
         "Mathlib.Tactic.DeriveFintype"
       ],
-      "sourceText": "import Mathlib.Data.Fintype.Basic\nimport Mathlib.Tactic.DeriveFintype\n\n/-!\n---\ntitle: Types and their string representation\ntype: definition\n---\nThe *types* of Section C.5 of *Transducers* (Definition C.5.1) are the\nexpressions built from the unit type $\\mathbb{1}$, which has the unique element\n$1$, by the product $A \\times B$, the co-product $A + B$ and the list type\n$A^*$. Every element of a type has a *string representation* over a fixed\nalphabet with eight letters\n$$( \\quad ) \\quad [ \\quad ] \\quad , \\quad 1 \\quad L \\quad R,$$\ndefined by induction on the type: the unique element of $\\mathbb{1}$ is $1$, an\nelement of $A + B$ is $L\\,a$ or $R\\,b$, a pair is $(a, b)$, and a list is\n$[a_1, \\ldots, a_n]$. Through this representation, type-to-type functions can\nbe computed by string-to-string transducers (Definition C.5.2).\n\n# Formalization notes\n\n`Ty.Elt` interprets a type as a Lean type — `Unit`, products, sums and lists —\nand `Ty.repr` is the representation, a string over the eight-letter alphabet\n`Sym8`, the same alphabet for all types. Lists are written with the separating\ncommas of the book and no trailing separator.\n-/\n\nnamespace Lax709149.Types\n\n/-- A type: built from the unit type by product, co-product and list. -/\ninductive Ty : Type\n  | one : Ty\n  | prod : Ty → Ty → Ty\n  | sum : Ty → Ty → Ty\n  | list : Ty → Ty\n  deriving DecidableEq\n\n/-- The set of elements of a type. -/\ndef Ty.Elt : Ty → Type\n  | .one => Unit\n  | .prod A B => A.Elt × B.Elt\n  | .sum A B => A.Elt ⊕ B.Elt\n  | .list A => List A.Elt\n\n/-- The alphabet with eight letters `(`, `)`, `[`, `]`, `,`, `1`, `L`, `R`. -/\ninductive Sym8 : Type\n  | lpar | rpar | lbrack | rbrack | comma | one | left | right\n  deriving DecidableEq, Fintype\n\n/-- The entries of a list representation, separated by commas. -/\ndef joinSep : List (List Sym8) → List Sym8\n  | [] => []\n  | [x] => x\n  | x :: xs => x ++ Sym8.comma :: joinSep xs\n\n/-- The string representation of an element: `1` for the unit, `L a` and `R b` for\nthe co-product, `(a,b)` for a pair, `[a₁,…,aₙ]` for a list. -/\ndef Ty.repr : (t : Ty) → t.Elt → List Sym8\n  | .one, _ => [Sym8.one]\n  | .prod A B, x => Sym8.lpar :: (A.repr x.1 ++ Sym8.comma :: (B.repr x.2 ++ [Sym8.rpar]))\n  | .sum A B, x => Sum.elim (fun a => Sym8.left :: A.repr a) (fun b => Sym8.right :: B.repr b) x\n  | .list A, l => Sym8.lbrack :: (joinSep (l.map A.repr) ++ [Sym8.rbrack])\n\nend Lax709149.Types\n",
+      "sourceText": "import Mathlib.Data.Fintype.Basic\nimport Mathlib.Data.Fintype.Sum\nimport Mathlib.Tactic.DeriveFintype\n\n/-!\n---\ntitle: Types and their string representation\ntype: definition\n---\nThe *types* of Section C.5 of *Transducers* (Definition C.5.1) are the\nexpressions built from the unit type $\\mathbb{1}$, which has the unique element\n$1$, by the product $A \\times B$, the co-product $A + B$ and the list type\n$A^*$. Every element of a type has a *string representation* over a fixed\nalphabet with eight letters\n$$( \\quad ) \\quad [ \\quad ] \\quad , \\quad 1 \\quad L \\quad R,$$\ndefined by induction on the type: the unique element of $\\mathbb{1}$ is $1$, an\nelement of $A + B$ is $L\\,a$ or $R\\,b$, a pair is $(a, b)$, and a list is\n$[a_1, \\ldots, a_n]$. Through this representation, type-to-type functions can\nbe computed by string-to-string transducers (Definition C.5.2).\n\n# Formalization notes\n\n`Ty.Elt` interprets a type as a Lean type — `Unit`, products, sums and lists —\nand `Ty.repr` is the representation, a string over the eight-letter alphabet\n`Sym8`, the same alphabet for all types. Lists are written with the separating\ncommas of the book and no trailing separator.\n-/\n\nnamespace Lax709149.Types\n\n/-- A type: built from the unit type by product, co-product and list. -/\ninductive Ty : Type\n  | one : Ty\n  | prod : Ty → Ty → Ty\n  | sum : Ty → Ty → Ty\n  | list : Ty → Ty\n  deriving DecidableEq\n\n/-- The set of elements of a type. -/\ndef Ty.Elt : Ty → Type\n  | .one => Unit\n  | .prod A B => A.Elt × B.Elt\n  | .sum A B => A.Elt ⊕ B.Elt\n  | .list A => List A.Elt\n\n/-- The alphabet with eight letters `(`, `)`, `[`, `]`, `,`, `1`, `L`, `R`. -/\ninductive Sym8 : Type\n  | lpar | rpar | lbrack | rbrack | comma | one | left | right\n  deriving DecidableEq\n\ninstance : Fintype Sym8 := derive_fintype% _\n\n/-- The entries of a list representation, separated by commas. -/\ndef joinSep : List (List Sym8) → List Sym8\n  | [] => []\n  | [x] => x\n  | x :: xs => x ++ Sym8.comma :: joinSep xs\n\n/-- The string representation of an element: `1` for the unit, `L a` and `R b` for\nthe co-product, `(a,b)` for a pair, `[a₁,…,aₙ]` for a list. -/\ndef Ty.repr : (t : Ty) → t.Elt → List Sym8\n  | .one, _ => [Sym8.one]\n  | .prod A B, x => Sym8.lpar :: (A.repr x.1 ++ Sym8.comma :: (B.repr x.2 ++ [Sym8.rpar]))\n  | .sum A B, x => Sum.elim (fun a => Sym8.left :: A.repr a) (fun b => Sym8.right :: B.repr b) x\n  | .list A, l => Sym8.lbrack :: (joinSep (l.map A.repr) ++ [Sym8.rbrack])\n\nend Lax709149.Types\n",
       "statements": []
     }
   ],
@@ -153,10 +154,10 @@
   ],
   "capture": {
     "formatVersion": 1,
-    "digest": "f3e4e04139b2919732acaf084b79cde0b4c8597c3bb4d14cd5e0ddadc425435a",
-    "sourceCommit": "86f2df5c5c7a60b2f19cd47442310ab27cd92811",
-    "leanToolchain": "leanprover/lean4:v4.30.0",
-    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "digest": "7a5b842e1c4494bcf60bde2f45486121ded029498364ca109b62779d844f2987",
+    "sourceCommit": "baffefb92c8cb271ce25cf5ec1cf4d685b76da03",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
     "files": [
       {
         "path": "concepts/ir/Lax709149/RegularOfTerm.c",
@@ -170,13 +171,13 @@
       },
       {
         "path": "concepts/ir/Lax709149/RegularTerms.c",
-        "bytes": 75112,
-        "sha256": "d2226bc3742b9d40268c02f9268ddbc26a36a0923777557b31286eb84d54c423"
+        "bytes": 75391,
+        "sha256": "facea183e9e9bec2db771b7fde020aa3799e33f1e701d85054ce7ae76347fef8"
       },
       {
         "path": "concepts/ir/Lax709149/RegularTerms.c.hash",
         "bytes": 16,
-        "sha256": "f3f84c6d74e6a491ea1df8f3f35e3bb9fb3fdbda38491a42e8cec112e5cfe6d3"
+        "sha256": "57bde4c04dd95e7aab97385b2d22819e0db8bc962b033609ba46f1c369fd89b1"
       },
       {
         "path": "concepts/ir/Lax709149/RegularUnderRepresentation.c",
@@ -190,13 +191,13 @@
       },
       {
         "path": "concepts/ir/Lax709149/Types.c",
-        "bytes": 45861,
-        "sha256": "9079a053219ade6095d60893d66d897864920f46dc787849d7fa77c29abf4e48"
+        "bytes": 71730,
+        "sha256": "f20cb1867dfe7bf0efe004185db48c4113e30f498ee5d76a5ad636eea86e0c93"
       },
       {
         "path": "concepts/ir/Lax709149/Types.c.hash",
         "bytes": 16,
-        "sha256": "d95768b84195454613e20648f89d02d1fdea37a7d5bbfa1603a9283d6b735566"
+        "sha256": "4277fbfe84d9798114308cd5fa9eed7062620645b08dfc78b6b6e02c49886e64"
       },
       {
         "path": "concepts/ir/Lax709149.c",
@@ -220,18 +221,18 @@
       },
       {
         "path": "concepts/lib/Lax709149/RegularOfTerm.olean",
-        "bytes": 6552,
-        "sha256": "886784727bf24fba0a5426eb8f76768c2e1b9e7e05d8dd401d80ac1f086dd197"
+        "bytes": 6704,
+        "sha256": "16d0e147d6c8626f2713c5f0a113cd8a4dd5b85c190cf7dd2ad9ad1dc355b035"
       },
       {
         "path": "concepts/lib/Lax709149/RegularOfTerm.olean.hash",
         "bytes": 16,
-        "sha256": "5b1a1b4ef0ba8deee0de1bd3c9ae8b4a0ef17054b28bf62b64d41dd909536980"
+        "sha256": "d3d1dafea73d057cb76aee68cc23d6946666a002a8fb86477231d541c2b387ae"
       },
       {
         "path": "concepts/lib/Lax709149/RegularOfTerm.trace",
-        "bytes": 2729,
-        "sha256": "6a03359403c059b7421f981ff0fb4b28283a564cbfe9a1b7cea9eef5185897e2"
+        "bytes": 2660,
+        "sha256": "5a81092382e3fb2113ad6c3c410d18deb303d1cbebc0bf66e79bc263260cca2c"
       },
       {
         "path": "concepts/lib/Lax709149/RegularTerms.ilean",
@@ -245,18 +246,18 @@
       },
       {
         "path": "concepts/lib/Lax709149/RegularTerms.olean",
-        "bytes": 624864,
-        "sha256": "a9571ceb4d773bfa75645a519d9489daec154077462412601ba2d58f8bdca526"
+        "bytes": 628968,
+        "sha256": "cbe294db5c9360c7f96a486cdd1ba79ea65e5a492ab1017ad3eca15899b6a7d2"
       },
       {
         "path": "concepts/lib/Lax709149/RegularTerms.olean.hash",
         "bytes": 16,
-        "sha256": "1785f99b729ad6a4bfdd41807ea78cc188258346efae3e373e1b3ae0e43463d0"
+        "sha256": "2d29069cb7e0dea89d63f6eca7978cea07581b1bb73586e336b24b8513571118"
       },
       {
         "path": "concepts/lib/Lax709149/RegularTerms.trace",
-        "bytes": 2836,
-        "sha256": "f0aee2a75359d72226de9683be1ce017171e5a4c7cd3f40d7081b7a45b2dca5b"
+        "bytes": 2766,
+        "sha256": "0af44fa4b3e00b2bbe37202a6a65fba697d628805c45cc1fd951d676b06b1aa3"
       },
       {
         "path": "concepts/lib/Lax709149/RegularUnderRepresentation.ilean",
@@ -270,43 +271,43 @@
       },
       {
         "path": "concepts/lib/Lax709149/RegularUnderRepresentation.olean",
-        "bytes": 9456,
-        "sha256": "2ecdabbb8a7548ab9ef7151a276cc457327313ed0580e9f797ce3fdcde670b37"
+        "bytes": 9752,
+        "sha256": "7a3fa63cb8acae4ec703a49da15aa669180a957108d97f734b63634ba8809093"
       },
       {
         "path": "concepts/lib/Lax709149/RegularUnderRepresentation.olean.hash",
         "bytes": 16,
-        "sha256": "8129edd94e9492cdfff0db126cf511c466bb0d04dab97f0a413f141c73f16ac4"
+        "sha256": "f314748511f5c68b71a76315b0914af3290a062e8beef8a263284f208d985888"
       },
       {
         "path": "concepts/lib/Lax709149/RegularUnderRepresentation.trace",
-        "bytes": 2954,
-        "sha256": "2c9941e56dac20532a55ad04dbfb483cb34795795f04b6e32a3ee8044bad36b3"
+        "bytes": 2870,
+        "sha256": "343281ca7d99463a7da9d4978cb7e590247a1abfbdf70ad53dc5167453b80c89"
       },
       {
         "path": "concepts/lib/Lax709149/Types.ilean",
-        "bytes": 5462,
-        "sha256": "d9738b4479ed9a4c1dd160b2e33b1a97649c93fa7629ce3753580835c114603e"
+        "bytes": 5767,
+        "sha256": "a99f802cc1dc7588b1d4be3b7acf288aa193297c1f3c99da654dc242fa6bbb49"
       },
       {
         "path": "concepts/lib/Lax709149/Types.ilean.hash",
         "bytes": 16,
-        "sha256": "c447131d353fd839bc3318d2078097c2c2be0119d44d519f3c4bb96fff671217"
+        "sha256": "b988fda04aa20d79c729dab314bb2fce21d7f7785c92e6061ed506f4383abf81"
       },
       {
         "path": "concepts/lib/Lax709149/Types.olean",
-        "bytes": 358136,
-        "sha256": "a54e3d771ce8f6b30320cc16311c8301c5500de23bdc05c6193706290282f477"
+        "bytes": 439128,
+        "sha256": "8bc763b2ddbacd4578c421badc257664f45dbb772ea5e151678cf74ece7cfc21"
       },
       {
         "path": "concepts/lib/Lax709149/Types.olean.hash",
         "bytes": 16,
-        "sha256": "26dffec61674f81c5121ede8beb8d8cc9aa9403e8a4167bc20976cf5ee53cf17"
+        "sha256": "f21629e7d2a106cfa8c22bc8f3108e40201f72cd834ca874072b37d918c413c6"
       },
       {
         "path": "concepts/lib/Lax709149/Types.trace",
-        "bytes": 2648,
-        "sha256": "65a57c0a17edddf84ccf78f00cd93193f0f69a7e893ebf22b3867476728d8827"
+        "bytes": 2750,
+        "sha256": "e417789436a499bda4d3b38c80c79b0aab288b487607ca56cc297a2ff2446fff"
       },
       {
         "path": "concepts/lib/Lax709149.ilean",
@@ -320,28 +321,28 @@
       },
       {
         "path": "concepts/lib/Lax709149.olean",
-        "bytes": 1688,
-        "sha256": "f323521407111068e0ea0e7b79c8a62b8e1d5db162d25d742a6722bc85ae379b"
+        "bytes": 1872,
+        "sha256": "e02b4a4813a46d4b8d54219e9ee3236501d5b9c2283807ff99d53aa8103a171d"
       },
       {
         "path": "concepts/lib/Lax709149.olean.hash",
         "bytes": 16,
-        "sha256": "9cb97914b08fd0814f46b21f63637abcbd245344c8ae51527185b02364107f88"
+        "sha256": "b1aea290fa4d200ad3bbefbab1ee82782ff1c15ddbab2fac32cb6663bc02400f"
       },
       {
         "path": "concepts/lib/Lax709149.trace",
-        "bytes": 2922,
-        "sha256": "544b6537cb578a4a4d8b3ab3182742f0a9bc60346a5cfb54bf9f546f8638b46b"
+        "bytes": 2857,
+        "sha256": "3bcd6849f35550da063d8509f8b33b36716a402e6ce444dacee52396bdfa193f"
       },
       {
         "path": "concepts/package/lake-manifest.json",
-        "bytes": 3798,
-        "sha256": "98fc1ab23e69cae508302d3f576d9021f57194a2ec6a38b3693ec5f024029676"
+        "bytes": 3793,
+        "sha256": "580f880a3810a4f8933cf5496f4e33f54485d95feef6ef965f48892a621f9ea4"
       },
       {
         "path": "concepts/package/lakefile.toml",
         "bytes": 659,
-        "sha256": "fb52fe13d60fdc31639d2bbd509466e5c75d0206d27bed1c78d2a49919ac39c3"
+        "sha256": "b13f05d6185f9f9cb421b99814ecfb713c2d290eb6c21f7f51ee845246406411"
       },
       {
         "path": "concepts/package/Lax709149/RegularOfTerm.lean",
@@ -360,8 +361,8 @@
       },
       {
         "path": "concepts/package/Lax709149/Types.lean",
-        "bytes": 2438,
-        "sha256": "ba97251e46cace725fd0df4e5d00b238043ed3a4a08f6d5d5fe1f1f164206b19"
+        "bytes": 2507,
+        "sha256": "34ea122deb744de3da2748926391230e06ec987b588ba0a9a3ac497d1fa36182"
       },
       {
         "path": "concepts/package/Lax709149.lean",
@@ -371,17 +372,17 @@
       {
         "path": "concepts/package/lean-toolchain",
         "bytes": 25,
-        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Bridge.c",
-        "bytes": 56706,
-        "sha256": "e14a5bac1d3340ba206fde02dd5b1b113262c0694b06e1a4e803ac5488bab2c2"
+        "bytes": 56971,
+        "sha256": "0fd98bf2285bdf6751b63b2af84df6f619e0b81aee11c3444253c3a2be912855"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Bridge.c.hash",
         "bytes": 16,
-        "sha256": "30854561ed053ce1e1bc6ed3f3012bb2ab22d808ee411c837314354ec942f6cb"
+        "sha256": "fbfe60aa9ccbb0f6a8bc7f0c72974c35a8690400fc0d5c9c20873edf0bdbcff3"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Results.c",
@@ -395,53 +396,53 @@
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombAtomConcat.c",
-        "bytes": 63479,
-        "sha256": "500425c654169f3c6594fdf4dc18e7bffa89fa24558d0525d349b54460eb4590"
+        "bytes": 83847,
+        "sha256": "4fe1019524ce815fb1b9629ff24d94c50d170d905c6eff104969ff6d322d9453"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombAtomConcat.c.hash",
         "bytes": 16,
-        "sha256": "dd56d3c4d79c0fdfdbbed2c820f1669ba1471c7ce41d30bab201453fa4ffafc8"
+        "sha256": "a97e05508e685e3cfeddd2ba68ce5341b7b3adf9665a1ca493bedd52d7bab681"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombAtomCons.c",
-        "bytes": 133771,
-        "sha256": "d553e1c19c091cd3ae2b951d65c1a4c296a02871376b4a5ac25351bf3a3444dd"
+        "bytes": 166564,
+        "sha256": "8cc79717feaed4509c6974d55f5c36d984053615d599b0ed9b4026265a13853a"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombAtomCons.c.hash",
         "bytes": 16,
-        "sha256": "71b248af7fbbe124ebe1ac82c31ad275c92fe2694d8c47b010c6e66d38f30b4b"
+        "sha256": "cc339788ff538610cddd8a70c5ebb93ddd72b82d35bf263928de65fdd63a6ec5"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombAtomDistr.c",
-        "bytes": 66015,
-        "sha256": "f0cb7bb6e73c538526ca23133ff7af7ce8c48fb3280b2896e4404e59a95fa474"
+        "bytes": 85373,
+        "sha256": "8c71185260427e64141306f1f01e017293d4db914b1f92131f84d8235fd6b575"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombAtomDistr.c.hash",
         "bytes": 16,
-        "sha256": "449f3c8380e464a248339c4568d9fcf31c017e8c89713354458f47c1c3113a4d"
+        "sha256": "af11a1d6c4be492ed5aab32c53c0776552c91ec4dfd1b08db7cba436f03468c9"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombAtomPref.c",
-        "bytes": 42072,
-        "sha256": "0138c48daf36d617cc70e1a6ed1979b0964037a774fe38a4909d5ab80127bed5"
+        "bytes": 50968,
+        "sha256": "a6d8c10dc205da902fc6ef6e99c0f18707ad5b471d92fe1c62832d484bf5cb3d"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombAtomPref.c.hash",
         "bytes": 16,
-        "sha256": "8c1f0d93ab7922f7b606584f93625b49b6f25faef12fe6ede2a394ab60d6e054"
+        "sha256": "7844d50089d33a3e9795a97b99976466b063369db1f09a2e0bcf9db4630425d5"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombAtomProj.c",
-        "bytes": 40787,
-        "sha256": "0ddbae5b6bd9a6f90e0d3656a3419c385cab7e6f6fc0b2ecd98dfcf3040d3e69"
+        "bytes": 52531,
+        "sha256": "06002eb2fb99b604134768ec42c45da888a9c12a4d2d601e7d786d76dc55dc2d"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombAtomProj.c.hash",
         "bytes": 16,
-        "sha256": "23bbdcbd08430a2e256bf227dd786771597099dfc0b068a6811a656c3a342433"
+        "sha256": "af2f678345ee487ef0307b5065da92809f6f403afd81dce402bcf61532bba344"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombAtomReverse.c",
@@ -455,33 +456,33 @@
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombAtomSplit.c",
-        "bytes": 87332,
-        "sha256": "fee39b5be8710666ef729bd159f32c4319fab7c226898cae8743fc5164405984"
+        "bytes": 103217,
+        "sha256": "ebbc9d0d38f10259fb5a6d26f2e9254e367ffe35d5af68ed8ef7eca58cd4f22a"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombAtomSplit.c.hash",
         "bytes": 16,
-        "sha256": "7dd83f3382e8b3ca84df5079fd50787e7ff0aa6eeb249790394e5e05154591d4"
+        "sha256": "1c5ab46ba6885e558c594503ab3a05aa1d98fbe8ac6510b36b03be3078793e90"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombCombinators.c",
-        "bytes": 8180,
-        "sha256": "912a15f7b3f120e0825930b38c9bc9618c9d0ac1073cac00c2d435cf08390a2b"
+        "bytes": 8198,
+        "sha256": "fad3222282a2bd99c44d31439726d09cc247d9471eeffd265675b87e477e2154"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombCombinators.c.hash",
         "bytes": 16,
-        "sha256": "c538ea35a025459282b2508f7e5a3fe76f1ebe5857a1c95e5aff26c748e13553"
+        "sha256": "2b6be867ec2f02a7163a8d57731d2b300bff5d7fb869408ec385f5677d320a54"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombDepth.c",
-        "bytes": 22394,
-        "sha256": "80ddc8b1859c1ec8138a037b4f94a6e8ff4a0aa2430b77b6aa98dc8d429e4e3d"
+        "bytes": 22502,
+        "sha256": "0097a858b3e0cac1429a6a26f1a92c396345eaa20f50ac6dcd7ede828d4f6e91"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombDepth.c.hash",
         "bytes": 16,
-        "sha256": "b41555a83364727fc6c618994c3ccfea68bdbe58a489fc9b71c67ab91280a579"
+        "sha256": "2573db46cb055468433b949170964eb03325f58e775f0dc065b9076b6be210e1"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombInj.c",
@@ -496,22 +497,22 @@
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombMach.c",
         "bytes": 17090,
-        "sha256": "16a2ad1554adf87e61cdca22fe27803f3272aad282d1b51d5ab28493af41daa1"
+        "sha256": "d10e6ca7d391a0b04d6dff6eb1e43a2e6f84b66a4c07af804b26156ea579bd9a"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombMach.c.hash",
         "bytes": 16,
-        "sha256": "e71988e6d5642db49bc3620a531c682a3170be66b1469e5cce95a87a21319913"
+        "sha256": "e0f099493c3bc1337dbe1fdc6f783d6886f90f8925cdb2aeb9ed3f4ee5146508"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombMark.c",
-        "bytes": 46933,
-        "sha256": "c82809ceb1b0f893b7a76c3785026c288271bf791ed3f827d24301626bdb592f"
+        "bytes": 56092,
+        "sha256": "3b501f235ac87d33a1ecce228d6da567d09a1e9a6839413b00895e19cfbde817"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombMark.c.hash",
         "bytes": 16,
-        "sha256": "fffdd53048c1df8b3a58332a9898ea5f431f91a08b2b0b6fc9deb43fc6ce1ac0"
+        "sha256": "b39f6022383df0d1bcda827f2a063a258a5b3a2457b115272cc0fd2010719a78"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombStatements.c",
@@ -525,23 +526,23 @@
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombTerms.c",
-        "bytes": 78019,
-        "sha256": "0960f0e53b122194af25a0186842c7655564525904d711b88982976708562efd"
+        "bytes": 78298,
+        "sha256": "902af733568d57fcb4f0a65e1f50464bfce251e9327117e62b7bd0437f680363"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombTerms.c.hash",
         "bytes": 16,
-        "sha256": "3d25e62223e4bf9f4551fa110b2d599741b64c4f6d3504a22104ef0e7834506e"
+        "sha256": "a00742f736f1c4686e842ef52a10d1d3a1e92f086643b166cf19bf9498fb8ee3"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombTypes.c",
-        "bytes": 59922,
-        "sha256": "6970a6151217391f1c02ee0eea4d3df7668ac570af9a7312af8f3500133d2681"
+        "bytes": 88891,
+        "sha256": "78a72d2d680ed47952ef1b61460559caa4ffa15405fbe418f113fd956d3c9536"
       },
       {
         "path": "proofs/ir/Lax709149Proofs/Source/PartC/CombTypes.c.hash",
         "bytes": 16,
-        "sha256": "b9781d5e94ed2fb4cd8ce53ddcb5e84f0d2a5c9ef5c77cbec89a804fee99b876"
+        "sha256": "f6923801248c3c7d72c688de1fad78fef1d9f5a5b182d6eb0a3b739da84121d8"
       },
       {
         "path": "proofs/ir/Lax709149Proofs.c",
@@ -556,27 +557,27 @@
       {
         "path": "proofs/lib/Lax709149Proofs/Bridge.ilean",
         "bytes": 60881,
-        "sha256": "07b0406c239bf5132a3df594b1271814c0b333a9eab9531318850bdc8d9e2c51"
+        "sha256": "2bddb6bb7ada193d299a021ee5aa2585041a81708fdcdfdcc00fc90b0610790b"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Bridge.ilean.hash",
         "bytes": 16,
-        "sha256": "f2d96dfb28d47dec875d41b759c15ef174af7bedd79d2ae8574055d5e095f355"
+        "sha256": "bfb96ab9fcac99d59602406802550b50bfec5451292c1a8824d1b7e52b9ed050"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Bridge.olean",
-        "bytes": 646072,
-        "sha256": "9f3695dfa31d0a165207835ab5ec4d38859f5dab0eba6c42ba05c68fbc8f43f8"
+        "bytes": 650152,
+        "sha256": "e0d434b8d2e41595a2bb23bdfa743f556c59986f97b06b8ef56484467e9b4fa1"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Bridge.olean.hash",
         "bytes": 16,
-        "sha256": "60750d2e66f826a00ea76626e14096924a04ff2e392a2421b5a5c3302dd1cce5"
+        "sha256": "440f7c9b36d1f46b866ada88718df3650a207bb083cc1862cb3c1485db2c7abb"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Bridge.trace",
-        "bytes": 3524,
-        "sha256": "ab9cf611ec31adfc9734e40c9f1181efe76719ecfc3e1af9cff4320073366252"
+        "bytes": 4611,
+        "sha256": "f950391a293790b65bd79d1d8982a401d4597cec6249094a6496fcbef735de4a"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Results.ilean",
@@ -590,218 +591,218 @@
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Results.olean",
-        "bytes": 12320,
-        "sha256": "30507838ee545bdc39aa2878cfb869587a3e81b0e6207a0d6a587522c1276995"
+        "bytes": 12472,
+        "sha256": "80cfda0dec8b8ffab3d41bb7772fae508c78982cdce23d0ac6ff76f3bf0c1f6f"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Results.olean.hash",
         "bytes": 16,
-        "sha256": "44af07d8a118a521e612428ffb20fd493ee1e5c1ef26cd234c7c8d3925e013aa"
+        "sha256": "3611fd43250aefed49055e20ca79f44790e1f68f927c9af92011b2cbb9e48d76"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Results.trace",
-        "bytes": 2980,
-        "sha256": "7283510f768471716d00ea686c0293935d694086e4707e578939bbbb2944180d"
+        "bytes": 2913,
+        "sha256": "7d78b84f363291309c48dd1f83d3b011a55c077ca2ec6679cca78c18c4bc7f8f"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomConcat.ilean",
-        "bytes": 53773,
-        "sha256": "434d664dd82e81280f3fb696022b67a1bee60b5d973152b30031155b8f0fcc04"
+        "bytes": 54533,
+        "sha256": "b0e41ea884811a3f00b797d2cdb734e6e196c654bdb47dc7aa9a910acb927773"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomConcat.ilean.hash",
         "bytes": 16,
-        "sha256": "127bcaa5b64fc24bcd23bf1c50a17117aba3077a0b8d74efd942a275a23efeb7"
+        "sha256": "b3c4464842ae3f25694e2cfb9602631b7f77fc3970fb26c69c1512ff058f0865"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomConcat.olean",
-        "bytes": 501176,
-        "sha256": "cf9e401b460dfb042641e45c4f5c501790f34b632e210388f73dbeca1160ed33"
+        "bytes": 546784,
+        "sha256": "00b1f5d0d1760ed1d69a6c8907c863e684f157e83ea0f5570b9ba8e719075fb3"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomConcat.olean.hash",
         "bytes": 16,
-        "sha256": "fcba968230e14ef2c21694d7df25f9e3266809cfc14b742cef6a2acd466ed23f"
+        "sha256": "e351a7de503964282db59549e9bf965e0231e4fb27646e5732d962e327b3886f"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomConcat.trace",
-        "bytes": 3017,
-        "sha256": "cf5b546a5fe72c1aad4bb149d40cc1ff42e5fe9b954f35540b4e7a49e124a4c2"
+        "bytes": 2934,
+        "sha256": "45893085d6f22d755f6296fa76cbecbd5b34ee9fcb0e42932562a21c89aee18e"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomCons.ilean",
-        "bytes": 99987,
-        "sha256": "349ce685b55af6456932db80fcd65acb40fa478a9ec1d30bac16f8259549f0d6"
+        "bytes": 102344,
+        "sha256": "924ed9dd31e500c5bd230942cf523730d190cc5c8389ec7d8a7fc85ea08eb0c6"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomCons.ilean.hash",
         "bytes": 16,
-        "sha256": "fc2a618614b40aab113f803d53614c63d84f1761350d1b9ad2e1ceea6412599d"
+        "sha256": "0e69d0a1897846475e95a8d9f7592c34645d4cb45622add3ecdc3ae9743b0fad"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomCons.olean",
-        "bytes": 936456,
-        "sha256": "1ab06b646264bd70d9c4440b48d171d92d3910eb5f99c347e6c0f5747b989951"
+        "bytes": 1035616,
+        "sha256": "d6a0e2e1ec4c77375aaa3adf7b29240f88d8645d2acc5ad605f2eeb67aa3629a"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomCons.olean.hash",
         "bytes": 16,
-        "sha256": "9155c0b85bfaecb9b97c98accffa102465fda50ec0b06145318af5a867db528c"
+        "sha256": "f7ce79621645703494b6bd171624b954afece4f74b149aef58a79a6202114608"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomCons.trace",
-        "bytes": 3001,
-        "sha256": "ab13a6772bc9846b92e9fa91c5abf131b697bf94285e72cc7cdb47ef9d1fef7c"
+        "bytes": 2920,
+        "sha256": "2e1cc319d21dbf57d3e7991fc3db4efdd215ef354694eae57463107126695a2b"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomDistr.ilean",
-        "bytes": 59634,
-        "sha256": "9fc54ee1791fceccd5b5c3940a7f674f639d72222326b12b75205fcca46c8fe1"
+        "bytes": 60405,
+        "sha256": "d1fa0419a1a0ecc6a257a4825b42aa2c472e4db1e78606b68756ec1740ba258f"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomDistr.ilean.hash",
         "bytes": 16,
-        "sha256": "2b213063d4b04b84e18fa0bae6d53540c33a53c4a911ce6492a751357e0fa2d1"
+        "sha256": "2902ac8903672217eb4f788da91494e1ca8814bdbfccac2c92f584030d6f2ae6"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomDistr.olean",
-        "bytes": 456168,
-        "sha256": "7a8a2678558e4baffeff8e904093c12216205152af4c17f451cd121ff1f2e47b"
+        "bytes": 504288,
+        "sha256": "3d659fd9e4bdbc9ca02b0f86003ff07b78cb18099683ae9a59825c7f798e0f68"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomDistr.olean.hash",
         "bytes": 16,
-        "sha256": "1fb13242fc4e3d59bb0bbcaf857c3c22d2797316f8de6c5c7f2fed29783e1de4"
+        "sha256": "8ba3b3cb37e7ae352f98d57ee65845b231faa145cd0a35be476cf8b1be1a204a"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomDistr.trace",
-        "bytes": 3017,
-        "sha256": "f900afe36dbbe67955fa5e147f49497b3c8453237f27853140815922d8bd9961"
+        "bytes": 2935,
+        "sha256": "7f892330d21f35519e591c8381df30ed390cd7ad1f96ebd40777ed99f5cc8b03"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomPref.ilean",
-        "bytes": 56167,
-        "sha256": "eba09c24585c72bda2bb01a01935ea5586cb0e60fe9aaf00a2bb6a4048d0607b"
+        "bytes": 56699,
+        "sha256": "11bcc411ff09a7e5c90c3b18e35d1b3fd28ba21c57acfc7225475793c84ab8cb"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomPref.ilean.hash",
         "bytes": 16,
-        "sha256": "81ebcbd68e007eb3d5d78a75d6c9d5559f62e48df698a089a13b4498a5e3e1ac"
+        "sha256": "4195eac5a235aeb0b5f81ab2a6a49811fa46ca5603854da1d6faa91d1f3928c5"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomPref.olean",
-        "bytes": 453304,
-        "sha256": "867ad901789ab04690a54a9de28b629494ef7a1d0517dcb89219539cf4860303"
+        "bytes": 474528,
+        "sha256": "0dddb50af4b5f0c4ffe1bbad8a4cadc40151a2df40bb9281a20799a7133831dd"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomPref.olean.hash",
         "bytes": 16,
-        "sha256": "c30d1c0fa7d13b3179a7da4a67e2bcc23cd8d6b19bac9e001f52a334f9911e1d"
+        "sha256": "6e998b7b31fc1e0f641a897cf988d6489bbb67d8da836947776426b69c7d3b56"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomPref.trace",
-        "bytes": 3417,
-        "sha256": "ff2f89da782cee1828bbac772b44608e0e7aa9c771655cdc24faffbdd404cd63"
+        "bytes": 3320,
+        "sha256": "6d5cdac81e6923ff9856c37d9f8c0f0eb077b474f7e4ec0128e3d799085d307b"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomProj.ilean",
-        "bytes": 39294,
-        "sha256": "1e1ad32356212db3e73fcfbc370804d31c8833bfcd69b9afbcccd8cfbb3264a3"
+        "bytes": 39689,
+        "sha256": "91d974cea7b4413736f83af83ae6f4bb9558501ffd2ef3dfab47c62996c410f8"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomProj.ilean.hash",
         "bytes": 16,
-        "sha256": "e7478eedd80b30d8d5a3b5a5960e679cfb6e90e3b1fc031a9fb34dc4a47aafc5"
+        "sha256": "8f26348812520893c58cf44c9af51b52cc9d7c2e78c3527d83f2a6ff5c3eb382"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomProj.olean",
-        "bytes": 380328,
-        "sha256": "faaec5e9701d93348c67adcb53d31757c720eb88bc86969d36abb6b9919eb5f5"
+        "bytes": 408432,
+        "sha256": "9988d3370faf896670491a6aa1888927173f25b4f833709d83973021e4e809a4"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomProj.olean.hash",
         "bytes": 16,
-        "sha256": "dd5b980556e4f774fedb22e8a92238818581519b4640873c6f27e35c7fe86d91"
+        "sha256": "2ca3fb0eba8a768c5ed0c58e5e176a80a748ed42f4814cac9ed60d7180baba43"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomProj.trace",
-        "bytes": 3001,
-        "sha256": "5875700df083463bb7851c4cc1f9ffee3a129842af431eb50b30494d2246f838"
+        "bytes": 2920,
+        "sha256": "7619878c1c1aa426f3fcdadeacd5f78874a44c48427d54d52fc5372b47f030ba"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomReverse.ilean",
-        "bytes": 15983,
-        "sha256": "6b2bea8309645c1013b69af7dbd76e9be0aaf070109a17f52a8a5582fab3c6ab"
+        "bytes": 16872,
+        "sha256": "627c78249d66d3f21bd4fd04b867e08d447800da0421e6290ba0aa36a438a483"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomReverse.ilean.hash",
         "bytes": 16,
-        "sha256": "ff2863e4a96a144ef827ecec104be8b1e9a5b6738ad663c146ad84c9ae829dde"
+        "sha256": "c20b7601ebc6ea9e218b8f5643a3cfdf8f5962553c35fb22e42f82c3316a705b"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomReverse.olean",
-        "bytes": 91944,
-        "sha256": "636c65ae7fe49622711593899c0368b5917a8b2d60f15474bd7d10edbfc0894a"
+        "bytes": 95608,
+        "sha256": "3b2ee783763128f7d88d973a2f06359362ee7d4005b4b50be9976eb332aa603f"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomReverse.olean.hash",
         "bytes": 16,
-        "sha256": "be88447668be4c04b1bd47f1fb54d99a3fb1b967df01e650571b2e018d55c5ca"
+        "sha256": "267c118c6c40b02a9428be87457cef9581be54436d7b5859a9b9688d682e81cf"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomReverse.trace",
-        "bytes": 3025,
-        "sha256": "26e926380535a6287dd25b4c1dc97cdd3a31cfb1dc47d912306ad084e7a223db"
+        "bytes": 2941,
+        "sha256": "7c2c6b49530e4bb6e07bd4d0429902987259e4aaa56b74e70d2d941650965b32"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomSplit.ilean",
-        "bytes": 69105,
-        "sha256": "3b5f74a71f5c2bcc5ec6355e3a04b08cde17a29a2368ab2ac7098cb91a90af7c"
+        "bytes": 71112,
+        "sha256": "d5ad729f55a4c8e70e5b5933dae68fa7eff1dd633dd6578bceae01cc4ee3ce64"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomSplit.ilean.hash",
         "bytes": 16,
-        "sha256": "77f28ae1c522b2555999a2a45a4335f7797d64d669dfe680ce50c3c3122052b5"
+        "sha256": "de16c7520a2e5081d878ad63e2458e8d9932788fd64940ec29af4638403baafd"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomSplit.olean",
-        "bytes": 709232,
-        "sha256": "82b14bdbb05541c422e0cf7ce4cd3356a687edcc60845f004b75ed27318fe20a"
+        "bytes": 749728,
+        "sha256": "29ac54149393882609b083a268092cb2b1e8e576c16c610cf71b0a654b708696"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomSplit.olean.hash",
         "bytes": 16,
-        "sha256": "90ef4da8f4f56ed96f3ba1cde545b30ce09056e259754a6933c0cba52bbe757d"
+        "sha256": "a961a6abe5c6ccb4b126b5d942b140c7a4337a0fae7c00a10877626edfbf8315"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombAtomSplit.trace",
-        "bytes": 3213,
-        "sha256": "d0bbc38801c98b99cc7d46d40fbf33089dcbece4ca7831063fcd242542b87080"
+        "bytes": 3123,
+        "sha256": "0591b7d11a6f0f4596b703ef392a52182fdff8df96a51e8af73b40e6de0d64e7"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombCombinators.ilean",
-        "bytes": 35320,
-        "sha256": "85e9251f0f94fe06795525e72bf4b4c988f999d91d608a773282a653980ec815"
+        "bytes": 36335,
+        "sha256": "991de0cbff76e598831af81c6c31b6ea9e2bc7a411df47bdb160b938036234df"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombCombinators.ilean.hash",
         "bytes": 16,
-        "sha256": "79c7541ee7ae147d059eb89b90d8f90d500a9977f487c0e8b6d3a9f3c88c10b3"
+        "sha256": "e3bb4ba71bfe4bb251e910178643b4856eac5e511de99ad4cf49cf04ba9c2f89"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombCombinators.olean",
-        "bytes": 188368,
-        "sha256": "55e0842b9402598470657c5287b97ad16a62250fb9c8c2a213a56baaeda52feb"
+        "bytes": 189096,
+        "sha256": "b7de2196eec62cef87edf160d770233aba74921f35ebaf17a789ba46cafda591"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombCombinators.olean.hash",
         "bytes": 16,
-        "sha256": "dbb1a5236268cb2e30ef851633bc6d520ab47306d7d967a83f18a66284a3437a"
+        "sha256": "cfa5074ffc1cc818ed3044963d4c96883f19cecb736bad41a164150bc8ffb711"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombCombinators.trace",
-        "bytes": 3025,
-        "sha256": "6df26b282924ca265a8142dfa9bf7e1959370e16b2fd39989b0880f2d6cf2e61"
+        "bytes": 2941,
+        "sha256": "4dca3c1fa58f260108d2ddd3865023d7322ee3139989cdff7c0b8b90dc75ff8e"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombDepth.ilean",
@@ -815,43 +816,43 @@
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombDepth.olean",
-        "bytes": 559960,
-        "sha256": "3e981f38141d2d76631557e8031d847cc905c05726776b05264a4db27787edb1"
+        "bytes": 565152,
+        "sha256": "6c182922451ff327d629151559e18916a6385353a8fdd50251724aa17275f02b"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombDepth.olean.hash",
         "bytes": 16,
-        "sha256": "ad11be53cdc925ddadd02ffb006c926c55e14edc602d5a461745b67dbfc0ee3b"
+        "sha256": "7fc90fa863fe69025a60650bb1894fe2d78e0224ca0389372b26b45192782e42"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombDepth.trace",
-        "bytes": 2976,
-        "sha256": "4f7f005ab3f9654c5874ac066bd4fe9bbc47282e687e5629dc3b2de2c5966333"
+        "bytes": 2898,
+        "sha256": "bc3ca34da2ccc0285a44102d7860015970a87a20aa5cc6c2d9579abfd78b9c03"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombInj.ilean",
         "bytes": 15364,
-        "sha256": "a9f472e64d31c92313052e764d34f87f248b213c54ff93870722e0d6b0080f26"
+        "sha256": "22b10aebc7be83ce99d382529b0309856e73e0becbe91bb04db855f516bc2f02"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombInj.ilean.hash",
         "bytes": 16,
-        "sha256": "0515d77dde8e7c992d8c1765a90238027c23d77083b583a33f5f093b13f08873"
+        "sha256": "e79da4539df0a51b99729a0e4f031cf69aee6c1359177cd3b965765f3909079d"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombInj.olean",
-        "bytes": 228432,
-        "sha256": "52af032a7941ce2fa8258ab6f5cf61e349f2940e79fbebc7f535876d1973d049"
+        "bytes": 230104,
+        "sha256": "5082987ce08d68052ef562bc862f7cd5b603fc2c144fd1b6c7625d6e1563733d"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombInj.olean.hash",
         "bytes": 16,
-        "sha256": "f447b5fdc7dfcb797749a606316a12f3add3675e7e264f43f090543a8f599635"
+        "sha256": "5a71ddb5831bc4b25b2acdbe2f59a0f52c431c8b5ff433bf5e597bb44e20df9c"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombInj.trace",
-        "bytes": 2960,
-        "sha256": "db9b701a2b5d6a6782cef557fb4503e3c4ba13bb3ce3ec132c06e8c6fbb3fcbd"
+        "bytes": 2884,
+        "sha256": "9a76992f5b985cdbd256ccab346f803a673840b053add7435f52d2ef3150853f"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombMach.ilean",
@@ -865,43 +866,43 @@
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombMach.olean",
-        "bytes": 541168,
-        "sha256": "839eec96af69b2ae2a9937b2a6b3aac8b46b49af674e6e208fcefe51d08a0d49"
+        "bytes": 552752,
+        "sha256": "4d706ccb24e21f9c058226f3a6f23f4e73e8e9ce647e0579acb1c8f214d19651"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombMach.olean.hash",
         "bytes": 16,
-        "sha256": "0e30d7afa7d9acb27a7cce1e39490a636ffb55939fa016deb622efd2a7564c1c"
+        "sha256": "bf110dbaba3d00ff313a095d5f49208cb043c028e229493679669e7a49aa455a"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombMach.trace",
-        "bytes": 3166,
-        "sha256": "e63c69d2a73ffb2a5741b34a4ab3a0fe4ffb45d7c00ac2d55ae93744446fb102"
+        "bytes": 3081,
+        "sha256": "99c4ddef77d871221e86a341c172f041aaf07a938dcd87a1d6b3e14133f24541"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombMark.ilean",
-        "bytes": 64309,
-        "sha256": "a2ba230a58dd7262a29f00b02b21764501b365950c88b20e1d9a50f1812356e3"
+        "bytes": 64697,
+        "sha256": "e2897224350937a735d3baec57e8857db93a032a360ed376b4fc9985ef92836c"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombMark.ilean.hash",
         "bytes": 16,
-        "sha256": "7cab56a2e108d47c14f875c7ba706f5a199a76727ea9e720b3be93e8919d1f4a"
+        "sha256": "9bac1d9ac5906c7b9617a276a62a2b05492431b168b6092edf4c22b73083b63a"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombMark.olean",
-        "bytes": 482744,
-        "sha256": "1f6ea153c6404466b2f76e1b9eb894af74f22a99b9537b9a6d055b7075a6ae1b"
+        "bytes": 509792,
+        "sha256": "53a287c28a1841be509d88c93bdb92f270f7ee9369464fef752f70bbfcd689d6"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombMark.olean.hash",
         "bytes": 16,
-        "sha256": "a849feb20ead140ff3c0aefb389e828c0e2041a7aaed13eba9f5453ca7ba04ba"
+        "sha256": "7bfa406bf829c3513c69ada076a4f74b76dc68d0fbc28b6e02586d8548d1a445"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombMark.trace",
-        "bytes": 3315,
-        "sha256": "6dcbc394cc0ee82039df4c32273b31665bfea0d8c7147092afe09c9852a85b8b"
+        "bytes": 3186,
+        "sha256": "e29aca064a5e5b43092c253775448ebd951842c59bf3eb90ce1c0316bb759bee"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombStatements.ilean",
@@ -915,18 +916,18 @@
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombStatements.olean",
-        "bytes": 95288,
-        "sha256": "8d3d78f4511603c75270422fec0f169b10d4b5a425bfd0cce0cc88809996b197"
+        "bytes": 97592,
+        "sha256": "73fb705427eb940731520a750c9db96baed2815511207f9360d4296b3083136f"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombStatements.olean.hash",
         "bytes": 16,
-        "sha256": "b3abe1863850ec317c794c4f5003a77508cec0649ae5c0135f85496970369839"
+        "sha256": "b97d00efb6099621af7fee316ad33e0a10be4c19a3442f710018d924447c1e17"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombStatements.trace",
-        "bytes": 4515,
-        "sha256": "125047c41ca5166b66fbd6bfd968a906937e26ac736722421c3486b9c1abc4f0"
+        "bytes": 5204,
+        "sha256": "67d69915c963f785e9916b4a2551db5db26ff34844ca2b58380a5700afb6b683"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombTerms.ilean",
@@ -940,43 +941,43 @@
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombTerms.olean",
-        "bytes": 644656,
-        "sha256": "173e56d04771613a72ee8367fd5323323096e29f7dd81a997ca025ed41d5cebe"
+        "bytes": 649016,
+        "sha256": "27990a697d762ef98e260ff09f49edc41a66699699ce7a385078917be9923a1c"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombTerms.olean.hash",
         "bytes": 16,
-        "sha256": "28fb03a19e3b2bc87437649fb1e6af1f20b921e171dcd74f75e9ea9b5718b463"
+        "sha256": "95025b2a859481febe3c52877533b6f96f44c458abd2d7adaf01e1dbf206be10"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombTerms.trace",
-        "bytes": 2976,
-        "sha256": "2ab3fd033258a90dfd63e4e8b12bfc3249db0a22dd5356dfbf1ede519477caf3"
+        "bytes": 2898,
+        "sha256": "a8c70b14efa70467949d50dbb11341f2d470c12a9829268f8f52a2d45ad16c36"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombTypes.ilean",
-        "bytes": 27748,
-        "sha256": "aca605ad53dc86224a1d3b69a507a4157f711741fb25de1c1e60b06692a89111"
+        "bytes": 28092,
+        "sha256": "c2b9d4992ac2fc383b611c33a6eabf8dfd30db7dc070f8b93d2d9b9c9e7769b5"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombTypes.ilean.hash",
         "bytes": 16,
-        "sha256": "2faa9dc2dda3ea4058cbebb5b0c0c2f1259330919ccce0a8cddb1c5ad6f3c69b"
+        "sha256": "07d58b236f29d9ce3fe54a21d5be26c0ec6238e50d30d0b5f2241ee712746cda"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombTypes.olean",
-        "bytes": 465664,
-        "sha256": "e9bafde7f0f6746ead07ba90fc3c7d55946207d2265f583b7b409ddd6b4c90a6"
+        "bytes": 549504,
+        "sha256": "309487c1d7eb46f977491fc0ad2927b472e534f90706af8f7cb6b3af2e502512"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombTypes.olean.hash",
         "bytes": 16,
-        "sha256": "1976ab39eb0b6678ff732dbce37b25b8c31661ceb8d5853c4525cacf28fe4410"
+        "sha256": "40751f6b96a1c4c671267c73729cc94afad945ccd695e2f70c5e09292a746ccd"
       },
       {
         "path": "proofs/lib/Lax709149Proofs/Source/PartC/CombTypes.trace",
-        "bytes": 2978,
-        "sha256": "4251b7d2af31294143949eaa9aadfd7da2aa32ba0694a13edaa6326279d91d1b"
+        "bytes": 2900,
+        "sha256": "dd5dfc3cc6fc6fff58b4637656cf72a6b0f0644592e68f6dbac3f775853f42c8"
       },
       {
         "path": "proofs/lib/Lax709149Proofs.ilean",
@@ -990,33 +991,33 @@
       },
       {
         "path": "proofs/lib/Lax709149Proofs.olean",
-        "bytes": 3256,
-        "sha256": "433a6b63cfdcdd769e440cafa8109b5b1a8a6968c64a031078d54cc0d349d3a3"
+        "bytes": 3440,
+        "sha256": "c7ad9b61cd2b397e90ef9ac1db6473e1018ae97f98c6c151857bfccc59cfd4fb"
       },
       {
         "path": "proofs/lib/Lax709149Proofs.olean.hash",
         "bytes": 16,
-        "sha256": "b8c60ae6b3ad18f573f302eec8d4f0bc1bc8e4b178ba3983b4947cb9e87f60da"
+        "sha256": "b5d0ef21d24cecb9ff64a8ecfe85c9687890a3bac2b6a3f001e09bdd5260ee95"
       },
       {
         "path": "proofs/lib/Lax709149Proofs.trace",
-        "bytes": 6046,
-        "sha256": "55581c06bad3b5c3dab83f4873c7f88a2742e3ae6d2cd39d8ce19300cfc56031"
+        "bytes": 5867,
+        "sha256": "abb42479826b43a8c0b2104274672ff8cccd2b001bb7ab7933cf4825f5a5a7df"
       },
       {
         "path": "proofs/package/lake-manifest.json",
-        "bytes": 4848,
-        "sha256": "cc2a2df2559d664560d97cabc01cbfba089bfb115ba0f5aba00587c5020e1f9e"
+        "bytes": 4843,
+        "sha256": "22e29900728f2e7f0d31589d1bf3145cb1f931ad5f90b6946d5eb96122302c76"
       },
       {
         "path": "proofs/package/lakefile.toml",
         "bytes": 1507,
-        "sha256": "3cd12399f838c0ada900a5a3e63fa08830bc0d42f59131885ccfc64724e0b17e"
+        "sha256": "e2147e9e4bd763ce3b20402d8757b50b3b851f67d5a69d9699c9171d9fa075d4"
       },
       {
         "path": "proofs/package/Lax709149Proofs/Bridge.lean",
-        "bytes": 14733,
-        "sha256": "13ca262dc17ca96a1e38a2bb552039a68ca652f0ef83687f590959c436b3f4a3"
+        "bytes": 14769,
+        "sha256": "2d8d9f1b2083353f224805c73a8d7837510638e0343096775285a6e1492e9715"
       },
       {
         "path": "proofs/package/Lax709149Proofs/Results.lean",
@@ -1025,43 +1026,43 @@
       },
       {
         "path": "proofs/package/Lax709149Proofs/Source/PartC/CombAtomConcat.lean",
-        "bytes": 11524,
-        "sha256": "d14df5df65b53e8426234d566b135f8488717c7cf5902e1c58e69857c60d2c33"
+        "bytes": 12095,
+        "sha256": "4cc8f872e4643eeb76ee0a531ba4961c4cc806a8e88c0aa9afa1681decd3fbe7"
       },
       {
         "path": "proofs/package/Lax709149Proofs/Source/PartC/CombAtomCons.lean",
-        "bytes": 20656,
-        "sha256": "be78315b57336888de898cd8329462c122e5fb94cd7c35fadcdd3b950c0fbea0"
+        "bytes": 21800,
+        "sha256": "87c8488f80c11b902164640c605b33fdafa8729e85526e90ecaa9083b8efb154"
       },
       {
         "path": "proofs/package/Lax709149Proofs/Source/PartC/CombAtomDistr.lean",
-        "bytes": 11423,
-        "sha256": "70aba8ba425b8a2814c8607207596067643f882f25743e771b75918119f2ce81"
+        "bytes": 11975,
+        "sha256": "02e827623432a1f4053bb0c5e985d342d59dc1acb4fa720371889ca2b13a96dc"
       },
       {
         "path": "proofs/package/Lax709149Proofs/Source/PartC/CombAtomPref.lean",
-        "bytes": 13357,
-        "sha256": "62aa275611b83b07a7d4550efb6358840274a4d5bb4062abc07fb5466ee2372f"
+        "bytes": 13885,
+        "sha256": "742862927a08b62b78320a6dc85119ae75a0b777943da66ef83dfae53a1bf525"
       },
       {
         "path": "proofs/package/Lax709149Proofs/Source/PartC/CombAtomProj.lean",
-        "bytes": 9022,
-        "sha256": "49278ec6467c7c9fa042aab41aec7c1ce595df8591320dc10700bf6f40b05b83"
+        "bytes": 9298,
+        "sha256": "ec4c8ab8d58a23ca9bb5bea287d2c64a53124a7f2f705cd61a2036a008ad0c09"
       },
       {
         "path": "proofs/package/Lax709149Proofs/Source/PartC/CombAtomReverse.lean",
-        "bytes": 4552,
-        "sha256": "8f0037ebce4b8026a641321ca27aebb6f0ec551083877019ad8a020959f245f0"
+        "bytes": 4868,
+        "sha256": "6cc3f6dc851c678511836e7968e629ce5c484e3cbe17af642a8e0fd295c94af6"
       },
       {
         "path": "proofs/package/Lax709149Proofs/Source/PartC/CombAtomSplit.lean",
-        "bytes": 16709,
-        "sha256": "7d777083f879fa70ace851c7942c38c97504b397072e861bc698a61b4eceff0e"
+        "bytes": 17482,
+        "sha256": "91b05ed5f581409ab3f4d5b9033640126fabacdea2272f721231ed0d3aeb80dc"
       },
       {
         "path": "proofs/package/Lax709149Proofs/Source/PartC/CombCombinators.lean",
-        "bytes": 9459,
-        "sha256": "c0d9cbbc00f6a56e0e6d9022f005f351fba908463e43890cb51a3ca3877d027d"
+        "bytes": 9842,
+        "sha256": "2ed9b0899b91a681e0f9ebddc778befe4b700cf915778130c10174e0b166d22d"
       },
       {
         "path": "proofs/package/Lax709149Proofs/Source/PartC/CombDepth.lean",
@@ -1070,8 +1071,8 @@
       },
       {
         "path": "proofs/package/Lax709149Proofs/Source/PartC/CombInj.lean",
-        "bytes": 6348,
-        "sha256": "add63f912e2e309234267e87a5beaa56794ae669481261e0398cf585cbe7c53a"
+        "bytes": 6357,
+        "sha256": "16c6aeebd754ffaec7b1dbe7234b5bd2869efcf2cea6254b60c90e4b03cbd492"
       },
       {
         "path": "proofs/package/Lax709149Proofs/Source/PartC/CombMach.lean",
@@ -1080,8 +1081,8 @@
       },
       {
         "path": "proofs/package/Lax709149Proofs/Source/PartC/CombMark.lean",
-        "bytes": 13299,
-        "sha256": "e2843c9b6a35be14babd14081f4daa266f782f2fbadd6ee05812c28583f72980"
+        "bytes": 13582,
+        "sha256": "541c1d1f392e834aad49bc83413b93d85ea73bc390b75c5fac0215699d9d122d"
       },
       {
         "path": "proofs/package/Lax709149Proofs/Source/PartC/CombStatements.lean",
@@ -1095,8 +1096,8 @@
       },
       {
         "path": "proofs/package/Lax709149Proofs/Source/PartC/CombTypes.lean",
-        "bytes": 10269,
-        "sha256": "1f6ddb38d60ed6d7d224b440f7a6c7613d4320aba9f0c4f42699491a196b3035"
+        "bytes": 10544,
+        "sha256": "57cbc3a95459eeb8261a3acf88586896631ef9af1f3fd80ac6899ba100ff9777"
       },
       {
         "path": "proofs/package/Lax709149Proofs.lean",
@@ -1106,9 +1107,9 @@
       {
         "path": "proofs/package/lean-toolchain",
         "bytes": 25,
-        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
       }
     ],
-    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:f3e4e04139b2919732acaf084b79cde0b4c8597c3bb4d14cd5e0ddadc425435a"
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:7a5b842e1c4494bcf60bde2f45486121ded029498364ca109b62779d844f2987"
   }
 }
