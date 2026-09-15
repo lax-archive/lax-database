@@ -4,5 +4,1075 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 118
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-808846",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "The Word RAM",
+      "authors": [
+        {
+          "name": "Jan Dreier"
+        },
+        {
+          "name": "Claude Fable 5 (Anthropic)"
+        }
+      ],
+      "bibEntries": [
+        "@book{AhoHopcroftUllman1974,\n  author    = {Aho, Alfred V. and Hopcroft, John E. and Ullman,\n               Jeffrey D.},\n  title     = {The Design and Analysis of Computer Algorithms},\n  publisher = {Addison-Wesley},\n  year      = {1974}\n}\n",
+        "@article{CookReckhow1973,\n  author  = {Cook, Stephen A. and Reckhow, Robert A.},\n  title   = {Time bounded random access machines},\n  journal = {Journal of Computer and System Sciences},\n  volume  = {7},\n  number  = {4},\n  pages   = {354--375},\n  year    = {1973},\n  doi     = {10.1016/S0022-0000(73)80029-7}\n}\n",
+        "@inproceedings{Hagerup1998,\n  author    = {Hagerup, Torben},\n  title     = {Sorting and searching on the word {RAM}},\n  booktitle = {STACS 98: 15th Annual Symposium on Theoretical\n               Aspects of Computer Science},\n  series    = {Lecture Notes in Computer Science},\n  volume    = {1373},\n  pages     = {366--398},\n  publisher = {Springer},\n  year      = {1998},\n  doi       = {10.1007/BFb0028575}\n}\n",
+        "@article{FredmanWillard1993,\n  author  = {Fredman, Michael L. and Willard, Dan E.},\n  title   = {Surpassing the information theoretic bound with\n             fusion trees},\n  journal = {Journal of Computer and System Sciences},\n  volume  = {47},\n  number  = {3},\n  pages   = {424--436},\n  year    = {1993},\n  doi     = {10.1016/0022-0000(93)90040-4}\n}\n",
+        "@incollection{vanEmdeBoas1990,\n  author    = {van Emde Boas, Peter},\n  title     = {Machine models and simulations},\n  booktitle = {Handbook of Theoretical Computer Science, Volume A:\n               Algorithms and Complexity},\n  editor    = {van Leeuwen, Jan},\n  pages     = {1--66},\n  publisher = {Elsevier and MIT Press},\n  year      = {1990}\n}\n"
+      ]
+    },
+    "abstract": "This submission defines a word RAM and computation within an explicit\ninstruction bound on a stated domain of inputs. Writable memory has\n`2 ^ w` cells holding `w`-bit words and starts at zero. The read-only\ninput is a finite array supplied at initialization, with constant-time\nindexed access and length metadata, a sequential read operation, and\nan explicit end-of-input test. Zero remains ordinary input data. Output\nis append-only, and correctness constrains the complete output list.\n\nArithmetic values, input values and lengths, input indices, and\ndata-memory addresses are reduced modulo `2 ^ w`. Program labels and\nthe program counter are unrestricted natural numbers. Time charges one\nunit per executed instruction, including explicit `halt` and exhausted\n`read`; falling outside the program costs no nonexistent instruction.\nThe formalization notes state fitting conditions, the input-access\nconvention, the additive linear cost of loading sequential input when\ncomparing models, and the distinction from Cook and Reckhow's terminated\ninput encoding. The proof package provides compiler transfer theorems,\na verified execution driver, and semantic regression proofs for raw-list\nlength parity, constant-time indexed input access, and exact termination\ncosts.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax808846.Ram",
+      "path": "concepts/Lax808846/Ram.lean",
+      "title": "The word RAM",
+      "type": "definition",
+      "description": "A word RAM is a random access machine whose writable memory consists of\n`2 ^ w` cells holding natural numbers below `2 ^ w`. The word length\n`w` is a parameter; one finite program serves all word lengths. Input\nis a read-only finite array supplied at initialization, also accessible\nas a sequential tape. Output is an append-only tape. Working memory\nstarts at zero and output starts empty.\n\nThe input interface has four operations. `read a` consumes the next\nentry of the sequential tape into cell `a`, halting if the tape is\nempty. `jeof l` branches on tape emptiness without consuming input.\n`inputLength a` writes the original input length into cell `a`.\n`inputLoad a b` reads the original input at the index in cell `b` into\ncell `a`, returning zero outside the input. Indexed access never\nconsumes the sequential tape, and sequential reads never change the\noriginal input. Zero is ordinary data, not an end marker. Each operation\ncosts one instruction. No length header or other framing is added to\nthe supplied list.\n\nArithmetic results, input values and lengths, output values, and\ndata-memory addresses are reduced modulo `2 ^ w`. Subtraction is\ntruncated at zero, and division is integer division with `x / 0 = 0`.\nInput indices are words too. Program labels and the program counter are\nnatural numbers and are not reduced modulo `2 ^ w`.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The register-transfer format follows Cook and Reckhow (*Time bounded\nrandom access machines*, JCSS 7, 1973): instructions act on numbered\ncells, with indirection through a cell holding an address. Their cells\nhold signed integers, and their sequential input has a distinguished\nzero end marker outside its input alphabet. This definition instead\nuses unsigned words, supplies explicit EOF detection, and additionally\nprovides indexed read-only input with its length available in constant\ntime. It therefore specifies its own input convention; the interface\nis not an identification with the original Cook--Reckhow input tape.\n\nWord operations have unit cost, as in the bounded-word models of\nFredman and Willard (*Surpassing the information theoretic bound with\nfusion trees*, JCSS 47, 1993) and Hagerup (*Sorting and searching on the\nword RAM*, STACS 1998). Comparisons with other word-RAM presentations\nmust fix the available operations, input convention, and address-space\nassumptions. Indexed input avoids a compulsory input scan, as in an\ninput-array RAM. A simulation that instead starts from sequential input\nand loads an `n`-word array pays an additive `O(n)` cost, giving\n`O(n + T)`, which is `O(T)` only under a suitable lower bound on `T`.\nNo unconditional constant-factor model-equivalence claim is made here.\n\n`setCell` reduces each value stored and each destination address modulo\n`2 ^ w`. Other data-memory operands and indirect addresses are reduced\nat use; output and input values are reduced too. From initialization,\nevery reachable memory cell holds a word. The function representation\nof memory has domain `ℕ`, but execution accesses only the residues below\n`2 ^ w`. Program control is separate: `jump`, `jzero`, and `jeof` use\nuntruncated program labels, ordinary advancement increments the full\nprogram counter, and instruction fetch uses that counter.\n\nOversized input entries and the length are reduced rather than\nrejected. To recover an entry unchanged requires that entry to be below\n`2 ^ w`; to recover the complete original length with `inputLength`\nrequires `x.length < 2 ^ w`. These fitting conditions belong in the\nadmissible domain of the theorem that needs them. EOF-based programs\ncan process lists whose total length does not fit in a word. Indexed\nreads can address the prefix with indices below `2 ^ w`; the initial\narray itself is read-only input storage, separate from writable memory.\n\nSubtraction is natural-number monus, so a comparison is `sub` followed\nby `jzero`. Complement is `2 ^ w - 1 - m[b]`. No instruction returns\nthe word length. The following operations are derived at constant cost,\nwith scratch cells `t` and `u` whose physical addresses modulo `2 ^ w`\nare distinct from each other and from every operand's physical address.\nDistinct natural-number literals alone do not ensure this condition:\n\n| operation | instructions | count |\n|---|---|---|\n| copy `a ← b` | `set t b; load a t` | 2 |\n| `a ← b ∨ c` | `and t b c; sub t c t; add a b t` | 3 |\n| `a ← b ⊕ c` | `and t b c; sub u c t; add u b u; sub a u t` | 4 |\n| `a ← b ≫ c` | `set t 1; shiftl t t c; div a b t` | 3 |\n| `a ← b mod c` | `div t b c; mul t t c; sub a b t` | 3 |\n| if `b ≤ c` goto `l` | `sub t b c; jzero t l` | 2 |\n| if `b < c` goto `l` | `sub t c b; jzero t l'; jump l; l':` | 3 |\n| if `b = c` goto `l` | `sub t b c; sub u c b; add t t u; jzero t l` | 4 |\n\nAn explicit `halt`, an exhausted `read`, or an out-of-range program\ncounter terminates execution. `step` returns `none` in all three cases.\n`run w p k` counts successful transitions only. `RunsTo` adds the cost\nof the fetched terminal instruction: one for `halt` or exhausted `read`,\nand zero for an out-of-range counter, where no instruction exists.\nThus `RunsTo` counts every executed instruction exactly once, and an\nempty program costs zero. Termination constrains the entire output\ntape; memory is left unconstrained.\n\nThe separate read-only input preserves a fixed working-memory layout.\nAn input-in-memory convention could also reserve fixed low-address\nworking cells and put input at a fixed base; no length-dependent input\nbase is necessary. Copying this model's input into writable memory,\nwhen desired and when the chosen layout fits, takes constant overhead\nper word and linear total time: a uniform loader uses `read` into a\ntemporary cell, an indirect `store`, and loop maintenance.\n\nThere is no separate space measure or randomness primitive. A space\nmeasure can be defined over executions; writable memory has `2 ^ w`\ncells. A deterministic program can consume additional input words to\nmodel supplied random choices."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.List.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.List.Basic\n\n/-!\n---\ntitle: The word RAM\ntype: definition\n---\nA word RAM is a random access machine whose writable memory consists of\n`2 ^ w` cells holding natural numbers below `2 ^ w`. The word length\n`w` is a parameter; one finite program serves all word lengths. Input\nis a read-only finite array supplied at initialization, also accessible\nas a sequential tape. Output is an append-only tape. Working memory\nstarts at zero and output starts empty.\n\nThe input interface has four operations. `read a` consumes the next\nentry of the sequential tape into cell `a`, halting if the tape is\nempty. `jeof l` branches on tape emptiness without consuming input.\n`inputLength a` writes the original input length into cell `a`.\n`inputLoad a b` reads the original input at the index in cell `b` into\ncell `a`, returning zero outside the input. Indexed access never\nconsumes the sequential tape, and sequential reads never change the\noriginal input. Zero is ordinary data, not an end marker. Each operation\ncosts one instruction. No length header or other framing is added to\nthe supplied list.\n\nArithmetic results, input values and lengths, output values, and\ndata-memory addresses are reduced modulo `2 ^ w`. Subtraction is\ntruncated at zero, and division is integer division with `x / 0 = 0`.\nInput indices are words too. Program labels and the program counter are\nnatural numbers and are not reduced modulo `2 ^ w`.\n\n# Formalization notes\n\nThe register-transfer format follows Cook and Reckhow (*Time bounded\nrandom access machines*, JCSS 7, 1973): instructions act on numbered\ncells, with indirection through a cell holding an address. Their cells\nhold signed integers, and their sequential input has a distinguished\nzero end marker outside its input alphabet. This definition instead\nuses unsigned words, supplies explicit EOF detection, and additionally\nprovides indexed read-only input with its length available in constant\ntime. It therefore specifies its own input convention; the interface\nis not an identification with the original Cook--Reckhow input tape.\n\nWord operations have unit cost, as in the bounded-word models of\nFredman and Willard (*Surpassing the information theoretic bound with\nfusion trees*, JCSS 47, 1993) and Hagerup (*Sorting and searching on the\nword RAM*, STACS 1998). Comparisons with other word-RAM presentations\nmust fix the available operations, input convention, and address-space\nassumptions. Indexed input avoids a compulsory input scan, as in an\ninput-array RAM. A simulation that instead starts from sequential input\nand loads an `n`-word array pays an additive `O(n)` cost, giving\n`O(n + T)`, which is `O(T)` only under a suitable lower bound on `T`.\nNo unconditional constant-factor model-equivalence claim is made here.\n\n`setCell` reduces each value stored and each destination address modulo\n`2 ^ w`. Other data-memory operands and indirect addresses are reduced\nat use; output and input values are reduced too. From initialization,\nevery reachable memory cell holds a word. The function representation\nof memory has domain `ℕ`, but execution accesses only the residues below\n`2 ^ w`. Program control is separate: `jump`, `jzero`, and `jeof` use\nuntruncated program labels, ordinary advancement increments the full\nprogram counter, and instruction fetch uses that counter.\n\nOversized input entries and the length are reduced rather than\nrejected. To recover an entry unchanged requires that entry to be below\n`2 ^ w`; to recover the complete original length with `inputLength`\nrequires `x.length < 2 ^ w`. These fitting conditions belong in the\nadmissible domain of the theorem that needs them. EOF-based programs\ncan process lists whose total length does not fit in a word. Indexed\nreads can address the prefix with indices below `2 ^ w`; the initial\narray itself is read-only input storage, separate from writable memory.\n\nSubtraction is natural-number monus, so a comparison is `sub` followed\nby `jzero`. Complement is `2 ^ w - 1 - m[b]`. No instruction returns\nthe word length. The following operations are derived at constant cost,\nwith scratch cells `t` and `u` whose physical addresses modulo `2 ^ w`\nare distinct from each other and from every operand's physical address.\nDistinct natural-number literals alone do not ensure this condition:\n\n| operation | instructions | count |\n|---|---|---|\n| copy `a ← b` | `set t b; load a t` | 2 |\n| `a ← b ∨ c` | `and t b c; sub t c t; add a b t` | 3 |\n| `a ← b ⊕ c` | `and t b c; sub u c t; add u b u; sub a u t` | 4 |\n| `a ← b ≫ c` | `set t 1; shiftl t t c; div a b t` | 3 |\n| `a ← b mod c` | `div t b c; mul t t c; sub a b t` | 3 |\n| if `b ≤ c` goto `l` | `sub t b c; jzero t l` | 2 |\n| if `b < c` goto `l` | `sub t c b; jzero t l'; jump l; l':` | 3 |\n| if `b = c` goto `l` | `sub t b c; sub u c b; add t t u; jzero t l` | 4 |\n\nAn explicit `halt`, an exhausted `read`, or an out-of-range program\ncounter terminates execution. `step` returns `none` in all three cases.\n`run w p k` counts successful transitions only. `RunsTo` adds the cost\nof the fetched terminal instruction: one for `halt` or exhausted `read`,\nand zero for an out-of-range counter, where no instruction exists.\nThus `RunsTo` counts every executed instruction exactly once, and an\nempty program costs zero. Termination constrains the entire output\ntape; memory is left unconstrained.\n\nThe separate read-only input preserves a fixed working-memory layout.\nAn input-in-memory convention could also reserve fixed low-address\nworking cells and put input at a fixed base; no length-dependent input\nbase is necessary. Copying this model's input into writable memory,\nwhen desired and when the chosen layout fits, takes constant overhead\nper word and linear total time: a uniform loader uses `read` into a\ntemporary cell, an indirect `store`, and loop maintenance.\n\nThere is no separate space measure or randomness primitive. A space\nmeasure can be defined over executions; writable memory has `2 ^ w`\ncells. A deterministic program can consume additional input words to\nmodel supplied random choices.\n-/\n\nnamespace Lax808846.Ram\n\n/-- An instruction. Every number naming a cell is read, except that\nthe first one names the destination for instructions that write a cell,\nand the cell holding the destination address for `store`. `set` carries\na literal value; `jump`, `jzero`, and `jeof` carry program labels,\nwhich are not data-memory addresses. -/\ninductive Instr\n  /-- Set cell `a` to the literal `n`. -/\n  | set (a n : ℕ)\n  /-- Set cell `a` to the contents of the cell whose address cell `b`\n  holds. -/\n  | load (a b : ℕ)\n  /-- Set the cell whose address cell `a` holds to the contents of cell\n  `b`. -/\n  | store (a b : ℕ)\n  /-- Set cell `a` to the sum of cells `b` and `c`, wrapping around\n  modulo `2 ^ w`. -/\n  | add (a b c : ℕ)\n  /-- Set cell `a` to the difference of cells `b` and `c`, truncated at\n  zero rather than wrapping around. -/\n  | sub (a b c : ℕ)\n  /-- Set cell `a` to the product of cells `b` and `c`, wrapping around\n  modulo `2 ^ w`. -/\n  | mul (a b c : ℕ)\n  /-- Set cell `a` to the quotient of cells `b` and `c`, rounding\n  towards zero; division by zero yields zero. -/\n  | div (a b c : ℕ)\n  /-- Set cell `a` to the bitwise conjunction of cells `b` and `c`. -/\n  | and (a b c : ℕ)\n  /-- Set cell `a` to cell `b` shifted left by the number of bits cell\n  `c` holds, wrapping around modulo `2 ^ w`; a shift by `w` or more\n  yields zero. -/\n  | shiftl (a b c : ℕ)\n  /-- Set cell `a` to the bitwise complement `2 ^ w - 1 - m[b]` of cell\n  `b` within the word length. -/\n  | not (a b : ℕ)\n  /-- Continue at instruction `l`. -/\n  | jump (l : ℕ)\n  /-- Continue at instruction `l` if cell `a` is zero. -/\n  | jzero (a l : ℕ)\n  /-- Continue at instruction `l` exactly when the remaining input tape\n  is empty. This test does not consume input. -/\n  | jeof (l : ℕ)\n  /-- Write the original input length, reduced to a word, into cell `a`. -/\n  | inputLength (a : ℕ)\n  /-- Read original input at the word index in cell `b` into cell `a`,\n  returning zero outside the input. Read the index before writing `a`,\n  even when the two cell addresses coincide. Do not consume input. -/\n  | inputLoad (a b : ℕ)\n  /-- Halt. -/\n  | halt\n  /-- Read the next number of the input tape into cell `a`, or halt if\n  the tape is exhausted. -/\n  | read (a : ℕ)\n  /-- Append the contents of cell `a` to the output tape. -/\n  | write (a : ℕ)\n\n/-- A program: a finite sequence of instructions, numbered from `0`. -/\nabbrev Program : Type := List Instr\n\n/-- A machine state: the program counter, the contents of every memory\ncell, the immutable original input array, the remaining sequential input\ntape, and the output tape written so far. -/\nstructure State where\n  /-- The number of the instruction to be executed next. -/\n  pc : ℕ\n  /-- The contents of the memory cells; only the cells with number below\n  `2 ^ w` are ever addressed. -/\n  mem : ℕ → ℕ\n  /-- The original read-only input, unchanged by every instruction. -/\n  input : List ℕ\n  /-- The numbers still to be read from the input tape. -/\n  inp : List ℕ\n  /-- The numbers written to the output tape so far. -/\n  out : List ℕ\n\n/-- The memory `m` with cell `a` set to `v`, at word length `w`: the\naddress and the value written are both taken modulo `2 ^ w`. -/\ndef setCell (w : ℕ) (m : ℕ → ℕ) (a v : ℕ) : ℕ → ℕ :=\n  fun b => if b = a % 2 ^ w then v % 2 ^ w else m b\n\n/-- The effect of one instruction on the state at word length `w`, or\n`none` if it halts the machine, which a `halt` instruction and a read\nfrom an exhausted input tape do. Data values, input indices, and\ndata-memory addresses are reduced modulo `2 ^ w`; program labels and\nthe counter are not. -/\ndef Instr.effect (w : ℕ) : Instr → State → Option State\n  | set a n, s => some { s with pc := s.pc + 1, mem := setCell w s.mem a n }\n  | load a b, s =>\n      some\n        { s with\n          pc := s.pc + 1\n          mem := setCell w s.mem a (s.mem (s.mem (b % 2 ^ w) % 2 ^ w)) }\n  | store a b, s =>\n      some\n        { s with\n          pc := s.pc + 1\n          mem := setCell w s.mem (s.mem (a % 2 ^ w)) (s.mem (b % 2 ^ w)) }\n  | add a b c, s =>\n      some\n        { s with\n          pc := s.pc + 1\n          mem := setCell w s.mem a (s.mem (b % 2 ^ w) + s.mem (c % 2 ^ w)) }\n  | sub a b c, s =>\n      some\n        { s with\n          pc := s.pc + 1\n          mem := setCell w s.mem a (s.mem (b % 2 ^ w) - s.mem (c % 2 ^ w)) }\n  | mul a b c, s =>\n      some\n        { s with\n          pc := s.pc + 1\n          mem := setCell w s.mem a (s.mem (b % 2 ^ w) * s.mem (c % 2 ^ w)) }\n  | div a b c, s =>\n      some\n        { s with\n          pc := s.pc + 1\n          mem := setCell w s.mem a (s.mem (b % 2 ^ w) / s.mem (c % 2 ^ w)) }\n  | and a b c, s =>\n      some\n        { s with\n          pc := s.pc + 1\n          mem := setCell w s.mem a (Nat.land (s.mem (b % 2 ^ w)) (s.mem (c % 2 ^ w))) }\n  | shiftl a b c, s =>\n      some\n        { s with\n          pc := s.pc + 1\n          mem := setCell w s.mem a (s.mem (b % 2 ^ w) * 2 ^ s.mem (c % 2 ^ w)) }\n  | not a b, s =>\n      some\n        { s with\n          pc := s.pc + 1\n          mem := setCell w s.mem a (2 ^ w - 1 - s.mem (b % 2 ^ w)) }\n  | jump l, s => some { s with pc := l }\n  | jzero a l, s => some { s with pc := if s.mem (a % 2 ^ w) = 0 then l else s.pc + 1 }\n  | jeof l, s => some { s with pc := if s.inp.isEmpty then l else s.pc + 1 }\n  | inputLength a, s =>\n      some { s with pc := s.pc + 1, mem := setCell w s.mem a s.input.length }\n  | inputLoad a b, s =>\n      some { s with\n        pc := s.pc + 1\n        mem := setCell w s.mem a (s.input[s.mem (b % 2 ^ w) % 2 ^ w]?.getD 0) }\n  | halt, _ => none\n  | read a, s =>\n      s.inp.head?.map fun v =>\n        { s with pc := s.pc + 1, mem := setCell w s.mem a v, inp := s.inp.tail }\n  | write a, s =>\n      some { s with pc := s.pc + 1, out := s.out ++ [s.mem (a % 2 ^ w) % 2 ^ w] }\n\n/-- One step of the machine at word length `w`: fetch the instruction\nthe program counter points at and execute it. The result is `none` if\nthe machine has halted, which also happens when the program counter has\nrun past the program. -/\ndef step (w : ℕ) (p : Program) (s : State) : Option State :=\n  p[s.pc]?.bind fun i => i.effect w s\n\n/-- The state after `t` successful transitions at word length `w`, or\n`none` if one of those transitions terminates. This auxiliary count does\nnot include a fetched terminal instruction; `RunsTo` charges that too. -/\ndef run (w : ℕ) (p : Program) : ℕ → State → Option State\n  | 0, s => some s\n  | t + 1, s => (step w p s).bind (run w p t)\n\n/-- The initial state on input `x`: program counter zero, all memory\ncells zero, the original input array and its sequential tape both `x`,\nand the output tape empty. -/\ndef initState (x : List ℕ) : State where\n  pc := 0\n  mem := fun _ => 0\n  input := x\n  inp := x\n  out := []\n\n/-- Cost of termination at `s`, when `step w p s = none`: a fetched\nterminal instruction costs one, while an out-of-range program counter\ncosts zero because there is no instruction to execute. -/\ndef terminalCost (p : Program) (s : State) : ℕ :=\n  if s.pc < p.length then 1 else 0\n\n/-- Started on input `x` at word length `w`, the machine executes\nexactly `t` instructions and then halts, having written the word `y` to\nits output tape. -/\ndef RunsTo (w : ℕ) (p : Program) (x y : List ℕ) (t : ℕ) : Prop :=\n  ∃ (k : ℕ) (s : State), run w p k (initState x) = some s ∧\n    step w p s = none ∧ s.out = y ∧ t = k + terminalCost p s\n\nend Lax808846.Ram\n",
+      "statements": []
+    },
+    {
+      "id": "Lax808846.RamComputes",
+      "path": "concepts/Lax808846/RamComputes.lean",
+      "title": "Computing a function within a time bound",
+      "type": "definition",
+      "description": "A word RAM program computes a function of words within a time bound *T*\non a set *D* of admissible inputs if, started on any input *x* in *D* at\nword length *w*, it halts after at most *T(x)* instructions having written the\nvalue of the function at *x* to its output tape. The bound is a function\nof the input, so that bounds like \"linear in the length of the input\"\nare stated by instantiating *T*.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The count includes explicit `halt` and exhausted `read`, but charges\nnothing for an out-of-range program counter. Input is the supplied raw\nlist: there is no implicit header or marker. EOF testing and indexed\nread-only input access, with original length metadata, are available\nat unit cost, as specified in `Ram`. No initial input-loading scan is\ncharged. The complete append-only output must equal the function value.\n\nThe number of instructions comes from the machine semantics, so a time bound is\na statement about the *program*: nothing is annotated onto the program\nand then trusted. Only inputs in `D` are constrained; a program is free\nto do anything at all on malformed input, which is what a statement\nabout an algorithm on encoded objects should say.\n\nThe bound is stated elementarily — an explicit `T` that the step count\ndoes not exceed — rather than through asymptotic notation. Asymptotics\nwould require a filter on inputs and would obscure, rather than clarify,\na statement that quantifies over encodings of every graph; a linear\nbound is spelled out at the point of use as `c * (x.length + 1)` with an\nexplicit constant, a fixed-parameter bound as\n`c * 2 ^ k * (x.length + 1)` with the parameter dependence written in,\nthe `+ 1` making both meaningful for the empty input as well.\n\nThe word length `w` is an explicit argument, and statements built on\nthis notion quantify it visibly, in the order\n`∃ p, ∀ …, ∀ w, (word-length hypothesis) → ComputesInTime w p D f T`.\nThe program is quantified *before* the word length: one program that\nworks at every sufficiently large word length, so that `w` cannot\nsmuggle advice into the machine — a program chosen after `w` could hide\nan arbitrary amount of information in its literals. This is the same\nuniformity discipline the quantifier order enforces for the parameter of\na fixed-parameter bound.\n\nWord-length hypotheses are written as explicit inequalities against\n`2 ^ w` — `c * (x.length + 1) ≤ 2 ^ w`, or \"every entry of `x` is less\nthan `2 ^ w`\" — never through logarithms. This keeps the no-asymptotics\nstyle of the surrounding statements and says exactly what a proof needs:\nthat the quantities the program manipulates fit into a word. Where\nhonesty requires it, the same fitting conditions appear in the\nadmissible set `D` itself, alongside the well-formedness conditions of\nthe encoding, since the machine reduces oversized input entries modulo\n`2 ^ w` rather than rejecting them.\n\nOnly the timed notion is defined: every statement built on this machine\ncarries a bound, and plain computability is the special case in which\n`T` is unconstrained."
+        }
+      ],
+      "imports": [
+        "Lax808846.Ram"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Set.Basic"
+      ],
+      "sourceText": "import Lax808846.Ram\nimport Mathlib.Data.Set.Basic\n\n/-!\n---\ntitle: Computing a function within a time bound\ntype: definition\n---\nA word RAM program computes a function of words within a time bound *T*\non a set *D* of admissible inputs if, started on any input *x* in *D* at\nword length *w*, it halts after at most *T(x)* instructions having written the\nvalue of the function at *x* to its output tape. The bound is a function\nof the input, so that bounds like \"linear in the length of the input\"\nare stated by instantiating *T*.\n\n# Formalization notes\n\nThe count includes explicit `halt` and exhausted `read`, but charges\nnothing for an out-of-range program counter. Input is the supplied raw\nlist: there is no implicit header or marker. EOF testing and indexed\nread-only input access, with original length metadata, are available\nat unit cost, as specified in `Ram`. No initial input-loading scan is\ncharged. The complete append-only output must equal the function value.\n\nThe number of instructions comes from the machine semantics, so a time bound is\na statement about the *program*: nothing is annotated onto the program\nand then trusted. Only inputs in `D` are constrained; a program is free\nto do anything at all on malformed input, which is what a statement\nabout an algorithm on encoded objects should say.\n\nThe bound is stated elementarily — an explicit `T` that the step count\ndoes not exceed — rather than through asymptotic notation. Asymptotics\nwould require a filter on inputs and would obscure, rather than clarify,\na statement that quantifies over encodings of every graph; a linear\nbound is spelled out at the point of use as `c * (x.length + 1)` with an\nexplicit constant, a fixed-parameter bound as\n`c * 2 ^ k * (x.length + 1)` with the parameter dependence written in,\nthe `+ 1` making both meaningful for the empty input as well.\n\nThe word length `w` is an explicit argument, and statements built on\nthis notion quantify it visibly, in the order\n`∃ p, ∀ …, ∀ w, (word-length hypothesis) → ComputesInTime w p D f T`.\nThe program is quantified *before* the word length: one program that\nworks at every sufficiently large word length, so that `w` cannot\nsmuggle advice into the machine — a program chosen after `w` could hide\nan arbitrary amount of information in its literals. This is the same\nuniformity discipline the quantifier order enforces for the parameter of\na fixed-parameter bound.\n\nWord-length hypotheses are written as explicit inequalities against\n`2 ^ w` — `c * (x.length + 1) ≤ 2 ^ w`, or \"every entry of `x` is less\nthan `2 ^ w`\" — never through logarithms. This keeps the no-asymptotics\nstyle of the surrounding statements and says exactly what a proof needs:\nthat the quantities the program manipulates fit into a word. Where\nhonesty requires it, the same fitting conditions appear in the\nadmissible set `D` itself, alongside the well-formedness conditions of\nthe encoding, since the machine reduces oversized input entries modulo\n`2 ^ w` rather than rejecting them.\n\nOnly the timed notion is defined: every statement built on this machine\ncarries a bound, and plain computability is the special case in which\n`T` is unconstrained.\n-/\n\nnamespace Lax808846.RamComputes\n\nopen Lax808846.Ram\n\n/-- At word length `w`, on every admissible input `x`, the program halts\nwithin `T x` executed instructions with output `f x`. -/\ndef ComputesInTime (w : ℕ) (p : Program) (D : Set (List ℕ))\n    (f : List ℕ → List ℕ) (T : List ℕ → ℕ) : Prop :=\n  ∀ x ∈ D, ∃ t ≤ T x, RunsTo w p x (f x) t\n\nend Lax808846.RamComputes\n",
+      "statements": []
+    }
+  ],
+  "proofs": [],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "b820457bfee0b515d5d1f92bb4a6db5214d376c9e73e083c657960101012ef06",
+    "sourceCommit": "5a2645e5b68a2d1539610196a09883da16433a94",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax808846/Ram.c",
+        "bytes": 81137,
+        "sha256": "4a5f20c10e8af7ad0fb23edc31e4c7412a5396cda4df6ebc6349ef169afd4ef3"
+      },
+      {
+        "path": "concepts/ir/Lax808846/Ram.c.hash",
+        "bytes": 16,
+        "sha256": "99126204bfbc6c141c33dc4f8e2c6673279d1ec619c4246ca7e745ea11c96b8d"
+      },
+      {
+        "path": "concepts/ir/Lax808846/RamComputes.c",
+        "bytes": 1544,
+        "sha256": "800806ed21913ef5a34db809514e2c55db70df6140d4ee866f06abe8196e20df"
+      },
+      {
+        "path": "concepts/ir/Lax808846/RamComputes.c.hash",
+        "bytes": 16,
+        "sha256": "a9a6f7b088140af29c75eaa356374d994a7b86b5c1fe20bc8f05bfff1994d980"
+      },
+      {
+        "path": "concepts/ir/Lax808846.c",
+        "bytes": 1521,
+        "sha256": "cff6e55641dfb53f861310ad2214f326a8ec96a130993ab3da9398bbf0a8f638"
+      },
+      {
+        "path": "concepts/ir/Lax808846.c.hash",
+        "bytes": 16,
+        "sha256": "20140368e83b8a6b165bbe29a5f93d7140f44ab0fda0ecb40a3b36bef952a005"
+      },
+      {
+        "path": "concepts/lib/Lax808846/Ram.ilean",
+        "bytes": 15522,
+        "sha256": "cd2244a3969bc7024e59c9d320d052acbe33d6c1e3adc4e0f1fc30200b8850d8"
+      },
+      {
+        "path": "concepts/lib/Lax808846/Ram.ilean.hash",
+        "bytes": 16,
+        "sha256": "cc2bf79f7b5a2d9e82d301af09f186f2a940bb4ba835a9f616b04a90d39d7c83"
+      },
+      {
+        "path": "concepts/lib/Lax808846/Ram.olean",
+        "bytes": 546376,
+        "sha256": "14a9b4b18c359ed0116e12ca5243580d8f769cb1020aa5723efc2b80b11f8cd7"
+      },
+      {
+        "path": "concepts/lib/Lax808846/Ram.olean.hash",
+        "bytes": 16,
+        "sha256": "3a0dc7bc49b0acf82f616a91b09a27fd8a8fc1605ae80b17d2ff74abb3b08f28"
+      },
+      {
+        "path": "concepts/lib/Lax808846/Ram.trace",
+        "bytes": 2127,
+        "sha256": "84d8617879ff22e9e2198c3f2a8c3d392ed09e1f526b2dde91f1e9615c63e6c0"
+      },
+      {
+        "path": "concepts/lib/Lax808846/RamComputes.ilean",
+        "bytes": 1499,
+        "sha256": "d4e4c3937148e615904788d5c9be4260f50da010f9bf5baa683d86dccb7c9a6f"
+      },
+      {
+        "path": "concepts/lib/Lax808846/RamComputes.ilean.hash",
+        "bytes": 16,
+        "sha256": "ac426d798ca091f9caeae110af414509ef400205d324684354282f6837b7b1d0"
+      },
+      {
+        "path": "concepts/lib/Lax808846/RamComputes.olean",
+        "bytes": 11880,
+        "sha256": "5787322c6adbe80b3919309486731ca79c740fbc1fb0260930e94e73a7bbaf85"
+      },
+      {
+        "path": "concepts/lib/Lax808846/RamComputes.olean.hash",
+        "bytes": 16,
+        "sha256": "0f7b10f8ab48a2260c5564fd0d4e7e41e1dee77cddf9bd21acda2e9cf36853b6"
+      },
+      {
+        "path": "concepts/lib/Lax808846/RamComputes.trace",
+        "bytes": 2313,
+        "sha256": "1e817e4e6d10e5a3df076b5f52f5e11f13046a5ce97b422c090d1ec3e7a8e7f0"
+      },
+      {
+        "path": "concepts/lib/Lax808846.ilean",
+        "bytes": 159,
+        "sha256": "26ad558b5d603001d0a3a4163936dd805feeac6ef3e15ad116ba75f4818560fc"
+      },
+      {
+        "path": "concepts/lib/Lax808846.ilean.hash",
+        "bytes": 16,
+        "sha256": "aa3d8e51953a34dd5076414bc7c9fcfd82461f9203e8fd2a99a403b1b6fa1a2d"
+      },
+      {
+        "path": "concepts/lib/Lax808846.olean",
+        "bytes": 1632,
+        "sha256": "57101f6001eb81e664b2d05b453043f2ee61d647df4698bcfff723d5eb5edbb3"
+      },
+      {
+        "path": "concepts/lib/Lax808846.olean.hash",
+        "bytes": 16,
+        "sha256": "05bd3f3acfd7605475562fac15aa65b30eb8026c329ab5bca994836b81ee66c0"
+      },
+      {
+        "path": "concepts/lib/Lax808846.trace",
+        "bytes": 2220,
+        "sha256": "3db4d78373028800617cc18510041f68cf968709169a1445818e63af45d4f374"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "1c64c0a99fb719697e5d463ca561501fa60aead56ab3bceb534c08f416891a85"
+      },
+      {
+        "path": "concepts/package/Lax808846/Ram.lean",
+        "bytes": 13595,
+        "sha256": "462c3fcead85e618d06894213044da64fdbdef871cec69ac2c4fe2f88f6bdc61"
+      },
+      {
+        "path": "concepts/package/Lax808846/RamComputes.lean",
+        "bytes": 3585,
+        "sha256": "bf9af424bcc99e96f658c3c2255317de63d07114decfb5c37df68fed700a3e66"
+      },
+      {
+        "path": "concepts/package/Lax808846.lean",
+        "bytes": 50,
+        "sha256": "c8f348b4b4585f3975012c246e0d9df76feb9bd7c05e5cdd19e2fb084f7b258d"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Bounds.c",
+        "bytes": 24076,
+        "sha256": "518808fb3b30058949ef5f823dc2f1ac0b946f013f2229f4a16a4fa6514b8754"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Bounds.c.hash",
+        "bytes": 16,
+        "sha256": "d086293c51e2454ca8cab5b664e9675e5be92649a23dab4a3721b2d3e8f10af0"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Compile.c",
+        "bytes": 90174,
+        "sha256": "5acdf09b5fb6819b01f7289cb7ca4845f6765e9597c802b7f78642ca4225b720"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Compile.c.hash",
+        "bytes": 16,
+        "sha256": "95f69887a86f4509465ad44a22ac8fb98c49b7e218c7fa9b22bab193e67ddb1c"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Frame.c",
+        "bytes": 19431,
+        "sha256": "e0134f2be40431abc41ba998d2145a02d4974414a36aea6da2a3954efc08751c"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Frame.c.hash",
+        "bytes": 16,
+        "sha256": "e62bb922db20539b64a76ea3f12e292420742838b3912b97a58f070e2ddc7e88"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Imp.c",
+        "bytes": 99991,
+        "sha256": "29dafb3972d99b139c0b9aa44e80d967c7b1d873ea75da59d6c06a5fb00ef983"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Imp.c.hash",
+        "bytes": 16,
+        "sha256": "f291839825ec8a6890c7819ddf42dda99854cb371d2c84b391d018d01f614a3a"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/InputSemantics.c",
+        "bytes": 19436,
+        "sha256": "60e6f9dfbb762e9f50420a2c7e8ef0911d1afc281b676025980b52bf83a92758"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/InputSemantics.c.hash",
+        "bytes": 16,
+        "sha256": "4aeba5a9e4be1ece3a68bd851f22f489ffee42335c5781d201126d35f9887b53"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib/Basic.c",
+        "bytes": 12293,
+        "sha256": "1e4aee45e80ea6927fb685da95ec586e0ea4989985de0a91bf5c9ac508d8e416"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib/Basic.c.hash",
+        "bytes": 16,
+        "sha256": "f91ec95b0ce8e8871e11fb78c5d45963405f073371e010c45eec57c4afc81a2d"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib/Csr.c",
+        "bytes": 46002,
+        "sha256": "76a96b82ea21cece4cebb904fda9fd1a280885d07459707345ffc5fdcaade497"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib/Csr.c.hash",
+        "bytes": 16,
+        "sha256": "931892d7dbc449f2df07ce90f217f3465b347627b0c95543cf21f2af8c7ebd72"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib/Fill.c",
+        "bytes": 27054,
+        "sha256": "cf3a60bcaa0dad3807c4e6ac1810a3def62f56a1442668b882eb21dbe571941d"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib/Fill.c.hash",
+        "bytes": 16,
+        "sha256": "468309a1bb9057dbd2ef28a36f030035328f1b7d1a9ee0e4e7519b3f90c43b12"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib/Ind.c",
+        "bytes": 18751,
+        "sha256": "8e63580048de246acc91fa785a0ac7d2224c841b11070ebfb81cd01be41d8ce8"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib/Ind.c.hash",
+        "bytes": 16,
+        "sha256": "f73cb2e39d6f95d787a32716c68a1d16bbf7ab81fcf8b3c03c67d876c5e4dff9"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib/Queue.c",
+        "bytes": 27944,
+        "sha256": "91bec0f21c5a3b95ce25a8ee879a88ce6a3055ec77009fd20dbbb20598908bd1"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib/Queue.c.hash",
+        "bytes": 16,
+        "sha256": "7bcaeb30e5f61937f0d5e8a5c99111a3a32b4def55c71e1cce19c6fad1a813c1"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib/Stack.c",
+        "bytes": 24557,
+        "sha256": "5c34ac74d0b59ec9266744e22c0a30751639dfceb86f2733a639d8e46271f52a"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib/Stack.c.hash",
+        "bytes": 16,
+        "sha256": "bd85d863f8ef886c8f868f4e4a584f375f661e6f4a8d0654a7fe9b904d7bc6f4"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib/Trail.c",
+        "bytes": 34583,
+        "sha256": "7431c9f0a69e8faae111e2147d6ff75340e3ea29440f76beeca6a8dcb16e181f"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib/Trail.c.hash",
+        "bytes": 16,
+        "sha256": "65b258e73f9e158c7aec56535fb10e522bd5b2a4cc2895a9af5aab84c3c35285"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib.c",
+        "bytes": 2894,
+        "sha256": "7774b9521f41b91ab3f41adab60de5a3d1b580b1586e5212e3a3cc7706b54820"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Lib.c.hash",
+        "bytes": 16,
+        "sha256": "a3557ff82916eeebaa5b99ccf1cc395a9471a15f011e370cf6785c28b7c38447"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Machine.c",
+        "bytes": 4071,
+        "sha256": "4cb2a0c56710fbd6c9221bd20d888b7048189f9db6f62467c6f49667eddebe5f"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Machine.c.hash",
+        "bytes": 16,
+        "sha256": "4a02346914d106d96641496e5ce815f661de6d6ded28d3dd33dd301e7d6a44bf"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Reasoning.c",
+        "bytes": 12003,
+        "sha256": "3ac3520196a6bd7255477fbe2c7b54c01def22806cde27b2fc03259cd8e48661"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Reasoning.c.hash",
+        "bytes": 16,
+        "sha256": "0b3cdb8a18e77b546c11560b1a21ed585942ed4df234b3e61fb792f644c777a3"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Simulation.c",
+        "bytes": 9969,
+        "sha256": "333749286ae65b1eb6b0eeb656da60473c6e81edfa5ed4c03a35a567e950c39c"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Simulation.c.hash",
+        "bytes": 16,
+        "sha256": "45b14e7dde7da25698a9722ba2b8c9b9c5ac7d0a58aa475285b6044fa8b5049c"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Smoke.c",
+        "bytes": 35294,
+        "sha256": "7567d7ad75ab1e1027c53b834f784f67ee6289145e0264e141e27e886a4102e5"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Smoke.c.hash",
+        "bytes": 16,
+        "sha256": "4f6dca9e0dc28b509c75763f773508f3798cc9a2626d00abdd62e437d6be4222"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Spec.c",
+        "bytes": 1351,
+        "sha256": "e7e58ef202db4245a8291962af6f2d3f7585030988f7ee0c5ff4937daa1dac8b"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Spec.c.hash",
+        "bytes": 16,
+        "sha256": "7647d5a6b75d351dfd996a8d008e91700118852abdf6f6d95d6cfaf3280cbc43"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Tactic.c",
+        "bytes": 861783,
+        "sha256": "84ca1bc4d22ca6e0dc5f2b3d08395ddc7ee9c0b3503823ec58ccb017a445bc00"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Tactic.c.hash",
+        "bytes": 16,
+        "sha256": "42062abf7fbc4d3f8d435637249351b6d469c1cb3f88d0231c0335f853b39ffb"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Transfer.c",
+        "bytes": 1605,
+        "sha256": "5a61f76be73eb5d6e749980de757c503f90c8851e87b99b76a60726ad7aa03e5"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs/Transfer.c.hash",
+        "bytes": 16,
+        "sha256": "601e5c67d487c66ffebf160fff5331c147f7ba7d205d4dd5d49f63171ae0c9aa"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs.c",
+        "bytes": 6150,
+        "sha256": "a2a31a15a58b05e5ca13e2088ca9ef0652964ddbe78db058e43395d316d6b84e"
+      },
+      {
+        "path": "proofs/ir/Lax808846Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "65615df8732b8d287fb50788178e5e8fa49f7cb4989a5bd70e87f403379cd99f"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Bounds.ilean",
+        "bytes": 26588,
+        "sha256": "2de98223f9bea7971f3364ffdc0f13a77c68bb515a428662cb60f272233d9b2c"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Bounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "e04e8f22d60d52e5678fc615a0b04aa3d90516ba57cc82ebb3fea52b5e9ccef7"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Bounds.olean",
+        "bytes": 454592,
+        "sha256": "ece54af3b41807403d6ea48c811ccba9a16d8907c1b0884a8deec13d2273e9f0"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Bounds.olean.hash",
+        "bytes": 16,
+        "sha256": "789a7161ff0cd83e55ff0881fb6155713d7c0409f4df6c1156f3f7a824ae8636"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Bounds.trace",
+        "bytes": 2232,
+        "sha256": "1847dc88d90873eb24fd96a5e14d5043963b94450bc2ae123dc68c8dde1cbf56"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Compile.ilean",
+        "bytes": 54269,
+        "sha256": "a51f67a3188df7bda2960936d24cf8ac506956961d67ffaa66bce22687ecbd31"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Compile.ilean.hash",
+        "bytes": 16,
+        "sha256": "649d972be86e51252e61cc6c2d7333d5eb7a169b36ba46c6a0d3188a92a9e19f"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Compile.olean",
+        "bytes": 1291800,
+        "sha256": "2f6fd039966ddc41bb6658d39e98adc39444589cb65b21a7c171433fdb21272a"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Compile.olean.hash",
+        "bytes": 16,
+        "sha256": "237392f88cd2e5c6be67d06387e520c3259e814da822d26286a7486b2942328c"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Compile.trace",
+        "bytes": 2384,
+        "sha256": "ad11cef926e787232ae48dd621ef234f040bcc243023c76283dfe162e46f61cb"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Frame.ilean",
+        "bytes": 26062,
+        "sha256": "88e93dd0e575624288416323f614d2b607258cc502223fb30f216575671b8e4f"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Frame.ilean.hash",
+        "bytes": 16,
+        "sha256": "dbf6d7feebd189ffe710bae662e51b6bd6f2a1d79ad33fdf0586c8ad0818882c"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Frame.olean",
+        "bytes": 351864,
+        "sha256": "303e5257c779f0bf7f58a6733b71a877132d7a65fc0804d533988049aade08b7"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Frame.olean.hash",
+        "bytes": 16,
+        "sha256": "55f977ff6a684718488995fd8dbd6556aa4e80714ba3da06a9b991abac55208e"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Frame.trace",
+        "bytes": 2244,
+        "sha256": "ff032d28548f27ebf0f954900e829b945717a99462d550c1dab0b16d6f18164a"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Imp.ilean",
+        "bytes": 34425,
+        "sha256": "15d6992bed5b06f182bb068aa4729dfde4264011d3e0ff907bfa2c820b95515a"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Imp.ilean.hash",
+        "bytes": 16,
+        "sha256": "61af563382c0dec38c1b7ee8398dbc2145771677e48c784f90d826f416cda959"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Imp.olean",
+        "bytes": 1089624,
+        "sha256": "2c2ec7e07a432e0586d8853c20c9e853d1da85f77132c14ba0938bb77f131782"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Imp.olean.hash",
+        "bytes": 16,
+        "sha256": "0749b8c2ae20c8c83586d82ede256bb4374f08ca947bfe5c6851fa30bfaf38d0"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Imp.trace",
+        "bytes": 2201,
+        "sha256": "88c3b06136d8427c60193323fcdf98f8e7685b4e50bbd38480c0bd1dc0cd69cc"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/InputSemantics.ilean",
+        "bytes": 39528,
+        "sha256": "689208255738af950de2b711c32ce1272c63e813d3664237e55b731eaa2d0f28"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/InputSemantics.ilean.hash",
+        "bytes": 16,
+        "sha256": "dcd067a917fe381b37a2655d635817f9c2c23a583f31a77148f0457bd1fd8f40"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/InputSemantics.olean",
+        "bytes": 464176,
+        "sha256": "f11e0b54f204055e61dcd71aeb438dc80c048a758c3eaf0adaa52154542647d7"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/InputSemantics.olean.hash",
+        "bytes": 16,
+        "sha256": "48357aab0522b0af29be70027fe78284c3d0ed974791d4693b2fa88d8d2f3731"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/InputSemantics.trace",
+        "bytes": 2458,
+        "sha256": "77c5122f6c9cbd46a0548f236e5f02b8cb8fabbd5d59157e32385eca9d2e3aee"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Basic.ilean",
+        "bytes": 18011,
+        "sha256": "77fe7b9b10d4b6e70d84937758bc935c00ee1781fe5de783dc00c14cba73fcd3"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Basic.ilean.hash",
+        "bytes": 16,
+        "sha256": "0e57180a04f11f7af4a728a7c3c6c592f07833554227b9f40b2408da5549950e"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Basic.olean",
+        "bytes": 353504,
+        "sha256": "f0092a0feba1b3b5515baafe8df52836ad8b3a4f83124536509f5dfc7f092925"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Basic.olean.hash",
+        "bytes": 16,
+        "sha256": "e0c1e79edd17713d86ae9601cd39aa06221fe4eb3cd4712281f481cc9f468c5a"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Basic.trace",
+        "bytes": 2428,
+        "sha256": "81cf5a82e1700241c9ced33bca25f7bbdedc8d1071d236a8712e851501abe9bc"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Csr.ilean",
+        "bytes": 94618,
+        "sha256": "5ccb91d0ae2e080554c7742c720b2b7793c52e3e26249f1400fa0c86a4f6194a"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Csr.ilean.hash",
+        "bytes": 16,
+        "sha256": "e0a6aeccd1f830153839e0eba5e58946836ad35f8ecd70741406e3d3337fb858"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Csr.olean",
+        "bytes": 1918488,
+        "sha256": "55d6fc01b163866e728f8ac530a652401c72d0c2b8841ca3cbe425df62c8d327"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Csr.olean.hash",
+        "bytes": 16,
+        "sha256": "8c5bd3d22462df4e80206a54a4ad73de7e6ff8f20795d69d78c910e5aa6e1ec4"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Csr.trace",
+        "bytes": 2258,
+        "sha256": "5c76dd649327dc30722047dc913063323edba3e2f85156c399ad8a9a9765901b"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Fill.ilean",
+        "bytes": 39524,
+        "sha256": "397a0b77b3e861ae53305bcafd9b4e4003dc65fd214c98d199da092a1d06381b"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Fill.ilean.hash",
+        "bytes": 16,
+        "sha256": "7419242530469b5206f5379b4d205289910e88fcb848abe9b74c7855a0ac06cb"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Fill.olean",
+        "bytes": 453040,
+        "sha256": "8b6ffa5acb1213f2fb432b73ca757be8bb6c92ddbf89cdffd5738c895b59afd5"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Fill.olean.hash",
+        "bytes": 16,
+        "sha256": "01cd79bf0f803bce878f649ef837a0bd8cdf117ce8e342e1439b7e2732b3c4f4"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Fill.trace",
+        "bytes": 2265,
+        "sha256": "556952cb94d9f967d754fdd34e263ad31aaaa7bb8b8b20e7af90bbaba5548a6e"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Ind.ilean",
+        "bytes": 39291,
+        "sha256": "89705ed717a066a1e9725a425407ef9e958afa78508791ddb06dd723ba8f016e"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Ind.ilean.hash",
+        "bytes": 16,
+        "sha256": "9b3b4ae8b51f864c882cd337d0cdea20a1ad3afba7bf7df6dc4af3ed72c0872f"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Ind.olean",
+        "bytes": 589432,
+        "sha256": "74eff825ef7710ae483865be99e1809d21cf08673207689bba7e95326b78448b"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Ind.olean.hash",
+        "bytes": 16,
+        "sha256": "d2bac35eb7c6da80250bd33e43595542303e8090bafa22d68f237f9a3dcd6fd8"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Ind.trace",
+        "bytes": 2258,
+        "sha256": "cb61ae0c47f554435b8f734da18cfd7e4f19db029890d2bf31a9769d04266691"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Queue.ilean",
+        "bytes": 67872,
+        "sha256": "0c3106611c9e1bdc73c77c03e8b6dd814a971c6a2617932b7fe0ced343937be4"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Queue.ilean.hash",
+        "bytes": 16,
+        "sha256": "cb03080c801a61974b9ae739196c6e844ab4e7db63aeac0c3205d9f68b703eca"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Queue.olean",
+        "bytes": 1277752,
+        "sha256": "1bbba4fbd4b8661ca2d3c79a73034ac3099386ec574db767a2fe7752584d80e9"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Queue.olean.hash",
+        "bytes": 16,
+        "sha256": "0ba602e3a2439fe00417e6f020cddd82a7068c39521f08aee56d3ded93fae95f"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Queue.trace",
+        "bytes": 2275,
+        "sha256": "065881ed354aa0b9d5fe774d76abeaff4fdad04d67af17e9ea37f1e2746f802c"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Stack.ilean",
+        "bytes": 54410,
+        "sha256": "3dcafc24649f8cfdf6835cec5864b62db0b05244b02e5ef6ddea14af3f0947c1"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Stack.ilean.hash",
+        "bytes": 16,
+        "sha256": "c4c454f199a2f42686bb50872dfe77a51cb3355ab17e3c323678bdfebce14deb"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Stack.olean",
+        "bytes": 905408,
+        "sha256": "caceb5404f2c94408da30fd3ecb971762966e9d310b7ef2903f05d217dccd2be"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Stack.olean.hash",
+        "bytes": 16,
+        "sha256": "45e3a89732964925e11c5cbd7f2178243e65c1e9e5e4105a7c66f3ecb090fdc7"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Stack.trace",
+        "bytes": 2275,
+        "sha256": "cd6e4b1e48fd9c4dab959664a37207bba59fb653b2c33549adc8c03b5b9aa303"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Trail.ilean",
+        "bytes": 60296,
+        "sha256": "7ba713a864d672f880816a7ce9a3e256a63a732b3cbefedce77a4a38938b6cfb"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Trail.ilean.hash",
+        "bytes": 16,
+        "sha256": "abc5b7bec4a4106d3039b6b612cf79fed804a4157deea4d7a7be306700d20601"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Trail.olean",
+        "bytes": 2047344,
+        "sha256": "81d3aa70ecb302e994300b7313c18edb879d45ac38f1c613e6847414b0b9b4ec"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Trail.olean.hash",
+        "bytes": 16,
+        "sha256": "deac6cd167cceda093d36bcf7c4cb4eb5b7ad17e56b02bbae1d8b61105960ad8"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib/Trail.trace",
+        "bytes": 2271,
+        "sha256": "48f90ea1bc06c87c6c7eed353165febb1e8922448839d42f09dfba12eeda7357"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib.ilean",
+        "bytes": 420,
+        "sha256": "ea29f00f0f46e6756b0405eb79d3e2682fa34e08ab629768c326afe0ccdf7337"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib.ilean.hash",
+        "bytes": 16,
+        "sha256": "8330bd9cc5589307c5fcdb2876c26e77c5b00249c5bbe3dd66ebe448bfb33a81"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib.olean",
+        "bytes": 4152,
+        "sha256": "cfa66ddc26801b6a6e6e97273ed17bbd22b0998fc75ceb73879e8277c497f370"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib.olean.hash",
+        "bytes": 16,
+        "sha256": "976178e9006ace48e13ddf0270e34f60f1eb88cfdf659708b89d7539f9a7b470"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Lib.trace",
+        "bytes": 3198,
+        "sha256": "3537a5bb6c80df5ec890a4bcd9915c8972dbddd9f0d56622e94f0e52b69e56ec"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Machine.ilean",
+        "bytes": 69584,
+        "sha256": "20969d73073ec6e2862ca5ed4e70835b19ca16f5529963d52b49e48f71e26367"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Machine.ilean.hash",
+        "bytes": 16,
+        "sha256": "785a35d8c6953e2afb32b35a07157c4bff0f896cebee9e7ab5ca0d46676083c6"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Machine.olean",
+        "bytes": 1027832,
+        "sha256": "ed42361cb1faa029bf9f6be89489e2d32681171b3e9bf5ad31008ccdd9b9c856"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Machine.olean.hash",
+        "bytes": 16,
+        "sha256": "06c0458fe2d3cef7de6c6c2e9e517e46dcc580b1242bcb686faba9f8be614987"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Machine.trace",
+        "bytes": 2361,
+        "sha256": "6f29e6778690fc5c8a668a4fb6d224e12f633a36e529ce443ba8db96b959a895"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Reasoning.ilean",
+        "bytes": 65253,
+        "sha256": "edfbd6d3be3c64a8df3c29f2651d75f2fd582db7e7e55323287e9cdd5eededaf"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Reasoning.ilean.hash",
+        "bytes": 16,
+        "sha256": "cb0565a242f92d7f3f039accfa6bc6554c9feda5d06f634c5fb4950c2e8cd7e0"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Reasoning.olean",
+        "bytes": 673128,
+        "sha256": "237516eaff68e6ff29eb588ae5be45d81727af2a107b1313125c3730a0a88b3e"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Reasoning.olean.hash",
+        "bytes": 16,
+        "sha256": "13fc8996b20c96e918eecf66b6f90b88c665ee0566e59c9259a264a0b348f541"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Reasoning.trace",
+        "bytes": 2277,
+        "sha256": "b1fa86a751a5042800821454a1b6d53d033cca2278d59962e2b70dba1276a0aa"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Simulation.ilean",
+        "bytes": 120727,
+        "sha256": "6cccd76f40d2269166a1b4ea8a097c8dab26ed99b1d2f7a1ea80a1c18d7a9c05"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Simulation.ilean.hash",
+        "bytes": 16,
+        "sha256": "4a52a1c09e2c707a97ef1d381f64508b02b9fb88cf488767b90fce2cf2d8ff06"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Simulation.olean",
+        "bytes": 2220024,
+        "sha256": "245556edd9aac10014e67a5b282fdf64ae3f21b7dbd2833dbe99573dc47bb5fe"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Simulation.olean.hash",
+        "bytes": 16,
+        "sha256": "e994f062df475bd1da55b07928ee790027c899b95105869d52ffe35b4f496f78"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Simulation.trace",
+        "bytes": 2437,
+        "sha256": "5a32fd9a068018097b0610043116f5f96b102c8fec8c704dade95c75d57bc32f"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Smoke.ilean",
+        "bytes": 42377,
+        "sha256": "942fea464554efae959a80c5936a61608bf299b2da6cfb7d86b7466758f0e7e0"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Smoke.ilean.hash",
+        "bytes": 16,
+        "sha256": "ff00ecc88a7a447f147d6bcb2f2a67d0a9354bf15dc055640cb49d1334a962b1"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Smoke.olean",
+        "bytes": 1025840,
+        "sha256": "04fe0d7f349a7b96ea723c439ce8b53f2e53a445c47b6db49ed8e132c04dda9d"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Smoke.olean.hash",
+        "bytes": 16,
+        "sha256": "9558dd2cd7ad58c1a27c81f9c2054f9f432ad37eda561d2f8c9757ea928d8995"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Smoke.trace",
+        "bytes": 2242,
+        "sha256": "bf811be23ec1cfafd0577e4c8967cb815e39b81bcc468d8cf6d0f7aca0723898"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Spec.ilean",
+        "bytes": 27810,
+        "sha256": "bc8a8b9a39b43d78fe979a38d44f9d0a81b1cb3820180c36f35537492c287fa6"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Spec.ilean.hash",
+        "bytes": 16,
+        "sha256": "34ed992aa971fe1ff0a272286397fc3838cf63541b9e4f9d721c089f319031d3"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Spec.olean",
+        "bytes": 383800,
+        "sha256": "c4c01043265f084093242eaaa67223e6829c9a2be4e3e165b1af5db1c030b974"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Spec.olean.hash",
+        "bytes": 16,
+        "sha256": "c4444c1338f36d1d1a44f4b225e6da0388d7058104e4bce06b71b2ec66e86d20"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Spec.trace",
+        "bytes": 2222,
+        "sha256": "f2d1c8a5889e656985dd131063520c8091a4a8f61e7c5dfc4f6f3b0ca8edcb18"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Tactic.ilean",
+        "bytes": 109764,
+        "sha256": "ba631d9f69985c260d5d68683f10082d0c56fd85390290079fb5ad251fad83e4"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Tactic.ilean.hash",
+        "bytes": 16,
+        "sha256": "b96a9645de07b08acd9a9df728b931b2aadf8b98c4891af02425ae2c702c10c1"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Tactic.olean",
+        "bytes": 2722392,
+        "sha256": "c6238c81c71bf02ef60bf68103fa26d41b34a1dba8d5e1838f12fc7a9c281840"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Tactic.olean.hash",
+        "bytes": 16,
+        "sha256": "ae31a009858e7081e90266115497dfde7bfe5020f3de6d82cda3f31e26e443b3"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Tactic.trace",
+        "bytes": 2234,
+        "sha256": "b4e0a7f409837db5d9c1c11a34a61e4dbab1483733b0d0c60e53bc72ffc37f8c"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Transfer.ilean",
+        "bytes": 8567,
+        "sha256": "26dc4503c79ad9397ce9166cb7371fc14b057a839e78ac6882db2bd617df9958"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Transfer.ilean.hash",
+        "bytes": 16,
+        "sha256": "8a925d816324cab29072839eaa093c492fde4799c970367529e6da743b3fad59"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Transfer.olean",
+        "bytes": 63536,
+        "sha256": "d8e8e633eb4e781fcc5d3efa3c2bb9a01f20ad4f590b8b3932a019e93c45eb9b"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Transfer.olean.hash",
+        "bytes": 16,
+        "sha256": "aa073c181f0d9f35d0edd78d53d58e1caa413304177f3e41f4110de15eaf2936"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs/Transfer.trace",
+        "bytes": 2413,
+        "sha256": "e78e2c7df978d8ccb869c63fc3916597489f38d55bfa029efe89d2af5ad2aba5"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs.ilean",
+        "bytes": 1010,
+        "sha256": "2082ac5e01d0d59b510a79f606e0a0d0727c291061e6f4085da14306125d115b"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "f6da0823af2c54bd796264f249688bd2f09dca9cb644bf7acd7102448ea9b5af"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs.olean",
+        "bytes": 3528,
+        "sha256": "f8513279f009de3a430b758fc79a031a67ca05b1c47f792f3c8e67d2cb45f33c"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "6bd522dbfaf422f40e1ecd1e7c3b78db855b24e6339b9d16a67cb3fc2cb7ba60"
+      },
+      {
+        "path": "proofs/lib/Lax808846Proofs.trace",
+        "bytes": 5194,
+        "sha256": "358f8cf52e81d57ecb16e3f10d0556273c6d9ca147dd22c4049840e13a3b342f"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "784388594c7f34660b3c157f9f76b07ad69b3b84cba7cd239f2aeb58732afb8f"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 397,
+        "sha256": "278311b25bb6cc61a892d80ab5bdc868fae4928419723583e80caaedbeefcf35"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Bounds.lean",
+        "bytes": 10105,
+        "sha256": "0e3a82f4162cbf2c496f7c49055f75857be2248d24b75ee6b1b2e647f997d708"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Compile.lean",
+        "bytes": 21431,
+        "sha256": "16436590314595ca5665cbf550b2f0c776dc055e15f13a460285441ab05e037c"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Frame.lean",
+        "bytes": 11040,
+        "sha256": "d5db462e1329c568667e72b69e122fde3a5e93026d9b3eed4fd25f0f8d2c51da"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Imp.lean",
+        "bytes": 14846,
+        "sha256": "51a6b451d83bd57ce53bc46cbe06e6a9983c28ab2e17c5757c8a22e0f0560f7b"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/InputSemantics.lean",
+        "bytes": 9647,
+        "sha256": "db85f2e109ed46f0fea2e943dd55f50ca84b671d714442aff1d78913190dfd8f"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Lib/Basic.lean",
+        "bytes": 7512,
+        "sha256": "76fe7a8af30a83fcae53fa2b9f16850017334e0397946f1b57160948875d3bec"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Lib/Csr.lean",
+        "bytes": 44255,
+        "sha256": "de196e71615927018e784d54501ac5db7dc12f6bfb4ec795a3331d1444a07ca9"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Lib/Fill.lean",
+        "bytes": 15683,
+        "sha256": "0de8acff7d17b3878bf6c50c185ed424b12a785cc9bc962c512e24e68e96ef7d"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Lib/Ind.lean",
+        "bytes": 18792,
+        "sha256": "b7ac3b5e8fa415f1eb061f028ec1c69103b8c817522167b6e1980ef7f691c476"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Lib/Queue.lean",
+        "bytes": 28556,
+        "sha256": "ea7bdb10f5976c196cf5b0a46a1e89bee579cb96c6d5d8ceaa88e3a4b0fa430f"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Lib/Stack.lean",
+        "bytes": 20282,
+        "sha256": "7965479b07457e9355e96c7babd44ea5287edcfd1897de2ce17c628bd02c3d66"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Lib/Trail.lean",
+        "bytes": 23938,
+        "sha256": "7f99875179e0fa92fbe0d2e4aca727dc042412bb5889cd5467828a86ceea6557"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Lib.lean",
+        "bytes": 1656,
+        "sha256": "ad4ab60d200c447a41f3d2a3d23e7726b746628b3b55c0d08838e120b43a8162"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Machine.lean",
+        "bytes": 23931,
+        "sha256": "9d98ba9d5b4380523cbf803ac04468eb9c692185ee34d6ac5032fc3bb77eb7a3"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Reasoning.lean",
+        "bytes": 23865,
+        "sha256": "a0ef940826eb014e44384542ab61e87f571031a91621f50f9062ed79d5f64c4e"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Simulation.lean",
+        "bytes": 50794,
+        "sha256": "877fbec57575b4d91878216b7c701a2b163d5de36ecd9c601e2504c43d05e237"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Smoke.lean",
+        "bytes": 16265,
+        "sha256": "2094b22f2d2998f11b8460e6a4c9e19a060700447900d1ccd1a5575cc5c83ce2"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Spec.lean",
+        "bytes": 17440,
+        "sha256": "57942317b897193a7b11b0d8c14ff4ba214f242186170972774a844c15abc623"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Tactic.lean",
+        "bytes": 51341,
+        "sha256": "8e668240c1133740f4c9a63bc82a156ee251e0f8e82741420724f182a22fad1b"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs/Transfer.lean",
+        "bytes": 4780,
+        "sha256": "626de73ba637d83a1946a26991bdb0dcba6d3d160bb21d166196ea5239dc55c4"
+      },
+      {
+        "path": "proofs/package/Lax808846Proofs.lean",
+        "bytes": 625,
+        "sha256": "0a3a1a9330fc87a56a62d7fa7b51698790a8ee8bbb3d46282fd643a12b2a37c2"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:b820457bfee0b515d5d1f92bb4a6db5214d376c9e73e083c657960101012ef06"
   }
 }
