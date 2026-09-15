@@ -4,5 +4,315 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 124
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-623795",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "temporal-graphs",
+      "authors": [
+        {
+          "name": "Johannes Meintrup"
+        },
+        {
+          "name": "Codex 5.6 and 6 (OpenAI)"
+        }
+      ],
+      "bibEntries": [
+        "@article{ErlebachHK21,\n  title   = {On temporal graph exploration},\n  author  = {Thomas Erlebach and Michael Hoffmann and Frank Kammer},\n  year    = {2021},\n  journal = {Journal of Computer and System Sciences},\n  volume  = {119},\n  pages   = {1--18},\n  doi     = {10.1016/j.jcss.2021.01.005}\n}\n"
+      ]
+    },
+    "abstract": "This submission formalizes basic notions for finite-lifetime temporal graphs,\nincluding timed vertex visits, strict temporal walks, concatenation, and\ntime-bounded reachability. It also proves that, while the current reachable set\nis proper, extending a reachability interval by one connected snapshot reaches\nat least one additional vertex.\n\nThe Lean formalization and proof development were carried out with substantial\nassistance from OpenAI GPT-5.6 through Codex.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax623795.TemporalExploration",
+      "path": "concepts/Lax623795/TemporalExploration.lean",
+      "title": "Growth of Temporal Reachability",
+      "type": "lemma",
+      "description": "Let `X` be a nonempty proper set of vertices in an always-connected temporal\ngraph. Fix a nonempty time interval ending at `endTime`. If the vertices reachable\nfrom `X` during this interval do not yet comprise the whole vertex set, extending\nthe interval by one valid time step strictly enlarges the reachable vertex set.",
+      "imports": [
+        "Lax623795.TemporalGraphs"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax623795.TemporalGraphs\n\n/-!\n---\ntitle: Growth of Temporal Reachability\ntype: lemma\n---\n\nLet `X` be a nonempty proper set of vertices in an always-connected temporal\ngraph. Fix a nonempty time interval ending at `endTime`. If the vertices reachable\nfrom `X` during this interval do not yet comprise the whole vertex set, extending\nthe interval by one valid time step strictly enlarges the reachable vertex set.\n-/\n\nuniverse u\n\nnamespace Lax623795.TemporalExploration\n\nopen Lax623795.TemporalGraphs\n\n/-- Extending a reachability interval by one connected snapshot discovers a new vertex. -/\naxiom reachableVertexSet_ssubset_next\n    {V : Type u} (G : TemporalGraph V) (X : Set V)\n    (startTime endTime nextTime : G.Timestep)\n    (h_connected : G.AlwaysConnected)\n    (hX_nonempty : X.Nonempty)\n    (_hX_proper : X ≠ Set.univ)\n    (h_interval : startTime.val.val ≤ endTime.val.val)\n    (h_next : nextTime.val.val = endTime.val.val + 1)\n    (h_reachable_proper :\n      G.reachableVertexSet X startTime endTime ≠ Set.univ) :\n    G.reachableVertexSet X startTime endTime ⊂\n      G.reachableVertexSet X startTime nextTime\n\nend Lax623795.TemporalExploration\n",
+      "statements": [
+        {
+          "id": "Lax623795.TemporalExploration.reachableVertexSet_ssubset_next",
+          "signature": "reachableVertexSet_ssubset_next : ∀ {V : Type u} (G : Lax623795.TemporalGraphs.TemporalGraph V) (X : Set V) (startTime endTime nextTime : G.Timestep),\n  G.AlwaysConnected →\n    X.Nonempty →\n      Ne X Set.univ →\n        instLENat.le startTime.val.val endTime.val.val →\n          Eq nextTime.val.val (instHAdd.hAdd endTime.val.val 1) →\n            Ne (G.reachableVertexSet X startTime endTime) Set.univ →\n              Set.instCompleteAtomicBooleanAlgebra.toCompleteSemilatticeInf.lt\n                (G.reachableVertexSet X startTime endTime) (G.reachableVertexSet X startTime nextTime)",
+          "startLine": 21,
+          "endLine": 33,
+          "doc": "Extending a reachability interval by one connected snapshot discovers a new vertex."
+        }
+      ]
+    },
+    {
+      "id": "Lax623795.TemporalGraphs",
+      "path": "concepts/Lax623795/TemporalGraphs.lean",
+      "title": "Temporal Graphs",
+      "type": "definition",
+      "description": "A temporal graph has a positive finite lifetime and an undirected, loop-free graph\nat each consecutive positive time step. Its footprint contains every edge that\nappears during its lifetime, and it is always connected when every snapshot is\nconnected. A temporal walk may be empty, with no visited vertices, or nonempty,\nwith a start time, an end time, and snapshot edges traversed at strictly increasing\ntimes. A nonempty walk may remain at one vertex throughout its time interval. The\nreachable vertex set of `X` in a time interval consists of the vertices reachable\nwithin that interval from at least one vertex of `X`.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected",
+        "Mathlib.Data.List.Chain",
+        "Mathlib.Data.PNat.Notation"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected\nimport Mathlib.Data.List.Chain\nimport Mathlib.Data.PNat.Notation\n\n/-!\n---\ntitle: Temporal Graphs\ntype: definition\n---\n\nA temporal graph has a positive finite lifetime and an undirected, loop-free graph\nat each consecutive positive time step. Its footprint contains every edge that\nappears during its lifetime, and it is always connected when every snapshot is\nconnected. A temporal walk may be empty, with no visited vertices, or nonempty,\nwith a start time, an end time, and snapshot edges traversed at strictly increasing\ntimes. A nonempty walk may remain at one vertex throughout its time interval. The\nreachable vertex set of `X` in a time interval consists of the vertices reachable\nwithin that interval from at least one vertex of `X`.\n-/\n\nuniverse u\n\nnamespace Lax623795.TemporalGraphs\n\n/--\nA finite-lifetime temporal graph on the vertex type `V`.\n\nThe positive natural number `lifetime` is the final time step. The snapshots are\nindexed consecutively by the positive times `1, ..., lifetime`.\nEach snapshot is the undirected, loop-free simple graph whose edges are\nactive at that time. The vertex type `V` is not required to be finite.\n-/\nstructure TemporalGraph (V : Type u) where\n  lifetime : ℕ+\n  snapshot : { t : ℕ+ // t.val ≤ lifetime.val } → SimpleGraph V\n\nnamespace TemporalGraph\n\n/-- A valid positive time step during the lifetime of `G`. -/\nabbrev Timestep {V : Type u} (G : TemporalGraph V) :=\n  { t : ℕ+ // t.val ≤ G.lifetime.val }\n\n/-- Two vertices are adjacent in `G` at time `t`. -/\ndef AdjAt {V : Type u} (G : TemporalGraph V)\n    (t : G.Timestep) (x y : V) : Prop :=\n  (G.snapshot t).Adj x y\n\n/-- The set of vertices adjacent to `v` in `G` at time `t`. -/\ndef neighborSetAt {V : Type u} (G : TemporalGraph V)\n    (t : G.Timestep) (v : V) : Set V :=\n  (G.snapshot t).neighborSet v\n\n/-- The static graph containing every edge that appears in any snapshot of `G`. -/\ndef footprint {V : Type u} (G : TemporalGraph V) : SimpleGraph V :=\n  ⨆ t, G.snapshot t\n\n/-- A temporal graph is always connected when each of its snapshots is connected. -/\ndef AlwaysConnected {V : Type u} (G : TemporalGraph V) : Prop :=\n  ∀ t, (G.snapshot t).Connected\n\n/-- A visit records the vertex occupied by a walk at a particular time step. -/\nstructure Visit {V : Type u} (G : TemporalGraph V) where\n  vertex : V\n  timestep : G.Timestep\n\n/-- `next` may follow `current` when time increases and the walk waits or traverses an edge. -/\ndef IsValidSuccessor {V : Type u} (G : TemporalGraph V)\n    (current next : G.Visit) : Prop :=\n  current.timestep.val.val < next.timestep.val.val ∧\n    (current.vertex = next.vertex ∨\n      G.AdjAt next.timestep current.vertex next.vertex)\n\n/--\nA temporal walk is a chain of timed vertex visits.\n\nTimes strictly increase. Between consecutive visits the walk either remains at the\nsame vertex or traverses an edge active at the later time. The empty list is the\ntemporal walk with no visited vertices.\n-/\nstructure TemporalWalk {V : Type u} (G : TemporalGraph V) where\n  visits : List G.Visit\n  chain : visits.IsChain (G.IsValidSuccessor)\n\nnamespace TemporalWalk\n\n/-- The temporal walk with no visited vertices. -/\ndef empty {V : Type u} (G : TemporalGraph V) : G.TemporalWalk where\n  visits := []\n  chain := .nil\n\n/-- The instantaneous temporal walk consisting of one visit. -/\ndef singleton {V : Type u} (G : TemporalGraph V)\n    (v : V) (t : G.Timestep) : G.TemporalWalk where\n  visits := [⟨v, t⟩]\n  chain := .singleton _\n\n/-- A temporal walk that stays at `v` from `startTime` until the later `endTime`. -/\ndef stay {V : Type u} (G : TemporalGraph V) (v : V)\n    (startTime endTime : G.Timestep)\n    (h : startTime.val.val < endTime.val.val) : G.TemporalWalk where\n  visits := [⟨v, startTime⟩, ⟨v, endTime⟩]\n  chain := by\n    simp [IsValidSuccessor, h]\n\n/-- The first visit of `W`, or `none` when `W` is empty. -/\ndef startVisit? {V : Type u} {G : TemporalGraph V} (W : G.TemporalWalk) : Option G.Visit :=\n  W.visits.head?\n\n/-- The final visit of `W`, or `none` when `W` is empty. -/\ndef endVisit? {V : Type u} {G : TemporalGraph V} (W : G.TemporalWalk) : Option G.Visit :=\n  W.visits.getLast?\n\n/-- The starting vertex of `W`, or `none` when `W` is empty. -/\ndef startVertex? {V : Type u} {G : TemporalGraph V} (W : G.TemporalWalk) : Option V :=\n  W.startVisit?.map Visit.vertex\n\n/-- The final vertex of `W`, or `none` when `W` is empty. -/\ndef endVertex? {V : Type u} {G : TemporalGraph V} (W : G.TemporalWalk) : Option V :=\n  W.endVisit?.map Visit.vertex\n\n/-- The starting time of `W`, or `none` when `W` is empty. -/\ndef startTime? {V : Type u} {G : TemporalGraph V} (W : G.TemporalWalk) : Option G.Timestep :=\n  W.startVisit?.map Visit.timestep\n\n/-- The final time of `W`, or `none` when `W` is empty. -/\ndef endTime? {V : Type u} {G : TemporalGraph V} (W : G.TemporalWalk) : Option G.Timestep :=\n  W.endVisit?.map Visit.timestep\n\n/-- Every visit of `W` occurs in the inclusive interval from `startTime` to `endTime`. -/\ndef IsWithin {V : Type u} {G : TemporalGraph V} (W : G.TemporalWalk)\n    (startTime endTime : G.Timestep) : Prop :=\n  ∀ visit ∈ W.visits,\n    startTime.val.val ≤ visit.timestep.val.val ∧\n      visit.timestep.val.val ≤ endTime.val.val\n\n/--\nTwo temporal walks can be concatenated when either one is empty, or when the first\nends at exactly the timed vertex where the second begins.\n-/\ndef CanConcat {V : Type u} {G : TemporalGraph V}\n    (W W' : G.TemporalWalk) : Prop :=\n  match W.visits, W'.visits with\n  | [], _ => True\n  | _, [] => True\n  | left, first :: _ => left.getLast? = some first\n\n/--\nConcatenate compatible temporal walks, counting their common timed vertex only once.\nThe empty temporal walk is a left and right identity.\n-/\ndef concat {V : Type u} {G : TemporalGraph V}\n    (W W' : G.TemporalWalk) (h : W.CanConcat W') : G.TemporalWalk := by\n  rcases W with ⟨visits, chain⟩\n  rcases W' with ⟨visits', chain'⟩\n  cases visits with\n  | nil => exact ⟨visits', chain'⟩\n  | cons first rest =>\n      cases visits' with\n      | nil => exact ⟨first :: rest, chain⟩\n      | cons first' rest' =>\n          refine ⟨(first :: rest) ++ rest', ?_⟩\n          cases rest' with\n          | nil => simpa using chain\n          | cons second' tail' =>\n              apply chain.append chain'.tail\n              intro last hlast next hnext\n              have hjoin : (first :: rest).getLast? = some first' := h\n              have hlast_eq : last = first' := by\n                rw [hjoin] at hlast\n                have hlast_eq' : first' = last := by simpa using hlast\n                exact hlast_eq'.symm\n              have hnext_eq : next = second' := by\n                have hnext_eq' : second' = next := by simpa using hnext\n                exact hnext_eq'.symm\n              simpa [hlast_eq, hnext_eq] using chain'.rel\n\nend TemporalWalk\n\n/-- Vertex `finish` is temporally reachable from `start` if a temporal walk joins them. -/\ndef Reachable {V : Type u} (G : TemporalGraph V) (start finish : V) : Prop :=\n  ∃ W : G.TemporalWalk,\n    W.startVertex? = some start ∧ W.endVertex? = some finish\n\n/--\nThe vertices reachable within `[startTime, endTime]` from at least one vertex in `X`.\n-/\ndef reachableVertexSet {V : Type u} (G : TemporalGraph V) (X : Set V)\n    (startTime endTime : G.Timestep) : Set V :=\n  { finish | ∃ start ∈ X, ∃ W : G.TemporalWalk,\n      W.startVertex? = some start ∧\n      W.endVertex? = some finish ∧\n      W.IsWithin startTime endTime }\n\nend TemporalGraph\n\nend Lax623795.TemporalGraphs\n",
+      "statements": []
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax623795Proofs.reachableVertexSet_ssubset_next",
+      "path": "proofs/Lax623795Proofs/Reachability.lean",
+      "conclusion": "Lax623795.TemporalExploration.reachableVertexSet_ssubset_next",
+      "assumptions": [],
+      "description": ""
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "890a505ad154b03fd48457bc8c0a60c40149063fb03b9280f8eaa4f7a7c130b7",
+    "sourceCommit": "be2b03288b97c0f05c67adc1bc1f520984dc1329",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax623795/TemporalExploration.c",
+        "bytes": 1360,
+        "sha256": "c4d6681ae0064548efdacac6502724628537d147479a73e36d67d338619ea323"
+      },
+      {
+        "path": "concepts/ir/Lax623795/TemporalExploration.c.hash",
+        "bytes": 16,
+        "sha256": "da81e15a446a821710ea03057b82232d7be298b696f1cdd5789c0d3f36deaaf5"
+      },
+      {
+        "path": "concepts/ir/Lax623795/TemporalGraphs.c",
+        "bytes": 26137,
+        "sha256": "f10c7148a0b3af4cfbff24feaadee3ac36566ab88caa6c20a06cf816dd932d36"
+      },
+      {
+        "path": "concepts/ir/Lax623795/TemporalGraphs.c.hash",
+        "bytes": 16,
+        "sha256": "ec80dafedea3dc786851a7ab4efe30ea3c874fbfb4e49438b9755164abfca8df"
+      },
+      {
+        "path": "concepts/ir/Lax623795.c",
+        "bytes": 1578,
+        "sha256": "aa05bbcd51f873b1d958a973968cfe3c46841833f899c41d3cabc653f12af441"
+      },
+      {
+        "path": "concepts/ir/Lax623795.c.hash",
+        "bytes": 16,
+        "sha256": "468dcfe6bb7d5ccbed8fcc7e68f42b65b09940e202a360a4adc1c47802787ce6"
+      },
+      {
+        "path": "concepts/lib/Lax623795/TemporalExploration.ilean",
+        "bytes": 2881,
+        "sha256": "161c7df88099167f9da1fb1640065381e192d3f4b1283ddbe52fc728c98721c9"
+      },
+      {
+        "path": "concepts/lib/Lax623795/TemporalExploration.ilean.hash",
+        "bytes": 16,
+        "sha256": "65744cf97a59d4fa241f3237100520f535dcf579c14f9d8773a2cece1350f61c"
+      },
+      {
+        "path": "concepts/lib/Lax623795/TemporalExploration.olean",
+        "bytes": 14568,
+        "sha256": "0c8b6f180696efa3f69993b81981e63ec3a7aeeca16804ea5b83bd8e50c2ad46"
+      },
+      {
+        "path": "concepts/lib/Lax623795/TemporalExploration.olean.hash",
+        "bytes": 16,
+        "sha256": "5d36db2b47f5b8ec7f2c22757d120674bcfe4c27daa654bb05dff7eb37f1b99a"
+      },
+      {
+        "path": "concepts/lib/Lax623795/TemporalExploration.trace",
+        "bytes": 2293,
+        "sha256": "e158da58170282849a83f450072e5df454e94b246e9e4fd554ea13ba659a011b"
+      },
+      {
+        "path": "concepts/lib/Lax623795/TemporalGraphs.ilean",
+        "bytes": 21033,
+        "sha256": "f4f266e17799267674513c889f75a07a8ff5403f9bab55e82ad6c9e822ae2b4b"
+      },
+      {
+        "path": "concepts/lib/Lax623795/TemporalGraphs.ilean.hash",
+        "bytes": 16,
+        "sha256": "0513f4cce2494c27a88f0d12151e8829eac1012e7fe22836ba285c9ffbf43c34"
+      },
+      {
+        "path": "concepts/lib/Lax623795/TemporalGraphs.olean",
+        "bytes": 240416,
+        "sha256": "7f79948ef031f067d91c07c3b2fba35bb21a295c78bd7e421143029cc9fc4170"
+      },
+      {
+        "path": "concepts/lib/Lax623795/TemporalGraphs.olean.hash",
+        "bytes": 16,
+        "sha256": "e610b6a710164ad31e15da995152ecf540c862f061932ca752d203fc05fc213a"
+      },
+      {
+        "path": "concepts/lib/Lax623795/TemporalGraphs.trace",
+        "bytes": 2653,
+        "sha256": "cc8a26737b7a04c827d5377ffb15c24861b18fdb21c08cf269565d8157c5619a"
+      },
+      {
+        "path": "concepts/lib/Lax623795.ilean",
+        "bytes": 178,
+        "sha256": "d6e3f09df90a954dab4374c57c26484f1681bad09a1e4baf616a67d39f897cd3"
+      },
+      {
+        "path": "concepts/lib/Lax623795.ilean.hash",
+        "bytes": 16,
+        "sha256": "7a6f0429ed8d0aebddede35bbf0ff63c2d6593494a6652a745caf253aeae3df3"
+      },
+      {
+        "path": "concepts/lib/Lax623795.olean",
+        "bytes": 1648,
+        "sha256": "77236d0da09a7b3804f265437156d9d653a46cb4e1cde8784f771b8e085595aa"
+      },
+      {
+        "path": "concepts/lib/Lax623795.olean.hash",
+        "bytes": 16,
+        "sha256": "8f4b87c1ec3ad4bc1edd22fb0dbd245316d80b9a5d8fa1e30f684c19fb90c370"
+      },
+      {
+        "path": "concepts/lib/Lax623795.trace",
+        "bytes": 2321,
+        "sha256": "edf466aecc5fcd2abd07d6bea1c41b17b8b1e0879175b488bfb1407c5ee93135"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "da40994f005a6b9807a9dc05d8999b60e02ce12064739a7b873baeb2b10200de"
+      },
+      {
+        "path": "concepts/package/Lax623795/TemporalExploration.lean",
+        "bytes": 1168,
+        "sha256": "230a5f0e0c1ddd4be5a3cfaea2fab78156e0c78ae2b5106c6f17315eb309c645"
+      },
+      {
+        "path": "concepts/package/Lax623795/TemporalGraphs.lean",
+        "bytes": 7603,
+        "sha256": "e8940ea3ff96c09c13a5777a33a4ddebd685d108daa79ee4394dfa2b1cf46fb0"
+      },
+      {
+        "path": "concepts/package/Lax623795.lean",
+        "bytes": 69,
+        "sha256": "ddb74257febacd26eee38d9be78af4fbf9c54cb948d46d2c41cd4045fbcebcf7"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax623795Proofs/Reachability.c",
+        "bytes": 1379,
+        "sha256": "b95b67f78b950270305e6ae304d3b2414dd2ca6daf8561dd62360c9e91f4e063"
+      },
+      {
+        "path": "proofs/ir/Lax623795Proofs/Reachability.c.hash",
+        "bytes": 16,
+        "sha256": "dd36320ddc0b68d940111abe2899b427eb322f5ee7a983d25f28d8a729035497"
+      },
+      {
+        "path": "proofs/ir/Lax623795Proofs.c",
+        "bytes": 1362,
+        "sha256": "b010911dae687ed15774eb21d08a6c4ed0be7fdfad36bac230077108c57efc18"
+      },
+      {
+        "path": "proofs/ir/Lax623795Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "7decb8bcac64cf567080cd344c46b21fdef2d8938f3384156729bf06e188e543"
+      },
+      {
+        "path": "proofs/lib/Lax623795Proofs/Reachability.ilean",
+        "bytes": 11492,
+        "sha256": "6d1fa6068e00821ba3a37686b7eccf03906e3ca23569fb4bb1fe5793fd1a9f3a"
+      },
+      {
+        "path": "proofs/lib/Lax623795Proofs/Reachability.ilean.hash",
+        "bytes": 16,
+        "sha256": "8a64fabff2a267f47ada564de999e2b4b3532a68e1ac1f0cf3af5b18a4d0e95a"
+      },
+      {
+        "path": "proofs/lib/Lax623795Proofs/Reachability.olean",
+        "bytes": 190264,
+        "sha256": "a957797468a9e190afcbbce19538e9b909111da8bfcdfb442b5e4787d6ce4582"
+      },
+      {
+        "path": "proofs/lib/Lax623795Proofs/Reachability.olean.hash",
+        "bytes": 16,
+        "sha256": "c33516d3e1cd416b4c2b392194b0a3183322cf6105fceeb4cbffa19e50fe80b4"
+      },
+      {
+        "path": "proofs/lib/Lax623795Proofs/Reachability.trace",
+        "bytes": 2360,
+        "sha256": "a2ee37fd49a6a983e98a96ce03ea5f9dd16bfad37d5537c719692204dcfcbc60"
+      },
+      {
+        "path": "proofs/lib/Lax623795Proofs.ilean",
+        "bytes": 136,
+        "sha256": "14cbea7ce5faeb1a29766b2c3da964450aa0b3ff208e6769beb871091ff8dcf9"
+      },
+      {
+        "path": "proofs/lib/Lax623795Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "dca01f140c0aae4790fde9a9b5cf1f649b99b961ddaaf55a04b9b56f32bc153b"
+      },
+      {
+        "path": "proofs/lib/Lax623795Proofs.olean",
+        "bytes": 1528,
+        "sha256": "5d4322e6abdbcdf415e48809b14a40c72934a8bbccadc1939e9fc6d699694469"
+      },
+      {
+        "path": "proofs/lib/Lax623795Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "9fc192277a3180ad5b89cf4167cc70b27b2d2736af45b7752d87b7b0e6efcced"
+      },
+      {
+        "path": "proofs/lib/Lax623795Proofs.trace",
+        "bytes": 2264,
+        "sha256": "21bedb1c2cdf9c45d06ba0a6ba5553b0e5d8e657fcac600b3a5b3cfccafb57c1"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "6d17976f948c68c1614f855bd62e0910676a8cf0edd367f3bfe14212079dac0d"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "e4e8ce770c869740adca2006e534d005c1e92e12b85e5e82744e1ae1649b1469"
+      },
+      {
+        "path": "proofs/package/Lax623795Proofs/Reachability.lean",
+        "bytes": 4766,
+        "sha256": "c5127bab6e0b3f9088d00d41dc7572cbf9e091cad943914969fc1b50ce4ca884"
+      },
+      {
+        "path": "proofs/package/Lax623795Proofs.lean",
+        "bytes": 36,
+        "sha256": "b4b5d01b71e8a9a9d531fb607e91fabe28a95dd1ba952943e2c8ccd9eb265d69"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:890a505ad154b03fd48457bc8c0a60c40149063fb03b9280f8eaa4f7a7c130b7"
   }
 }
