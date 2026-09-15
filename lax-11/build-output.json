@@ -9,8 +9,8 @@
     "manifest": {
       "specVersion": "1",
       "id": "lax-11",
-      "leanVersion": "v4.30.0",
-      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
       "title": "Algorithmic Experiments on a Random Access Machine",
       "authors": [
         {
@@ -33,11 +33,11 @@
     "abstract": "This submission collects running-time theorems about concrete\nalgorithms, stated on the word RAM of the archive's model submission\n*The Word RAM* — which it requires — and measured by the machine's own\ninstruction count, including a fetched final `halt`. The programs read\ntheir counted input blocks sequentially and pay for loading them into\nworking memory. Every statement has the same elementary shape: there are a\nprogram and a constant such that, at every word length $w$, on every\nadmissible input — admissibility including an explicit fitting\ninequality against $2^w$ — the machine halts within an explicit bound,\nhaving written the answer. Nothing is asymptotic: a linear-time claim\nis the bound $c(|x|+1)$, and every uniformity claim, over the input,\nover a parameter, over the word length, is carried by the order of the\nquantifiers.\n\nTwo theorems are stated. The connected components of a graph can be\ncomputed in linear time: given any graph in compressed sparse row form\nas a word $x$, one program halts within $c(|x|+1)$ steps having\nlabelled every vertex by the least vertex of its component. Courcelle's\ntheorem holds in the Courcelle–Makowsky–Rotics form: for every sentence\nof monadic second-order logic and every width bound $k$ there are a\nprogram and a constant $c$ such that, given a graph in compressed\nsparse row form followed by a $k$-expression evaluating to it, the\nmachine halts within $c(|x|+1)$ steps having decided the sentence. The\nsurface also fixes the encodings these are stated on: the compressed\nsparse row form of a graph with nothing precomputed, monadic\nsecond-order logic on graphs, $k$-expressions, the instance encoding\npairing a graph with a $k$-expression, and the parameterized instance\nformat that appends one parameter entry to a graph.\n\nBoth theorems are discharged through the verified pipeline of *The Word\nRAM*: algorithms are written in its structured while-language, costed\nby its loop rule with an invariant and a cost potential, and carried to\nthe machine by its simulation theorem, so the derivation that yields\nthe running time also shows that no intermediate value outgrows a\nword — which is where the fitting conditions come from. The components\nalgorithm is the textbook sweep of breadth-first searches, verified\nagainst a pure model of the search state under a single global\npotential, so that the searches are amortized together. Courcelle's\ntheorem is proved as on paper, with the machine kept out of the\nmathematics until the mathematics is finished: an Ehrenfeucht–Fraïssé\ntype algebra with adequacy and a composition lemma for gluing along a\nmarked, edge-free overlap handles the four operations of a\n$k$-expression uniformly; the value table of the fold is extracted by\nfiniteness and choice; and a generic bottom-up fold, verified once\nagainst a table it knows nothing about, evaluates it in a fixed number\nof steps per input entry after a prologue that pays for the table\nonce. The proof package also contains the bounded search tree of\nDowney and Fellows, deciding vertex cover within $c\\,2^k(|x|+1)$ steps\nover the parameterized instance format.\n"
   },
   "requiredByConcepts": [
-    "Lax67"
+    "Lax865980"
   ],
   "requiredByProofs": [
-    "Lax67",
-    "Lax67Proofs"
+    "Lax865980",
+    "Lax865980Proofs"
   ],
   "concepts": [
     {
@@ -73,17 +73,17 @@
       ],
       "imports": [
         "Lax11.GraphEncoding",
-        "Lax67.RamComputes"
+        "Lax865980.RamComputes"
       ],
       "mathlibImports": [
         "Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected",
         "Mathlib.Data.Nat.Lattice"
       ],
-      "sourceText": "import Lax67.RamComputes\nimport Lax11.GraphEncoding\nimport Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected\nimport Mathlib.Data.Nat.Lattice\n\n/-!\n---\ntitle: Connected components in linear time\ntype: theorem\n---\nThe connected components of a graph can be computed in linear time.\nLabel every vertex by the least vertex of its connected component; then\nthere is one word RAM program and one constant *c* such that, at every\nword length, given any graph in compressed sparse row form as a word\n*x* for which *c*(|x|+1) is at most `2 ^ w`, the program halts within\n*c*(|x|+1) steps with the labels of all vertices, in vertex order, as\nits output.\n\n# Formalization notes\n\nLabelling a vertex by the least vertex reachable from it makes the\noutput a *function* of the graph, so the statement is about computing a\nfunction and needs no convention for choosing representatives. Any\nother canonical choice would do; what matters is that the answer is\ndetermined, since a program that may return any of several correct\nanswers would be a weaker claim dressed up as this one.\n\nThe least vertex is the infimum of the set of numbers of vertices\nreachable from `v`. That set contains `v` itself, so the value is a\ngenuine minimum and the convention `sInf ∅ = 0` for natural numbers is\nnever exercised. The labelling of the whole graph is the list of these\nvalues in vertex order, so its length is the number of vertices.\n\nThe order of quantifiers is the content of the theorem: the program and\nthe constant come first, the graph next and the word length last, so\none program with one constant serves every graph at every word length.\nQuantifying the program before the word length is what makes it an\nalgorithm rather than a family of them — a program chosen after `w`\ncould hide an arbitrary amount of information in its literals — and it\nis the strong form of uniformity the model supports, since a program\ncan measure `w` for itself.\n\nThe bound is linear in the length of the input word — the number of\nentries actually handed to the machine, namely `3 + n + 2m` — which is\nthe input size in the sense the model charges for. Reading the input\nalone takes that many steps, so the bound is tight up to the constant.\nThe `+ 1` only keeps the bound from being vacuous on inputs of length\n0, of which there are none valid.\n\nOne constant does both jobs. An encoding is admissible at word length\n`w` when `c * (|x| + 1) ≤ 2 ^ w`, that is, when `2 ^ w` is at least\nthe very number of steps the claim allows; this is the \"the word is\nwide enough for the input\" hypothesis of the word-RAM literature, written\nout as an explicit inequality against `2 ^ w` rather than through a\nlogarithm. Nothing further need be asked of the entries: an encoding's\nentries are vertex numbers, offsets and the two header numbers, all\nsmaller than its own length, so a word length that admits an encoding\nalso holds every number in it.\n\nThe fitting condition is a condition on the admissible inputs and not a\nhypothesis of the claim, because as a hypothesis it would be empty. A\ngraph with an edge has encodings of every length, since a block may\nlist a neighbour repeatedly, so no word length accommodates all\nencodings of a fixed graph at once and \"if every encoding of `G` fits\ninto a word\" would never be satisfied. Restricting the inputs instead\nsays what is meant: at every word length, every encoding that fits is\ncomputed within the bound.\n\nOnly encodings of `G` are admitted as inputs; the program may behave\narbitrarily on words that encode nothing, and on words too long for its\nword length.\n-/\n\nnamespace Lax11.ConnectedComponents\n\nopen Lax67.Ram Lax67.RamComputes Lax11.GraphEncoding\n\n/-- The label of a vertex: the least vertex of its connected\ncomponent. -/\nnoncomputable def label {n : ℕ} (G : SimpleGraph (Fin n)) (v : Fin n) : ℕ :=\n  sInf (Fin.val '' {u : Fin n | G.Reachable u v})\n\n/-- The component labelling of a graph: the labels of all vertices, in\nvertex order. -/\nnoncomputable def ccLabels {n : ℕ} (G : SimpleGraph (Fin n)) : List ℕ :=\n  List.ofFn (label G)\n\n/-- Connected components can be computed in linear time on a word\nrandom access machine: one program labels the vertices of every graph\ngiven in compressed sparse row form by the least vertex of their\ncomponent, within a constant multiple of the length of the input, at\nevery word length `w` with that constant multiple at most `2 ^ w`. -/\naxiom exists_linearTime_program_ccLabels :\n    ∃ (p : Program) (c : ℕ), ∀ (n : ℕ) (G : SimpleGraph (Fin n)) (w : ℕ),\n      ComputesInTime w p {x | EncodesGraph x n G ∧ c * (x.length + 1) ≤ 2 ^ w}\n        (fun _ => ccLabels G) (fun x => c * (x.length + 1))\n\nend Lax11.ConnectedComponents\n",
+      "sourceText": "import Lax865980.RamComputes\nimport Lax11.GraphEncoding\nimport Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected\nimport Mathlib.Data.Nat.Lattice\n\n/-!\n---\ntitle: Connected components in linear time\ntype: theorem\n---\nThe connected components of a graph can be computed in linear time.\nLabel every vertex by the least vertex of its connected component; then\nthere is one word RAM program and one constant *c* such that, at every\nword length, given any graph in compressed sparse row form as a word\n*x* for which *c*(|x|+1) is at most `2 ^ w`, the program halts within\n*c*(|x|+1) steps with the labels of all vertices, in vertex order, as\nits output.\n\n# Formalization notes\n\nLabelling a vertex by the least vertex reachable from it makes the\noutput a *function* of the graph, so the statement is about computing a\nfunction and needs no convention for choosing representatives. Any\nother canonical choice would do; what matters is that the answer is\ndetermined, since a program that may return any of several correct\nanswers would be a weaker claim dressed up as this one.\n\nThe least vertex is the infimum of the set of numbers of vertices\nreachable from `v`. That set contains `v` itself, so the value is a\ngenuine minimum and the convention `sInf ∅ = 0` for natural numbers is\nnever exercised. The labelling of the whole graph is the list of these\nvalues in vertex order, so its length is the number of vertices.\n\nThe order of quantifiers is the content of the theorem: the program and\nthe constant come first, the graph next and the word length last, so\none program with one constant serves every graph at every word length.\nQuantifying the program before the word length is what makes it an\nalgorithm rather than a family of them — a program chosen after `w`\ncould hide an arbitrary amount of information in its literals — and it\nis the strong form of uniformity the model supports, since a program\ncan measure `w` for itself.\n\nThe bound is linear in the length of the input word — the number of\nentries actually handed to the machine, namely `3 + n + 2m` — which is\nthe input size in the sense the model charges for. Reading the input\nalone takes that many steps, so the bound is tight up to the constant.\nThe `+ 1` only keeps the bound from being vacuous on inputs of length\n0, of which there are none valid.\n\nOne constant does both jobs. An encoding is admissible at word length\n`w` when `c * (|x| + 1) ≤ 2 ^ w`, that is, when `2 ^ w` is at least\nthe very number of steps the claim allows; this is the \"the word is\nwide enough for the input\" hypothesis of the word-RAM literature, written\nout as an explicit inequality against `2 ^ w` rather than through a\nlogarithm. Nothing further need be asked of the entries: an encoding's\nentries are vertex numbers, offsets and the two header numbers, all\nsmaller than its own length, so a word length that admits an encoding\nalso holds every number in it.\n\nThe fitting condition is a condition on the admissible inputs and not a\nhypothesis of the claim, because as a hypothesis it would be empty. A\ngraph with an edge has encodings of every length, since a block may\nlist a neighbour repeatedly, so no word length accommodates all\nencodings of a fixed graph at once and \"if every encoding of `G` fits\ninto a word\" would never be satisfied. Restricting the inputs instead\nsays what is meant: at every word length, every encoding that fits is\ncomputed within the bound.\n\nOnly encodings of `G` are admitted as inputs; the program may behave\narbitrarily on words that encode nothing, and on words too long for its\nword length.\n-/\n\nnamespace Lax11.ConnectedComponents\n\nopen Lax865980.Ram Lax865980.RamComputes Lax11.GraphEncoding\n\n/-- The label of a vertex: the least vertex of its connected\ncomponent. -/\nnoncomputable def label {n : ℕ} (G : SimpleGraph (Fin n)) (v : Fin n) : ℕ :=\n  sInf (Fin.val '' {u : Fin n | G.Reachable u v})\n\n/-- The component labelling of a graph: the labels of all vertices, in\nvertex order. -/\nnoncomputable def ccLabels {n : ℕ} (G : SimpleGraph (Fin n)) : List ℕ :=\n  List.ofFn (label G)\n\n/-- Connected components can be computed in linear time on a word\nrandom access machine: one program labels the vertices of every graph\ngiven in compressed sparse row form by the least vertex of their\ncomponent, within a constant multiple of the length of the input, at\nevery word length `w` with that constant multiple at most `2 ^ w`. -/\naxiom exists_linearTime_program_ccLabels :\n    ∃ (p : Program) (c : ℕ), ∀ (n : ℕ) (G : SimpleGraph (Fin n)) (w : ℕ),\n      ComputesInTime w p {x | EncodesGraph x n G ∧ c * (x.length + 1) ≤ 2 ^ w}\n        (fun _ => ccLabels G) (fun x => c * (x.length + 1))\n\nend Lax11.ConnectedComponents\n",
       "statements": [
         {
           "id": "Lax11.ConnectedComponents.exists_linearTime_program_ccLabels",
-          "signature": "exists_linearTime_program_ccLabels : Exists fun p =>\n  Exists fun c =>\n    ∀ (n : Nat) (G : SimpleGraph (Fin n)) (w : Nat),\n      Lax67.RamComputes.ComputesInTime w p\n        (setOf fun x =>\n          And (Lax11.GraphEncoding.EncodesGraph x n G)\n            (instLENat.le (instHMul.hMul c (instHAdd.hAdd x.length 1)) (instHPow.hPow 2 w)))\n        (fun x => Lax11.ConnectedComponents.ccLabels G) fun x => instHMul.hMul c (instHAdd.hAdd x.length 1)",
+          "signature": "exists_linearTime_program_ccLabels : Exists fun p =>\n  Exists fun c =>\n    ∀ (n : Nat) (G : SimpleGraph (Fin n)) (w : Nat),\n      Lax865980.RamComputes.ComputesInTime w p\n        (Set.ofPred fun x =>\n          And (Lax11.GraphEncoding.EncodesGraph x n G)\n            (instLENat.le (instHMul.hMul c (instHAdd.hAdd x.length 1)) (instHPow.hPow 2 w)))\n        (fun x => Lax11.ConnectedComponents.ccLabels G) fun x => instHMul.hMul c (instHAdd.hAdd x.length 1)",
           "startLine": 88,
           "endLine": 96,
           "doc": "Connected components can be computed in linear time on a word\nrandom access machine: one program labels the vertices of every graph\ngiven in compressed sparse row form by the least vertex of their\ncomponent, within a constant multiple of the length of the input, at\nevery word length `w` with that constant multiple at most `2 ^ w`."
@@ -105,14 +105,14 @@
       "imports": [
         "Lax11.InstanceEncoding",
         "Lax11.Mso",
-        "Lax67.RamComputes"
+        "Lax865980.RamComputes"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax67.RamComputes\nimport Lax11.Mso\nimport Lax11.InstanceEncoding\n\n/-!\n---\ntitle: Courcelle's theorem on a word RAM\ntype: theorem\n---\nEvery property of graphs expressible in monadic second-order logic can\nbe decided in linear time on graphs of bounded cliquewidth, given a\n*k*-expression for the graph. Fix a sentence and a width bound *k*; then\nthere are one word RAM program and one constant *c* such that, at every\nword length, given any graph in compressed sparse row form followed by a\n*k*-expression that evaluates to it, as a word *x* each of whose entries\n*v* satisfies *c*(|x|+*v*+1) ≤ `2 ^ w`, the program halts within\n*c*(|x|+1) steps and writes `1` if the sentence holds in the graph and\n`0` if it does not.\n\nThis is the Courcelle–Makowsky–Rotics form of Courcelle's theorem: the\nwidth measure is cliquewidth and the logic is monadic second-order\nlogic with quantification over vertices and vertex sets, which is the\npairing the two notions are matched to.\n\n# Formalization notes\n\nThe expression is *input*, not something the program computes. Deciding\ncliquewidth, or approximating it, is a different theorem with a\ndifferent proof, and folding it in here would silently claim it; the\nstatement is the honest one, \"given a graph together with a\n*k*-expression for it\". This is the same choice a treewidth-based\nstatement makes when it takes a tree decomposition as input.\n\nThe order of the quantifiers is the content of the theorem: the\nsentence and the width bound come first, then the program and the\nconstant, then the graph and the word length. So one program serves all\ngraphs of cliquewidth at most *k* at every word length, with one\nconstant, but both may depend — and in every known proof do depend, in a\nway that grows faster than any tower of exponentials in the sentence —\non the sentence and the width. Nothing here estimates the constant. This\nis the opposite ordering from the vertex cover statement of this\nsubmission, and it has to be: there the parameter is an entry of the\ninput word, so one program can read it and serve every parameter, while\nhere the sentence is not part of the input at all and a program that has\nnever seen it cannot decide it. Quantifying the program before the word\nlength says the same thing about `w` as everywhere else in this\nsubmission — one program that works at every word length that admits its\ninput, rather than a family of programs, one of which could hide an\narbitrary amount of information in its literals.\n\nOne constant does both jobs, and the condition it appears in says two\nthings at once. The first is that the running time fits: taking *v* to\nbe any entry of the word — an instance word is never empty — the\ncondition gives *c*(|x|+1) ≤ `2 ^ w`, so `2 ^ w` is at least the number\nof steps the claim allows, and with it every quantity the program forms\nout of the length of the word, the number of nodes of the expression and\nthe addresses of the arrays included. The four tables of the dynamic\nprogram are also covered, since their sizes depend on the sentence and\nthe width bound alone and are therefore absorbed into *c*, which is\nchosen after both.\n\nThe second is that the entries themselves fit, and this is why the\ncondition quantifies over them. A machine at word length `w` sees its\ninput reduced modulo `2 ^ w`, so an entry that is not a word is not the\nentry it was handed. Most entries of an instance are small: vertex\nnumbers, offsets and node numbers are below the length of the word, and\nan operation code is below the number of operations at width *k*, which\n`c` covers. But not all of them are, because the format has slots the\nencoding deliberately leaves free — the parent entry of the root,\nthrough which nothing points, and the vertex name at a node whose\noperation creates no vertex. Those may hold any number whatever, and\nsaying of every entry that it fits is what makes the claim about them\nhonest instead of silently assuming they are small. It is the same\nbookkeeping the vertex cover statement of this submission does with\n`c * (|x| + k + 1)`, where the one entry not bounded by the length is\nthe parameter.\n\nThe fitting condition is a condition on the admissible inputs and not a\nhypothesis of the claim, because as a hypothesis it would be empty. A\ngraph with an edge has encodings of every length, since a block may list\na neighbour repeatedly, so no word length accommodates all encodings of\na fixed graph at once and \"if every instance for `G` and `k` fits into a\nword\" would never be satisfied. Restricting the inputs instead says what\nis meant: at every word length, every instance that fits is decided\nwithin the bound.\n\nOnly encodings of `G` are admitted as inputs; the program may behave\narbitrarily on words that encode nothing, and on words too long for its\nword length.\n-/\n\nnamespace Lax11.Courcelle\n\nopen Lax67.Ram Lax67.RamComputes Lax11.Mso Lax11.InstanceEncoding\n\nopen Classical in\n/-- **Courcelle's theorem** (Courcelle–Makowsky–Rotics form): model\nchecking monadic second-order logic is linear time on a word random\naccess machine, for graphs presented together with a `k`-expression. For\nevery sentence and every width bound there are one program and one\nconstant such that, at every word length `w`, on every graph given in\ncompressed sparse row form followed by a `k`-expression for it as a word\n`x` each of whose entries `v` satisfies `c * (x.length + v + 1) ≤ 2 ^ w`,\nthe program halts within a constant multiple of the length of the input,\nhaving written `1` if the sentence holds in the graph and `0`\notherwise. -/\naxiom exists_linearTime_program_modelChecking :\n    ∀ (φ : MSO 0 0) (k : ℕ),\n      ∃ (p : Program) (c : ℕ), ∀ (n : ℕ) (G : SimpleGraph (Fin n)) (w : ℕ),\n        ComputesInTime w p\n          {x | EncodesModelCheckingInstance x n G k ∧\n            ∀ v ∈ x, c * (x.length + v + 1) ≤ 2 ^ w}\n          (fun _ => if Sat G Fin.elim0 Fin.elim0 φ then [1] else [0])\n          (fun x => c * (x.length + 1))\n\nend Lax11.Courcelle\n",
+      "sourceText": "import Lax865980.RamComputes\nimport Lax11.Mso\nimport Lax11.InstanceEncoding\n\n/-!\n---\ntitle: Courcelle's theorem on a word RAM\ntype: theorem\n---\nEvery property of graphs expressible in monadic second-order logic can\nbe decided in linear time on graphs of bounded cliquewidth, given a\n*k*-expression for the graph. Fix a sentence and a width bound *k*; then\nthere are one word RAM program and one constant *c* such that, at every\nword length, given any graph in compressed sparse row form followed by a\n*k*-expression that evaluates to it, as a word *x* each of whose entries\n*v* satisfies *c*(|x|+*v*+1) ≤ `2 ^ w`, the program halts within\n*c*(|x|+1) steps and writes `1` if the sentence holds in the graph and\n`0` if it does not.\n\nThis is the Courcelle–Makowsky–Rotics form of Courcelle's theorem: the\nwidth measure is cliquewidth and the logic is monadic second-order\nlogic with quantification over vertices and vertex sets, which is the\npairing the two notions are matched to.\n\n# Formalization notes\n\nThe expression is *input*, not something the program computes. Deciding\ncliquewidth, or approximating it, is a different theorem with a\ndifferent proof, and folding it in here would silently claim it; the\nstatement is the honest one, \"given a graph together with a\n*k*-expression for it\". This is the same choice a treewidth-based\nstatement makes when it takes a tree decomposition as input.\n\nThe order of the quantifiers is the content of the theorem: the\nsentence and the width bound come first, then the program and the\nconstant, then the graph and the word length. So one program serves all\ngraphs of cliquewidth at most *k* at every word length, with one\nconstant, but both may depend — and in every known proof do depend, in a\nway that grows faster than any tower of exponentials in the sentence —\non the sentence and the width. Nothing here estimates the constant. This\nis the opposite ordering from the vertex cover statement of this\nsubmission, and it has to be: there the parameter is an entry of the\ninput word, so one program can read it and serve every parameter, while\nhere the sentence is not part of the input at all and a program that has\nnever seen it cannot decide it. Quantifying the program before the word\nlength says the same thing about `w` as everywhere else in this\nsubmission — one program that works at every word length that admits its\ninput, rather than a family of programs, one of which could hide an\narbitrary amount of information in its literals.\n\nOne constant does both jobs, and the condition it appears in says two\nthings at once. The first is that the running time fits: taking *v* to\nbe any entry of the word — an instance word is never empty — the\ncondition gives *c*(|x|+1) ≤ `2 ^ w`, so `2 ^ w` is at least the number\nof steps the claim allows, and with it every quantity the program forms\nout of the length of the word, the number of nodes of the expression and\nthe addresses of the arrays included. The four tables of the dynamic\nprogram are also covered, since their sizes depend on the sentence and\nthe width bound alone and are therefore absorbed into *c*, which is\nchosen after both.\n\nThe second is that the entries themselves fit, and this is why the\ncondition quantifies over them. A machine at word length `w` sees its\ninput reduced modulo `2 ^ w`, so an entry that is not a word is not the\nentry it was handed. Most entries of an instance are small: vertex\nnumbers, offsets and node numbers are below the length of the word, and\nan operation code is below the number of operations at width *k*, which\n`c` covers. But not all of them are, because the format has slots the\nencoding deliberately leaves free — the parent entry of the root,\nthrough which nothing points, and the vertex name at a node whose\noperation creates no vertex. Those may hold any number whatever, and\nsaying of every entry that it fits is what makes the claim about them\nhonest instead of silently assuming they are small. It is the same\nbookkeeping the vertex cover statement of this submission does with\n`c * (|x| + k + 1)`, where the one entry not bounded by the length is\nthe parameter.\n\nThe fitting condition is a condition on the admissible inputs and not a\nhypothesis of the claim, because as a hypothesis it would be empty. A\ngraph with an edge has encodings of every length, since a block may list\na neighbour repeatedly, so no word length accommodates all encodings of\na fixed graph at once and \"if every instance for `G` and `k` fits into a\nword\" would never be satisfied. Restricting the inputs instead says what\nis meant: at every word length, every instance that fits is decided\nwithin the bound.\n\nOnly encodings of `G` are admitted as inputs; the program may behave\narbitrarily on words that encode nothing, and on words too long for its\nword length.\n-/\n\nnamespace Lax11.Courcelle\n\nopen Lax865980.Ram Lax865980.RamComputes Lax11.Mso Lax11.InstanceEncoding\n\nopen Classical in\n/-- **Courcelle's theorem** (Courcelle–Makowsky–Rotics form): model\nchecking monadic second-order logic is linear time on a word random\naccess machine, for graphs presented together with a `k`-expression. For\nevery sentence and every width bound there are one program and one\nconstant such that, at every word length `w`, on every graph given in\ncompressed sparse row form followed by a `k`-expression for it as a word\n`x` each of whose entries `v` satisfies `c * (x.length + v + 1) ≤ 2 ^ w`,\nthe program halts within a constant multiple of the length of the input,\nhaving written `1` if the sentence holds in the graph and `0`\notherwise. -/\naxiom exists_linearTime_program_modelChecking :\n    ∀ (φ : MSO 0 0) (k : ℕ),\n      ∃ (p : Program) (c : ℕ), ∀ (n : ℕ) (G : SimpleGraph (Fin n)) (w : ℕ),\n        ComputesInTime w p\n          {x | EncodesModelCheckingInstance x n G k ∧\n            ∀ v ∈ x, c * (x.length + v + 1) ≤ 2 ^ w}\n          (fun _ => if Sat G Fin.elim0 Fin.elim0 φ then [1] else [0])\n          (fun x => c * (x.length + 1))\n\nend Lax11.Courcelle\n",
       "statements": [
         {
           "id": "Lax11.Courcelle.exists_linearTime_program_modelChecking",
-          "signature": "exists_linearTime_program_modelChecking : ∀ (φ : Lax11.Mso.MSO 0 0) (k : Nat),\n  Exists fun p =>\n    Exists fun c =>\n      ∀ (n : Nat) (G : SimpleGraph (Fin n)) (w : Nat),\n        Lax67.RamComputes.ComputesInTime w p\n          (setOf fun x =>\n            And (Lax11.InstanceEncoding.EncodesModelCheckingInstance x n G k)\n              (∀ (v : Nat),\n                List.instMembership.mem x v →\n                  instLENat.le (instHMul.hMul c (instHAdd.hAdd (instHAdd.hAdd x.length v) 1)) (instHPow.hPow 2 w)))\n          (fun x => ite (Lax11.Mso.Sat G Fin.elim0 Fin.elim0 φ) (List.cons 1 List.nil) (List.cons 0 List.nil)) fun x =>\n          instHMul.hMul c (instHAdd.hAdd x.length 1)",
+          "signature": "exists_linearTime_program_modelChecking : ∀ (φ : Lax11.Mso.MSO 0 0) (k : Nat),\n  Exists fun p =>\n    Exists fun c =>\n      ∀ (n : Nat) (G : SimpleGraph (Fin n)) (w : Nat),\n        Lax865980.RamComputes.ComputesInTime w p\n          (Set.ofPred fun x =>\n            And (Lax11.InstanceEncoding.EncodesModelCheckingInstance x n G k)\n              (∀ (v : Nat),\n                List.instMembership.mem x v →\n                  instLENat.le (instHMul.hMul c (instHAdd.hAdd (instHAdd.hAdd x.length v) 1)) (instHPow.hPow 2 w)))\n          (fun x => ite (Lax11.Mso.Sat G Fin.elim0 Fin.elim0 φ) (List.cons 1 List.nil) (List.cons 0 List.nil)) fun x =>\n          instHMul.hMul c (instHAdd.hAdd x.length 1)",
           "startLine": 97,
           "endLine": 114,
           "doc": "**Courcelle's theorem** (Courcelle–Makowsky–Rotics form): model\nchecking monadic second-order logic is linear time on a word random\naccess machine, for graphs presented together with a `k`-expression. For\nevery sentence and every width bound there are one program and one\nconstant such that, at every word length `w`, on every graph given in\ncompressed sparse row form followed by a `k`-expression for it as a word\n`x` each of whose entries `v` satisfies `c * (x.length + v + 1) ≤ 2 ^ w`,\nthe program halts within a constant multiple of the length of the input,\nhaving written `1` if the sentence holds in the graph and `0`\notherwise."
@@ -192,12 +192,12 @@
       ],
       "imports": [
         "Lax11.GraphEncoding",
-        "Lax67.RamComputes"
+        "Lax865980.RamComputes"
       ],
       "mathlibImports": [
         "Mathlib.Combinatorics.SimpleGraph.VertexCover"
       ],
-      "sourceText": "import Lax67.RamComputes\nimport Lax11.GraphEncoding\nimport Mathlib.Combinatorics.SimpleGraph.VertexCover\n\n/-!\n---\ntitle: A graph with a parameter appended\ntype: definition\n---\nA parameterized graph problem is handed to the machine as one word: the\ncompressed sparse row block encoding the graph, followed by the single\nentry *k*. This file defines that instance format and nothing else.\n\n# Formalization notes\n\nThe instance word is the graph block with one entry appended. The\ncompressed sparse row block is self-delimiting — its own header\ndetermines its length — so nothing needs to separate it from the\nparameter, and the split of the word into the two parts is determined\nby the word itself, not chosen. The parameter comes last so that the\ngraph block sits at the same offsets as in every other statement built\non this encoding.\n\nThe format is defined here, next to the encoding it extends, and the\nstatements made on it live in the proof packages that import it rather\nthan restate it, so that every bound stated over it is a claim about\nliterally the same inputs. Its first consumer is in this submission's\nown proof package: the bounded search tree of Downey and Fellows, which\ndecides vertex cover within *c* · 2^*k* · (|x|+1) steps over this\nformat.\n-/\n\nnamespace Lax11.VertexCover\n\nopen Lax67.Ram Lax67.RamComputes Lax11.GraphEncoding\n\n/-- The word `x` presents the graph `G` on `n` vertices together with\nthe parameter `k`: a compressed sparse row block encoding `G`, followed\nby the single entry `k`. -/\ndef EncodesParamInstance (x : List ℕ) (n : ℕ) (G : SimpleGraph (Fin n)) (k : ℕ) : Prop :=\n  ∃ g, x = g ++ [k] ∧ EncodesGraph g n G\n\nend Lax11.VertexCover\n",
+      "sourceText": "import Lax865980.RamComputes\nimport Lax11.GraphEncoding\nimport Mathlib.Combinatorics.SimpleGraph.VertexCover\n\n/-!\n---\ntitle: A graph with a parameter appended\ntype: definition\n---\nA parameterized graph problem is handed to the machine as one word: the\ncompressed sparse row block encoding the graph, followed by the single\nentry *k*. This file defines that instance format and nothing else.\n\n# Formalization notes\n\nThe instance word is the graph block with one entry appended. The\ncompressed sparse row block is self-delimiting — its own header\ndetermines its length — so nothing needs to separate it from the\nparameter, and the split of the word into the two parts is determined\nby the word itself, not chosen. The parameter comes last so that the\ngraph block sits at the same offsets as in every other statement built\non this encoding.\n\nThe format is defined here, next to the encoding it extends, and the\nstatements made on it live in the proof packages that import it rather\nthan restate it, so that every bound stated over it is a claim about\nliterally the same inputs. Its first consumer is in this submission's\nown proof package: the bounded search tree of Downey and Fellows, which\ndecides vertex cover within *c* · 2^*k* · (|x|+1) steps over this\nformat.\n-/\n\nnamespace Lax11.VertexCover\n\nopen Lax865980.Ram Lax865980.RamComputes Lax11.GraphEncoding\n\n/-- The word `x` presents the graph `G` on `n` vertices together with\nthe parameter `k`: a compressed sparse row block encoding `G`, followed\nby the single entry `k`. -/\ndef EncodesParamInstance (x : List ℕ) (n : ℕ) (G : SimpleGraph (Fin n)) (k : ℕ) : Prop :=\n  ∃ g, x = g ++ [k] ∧ EncodesGraph g n G\n\nend Lax11.VertexCover\n",
       "statements": []
     }
   ],
@@ -248,7 +248,7 @@
         },
         {
           "title": "Formalization notes",
-          "markdown": "These are the honesty items of the theorem: what the statement claims,\nwhere it and a textbook proof part company, and what a reader is\nentitled to know was decided rather than proved. The definitions carry\ntheir own notes — the logic in `Lax11.Mso`, `k`-expressions in\n`Lax11.CliqueExpr`, the input format in `Lax11.InstanceEncoding` — and what is\nsaid there is not repeated here.\n\n*The width measure is cliquewidth, and the conversion from treewidth is\nnot formalized.* What is proved is the Courcelle–Makowsky–Rotics form:\nMSO₁ model checking in linear time on graphs presented with a\n`k`-expression. Bounded treewidth implies bounded cliquewidth, so the\nclass covered here contains every class of bounded treewidth; but\ngetting the treewidth form of the statement out of this one needs a\nconversion of a tree decomposition of width `w` into a `k`-expression\nwith `k` bounded in terms of `w`, and that conversion is not formalized.\nAnyone who wants the treewidth statement should treat it as unproved\nhere. The same holds one level up, at the input: the theorem takes a\n`k`-expression, it does not compute one. Deciding cliquewidth is\nNP-hard and approximating it is the theorem of Oum and Seymour; neither\nis in this submission. That is exactly the status a linear-time\ntreewidth algorithm would have had — a separate theorem, with its own\nproof, which composes with this one to give an algorithm that takes only\nthe graph.\n\n*The expression is a certificate, and the program reads only two of its\narrays.* The program never looks at the compressed sparse row block, and\nnever at the vertex-name array of the expression block: it reads the\nwhole word, because it must get past the graph block to reach the\nexpression block and because the machine reads its tape in order, but it\n*uses* only the parent array and the operation-code array. The other two\ngo into arrays no later expression of the program mentions. This is not\nlaziness dressed up: the type of a subexpression is a function of the\ntypes of its children and of the operation at its root, and of nothing\nelse. The graph block is what makes `Sat G φ` refer to a graph in the\nfirst place, and the vertex names are what make the second block a\n`k`-expression rather than the shape of one, so that a reviewer can\ncheck the certificate against the graph. Both only lengthen the input,\nso reading past them costs a constant per entry and the bound is\nunaffected.\n\n*The type table is noncomputable, and that is the shape of the\nstatement.* The fold is driven by a table — a finite value alphabet, an\ninitial value per operation symbol, a binary combination. Here the\nvalues are the `q`-types of `k`-labelled regions, and the table is\nextracted from the composition congruences by `Fintype` together with\nchoice: for each pair of types the entry is *a* type realized by some\ngluing of two regions with those types, and the congruences say that the\nchoice does not matter. Nothing in the development computes this table,\nand nothing could — the statement is an existential over programs, and\nthe truth of a monadic second-order sentence in an arbitrary graph is\nnot something the meta level decides on the way to constructing one. A\nreader who wants the machine to *print* the table is asking for an\neffective bound on the type space, which is the tower this development\ndeclines to estimate. What the noncomputability does not touch is the\nprogram: `table q k` is a noncomputable inhabitant of an ordinary\nstructure type and the generator consumes it as data, so the same\ngenerator applied to a computable table produces a program that runs.\nThe table's content is carried by proof; the program text around it is\ncarried by evaluation.\n\n*The multiplication instruction is never used.* The machine of\n`Lax67.Ram` has one, and under a unit-cost measure a linear-time claim\nthat leans on it is at risk of being an artifact of the model. The fold\nindexes a two-dimensional table, which is where a multiplication would\nnaturally appear — the entry for `a` and `b` sits at `a·V + b`. Instead\nthe row bases `a·V` are themselves materialized, once, in the prologue,\nas the array `row`, and a lookup is `tab[row[a] + b]`: two array reads\nand an addition. The prologue that fills `row` is a sequence of stores\nwhose length is the table's size, a constant fixed before the input is\nread. So the compiled program contains no multiplication anywhere —\n`CourcelleDriver.lean` checks that by filtering the generated\ninstruction list, since it is a property of the program text and the\nprogram text is the same for every table — and the claim survives the\nstrictest reading of the cost model, the one that would charge for a\nproduct of two words, rather than depending on a generous one.\n\n*The machine-versus-model check runs a stand-in table.* House\ndiscipline in this submission is that every program is run — by `#eval`\ninside the build, against the pure model it is proved to implement —\nbefore anything about it is proved. The driver is run that way, but it\ncannot be run with the type table, which is noncomputable by\nconstruction. `CourcelleDriver.lean` therefore instantiates the\n*generic* driver with `edgeTable`: a hand-written table over the same\noperation alphabet, decoded by the same `Op.decode`, whose values are\nthree bits — class `0` is nonempty, class `1` is nonempty, there is an\nedge — together with the partial states the sequential fold needs. That\nis a genuine cliquewidth dynamic program, and the two sentences it\ndecides on the path `0—1—2` are \"some two vertices are adjacent\" and its\nnegation; the machine writes `1` and `0`, and `#guard`s check that\nagainst the pure fold. So every line of program text is exercised: the\nsame reads, the same prologue, the same seed and push loops, the same\nepilogue, the same decoder. What is not exercised is the content of the\nreal table, and that is exactly what `val_eq_typeOf` carries. Plumbing\nis machine-checked, mathematics is proof-carried, and neither is asked\nto vouch for the other.\n\n*`TreeDecomp.lean` is imported by nothing in the proof.* It is a\nself-contained file of tree-decomposition theory — descendants as\nparent-map iteration, validity and width, the tree order, the highest\nnode containing a vertex, subtrees as unions of bags, the separation\nlemma and the edge-placement lemmas — stated in the numbering the\nencoding uses, and it is named here so that no reviewer spends time\nlooking for the place where it is used.\n\n*One device on the trust surface is not textbook.* Everything a reader\nhas to check by eye — the machine, what it means to compute within a\ntime bound, the graph encoding, the syntax and satisfaction of the\nlogic, `k`-expressions and their evaluation, the input format, and the\nstatement itself — is written to be the object a paper would write, with\none exception, and it should be named plainly. Variables in formulas are\nde Bruijn positions, so a reader checking `Lax11.Mso` against a textbook\nmust translate between `∃x. ∃y. adj(x, y)` and\n`MSO.exV (MSO.exV (MSO.adj 0 1))`, and must hold in mind that a\nquantifier binds at the *last* position, so that the outermost variable\nis `0` and no index is ever shifted. Every other deviation in this\ndevelopment is inside the proof package, where the kernel is the\nreviewer. This one is not, and it is the price paid for keeping\nsubstitution off the surface entirely."
+          "markdown": "These are the honesty items of the theorem: what the statement claims,\nwhere it and a textbook proof part company, and what a reader is\nentitled to know was decided rather than proved. The definitions carry\ntheir own notes — the logic in `Lax11.Mso`, `k`-expressions in\n`Lax11.CliqueExpr`, the input format in `Lax11.InstanceEncoding` — and what is\nsaid there is not repeated here.\n\n*The width measure is cliquewidth, and the conversion from treewidth is\nnot formalized.* What is proved is the Courcelle–Makowsky–Rotics form:\nMSO₁ model checking in linear time on graphs presented with a\n`k`-expression. Bounded treewidth implies bounded cliquewidth, so the\nclass covered here contains every class of bounded treewidth; but\ngetting the treewidth form of the statement out of this one needs a\nconversion of a tree decomposition of width `w` into a `k`-expression\nwith `k` bounded in terms of `w`, and that conversion is not formalized.\nAnyone who wants the treewidth statement should treat it as unproved\nhere. The same holds one level up, at the input: the theorem takes a\n`k`-expression, it does not compute one. Deciding cliquewidth is\nNP-hard and approximating it is the theorem of Oum and Seymour; neither\nis in this submission. That is exactly the status a linear-time\ntreewidth algorithm would have had — a separate theorem, with its own\nproof, which composes with this one to give an algorithm that takes only\nthe graph.\n\n*The expression is a certificate, and the program reads only two of its\narrays.* The program never looks at the compressed sparse row block, and\nnever at the vertex-name array of the expression block: it reads the\nwhole word, because it must get past the graph block to reach the\nexpression block and because the machine reads its tape in order, but it\n*uses* only the parent array and the operation-code array. The other two\ngo into arrays no later expression of the program mentions. This is not\nlaziness dressed up: the type of a subexpression is a function of the\ntypes of its children and of the operation at its root, and of nothing\nelse. The graph block is what makes `Sat G φ` refer to a graph in the\nfirst place, and the vertex names are what make the second block a\n`k`-expression rather than the shape of one, so that a reviewer can\ncheck the certificate against the graph. Both only lengthen the input,\nso reading past them costs a constant per entry and the bound is\nunaffected.\n\n*The type table is noncomputable, and that is the shape of the\nstatement.* The fold is driven by a table — a finite value alphabet, an\ninitial value per operation symbol, a binary combination. Here the\nvalues are the `q`-types of `k`-labelled regions, and the table is\nextracted from the composition congruences by `Fintype` together with\nchoice: for each pair of types the entry is *a* type realized by some\ngluing of two regions with those types, and the congruences say that the\nchoice does not matter. Nothing in the development computes this table,\nand nothing could — the statement is an existential over programs, and\nthe truth of a monadic second-order sentence in an arbitrary graph is\nnot something the meta level decides on the way to constructing one. A\nreader who wants the machine to *print* the table is asking for an\neffective bound on the type space, which is the tower this development\ndeclines to estimate. What the noncomputability does not touch is the\nprogram: `table q k` is a noncomputable inhabitant of an ordinary\nstructure type and the generator consumes it as data, so the same\ngenerator applied to a computable table produces a program that runs.\nThe table's content is carried by proof; the program text around it is\ncarried by evaluation.\n\n*The multiplication instruction is never used.* The machine of\n`Lax865980.Ram` has one, and under a unit-cost measure a linear-time claim\nthat leans on it is at risk of being an artifact of the model. The fold\nindexes a two-dimensional table, which is where a multiplication would\nnaturally appear — the entry for `a` and `b` sits at `a·V + b`. Instead\nthe row bases `a·V` are themselves materialized, once, in the prologue,\nas the array `row`, and a lookup is `tab[row[a] + b]`: two array reads\nand an addition. The prologue that fills `row` is a sequence of stores\nwhose length is the table's size, a constant fixed before the input is\nread. So the compiled program contains no multiplication anywhere —\n`CourcelleDriver.lean` checks that by filtering the generated\ninstruction list, since it is a property of the program text and the\nprogram text is the same for every table — and the claim survives the\nstrictest reading of the cost model, the one that would charge for a\nproduct of two words, rather than depending on a generous one.\n\n*The machine-versus-model check runs a stand-in table.* House\ndiscipline in this submission is that every program is run — by `#eval`\ninside the build, against the pure model it is proved to implement —\nbefore anything about it is proved. The driver is run that way, but it\ncannot be run with the type table, which is noncomputable by\nconstruction. `CourcelleDriver.lean` therefore instantiates the\n*generic* driver with `edgeTable`: a hand-written table over the same\noperation alphabet, decoded by the same `Op.decode`, whose values are\nthree bits — class `0` is nonempty, class `1` is nonempty, there is an\nedge — together with the partial states the sequential fold needs. That\nis a genuine cliquewidth dynamic program, and the two sentences it\ndecides on the path `0—1—2` are \"some two vertices are adjacent\" and its\nnegation; the machine writes `1` and `0`, and `#guard`s check that\nagainst the pure fold. So every line of program text is exercised: the\nsame reads, the same prologue, the same seed and push loops, the same\nepilogue, the same decoder. What is not exercised is the content of the\nreal table, and that is exactly what `val_eq_typeOf` carries. Plumbing\nis machine-checked, mathematics is proof-carried, and neither is asked\nto vouch for the other.\n\n*`TreeDecomp.lean` is imported by nothing in the proof.* It is a\nself-contained file of tree-decomposition theory — descendants as\nparent-map iteration, validity and width, the tree order, the highest\nnode containing a vertex, subtrees as unions of bags, the separation\nlemma and the edge-placement lemmas — stated in the numbering the\nencoding uses, and it is named here so that no reviewer spends time\nlooking for the place where it is used.\n\n*One device on the trust surface is not textbook.* Everything a reader\nhas to check by eye — the machine, what it means to compute within a\ntime bound, the graph encoding, the syntax and satisfaction of the\nlogic, `k`-expressions and their evaluation, the input format, and the\nstatement itself — is written to be the object a paper would write, with\none exception, and it should be named plainly. Variables in formulas are\nde Bruijn positions, so a reader checking `Lax11.Mso` against a textbook\nmust translate between `∃x. ∃y. adj(x, y)` and\n`MSO.exV (MSO.exV (MSO.adj 0 1))`, and must hold in mind that a\nquantifier binds at the *last* position, so that the outermost variable\nis `0` and no index is ever shifted. Every other deviation in this\ndevelopment is inside the proof package, where the kernel is the\nreviewer. This one is not, and it is the price paid for keeping\nsubstitution off the surface entirely."
         },
         {
           "title": "Attribution",
@@ -259,40 +259,40 @@
   ],
   "capture": {
     "formatVersion": 1,
-    "digest": "d75cc4ea7bcb98741f0ac65c82c505ce989af60051fe36622f97166707077646",
-    "sourceCommit": "d82625d050fde928adbe5d23b024a940e6f7d8da",
-    "leanToolchain": "leanprover/lean4:v4.30.0",
-    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "digest": "de8300f45c0dccadc17e76dc708cb6cd559d68d33919d066e50b1248e2708e7e",
+    "sourceCommit": "f867352dc480fc41b774e573d40d658ba95d1738",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
     "files": [
       {
         "path": "concepts/ir/Lax11/CliqueExpr.c",
-        "bytes": 67174,
-        "sha256": "e13b53cb4d3c11a6bfb4aae714f4aae4dab958134b4e4d28144fd237eee0c0e5"
+        "bytes": 67282,
+        "sha256": "07432d9496679ead38fa24f9117a667931b7fd84c40871f09ed65b95a8d312c6"
       },
       {
         "path": "concepts/ir/Lax11/CliqueExpr.c.hash",
         "bytes": 16,
-        "sha256": "f74440ae61486cd1d32cc6b9457f6c57f60e3474bdd7d2df440fe40fac5e61c4"
+        "sha256": "31d52539cd402853e550d8b14996bebd388a57c157d75f21f5194c12a1d8798d"
       },
       {
         "path": "concepts/ir/Lax11/ConnectedComponents.c",
-        "bytes": 2113,
-        "sha256": "f9b29cfebdf2f59bf909013636d92d8d74c4f794b500aa9042350cfae80eaaec"
+        "bytes": 2133,
+        "sha256": "e5d481fb86e5b1aa8e29174050fe1d31aa388eaa4a63095b7b3b4398ceaf73a0"
       },
       {
         "path": "concepts/ir/Lax11/ConnectedComponents.c.hash",
         "bytes": 16,
-        "sha256": "daa855f2733626b5903919ecae657f1445c2f2e99e1b56c249ccc39a5f8a83b6"
+        "sha256": "b690235aa51e84101c926c66e51e841150ac96a1b1b89a4b8f8e056d41c1e643"
       },
       {
         "path": "concepts/ir/Lax11/Courcelle.c",
-        "bytes": 1718,
-        "sha256": "bd609bc1e7d905ddc28fcf7cefd887f72804364e819fc7250bb8a98fc3858309"
+        "bytes": 1738,
+        "sha256": "3da89ef9b0214d445bf0e80cf59d2ded6177836ab372d53cd759ed1e4a5c1fe2"
       },
       {
         "path": "concepts/ir/Lax11/Courcelle.c.hash",
         "bytes": 16,
-        "sha256": "6b842c585da655040503947330ee8943a4a772076c2abd0e460ee0b8a12922d9"
+        "sha256": "1bc6ea9d207e1c409a1bb3dd3d6e316dbc876e2fa0a962e0d08d21ea8dce6fae"
       },
       {
         "path": "concepts/ir/Lax11/GraphEncoding.c",
@@ -316,23 +316,23 @@
       },
       {
         "path": "concepts/ir/Lax11/Mso.c",
-        "bytes": 19357,
-        "sha256": "3818d25c16848c327bcb727b2dd2102c997b2ba4a93f86be45f75ed13e756938"
+        "bytes": 19393,
+        "sha256": "f1449fe36ff4b5db1462ba3d797b92545e845b2810091f3d7894860a40b268b2"
       },
       {
         "path": "concepts/ir/Lax11/Mso.c.hash",
         "bytes": 16,
-        "sha256": "51e748b87d7c835cead6db1a168af87ebadab950b0c9548de9ef8ddc7ca52719"
+        "sha256": "a2513cc92dd7e1679c81ab5dfb77203db3e76c3913f6cee765d6fd812ab12ca6"
       },
       {
         "path": "concepts/ir/Lax11/VertexCover.c",
-        "bytes": 1825,
-        "sha256": "d0b0bc0ff220263a9aecddce909039b6e3224590b0d295029b8dc4f0d376f245"
+        "bytes": 1845,
+        "sha256": "3149615b7712bd415c304c19f946f738deafddac86008de243c545d5e0073dff"
       },
       {
         "path": "concepts/ir/Lax11/VertexCover.c.hash",
         "bytes": 16,
-        "sha256": "5ba3c26f8861c9c7d93f042a427690816a4d176ccde04da68d75257a32a3e4eb"
+        "sha256": "411ffa658d4f2e05f6bb9ea62df768c5191ec828f95dec6ca1a8aba37d7f8adb"
       },
       {
         "path": "concepts/ir/Lax11.c",
@@ -356,68 +356,68 @@
       },
       {
         "path": "concepts/lib/Lax11/CliqueExpr.olean",
-        "bytes": 507280,
-        "sha256": "384c6722c23d1053d9a80786567527d654488cedc7d3a8e23e1295493ea409c9"
+        "bytes": 511408,
+        "sha256": "d7f1c710fdfdd0e9cd63f33894472cda5ed1abbc8618d5afe5e3f2a573f4b1c4"
       },
       {
         "path": "concepts/lib/Lax11/CliqueExpr.olean.hash",
         "bytes": 16,
-        "sha256": "acd64034174611a61eb0c92763b206901e6313cd6e99a7f91aeb5f5fcacdc3aa"
+        "sha256": "add757776f5a1f2722aa28eed3a52d9f7830f1db18e40525a4075d7736a8e21f"
       },
       {
         "path": "concepts/lib/Lax11/CliqueExpr.trace",
-        "bytes": 2323,
-        "sha256": "172d062afb88600a742aa88e81e1754d85e59adebdc4cc4749e0a63df79b75fe"
+        "bytes": 2273,
+        "sha256": "5e37c9cde22c3b7a2a455bb9bfd286aa6a491740004e0d4c6cf13c22d4aa6546"
       },
       {
         "path": "concepts/lib/Lax11/ConnectedComponents.ilean",
-        "bytes": 3810,
-        "sha256": "f4b5a5215c7cc5789c2d24f1289a91539cd5ddf8f4e9c0b5df6e9d3f1f703e6f"
+        "bytes": 3830,
+        "sha256": "674daa674a284dc2fd0cab0d5354a970eac0b6d3007ad5c729496e71debcf689"
       },
       {
         "path": "concepts/lib/Lax11/ConnectedComponents.ilean.hash",
         "bytes": 16,
-        "sha256": "961db5a3dfe8f94c6533bd485d27c74c2a0bc05927866a125a4fffbea54c7ef8"
+        "sha256": "0adc30ddfccc0fb798d8a62b4909129d4a5c2d63867d5bd6eefd4ef4cb2a9147"
       },
       {
         "path": "concepts/lib/Lax11/ConnectedComponents.olean",
-        "bytes": 19648,
-        "sha256": "bcd4ba3b53f533f9162c4db2ed6902408f35c91706c5b26f79abda06819384c9"
+        "bytes": 20192,
+        "sha256": "d305a25cedc8bcea9eeede49c8f7d98038bd6e31bb48dfd0c8361003049320da"
       },
       {
         "path": "concepts/lib/Lax11/ConnectedComponents.olean.hash",
         "bytes": 16,
-        "sha256": "f01625a6b38a04d30c012c08e230a16aa0ec4690e858f558869500c244b7673e"
+        "sha256": "0f60ea96c30cb145ce48e13f904f9e7d3d7fb35550050d4f79e1725327e8c2de"
       },
       {
         "path": "concepts/lib/Lax11/ConnectedComponents.trace",
-        "bytes": 2888,
-        "sha256": "f0152784bbbb321e8f4ab98344956fa8c9cf55ade013e8d076e27ff630c509f4"
+        "bytes": 3017,
+        "sha256": "d2a5a93255bda28fcc6d915b23ff0911df8d140743b1e723fe405a03ee07f462"
       },
       {
         "path": "concepts/lib/Lax11/Courcelle.ilean",
-        "bytes": 2571,
-        "sha256": "5e39cf1a5c5983aae7f37f4aef9732fe45c4d9f9d108c2ed409e33a20441d53e"
+        "bytes": 2591,
+        "sha256": "e6ea49cf12c94ae719ae3905d030024614e9ad3cea65b65690abe73d1346e525"
       },
       {
         "path": "concepts/lib/Lax11/Courcelle.ilean.hash",
         "bytes": 16,
-        "sha256": "a268310448f02098fbf4570aa712eb1b77d52f80524b8a30cffbec37e4ad1722"
+        "sha256": "35b882b3c92d41d8d2e43f97e9c245ab567ab59330651603df70847481c744ac"
       },
       {
         "path": "concepts/lib/Lax11/Courcelle.olean",
-        "bytes": 20568,
-        "sha256": "b610015a8c2b64176d665aa33a04a3d98d8ca36cc03f8289836e91fb0514e551"
+        "bytes": 21112,
+        "sha256": "149ede3048bd1f6215cc5c471961bff88b8feb63e9fe65fbabf365ed4fc4bb57"
       },
       {
         "path": "concepts/lib/Lax11/Courcelle.olean.hash",
         "bytes": 16,
-        "sha256": "b3ad66b6f56d3f6edcca8853535926d0c936d4099382f4fe426a699bf4aff72a"
+        "sha256": "5dbacbaf85d22563da2152f057404d59ec315ef28c4c6be26332234d31db765d"
       },
       {
         "path": "concepts/lib/Lax11/Courcelle.trace",
-        "bytes": 2541,
-        "sha256": "f212727dfde74ffbebe8e74aa4100946d78d53b5699c3be1e8c180d1a7547530"
+        "bytes": 2494,
+        "sha256": "2a7c267dadbcfc8a22c3ef4e68f036a26ab9b90d364caebffc5ffd8c2f293a4d"
       },
       {
         "path": "concepts/lib/Lax11/GraphEncoding.ilean",
@@ -431,18 +431,18 @@
       },
       {
         "path": "concepts/lib/Lax11/GraphEncoding.olean",
-        "bytes": 55512,
-        "sha256": "a6d0b31191cfe892c8802f3218c77df7eb83428c7b0c8c4b60e09a5e371507b1"
+        "bytes": 57464,
+        "sha256": "f8612eae1c325a689ffbdac52ae2329c075c769d1bb3d3fea037bef37ec35ec4"
       },
       {
         "path": "concepts/lib/Lax11/GraphEncoding.olean.hash",
         "bytes": 16,
-        "sha256": "34f84e4a24ae2433bda0140bc119f5a919f6e36a9821f7691c617333bad2b196"
+        "sha256": "a24d3eefd99ddc22916082ba2c254ebf60169aa137308d3dfb3da8ff4a4e5a11"
       },
       {
         "path": "concepts/lib/Lax11/GraphEncoding.trace",
-        "bytes": 2347,
-        "sha256": "9f5168e0dd7b95c783e8593c12720b1a5e209794839a3055298f6a69e04316cc"
+        "bytes": 2294,
+        "sha256": "95016a1a46bdd00fede654f4395c798cc1c921d9519fe5a6f537aea2012c49ef"
       },
       {
         "path": "concepts/lib/Lax11/InstanceEncoding.ilean",
@@ -456,18 +456,18 @@
       },
       {
         "path": "concepts/lib/Lax11/InstanceEncoding.olean",
-        "bytes": 89280,
-        "sha256": "a54fa7c319e4ba80b7e7dc9dec5569569d2d0ac7e2cfb002391a1d82a67b4f4f"
+        "bytes": 91256,
+        "sha256": "f5ad62b21e6a38d6ff3707ef77d64b661c5c54c4253685962a6e1ee26b2079ac"
       },
       {
         "path": "concepts/lib/Lax11/InstanceEncoding.olean.hash",
         "bytes": 16,
-        "sha256": "f09f508863f0b22e2ed950f07173b788a3377910485d29e90cd5d5216edb4f72"
+        "sha256": "07a4c77b5639dbbfa83bd6371ee40a3198c58fb660c04db4fcb393210e1f25b0"
       },
       {
         "path": "concepts/lib/Lax11/InstanceEncoding.trace",
-        "bytes": 2455,
-        "sha256": "c4d32ebbdd6b21cbfdd25ec319bb2e37537ce390e7dd9ae72b89c8b4c1533ac8"
+        "bytes": 2399,
+        "sha256": "6f7cb931cf5724523203d6ae6f8d3e38e3cb0ec05043afc1b7a08cd1cd86aaec"
       },
       {
         "path": "concepts/lib/Lax11/Mso.ilean",
@@ -481,43 +481,43 @@
       },
       {
         "path": "concepts/lib/Lax11/Mso.olean",
-        "bytes": 337624,
-        "sha256": "531d5c542b6419ca0c2aa1703d29ba45eb7a8705bec687dfe3848cee77f62b74"
+        "bytes": 340656,
+        "sha256": "3685e5e0e0f8bae9cca85fa92518d022d75df19b200e7b2dbd4fa76100cf319a"
       },
       {
         "path": "concepts/lib/Lax11/Mso.olean.hash",
         "bytes": 16,
-        "sha256": "1b6731e877e6b9c7b6ed47992e6d60972e46943f2cd388ef21c362dcca212d4b"
+        "sha256": "1e519b964bb85e3794f041c9fbf487b10a12c5b2a0d03dc7fc8ea86383d576ad"
       },
       {
         "path": "concepts/lib/Lax11/Mso.trace",
-        "bytes": 2439,
-        "sha256": "75db57d88768899ed79edb9a0652938f5f3dc90f3a636facd1200a28c0b68541"
+        "bytes": 2390,
+        "sha256": "c296fa31755ea8bd7b1b700ca96a4d7f45cb8ca28fe175f3794909e47f42d85c"
       },
       {
         "path": "concepts/lib/Lax11/VertexCover.ilean",
-        "bytes": 1286,
-        "sha256": "108d6a6c324dca744b1ae82e9c9e2291c29790ec3a97aaef0ca161526b33576d"
+        "bytes": 1290,
+        "sha256": "05548c34b86cc3e4da73b16b1eb4ae0aaee9f4fb1094d47b1dee46fc5d7bff1c"
       },
       {
         "path": "concepts/lib/Lax11/VertexCover.ilean.hash",
         "bytes": 16,
-        "sha256": "896aa006d56aeff1382c75fd82491bee6008dcbcb45a4e49e0f2697280761a13"
+        "sha256": "b5e0f8df57ffa67c2b5b6839a9515c66bcc8a79630d2e6fc77269e1dea98e51a"
       },
       {
         "path": "concepts/lib/Lax11/VertexCover.olean",
-        "bytes": 9376,
-        "sha256": "9ceaad767b4eb43759f90ff736a8a470c7d1b1474f1c498a3519953efdaa2fb7"
+        "bytes": 9680,
+        "sha256": "6f9ad53268f317f72481122fbe46aa63c535276346a8fcbfefb8587fbe1f6896"
       },
       {
         "path": "concepts/lib/Lax11/VertexCover.olean.hash",
         "bytes": 16,
-        "sha256": "eca1f96a2fdbc115c2ffa587b77336daf7f3c6d29648af7e0275a67d231ee5b9"
+        "sha256": "e09761d7da8e491898caa72c7c84c11e8c6dc837be07db1ce1b6b6b56f1e074c"
       },
       {
         "path": "concepts/lib/Lax11/VertexCover.trace",
-        "bytes": 2635,
-        "sha256": "eee6943339b8dd494198d1fb34443bbf3f4334cee0d7fbc12d613f43e8b82d20"
+        "bytes": 2584,
+        "sha256": "4d1203ff1700c8f428cbd64f63179c6ffd5b5123e4c78c24ad0d73b9199e380d"
       },
       {
         "path": "concepts/lib/Lax11.ilean",
@@ -531,28 +531,28 @@
       },
       {
         "path": "concepts/lib/Lax11.olean",
-        "bytes": 2016,
-        "sha256": "1c54dc1fa1183690d8292d66c3630dd783e0942496db90011a75edd9fa3fe6a6"
+        "bytes": 2200,
+        "sha256": "1acfcdbeafca1cb3923462e4e076c1a80fdb2151dc81722275f3723af9da1921"
       },
       {
         "path": "concepts/lib/Lax11.olean.hash",
         "bytes": 16,
-        "sha256": "79ca347eff0eb07560080849261bcdee643cf7219d061d480723b80737118e89"
+        "sha256": "2804beb01980ad5f42f107b8d28567407d0ee305442b9a7149cc3a6d4fb6e4ff"
       },
       {
         "path": "concepts/lib/Lax11.trace",
-        "bytes": 3060,
-        "sha256": "925ddd7f3a7b573fb51cb3b07f35ce9b7ed961e0cc2c8fbf678cbda2d45d4679"
+        "bytes": 2997,
+        "sha256": "61394124126b000649032fe5515ffdee4e3dc0be46550ce761c327a7a4bce82d"
       },
       {
         "path": "concepts/package/lake-manifest.json",
-        "bytes": 3366,
-        "sha256": "74a9b42264a7b4023a0c5b1c76ef02122365549e5222bfedb9c3a847b384ba97"
+        "bytes": 3369,
+        "sha256": "f45397f1cb9757049cd752ce64d7d0796970c460ffdd78e6a7d791a53724a4ec"
       },
       {
         "path": "concepts/package/lakefile.toml",
-        "bytes": 545,
-        "sha256": "bf6c50073670fd7793d7a2ce26f5441cde681d3fe28807699b5bd88f6766c32f"
+        "bytes": 559,
+        "sha256": "34683d75e3f98d54eb1eecf209973286ee26335c2b29ee6fb32e26b3b660a2f2"
       },
       {
         "path": "concepts/package/Lax11/CliqueExpr.lean",
@@ -561,13 +561,13 @@
       },
       {
         "path": "concepts/package/Lax11/ConnectedComponents.lean",
-        "bytes": 4712,
-        "sha256": "22c4878fb115c6dc98a7f1cdca27c4a526c132650395557cbc09483ef605b9e9"
+        "bytes": 4724,
+        "sha256": "6b47189a9291857e21b36ff3412c50806de11a9bfc37213e6ed4a8b964a4b98a"
       },
       {
         "path": "concepts/package/Lax11/Courcelle.lean",
-        "bytes": 6015,
-        "sha256": "9f20d4eb638e730cbba97c5d1817291ed177749921a5fb5c3289810d672bbd3f"
+        "bytes": 6027,
+        "sha256": "a09f46fd12a38c1290164c1e3375ab8f71a747ab75618a5f470a73cc929e83a8"
       },
       {
         "path": "concepts/package/Lax11/GraphEncoding.lean",
@@ -586,8 +586,8 @@
       },
       {
         "path": "concepts/package/Lax11/VertexCover.lean",
-        "bytes": 1687,
-        "sha256": "39f48af08315f9b3404823484ec19ee56158eb89d24bb0e72ff6ffcf6ff36c2f"
+        "bytes": 1699,
+        "sha256": "e9f49ea13b0055ed2fda6b4019adc1bd4e3bd6f65bb67e84cf9a7544e09bf7ed"
       },
       {
         "path": "concepts/package/Lax11.lean",
@@ -597,17 +597,17 @@
       {
         "path": "concepts/package/lean-toolchain",
         "bytes": 25,
-        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
       },
       {
         "path": "proofs/ir/Lax11Proofs/CC.c",
-        "bytes": 77270,
-        "sha256": "3c7341ad2ab4d73d74b1e1c279897341934eaf53869d07570baa1fba7d404c8e"
+        "bytes": 77366,
+        "sha256": "e39039ae02cc5faa770fdf56cf483e7360993d487a02f19d0bf498f2841244fb"
       },
       {
         "path": "proofs/ir/Lax11Proofs/CC.c.hash",
         "bytes": 16,
-        "sha256": "7bca6494f6e782d17677e03b3b549aed8cae339910221f55068ae211be531e72"
+        "sha256": "5e93375d06a1b83b5648fde91be97e89a3d43071f4dae2dc98640a142e627252"
       },
       {
         "path": "proofs/ir/Lax11Proofs/CCGraph.c",
@@ -621,33 +621,33 @@
       },
       {
         "path": "proofs/ir/Lax11Proofs/CCMain.c",
-        "bytes": 1564,
-        "sha256": "3f21e5540478a94ad1b74b7fe88deaa938ed896444963d8bcd40973aa67a5ecd"
+        "bytes": 1584,
+        "sha256": "faea57a5a286bafdeae76a1b56a5e4717516624d115a06cde5e9f04fcffd8c22"
       },
       {
         "path": "proofs/ir/Lax11Proofs/CCMain.c.hash",
         "bytes": 16,
-        "sha256": "f29881bf582e56d96220832a89f5072da603707e50c7487ca8667f7245d20c56"
+        "sha256": "cc032c344cc2d1c49cecc3b6d3237e580f7337db523259250a824a225a3d7500"
       },
       {
         "path": "proofs/ir/Lax11Proofs/CCPhases.c",
-        "bytes": 1553,
-        "sha256": "cf8bca53391c159fc23b99d42ffc9d61d57a9542fb2166e1accab2bbc0d14598"
+        "bytes": 1573,
+        "sha256": "be6ca5d3692b5c1b977626e15d5eca1c5369197c83654b5d2fd98f0b832d458a"
       },
       {
         "path": "proofs/ir/Lax11Proofs/CCPhases.c.hash",
         "bytes": 16,
-        "sha256": "82069bf8075b9e47c25dcbb5f8dcdf7ef831703cf212925f61c3196c1611becf"
+        "sha256": "d8b22a2ecb9d2e8880c669a4e76a54eea1ff99dabe6efe7b27ca5c3bb4d4e8c0"
       },
       {
         "path": "proofs/ir/Lax11Proofs/CCSearch.c",
-        "bytes": 5693,
-        "sha256": "a3f039db233472c68a2a157a4ab02be5b0fcfc17775d805e6f03ab92bbfd2796"
+        "bytes": 5733,
+        "sha256": "0d37f8c8c1b01ce5355b56b6aca901b2d1e424912b70ec2db884ea71ad5ffd5a"
       },
       {
         "path": "proofs/ir/Lax11Proofs/CCSearch.c.hash",
         "bytes": 16,
-        "sha256": "e6695671bc676f71600fa0b05974f352410526d9044d308428ce28480eea4245"
+        "sha256": "eb449edc7921661c1e22c92b6f20129892bca85aabaaec3c2cdf92ee994eb252"
       },
       {
         "path": "proofs/ir/Lax11Proofs/CCSweep.c",
@@ -671,23 +671,23 @@
       },
       {
         "path": "proofs/ir/Lax11Proofs/CourcelleDriver.c",
-        "bytes": 67670,
-        "sha256": "c4a9093edf5876d692adcfa5808abf0af09f3a885309ed74135265c4e8495e66"
+        "bytes": 67554,
+        "sha256": "0b286bf34d0fd5b75d9cd26166d4f0dfa55486f24df3007bb13ee045e5e003ba"
       },
       {
         "path": "proofs/ir/Lax11Proofs/CourcelleDriver.c.hash",
         "bytes": 16,
-        "sha256": "f3f8aa7afa250aa9c0d7ce0318f0379f959692eb8a8539c9501078d900e7ec1e"
+        "sha256": "9b4cb85b9c5e319373674e2a0d414f77a7814551a0c95dd5ea86876e9409d896"
       },
       {
         "path": "proofs/ir/Lax11Proofs/CourcelleMain.c",
-        "bytes": 5478,
-        "sha256": "2f7ca968ba3163faae723995d608d1e686e9d5862d4a321e3cf908831ae17eaa"
+        "bytes": 5498,
+        "sha256": "6c914db47ca2e5ce70718fc35f27105b072af5f1f3d90c5af7dd90976e7d31a5"
       },
       {
         "path": "proofs/ir/Lax11Proofs/CourcelleMain.c.hash",
         "bytes": 16,
-        "sha256": "fd6687502ace58673412a70d23898644df91204191b5e66ec23566697b3140db"
+        "sha256": "86f906acba3374612124ae43b869e5724ec43f5f8b9fc545a9047c9857ac8a8a"
       },
       {
         "path": "proofs/ir/Lax11Proofs/CourcelleSmoke.c",
@@ -741,13 +741,13 @@
       },
       {
         "path": "proofs/ir/Lax11Proofs/MsoCliqueOps.c",
-        "bytes": 20341,
-        "sha256": "878b50c9e0371deddfad6b74245029b1a7e73fac6afe171e147eaead04546929"
+        "bytes": 20350,
+        "sha256": "a65aeb9b47b1b6d818a3575fd8f42117134c064a8807f998e5d68718f43106dc"
       },
       {
         "path": "proofs/ir/Lax11Proofs/MsoCliqueOps.c.hash",
         "bytes": 16,
-        "sha256": "cefbb0df010e4e6e7379af66aad56d34218eeea04fed6b10caa2fc89585343c1"
+        "sha256": "80636b19c7fce3b6e6e86c9348044f63edc10b0f136af6127c9fc632a4fc7687"
       },
       {
         "path": "proofs/ir/Lax11Proofs/MsoComposition.c",
@@ -761,13 +761,13 @@
       },
       {
         "path": "proofs/ir/Lax11Proofs/MsoTable.c",
-        "bytes": 49601,
-        "sha256": "8553be74ecdb2b7a435ce02e801881e56007a2deba7a8d253e2d436300570595"
+        "bytes": 49745,
+        "sha256": "c6a411a59cbec6a68692fe2d9e493fda090f25da58a82c18e658f6cb2033f68b"
       },
       {
         "path": "proofs/ir/Lax11Proofs/MsoTable.c.hash",
         "bytes": 16,
-        "sha256": "38a8c8163498c1e8a02f06301180349177fde68d065ba25bf4eab49b27f03120"
+        "sha256": "7db8c7813367d6dccf9d3879dec5a7528d43213de6ea667e104b3521db16eefe"
       },
       {
         "path": "proofs/ir/Lax11Proofs/MsoTypes.c",
@@ -791,23 +791,23 @@
       },
       {
         "path": "proofs/ir/Lax11Proofs/TreeFold.c",
-        "bytes": 69003,
-        "sha256": "0dc2b522fed52bded650d2561711e970605b4dd56153ecc2075f659bad041aa8"
+        "bytes": 69100,
+        "sha256": "4a5ff85127c4f5752486d7f811562b6c8c8ca6bd4f44e6151b437208552c058d"
       },
       {
         "path": "proofs/ir/Lax11Proofs/TreeFold.c.hash",
         "bytes": 16,
-        "sha256": "f8190cacb989bc12fc6ef8e7c9c30555f160ce752bc801425fc890a8980c6aec"
+        "sha256": "0fa7a066bdeeb0065fc6a12f388801bb366aed4f78684a8a29a41211695c9227"
       },
       {
         "path": "proofs/ir/Lax11Proofs/TreeFoldMain.c",
-        "bytes": 8147,
-        "sha256": "7f4c21e3621313f2506884f84c4d590fad96ab002d64b27c81b675f2aba6d6ea"
+        "bytes": 8167,
+        "sha256": "cc1daeaeba2d4459f75d19fe3011ae7e7db7cafadf556ba874f000c2389eef6e"
       },
       {
         "path": "proofs/ir/Lax11Proofs/TreeFoldMain.c.hash",
         "bytes": 16,
-        "sha256": "42dd7ca07403174f1a4c09050d7c8e331f18e5d85033bf72e67934e745131f6e"
+        "sha256": "16489811177e0be2bf17f67361ad18c6b8213fa875f7e438dd2aa4767dd2cff2"
       },
       {
         "path": "proofs/ir/Lax11Proofs/TreeFoldRun.c",
@@ -821,33 +821,33 @@
       },
       {
         "path": "proofs/ir/Lax11Proofs/VC.c",
-        "bytes": 92554,
-        "sha256": "5d22f5c20d6421e668206ecb6c6595ca47fa0692c247dd9928be66dd127af379"
+        "bytes": 92602,
+        "sha256": "2ff5669cdac17bb6c624b6542e91bc3996f9f14be23901a64627f31fade96f2c"
       },
       {
         "path": "proofs/ir/Lax11Proofs/VC.c.hash",
         "bytes": 16,
-        "sha256": "3233fd3a427fa5aed60b5ed469f5c5593fbd318a1d76868fa0a836b4ccdaf5a4"
+        "sha256": "68c9092be3a379543af029d81216c3bd650548459db34809ff2501d48c3a30b6"
       },
       {
         "path": "proofs/ir/Lax11Proofs/VCLoop.c",
-        "bytes": 14002,
-        "sha256": "5c14f13abfdf689201c9661cd4e6651a4677e06a3a2a900132ce2e4519e2f0c0"
+        "bytes": 14038,
+        "sha256": "df23e2b033e7adcae68e0ce3f3ef324525a54f613268474c42e28c488fb20be4"
       },
       {
         "path": "proofs/ir/Lax11Proofs/VCLoop.c.hash",
         "bytes": 16,
-        "sha256": "1acb9caa7100df417583fd0fadb67a96c9943dadbdb0cc6daf326ae4d00c1aa9"
+        "sha256": "ce96b7b8a5e1351ef46902efca4ff63453a4f1d759d1944fbc23fff0113e6838"
       },
       {
         "path": "proofs/ir/Lax11Proofs/VCMain.c",
-        "bytes": 4906,
-        "sha256": "a74ffe5f2e40e6adb9e9b3e31951c205f16897c04b2f8eb6271cd773ec0589ef"
+        "bytes": 4926,
+        "sha256": "7ee3a47abe459e969bb8934d3eec8dc4eff25070d4424e61bd20c2b637abbb0d"
       },
       {
         "path": "proofs/ir/Lax11Proofs/VCMain.c.hash",
         "bytes": 16,
-        "sha256": "361387c1704847db2a5c9315d74ccaa9099d2b83b15e58c218f4509aff6999e5"
+        "sha256": "022f95f89e9b8634aa6f198c0ff266ccf42d2cd133495298e37a916d5cec33f7"
       },
       {
         "path": "proofs/ir/Lax11Proofs/VCScan.c",
@@ -861,13 +861,13 @@
       },
       {
         "path": "proofs/ir/Lax11Proofs/VCSpec.c",
-        "bytes": 23974,
-        "sha256": "0cfbce38427aa7c1d3bc90ff523e712a3126f2069cd7e2a0433fa4b7905365cb"
+        "bytes": 23992,
+        "sha256": "52170e858d721e1102cbc114e3d553c608dff167e4e3e719262b69a5163766c1"
       },
       {
         "path": "proofs/ir/Lax11Proofs/VCSpec.c.hash",
         "bytes": 16,
-        "sha256": "4599c6841e0c9982b9194cd693f37c4a17ddc1973d24d735a95767d0be4c160c"
+        "sha256": "ecfd3719d7c7fb4e5b6041e5ac1780c8ec20d4d599cb919c02fbfa22a0ad6fcf"
       },
       {
         "path": "proofs/ir/Lax11Proofs.c",
@@ -881,153 +881,153 @@
       },
       {
         "path": "proofs/lib/Lax11Proofs/CC.ilean",
-        "bytes": 13975,
-        "sha256": "3408a26ab165c7f410cf4ddb642bc0091998893bd0057e1a4060000215e5892a"
+        "bytes": 14175,
+        "sha256": "93e42d9eb00e1ba852f5d5afd0e8da4f4103b609d244fa26f9aae549471d1147"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CC.ilean.hash",
         "bytes": 16,
-        "sha256": "7eafcbdfe1834f16debbfd6deb78474cea01faa24529a0b5cd8a8a522864542b"
+        "sha256": "93d9ed0e9d17c4e875b3295fa10c8316e4cca1e7bfda39c017627e61a6f579a5"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CC.olean",
-        "bytes": 539728,
-        "sha256": "b26d4a53ff7709478418e13697c6ea69e0ecd94a2d358637f6e7ceadf9ae54c1"
+        "bytes": 542464,
+        "sha256": "7c0ee6a5046fed6a78c8f9af687f92a9f0720265efa02be396372e65291c8351"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CC.olean.hash",
         "bytes": 16,
-        "sha256": "1254fd8dbc8458ee5cbf6b0e1e09deb6338dc9d48456d432bd96a1d77624a3d1"
+        "sha256": "25e4d59b615841a16a71270772db7a522812e23ea2ddd55fab3c3465ac84be8f"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CC.trace",
-        "bytes": 2692,
-        "sha256": "0e111b98e588e3035c0afe706015fed1347f27cfdfe497675544f544074815a8"
+        "bytes": 2654,
+        "sha256": "8e3b4a5fc6cfc1d74a4b2bf814518e78c518c37476952344b4e3d97576f893f9"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCGraph.ilean",
-        "bytes": 22898,
-        "sha256": "a5fdfa521082526be569ac6866bc2dc38380be8dface7f87e3c71fa058c6c3c3"
+        "bytes": 22900,
+        "sha256": "df969ade37ab1a9e73a1a65974671bbe69d8682ad980bc3a326688d226dafda7"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCGraph.ilean.hash",
         "bytes": 16,
-        "sha256": "cb5332028332b16cb391374efe837dc14e614b6efbf56cdcd708f10997c91b86"
+        "sha256": "949e81b81d5b8a4b7a4b78bec6dbd50b9f149b12d396618ff4b891e2a98ec56b"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCGraph.olean",
-        "bytes": 448408,
-        "sha256": "15f2e6d734a6071107eb514061ae962201c5733aa6a852b03876c17749b9debe"
+        "bytes": 449120,
+        "sha256": "de99f8ef206612ab091c5e242f80214fff9d2299e2a29fa67ebea8195211415f"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCGraph.olean.hash",
         "bytes": 16,
-        "sha256": "e51118fafa6db97770bec902be3e6c7b08b9fd9ed3350212979601c81919e487"
+        "sha256": "0d29f7b4e9549fcfb828390f50a8cae05993ca403843fda18f0db8aec6517c57"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCGraph.trace",
-        "bytes": 2545,
-        "sha256": "bfff9b66d798afa452411752f80cc0a8ceb33a6ef3df2c07a205098baceba1cd"
+        "bytes": 2494,
+        "sha256": "f0cda925f5cba78949a910f6fc2f1e4e68013a92cdbb7e78e1da9de3ded9ede1"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCMain.ilean",
-        "bytes": 6544,
-        "sha256": "4d9aaf02fb742da355e5263718f6e6966299e39c081a8699f23383a9ef994eec"
+        "bytes": 6636,
+        "sha256": "04bcb17dd4072ccf80544db099061d80eaed31b53603758a599da6636470d00b"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCMain.ilean.hash",
         "bytes": 16,
-        "sha256": "698eb50c4e6f356859531a3cd1e972062e0f0a4a259371bd68a840511a08160f"
+        "sha256": "601ad95271c3ba839c242ec0822ef01e53d1f11b12ca94bbe0f5d9c910a28210"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCMain.olean",
-        "bytes": 132952,
-        "sha256": "2b79ebffccfac1e108e01565ce48ed1e4615fad2aef0bf94db9fe21d04172038"
+        "bytes": 131408,
+        "sha256": "cf0152b6a3f84671f52560211d1ebad2e619be941297895278ea4ccbace05edf"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCMain.olean.hash",
         "bytes": 16,
-        "sha256": "c69b12acd915dcf9d3268a909d12ea23b821c76c775d3ae943a52f46a9d1b778"
+        "sha256": "82aa36126c69cd38bf892124ece6be14b052f386f414dfbf99b5c939f3162977"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCMain.trace",
-        "bytes": 2560,
-        "sha256": "eaed4b50c74d122c3285eccae9a7fbd18bc40230722659d1da843135041deb88"
+        "bytes": 2516,
+        "sha256": "54cba4d843a4936e9d507df0b4e0f7b02a3548f6f536598a06c6a8a315f45abb"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCPhases.ilean",
-        "bytes": 14805,
-        "sha256": "f57469189fec8811db434d3782cbd11a5d90cb534497e2ac3f710b3c92569aaf"
+        "bytes": 15065,
+        "sha256": "69e0ddf0e2f8e977d4fa8b71c162722a1241436fc3dd79a61f230e4cece81aef"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCPhases.ilean.hash",
         "bytes": 16,
-        "sha256": "425ff8a618a6fbfc46e5ecb6e9faed6f655fb39a00df30877e3417915e183c14"
+        "sha256": "064339a5c1331674865435d4a8d7ec0d61af5f90a16c605a7bcf89f2aa49c564"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCPhases.olean",
-        "bytes": 305416,
-        "sha256": "73602847be96f0c7cc26c6dd4c583a81f0b65d023f6b6882f1354298a9da356a"
+        "bytes": 308248,
+        "sha256": "eff042760bf869cd9dbccf30d6fb75ce47f98cfde4545d22b75c046d0b783ff9"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCPhases.olean.hash",
         "bytes": 16,
-        "sha256": "d96a26223ab7fd177045bbda575b5dd8ef034f927d44eb701f8a756708badd5c"
+        "sha256": "df4e78261d78a9a5fc7a7bb4a659088e0c08728eb4629ace5a8d8ac0d92e93ee"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCPhases.trace",
-        "bytes": 2566,
-        "sha256": "3bd61c339a417c3b9104b78ecdbf2102f719e533dab3a11368b458ae54268d1e"
+        "bytes": 2520,
+        "sha256": "c730b7ab9151e25cb45f2fe1b93ecece984acffc961894d303683d110420df4b"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCSearch.ilean",
-        "bytes": 36808,
-        "sha256": "b702e4c7066b4712274f02f2790c7a28c987dbd3389bb557397ad9ae8ca88cb1"
+        "bytes": 36992,
+        "sha256": "809db4eaa0f4d7c4059eaa515ebfc0092d1252ef550f00c38657dab248270bb2"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCSearch.ilean.hash",
         "bytes": 16,
-        "sha256": "660fdf5b903697b2211fa0b5e3b4288f7591cefb56187279b6d32519332d48dd"
+        "sha256": "7929c23c3cfb817bd148c904c157a50b1c0f4176d88fc3a05ff6e6668f79d877"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCSearch.olean",
-        "bytes": 2272224,
-        "sha256": "936cfe145adce9361807de72de16fe8be8ae6bfc9d518786b8364c3713953f54"
+        "bytes": 2274560,
+        "sha256": "4e8b713805b528e11e39e4c42f90a5676a8954dbdb66491a181b24dcd6539e99"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCSearch.olean.hash",
         "bytes": 16,
-        "sha256": "29807dd49b54e3bc63d859dc10d368acd9266f0a3f1345f973b56d30bc93ce90"
+        "sha256": "9a5f3dcb3b7de36a28071d74cca47485b7c0c574af3e06497dfbb780dcf453b2"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCSearch.trace",
-        "bytes": 2885,
-        "sha256": "753c66675d05850bc67583066684d35a88f2d40f893b6e44cc14d060c6249921"
+        "bytes": 2837,
+        "sha256": "ff1bef836b5558b9f941e0a6658f13515c629b34b94b184e98268565c1f50753"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCSweep.ilean",
-        "bytes": 36080,
-        "sha256": "f44eb52c54276a92770d42cc0bc0231269c273ee60a39548e90017d50a95903a"
+        "bytes": 36488,
+        "sha256": "4c36525222129dfb8d07029014b442e816f7f4eaf45d7fb58a791a429875ad00"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCSweep.ilean.hash",
         "bytes": 16,
-        "sha256": "8dcf282fbea366ae5961e1be642d72048e8734faf09d6e57561536106ba3cac3"
+        "sha256": "d7f3c7af53360e7302c1e822e2703dd6a3b2ac99c49cbd786595eef5ecf832e1"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCSweep.olean",
-        "bytes": 1980960,
-        "sha256": "8484e40f13f3be2aa504569c6eac35ac3e2a909efecdfe4832875d3b972d3837"
+        "bytes": 1979968,
+        "sha256": "1522acb3920b0a756a7260196cb6abc7a84517156ab3f040a2f86a9155e55b89"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCSweep.olean.hash",
         "bytes": 16,
-        "sha256": "3c799ee5bfcfe9532750cdaf31a21eb49fca4ecde84241e11019a8cb91eb91d3"
+        "sha256": "b266827249685d687bcb1a35601e2e30326e1b296ade7284038a2335ac1c857e"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CCSweep.trace",
-        "bytes": 2420,
-        "sha256": "d6dc6caf9f0c48487cf4e1384c801e788dcddbd7e039dde8d00bf3fe30873b6d"
+        "bytes": 2364,
+        "sha256": "b403bcb93ee699baed5cf57122c01a02d227bd399c0c4bcd1f22fdf2639299c2"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CliqueExpr.ilean",
@@ -1041,68 +1041,68 @@
       },
       {
         "path": "proofs/lib/Lax11Proofs/CliqueExpr.olean",
-        "bytes": 423584,
-        "sha256": "a4c269a0048c3f6855acea3a7c59d9c80b65e6999115c45c5ad4237440df6f0c"
+        "bytes": 424632,
+        "sha256": "63aaf4556aebc40d629936dd080448cf3d8baa19706989ed6a547371bec55950"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CliqueExpr.olean.hash",
         "bytes": 16,
-        "sha256": "8dab7a2da0ec404dee4a34dce8fb281d97a8690fcdb8bb68a3f18cdabca7d7d4"
+        "sha256": "0998a3f986b4a77e43ebdb432c485f36c409c9fa3d858c72c567e7319d68eeee"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CliqueExpr.trace",
-        "bytes": 2771,
-        "sha256": "e9eab0a397f307701e82ffa839ba2e5bbd02698283ec6f3c863a9949c4caa2ee"
+        "bytes": 2709,
+        "sha256": "129c2c78c81a80ba50aab78616e75bffbd1e104330d46ce88ef65e799844a180"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CourcelleDriver.ilean",
-        "bytes": 30438,
-        "sha256": "b81b84763f3afee4807d20aeaf6f0ec34127b979493465389a0f69d794fc785e"
+        "bytes": 29839,
+        "sha256": "eb36e5ec763de94f632c9e3b47856e05ab5bb828a6c8b8bc5dbc2b66384ee0e5"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CourcelleDriver.ilean.hash",
         "bytes": 16,
-        "sha256": "bfc55cfb9d85a9e3ee0365473295c7ea9f53cdd6b336f4dddf4fc4c21dab4629"
+        "sha256": "761c50e62857ff171d9559c21d91e881ce59ddee74019cfa39ff6c7cd6a8b2e6"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CourcelleDriver.olean",
-        "bytes": 790272,
-        "sha256": "a7f3df2799b31cb84cea4fc35f0a0df90e1cb4060a4872b25f73061a81a3ef5b"
+        "bytes": 784728,
+        "sha256": "27fef5b6a54507e1f61d06f4db8185c203a401f6dad6e1ab432c3d6383349b27"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CourcelleDriver.olean.hash",
         "bytes": 16,
-        "sha256": "c5ee2cf79bd67018802f5c45f6f1b855318ac9fa5bd5d2680efb9fbffebe4667"
+        "sha256": "fceb964be06aab0a32fe9fd9fa7997ff622fab23ffbb41679f49b9734cfe5e45"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CourcelleDriver.trace",
-        "bytes": 2820,
-        "sha256": "81a82f869cc7a22c86872d0b163004339fb9db8f9b315df01f472c833a0ef497"
+        "bytes": 2744,
+        "sha256": "543ad55110e350a795b2b49a5a6f07293b826ea3346ea3b7ba74f5e0715d33cd"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CourcelleMain.ilean",
-        "bytes": 44511,
-        "sha256": "37c230a8fdd395ea6b05e0789a8bd1953bfa70ef3166a6b7f9d9adc05f8d301e"
+        "bytes": 44867,
+        "sha256": "cf5ffe701b0801a9564c693b69b4f5b1c9b6fd867fdaf3bd64b2c20573716b05"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CourcelleMain.ilean.hash",
         "bytes": 16,
-        "sha256": "15bf9a2847d548353758b247d2cbb5d854e547453d10443f38f2a630a3cc124c"
+        "sha256": "7ac3978b5622304cf31f097ee88f20f76ab7cb200ba73ccab08e28b28cd66df1"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CourcelleMain.olean",
-        "bytes": 1527040,
-        "sha256": "78d928e3b8b23cd7b29c5029d5076f87ec7994e2a1331f80f918ab012f154489"
+        "bytes": 1529048,
+        "sha256": "e98add7a204c7cefd882c54cd0161af12707009b20ab659e8172b3cfdf3172bd"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CourcelleMain.olean.hash",
         "bytes": 16,
-        "sha256": "4e58143003b16865f03432e3e2093bd38809ba14611ec31c8f7930c50dd68d82"
+        "sha256": "0a9284fa407dc8aef9401f7df0665b3d19e2d379764eac31871b3fb0ff4602f5"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CourcelleMain.trace",
-        "bytes": 2781,
-        "sha256": "8549e043591b87ba49e724681be54a5a5f4c655629437060126315f5325a4f6f"
+        "bytes": 2724,
+        "sha256": "c3241d84acabf81de56f77b36078e9610416c29c416024612bff7663765cc2eb"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CourcelleSmoke.ilean",
@@ -1116,18 +1116,18 @@
       },
       {
         "path": "proofs/lib/Lax11Proofs/CourcelleSmoke.olean",
-        "bytes": 448464,
-        "sha256": "e9c6ac01f955a7037b3b7dfaa299647fb4957202ad7d03a53bdf071025f7dad8"
+        "bytes": 448616,
+        "sha256": "631b20cc7e68481d1afcfda21ee356caf92452347166137a3a97c9a27661a188"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CourcelleSmoke.olean.hash",
         "bytes": 16,
-        "sha256": "12642d0f95732b8c772e22a66f31ab0236f32374d16191f600828e7b885ed799"
+        "sha256": "d6eab0334bf076cae3f8cda83d3d10df9b6a9138985d569badf2e28e05b29eb5"
       },
       {
         "path": "proofs/lib/Lax11Proofs/CourcelleSmoke.trace",
-        "bytes": 2909,
-        "sha256": "fa920c9ee62179b5a54363508b5c8872ac7f433dcc27b9a139351fdfc9983fd8"
+        "bytes": 2839,
+        "sha256": "6576aaaf7202a95dc91c3606b5241f3e67729899ac5099565c49c63680be5e22"
       },
       {
         "path": "proofs/lib/Lax11Proofs/EncodingSanity.ilean",
@@ -1141,43 +1141,43 @@
       },
       {
         "path": "proofs/lib/Lax11Proofs/EncodingSanity.olean",
-        "bytes": 161616,
-        "sha256": "f03e417f6145cf510d0f8cecd2df10b4f8ffac95ab565cf058a96a1476e5cfe8"
+        "bytes": 161592,
+        "sha256": "9c8592408364af29cbaa26ef561ea03f21b8e410ad8951a5a2932d1fbcae3055"
       },
       {
         "path": "proofs/lib/Lax11Proofs/EncodingSanity.olean.hash",
         "bytes": 16,
-        "sha256": "3c1704e812997a0a0f69557628560987879f2c536857102183a8487e35cce4c6"
+        "sha256": "52fa6b48f72bd1b1fd6fb82ad36b663aae721f5eb8874907184fc6379f23c308"
       },
       {
         "path": "proofs/lib/Lax11Proofs/EncodingSanity.trace",
-        "bytes": 2603,
-        "sha256": "8574b584f583ebd7d370a4e86460505b2181ec110f1c55bb9b04282cc596b33a"
+        "bytes": 2545,
+        "sha256": "9a3bf7d2f776d1d3b2cc9b25dd97823a76a8406293770a63237891c3e1246b32"
       },
       {
         "path": "proofs/lib/Lax11Proofs/Labels.ilean",
-        "bytes": 5380,
-        "sha256": "aed1674ebfc2edf2eaa71257a8af881f03548e44db51ecac062d6ed99aba9a52"
+        "bytes": 5382,
+        "sha256": "b505d6deca1122e5c91a710272800ee39d6b98fe5215191a0776deb0fb5c67c7"
       },
       {
         "path": "proofs/lib/Lax11Proofs/Labels.ilean.hash",
         "bytes": 16,
-        "sha256": "54abf50d56cee30ab353e8eb1dd5dc2f302c268ef121ee37901f4780304c5a2e"
+        "sha256": "e99515854572f8bbe843924b8ed10fe8bbf73e4d2239598503fb3b3bacd1741a"
       },
       {
         "path": "proofs/lib/Lax11Proofs/Labels.olean",
-        "bytes": 45200,
-        "sha256": "40c08deacdaddb5e0126036650b37c9ecc9011dbd79f78912ad087db923a6751"
+        "bytes": 45688,
+        "sha256": "244c6480ab384dfa4ab1c0450b97752c98b8d8876506d1882984432b0a44ecdc"
       },
       {
         "path": "proofs/lib/Lax11Proofs/Labels.olean.hash",
         "bytes": 16,
-        "sha256": "b96cabb3080e2b5794c8bdbe1b01238fd7574af4492fecf1c0316b9e0cfe6265"
+        "sha256": "f118b13c8a85c5029537debeb93f16044f6dc44325e6dd28fa6cb769f908f4ce"
       },
       {
         "path": "proofs/lib/Lax11Proofs/Labels.trace",
-        "bytes": 2560,
-        "sha256": "0639388c7d26c87482d0351a54ecc8c96dadd6152a1de336f22a9a6c193e305e"
+        "bytes": 2508,
+        "sha256": "5cdff44e19bf769727a70dbd78e6b187e06c05419654e3bd337807412deec1e2"
       },
       {
         "path": "proofs/lib/Lax11Proofs/Mso.ilean",
@@ -1191,18 +1191,18 @@
       },
       {
         "path": "proofs/lib/Lax11Proofs/Mso.olean",
-        "bytes": 171256,
-        "sha256": "1e602df2a52b973a3646372ac988e5c74f0e95fe439a75f2d760b1eb60a5dc01"
+        "bytes": 171600,
+        "sha256": "432119476952f49b1e7ae306b06f0572e64ce078437293668f54831ceeb9a4c2"
       },
       {
         "path": "proofs/lib/Lax11Proofs/Mso.olean.hash",
         "bytes": 16,
-        "sha256": "6f003ded20c6c74cecc4c649400c5c87ae03f76a1d82da22d0c81c667e288f23"
+        "sha256": "82bcd3f0f88b9fb1666631a4a86b1b4635c036d06f93f24733235192e8435ebd"
       },
       {
         "path": "proofs/lib/Lax11Proofs/Mso.trace",
-        "bytes": 2513,
-        "sha256": "ecd32b42f533ffdd9f46f9ef70f70c92670c870e4602699a7aa66f0a07d35792"
+        "bytes": 2457,
+        "sha256": "a95503e18febdeed262aafba0ce033e299813913704b75af6c2a5b76867d8097"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoAdequacy.ilean",
@@ -1216,68 +1216,68 @@
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoAdequacy.olean",
-        "bytes": 318048,
-        "sha256": "c56b6617e9647fa202e01ad7cc3f4732c154f57cb2e870ae968bdb17a1291894"
+        "bytes": 318576,
+        "sha256": "a1498ed5ec8793810df39b6e48788e242595a12650d56618a789d649ffc3b8c1"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoAdequacy.olean.hash",
         "bytes": 16,
-        "sha256": "ce6bbc9a29eb9f0ae0114bfcbbfa40866aea4fa5a8c78034bc1e4690c28edf5b"
+        "sha256": "bd8758f8081f2b2a9e63b3f29937aa9484c6c787d539843cfbf3299aff08a120"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoAdequacy.trace",
-        "bytes": 2433,
-        "sha256": "0a0b3be94c004e573a5b51ce1af7a0b0ac41cf20e7e42d1ddc18141d26dbe531"
+        "bytes": 2382,
+        "sha256": "cb97e43f005524fa1314d1772e626d45414229449c2aefd3f2c1f822826ef38f"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoCliqueOps.ilean",
-        "bytes": 61673,
-        "sha256": "c16d69e45f4f287a277098327fb2ad7f2de20444179ca1037549f21aba907859"
+        "bytes": 61731,
+        "sha256": "a6116f820b191883651e58b57ff984b6f54da9f03a171954d69564181daa1229"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoCliqueOps.ilean.hash",
         "bytes": 16,
-        "sha256": "febcf49ae04653d98044eda1514a5933afdcd8109b623fc4f5c650a7a18494b2"
+        "sha256": "c8b7a260f39e6be07fa7f38e4b7f6497d046def5876009d85709c1d738d5f5b9"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoCliqueOps.olean",
-        "bytes": 552128,
-        "sha256": "8d87a4db476b7c82504e528125df18ce888e739b6dd60f8eddda071bc1fed70e"
+        "bytes": 552512,
+        "sha256": "3a9a12ce50eab5eb46411528fbcc6f9a5346857031824f759ee24a9191de25a0"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoCliqueOps.olean.hash",
         "bytes": 16,
-        "sha256": "aba01eb6b952197ea1bdddbf5622e491f55b6ef2ddc13d703cfa40d091f1eb90"
+        "sha256": "697f5043ca2867bf531be82e05581d99c49e0166a959df40647bade813d55e14"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoCliqueOps.trace",
-        "bytes": 2635,
-        "sha256": "ff44964ffcc51beeccf4f8adfe8c9a101ec978cd8cf5d64f54ba6cb864a396f3"
+        "bytes": 2575,
+        "sha256": "48505c0bc6d34b2f0b4a79ccb80e001c5e9914d2e573da9d306c39ff18630691"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoComposition.ilean",
-        "bytes": 47105,
-        "sha256": "da64ea2bf09c6d2d7014f91d196867ed450fda1942ab74a5fb5395e58f8ace1d"
+        "bytes": 46937,
+        "sha256": "cfcb4f56339ff383c6fc509990aa6494f908acc2e18889fcb6960d8941dca003"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoComposition.ilean.hash",
         "bytes": 16,
-        "sha256": "6134ac8a5686c2064143870a78a481ff723e81ecc8198173785ffb376d8b5da5"
+        "sha256": "560e217f299ed3ee618c1aa074bfa9744f32cd22e7f46591bb843a3ae3ea2d8d"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoComposition.olean",
-        "bytes": 527304,
-        "sha256": "930ee91d05a323390df120cb7d99cf294822a6c3e4add627e3733b5006f04d94"
+        "bytes": 527048,
+        "sha256": "f1ecd6a71e7ffdb4360d8cd4d4ea1a0f96e809839d8600f6af84aa32f0f74590"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoComposition.olean.hash",
         "bytes": 16,
-        "sha256": "e8710dbfb0813ca850dbeb9ec17028da2e760fb8958cc41de7ceae9ebf3e3d60"
+        "sha256": "a8efb11e27858c7eb0cdd787c07c4bda653c1880fbad2552904ad195378ea458"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoComposition.trace",
-        "bytes": 2482,
-        "sha256": "d79452105becf6f6ec77b46426a0524ed522531ea23291300155d0f665043961"
+        "bytes": 2426,
+        "sha256": "44e2241a76f55d8bd14f6b3c5bc7af4c75b2e8445e2eaca5019bb9d7088a1af6"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoTable.ilean",
@@ -1291,18 +1291,18 @@
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoTable.olean",
-        "bytes": 1164952,
-        "sha256": "092030d33c604920a44932acce393978e152cd4c4569461c67d3824e2643a8a1"
+        "bytes": 1144504,
+        "sha256": "bb2a86d419ec3cf1a576ae85d430c3fddfa1667feb78195572e735e1a87b65db"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoTable.olean.hash",
         "bytes": 16,
-        "sha256": "696a864dcc8b07f3608e8e530625aca9feedabc7406dbbf3b87379b6375c7d1f"
+        "sha256": "ed6e0b2356bb0a0178fba90474bbb3959fbf96953d0b2780794317dc9ce8289c"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoTable.trace",
-        "bytes": 2595,
-        "sha256": "8e76d5deec66f4922d26fce19dbee512a516e7e0d7ab8bf41b79216a3fa2fed6"
+        "bytes": 3283,
+        "sha256": "97ad02f3e59ab2fc59ec08b7ff2db90af9fade9a15403ed26d1ce0ef06683a45"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoTypes.ilean",
@@ -1316,18 +1316,18 @@
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoTypes.olean",
-        "bytes": 541976,
-        "sha256": "dc89c3218e0f89e13696e7a543fd43813be7fd980c8f1ede38ef19aa2dc2705f"
+        "bytes": 546064,
+        "sha256": "99c731b99ba5bd8e7c4bd315a782e13fcb7359f993eee79b25a5ab5a8d662bdb"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoTypes.olean.hash",
         "bytes": 16,
-        "sha256": "414868f32ace9dd542366c897db29a671a2c90fb1cb6f94f010eb9d5fbac1fbc"
+        "sha256": "cc984608621f44fbfd6cf4b5bea4ff67b63034864ad1ff373279c5b07be6305c"
       },
       {
         "path": "proofs/lib/Lax11Proofs/MsoTypes.trace",
-        "bytes": 2963,
-        "sha256": "74f8a8b37face41232a345b7c3ffa2f8d209d1b4ad7978a2f87d49457dab57fb"
+        "bytes": 2895,
+        "sha256": "9e96e00a8c10a9a3f5dbab6ecdf27d597aa29af0be40f5285b9e68500c63f6cc"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeDecomp.ilean",
@@ -1341,218 +1341,218 @@
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeDecomp.olean",
-        "bytes": 848560,
-        "sha256": "1aa61a07ffbd8427e2f3d68572fa0699359a8d0c04a6dc818d6eee6b37be3d37"
+        "bytes": 849928,
+        "sha256": "b533f7634945e32a9bd12adaeac58f0ea70babee27ecec93df7e2e4b76b7c009"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeDecomp.olean.hash",
         "bytes": 16,
-        "sha256": "8d4b7efb9fe7d47c29fdfec9edabf6d62db0f480825086b7fed030dff5065e33"
+        "sha256": "a28842d62d817925ae0c492b3b552fe76f89b08fe5b5a08c9cb5a83322543736"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeDecomp.trace",
-        "bytes": 2790,
-        "sha256": "70701d176bdeb229da36771828a0f7e9dcaca06c8ef7f67d812e93d78502a7bb"
+        "bytes": 2863,
+        "sha256": "318e39dd9c5b35cad5ed888f20fe1ed5884830d28e2056a6ceb26dc9c0a5c7fa"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeFold.ilean",
-        "bytes": 35792,
-        "sha256": "653e03667af932a27372564d891eb2fce315307196d22b6f9f720fe5f3bc68be"
+        "bytes": 35952,
+        "sha256": "be4cc3035ddd77a7ac225efc1ae23539f9738152c547cbcc34e0069ded7ded01"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeFold.ilean.hash",
         "bytes": 16,
-        "sha256": "3865fa8af99447ec776f2e51796fc294eb8cab3ce66fca2236f6fd412eb29f75"
+        "sha256": "984e2066d785bc25e37cdbcdb2048da0b07638e0fa11ac0403dad3e865720e76"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeFold.olean",
-        "bytes": 510088,
-        "sha256": "1a022c65c81b60ae6f862e044b8534b1129647dcbfff6ecfcb607d4a4437ff4a"
+        "bytes": 511080,
+        "sha256": "c5688df328c77ebea4608a533f96a310e0dc16ad2382e6297b74d1326833c2e4"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeFold.olean.hash",
         "bytes": 16,
-        "sha256": "b48ea17ab47bcf0f832fdfd0b24537f9d39847fc594f3de50651975a13dd0ac2"
+        "sha256": "eae3f6de13a8af0623ba52439270872e1a84845145ed488229911e23bbb8e105"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeFold.trace",
-        "bytes": 2428,
-        "sha256": "4041b587cb1219388c8b6f94d79233517bbf47523364314990185ea2c7d1308e"
+        "bytes": 2371,
+        "sha256": "5cd09ca40dbec0a9f81efd3a7da37209cfc2d20691dc0248700d76852121ef74"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeFoldMain.ilean",
-        "bytes": 30500,
-        "sha256": "eb98b1502e8b216deff56092eb8c33ca0710f28ec2abe76a9f758171d15b5db2"
+        "bytes": 30840,
+        "sha256": "f2f8f21e9af5c1a626c84b3da6a5cc8362a722c6c5225debad247570c75c6fff"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeFoldMain.ilean.hash",
         "bytes": 16,
-        "sha256": "a601bc925b743173a20377193b4c4e4d0b45f2016fdfe51a02de826670458475"
+        "sha256": "68346b09af317801af0987d35133206ab157947f0ce4e6924f3961318674c3c4"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeFoldMain.olean",
-        "bytes": 920600,
-        "sha256": "25da28dc04c6367e5c6c86d3c5879e78ae166841fdaa56eb34f3f9d3d32645cd"
+        "bytes": 922816,
+        "sha256": "4d756924928fcfb368e420ab2ac438c37aa9ac13040bceb9df5b6cef38f85059"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeFoldMain.olean.hash",
         "bytes": 16,
-        "sha256": "89ed2170462a0e59a584e4d530318cfa46d75920f77fbae3f517dee77e064be2"
+        "sha256": "3158fd0b2ad94101baa0e95add7204d8da44599178f2aefdb9e7b07675883ac4"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeFoldMain.trace",
-        "bytes": 2625,
-        "sha256": "4238e8c544884a63598a470e120dd1d849d2f290c64250c1d5b93d3f31427c1a"
+        "bytes": 2573,
+        "sha256": "a1cb096459747ff1978358de35def26f8064920aacdc80dd5121a794d99f84a9"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeFoldRun.ilean",
-        "bytes": 46042,
-        "sha256": "cad19f005190494f8b2348681c657dc0ece063bc0c36f5cefacf93b8529ed429"
+        "bytes": 46418,
+        "sha256": "91bd94e7cf60c8cf7f31729b39b4a84d3ba3a989838a3e9d7ddc07562266aec7"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeFoldRun.ilean.hash",
         "bytes": 16,
-        "sha256": "2df114d0de818314b9aded795d94d99cd4e05b558f82fbd5be61d2132b5cfb87"
+        "sha256": "d520dc95105d4912cb43078f847d9ba0dbbdbbdc0ebcb123bae619ff80337c33"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeFoldRun.olean",
-        "bytes": 1379400,
-        "sha256": "1fca56c00b416665708aefe7306a4a6cd4b34eee1ebe7b9402ad17ab9df4fe78"
+        "bytes": 1381464,
+        "sha256": "95a22effa694932eb3670450bdc7425178908e32a4d9837b0c5c0c27b51ed858"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeFoldRun.olean.hash",
         "bytes": 16,
-        "sha256": "ab05d54c6333a209dcf3b7a62bdcf2ca03ca9408923a31ceb8e0f7474e60fe27"
+        "sha256": "567be85a0fa2c2d571e3f303815b92b1b0e39dc904298382954351ca31378774"
       },
       {
         "path": "proofs/lib/Lax11Proofs/TreeFoldRun.trace",
-        "bytes": 2452,
-        "sha256": "170f7e56fa80ee599406b71aa8e4b102f15c91d947e5316877e65f4f9e5fd25f"
+        "bytes": 2392,
+        "sha256": "41881192e8273c634139bd27db1ccbabb69abc7adb401d4611720272b4824311"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VC.ilean",
-        "bytes": 14390,
-        "sha256": "565964b91d02f64c7f3b05cec06a698caddc41dabf561d62debe92588219f4f6"
+        "bytes": 14574,
+        "sha256": "f217a061c450a4dd6e76f7ce5585303187084224b461789e3a5a01584af41ddf"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VC.ilean.hash",
         "bytes": 16,
-        "sha256": "b80f07389de5ddcac6cb9642cda677b4b78d5ee380033c830a580d305ec6f991"
+        "sha256": "baf3a80dca4a427cc262dcd6c7fa2d7079c414fe82c4f8331e2e5c1819f0b239"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VC.olean",
-        "bytes": 835504,
-        "sha256": "ece256fc8fd54f85c4c6b6f7cb2d3101a62ea6cdacb0d870a2e743dbd23bb994"
+        "bytes": 840072,
+        "sha256": "e96159fbfe72accdf991b27242f6045c2154e6e6fcc8737c193b4471723e3bd8"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VC.olean.hash",
         "bytes": 16,
-        "sha256": "956c8adc9fe84b95502b78b4ad06f7aed0f8f7c89033d4051a4b5c1dfd4e0d72"
+        "sha256": "2a4258560064fb293acfb707fc87479c5b5e7f47236e13f0db0c4c3870b2bf7e"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VC.trace",
-        "bytes": 2667,
-        "sha256": "bc41581c225ebfd2464e16bee2ddf812670c96a6aff60d2d681cb344e44bfd6d"
+        "bytes": 2608,
+        "sha256": "a2abc11ef002df00321978834f69b688aacb28f5ada9a858b88044bc202f407f"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCLoop.ilean",
-        "bytes": 53025,
-        "sha256": "b8d7d485b7563ee0ff599933c52a35174cab6d2296203b5d49ca8c5af6ea8ee0"
+        "bytes": 53321,
+        "sha256": "3cd9789f010097165ea1fb425e3a6501677ae6f3fa1ef9c16d843701368346dc"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCLoop.ilean.hash",
         "bytes": 16,
-        "sha256": "557c39b09e2a1c6e995f417a5b4dacbba0c0e905f6ce67ebe128cee676656d56"
+        "sha256": "bf1e92dd5534659f2f379b349549beca269c7f019b49dcbd34201cc4865c9221"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCLoop.olean",
-        "bytes": 2663896,
-        "sha256": "55c886d2c594543c7adf79f61182fb98750409b78ecbfeda76ffd0cf45f84add"
+        "bytes": 2664200,
+        "sha256": "55eb810a3a4a64053012d1425bc9badfdc50716b5f91725ab175863d51853fe3"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCLoop.olean.hash",
         "bytes": 16,
-        "sha256": "3ea134e2295d39d89dd47417c580a7eec3de011aea5e730c0e34c5dc4eea018d"
+        "sha256": "99f6bded26ad961678bc3ee249f0afaa517beb41ce4c2abb0fdec4aa7ac1e83c"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCLoop.trace",
-        "bytes": 2399,
-        "sha256": "b2f8deccdcb88c2ac3abab3f8514c9a597d3e4ac61d5c19723b12f37e869d80a"
+        "bytes": 2353,
+        "sha256": "f9a7b63814e6c8fd552cafffab4a137a2ab8692e5bf2b7e9cf21f0012101c669"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCMain.ilean",
-        "bytes": 26824,
-        "sha256": "ac94997de20bab239af0e90b7f1a7c0373517b88bfc0713f459578ed2b20575e"
+        "bytes": 27108,
+        "sha256": "49e563b04d9d14b58abab1737d89e4bbec35cfa7bd5218c0f1d0fd01f817acf0"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCMain.ilean.hash",
         "bytes": 16,
-        "sha256": "fa99f051d1f3d10d014810df9e2702cc83abfa13e01b01609308b567768a8da4"
+        "sha256": "81736dc50c7545804db63fd292c68e86ff01931f32ce2efe14be5f2c13006ed2"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCMain.olean",
-        "bytes": 1222984,
-        "sha256": "ef4fad74dd62504578def3342b08475f721d548d39b2ddc02986c0599b6c0d8c"
+        "bytes": 1226448,
+        "sha256": "9f95e1f8925ba696319a926d44f3b6800a6c6a95549517ae5a90eab8486069d8"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCMain.olean.hash",
         "bytes": 16,
-        "sha256": "78d2b2e202d296ba1a3e189d2bdf1c6ea4b48402094f8680550b63351f7975f7"
+        "sha256": "b3491c506016050d3d4753eeac8fec756bee91e02e96013f8c6dd3ddd26960d9"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCMain.trace",
-        "bytes": 2706,
-        "sha256": "55c2bf3c27a530e709f083d714a05e4fbb6fa24bff68956be063e7596be762ba"
+        "bytes": 2658,
+        "sha256": "4746d9131417258b66703855659e32ac9a6963046c9fd5f1d912213953592699"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCScan.ilean",
-        "bytes": 19592,
-        "sha256": "40850f30e82cc378ea8ffcca9b2c3631655e1bf3bcccabaef8d34c352bf553a3"
+        "bytes": 19816,
+        "sha256": "c8b5402ed8d221c02d724169c6a4d900f52bcebdd0228c99b24ed7e2a69cd862"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCScan.ilean.hash",
         "bytes": 16,
-        "sha256": "798885908851db6fcae877af3386cb1b461c4f95960081b3baada008969d5abd"
+        "sha256": "672fd45f5b6ca19792f872d3135ec2d019c79d66c550dd39f4144e24bc2ef7e2"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCScan.olean",
-        "bytes": 1508672,
-        "sha256": "6426aadd582f87991f4fd8d759c38d6083eddd5244bed807c6c61f358ecc539e"
+        "bytes": 1502648,
+        "sha256": "2f0240be28166ece1f078e4a2bab7580a5e10b8d50faefc8a08c16786ac630f2"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCScan.olean.hash",
         "bytes": 16,
-        "sha256": "b0e5cb730ab87abda73e2f7e0daef5c03aa2ffe8154932c36f8f0ab9ee6c9d75"
+        "sha256": "c30a526b6b3f37e92a932bc88e3e351b5c7598977e3f0a633c2f2d6a80828774"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCScan.trace",
-        "bytes": 2391,
-        "sha256": "f96f3c23b3344e2d9d364f206734f591ea46788be51a72d2699410bd85947933"
+        "bytes": 2345,
+        "sha256": "8d8b285125696625f1be6cfd7e4fcce3d72f4de2f82bea1bdd1d09f5902942b7"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCSpec.ilean",
-        "bytes": 41384,
-        "sha256": "2b3274654be486b1ab344f92c9eff8a80deee8ffe9dfe85549f74941d6fcdb40"
+        "bytes": 41273,
+        "sha256": "ad9c1692757f260f2f09b41b3ca1a213580eb2df95dcf8a6481adc2ff884c2b1"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCSpec.ilean.hash",
         "bytes": 16,
-        "sha256": "ec86014b5a257a1230dd2e762cc74c6940c753a9e46c5690b1e6e8867e48e142"
+        "sha256": "51a0b5784ec9ba3a05e9bd696b92497e6034bfd12e8cc1ebb94f35427ffc3c76"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCSpec.olean",
-        "bytes": 953224,
-        "sha256": "1de70606ca3b8f37dfc77c20321e8dfd580e0ab6edc38743bb0f28cc40dd8af1"
+        "bytes": 952888,
+        "sha256": "8d11323c124bf2bfbd79620bb4141a672f8f532656efa02b7d847c5e4f4e0da5"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCSpec.olean.hash",
         "bytes": 16,
-        "sha256": "c112a97cc989acf650c1005c679cf56858a1e2e6b8f5788810250e021c4e77db"
+        "sha256": "6bbe409f1d9b9ccdd9d37d1315f83e9a1cb5bc0a58c1b31cfd7bae3cfb29df69"
       },
       {
         "path": "proofs/lib/Lax11Proofs/VCSpec.trace",
-        "bytes": 2545,
-        "sha256": "dd47904494ad40ecfa4c5977e231df43b0870a8bf71fedea145775aeebb231ce"
+        "bytes": 2495,
+        "sha256": "fc7bf48e79fba173a510b2e5d2929dad43e9a659ea03cd6f3b83443db5a0bc97"
       },
       {
         "path": "proofs/lib/Lax11Proofs.ilean",
@@ -1566,33 +1566,33 @@
       },
       {
         "path": "proofs/lib/Lax11Proofs.olean",
-        "bytes": 4168,
-        "sha256": "3648f486b65398606231a6c96f464b8c55880531d9f1bbc09681969aa16de859"
+        "bytes": 4352,
+        "sha256": "a3ea9ca1bcea7844b16ec46fd6dbaf7bc95620fcb2dd65e6a2458bd8e30b95a4"
       },
       {
         "path": "proofs/lib/Lax11Proofs.olean.hash",
         "bytes": 16,
-        "sha256": "28f99726b310916144439ee4b37a1571977a9cc4cbe2051f9afaea62ff9a7b55"
+        "sha256": "b8146f9ff45a6329d6c23263ea5e5356d0bd267768375af190b63502f22517de"
       },
       {
         "path": "proofs/lib/Lax11Proofs.trace",
-        "bytes": 6422,
-        "sha256": "ad1b3109eaca3951a8245c28dedf04981972b3f0ae42d8ace736abf086e6323c"
+        "bytes": 6212,
+        "sha256": "5c1e0f30a19851a03f441791820d35fe0b77e375a912b780522f71e77aada0b7"
       },
       {
         "path": "proofs/package/lake-manifest.json",
-        "bytes": 3760,
-        "sha256": "0dc7acc18956b4044f26cda4615f4c19f13131175c89a6b78f7cdeca9683bc81"
+        "bytes": 3771,
+        "sha256": "27996d311a0c00d18bb37ed3c3558aec6bc392a31e7bd656dd0b138e9e0ee7e0"
       },
       {
         "path": "proofs/package/lakefile.toml",
-        "bytes": 892,
-        "sha256": "8230eee2933bada4c3fc8f25691058c6aca8d4556badeea2795cedab60380d8a"
+        "bytes": 916,
+        "sha256": "012dce85d2dfc954d5f8bdbd76ec32b0f9b7a68334e01b2cae55d8facddb0c9d"
       },
       {
         "path": "proofs/package/Lax11Proofs/CC.lean",
-        "bytes": 7449,
-        "sha256": "4b737afbb2ac94a79e00e6965111a1c380f7db02b88fb1ad41c9d3e8befe6b5b"
+        "bytes": 7403,
+        "sha256": "217fe2eaaf555f1e84779ae65d5e9dec96168875b9cb80b8314948a0bf2a3bba"
       },
       {
         "path": "proofs/package/Lax11Proofs/CCGraph.lean",
@@ -1601,23 +1601,23 @@
       },
       {
         "path": "proofs/package/Lax11Proofs/CCMain.lean",
-        "bytes": 6880,
-        "sha256": "9b8e679e047d42beb6711e66468c7627a6a823fd5d039ba8fa76c97c4298fe66"
+        "bytes": 6908,
+        "sha256": "b6c184ca6345f4a2cdedd56e770e9f5480889e886a348d0856d7ec2aebf5ff5a"
       },
       {
         "path": "proofs/package/Lax11Proofs/CCPhases.lean",
-        "bytes": 7836,
-        "sha256": "27d9c415c903ad7f3d5be2765b5e2109daf04bd011e7e745bf8ff767f9099899"
+        "bytes": 7864,
+        "sha256": "78b5bd90446a29d2f11c30e02be021ce0f86d2395108ae70ee8132d0102df665"
       },
       {
         "path": "proofs/package/Lax11Proofs/CCSearch.lean",
-        "bytes": 25632,
-        "sha256": "cbd9a3eec33b54f56b865c745ab14e154e33a7afee0ecf17ea880a2734304d02"
+        "bytes": 25660,
+        "sha256": "59905437ca0810d24835ad72b3603be3072364e8ddd4a4f233919c03024cdae6"
       },
       {
         "path": "proofs/package/Lax11Proofs/CCSweep.lean",
-        "bytes": 20175,
-        "sha256": "a01c288f9a6b1dfef838d93cde1e3ddb73c0c5e357eca1fb19520cfd9396a1c4"
+        "bytes": 20199,
+        "sha256": "d55078dad8f54fe4d040960a17753f20e6ee56bdca6a209c8783ca186c02ff6d"
       },
       {
         "path": "proofs/package/Lax11Proofs/CliqueExpr.lean",
@@ -1626,13 +1626,13 @@
       },
       {
         "path": "proofs/package/Lax11Proofs/CourcelleDriver.lean",
-        "bytes": 16956,
-        "sha256": "4f0098da48635c33a34ebb6bde1f7238c3438491d16eec0dc635c808755e28e2"
+        "bytes": 16620,
+        "sha256": "9a8f8945a2a30bd817d18334c5c522036a03835e4549646002e668b8eeb2e11a"
       },
       {
         "path": "proofs/package/Lax11Proofs/CourcelleMain.lean",
-        "bytes": 35942,
-        "sha256": "8320798ae2b9ef884f98cd8d39fd214c2d70f4b34ab9235fabdb54f6bc70d129"
+        "bytes": 35974,
+        "sha256": "230801ef28172a8d70b3c23c2195a8f15e2081305329bcd506705e20709d27fe"
       },
       {
         "path": "proofs/package/Lax11Proofs/CourcelleSmoke.lean",
@@ -1661,13 +1661,13 @@
       },
       {
         "path": "proofs/package/Lax11Proofs/MsoCliqueOps.lean",
-        "bytes": 30826,
-        "sha256": "413fd61025e0293e911c33095f6da63f55bb9381f141ac2ef25a5dfdae3b81d6"
+        "bytes": 30858,
+        "sha256": "36b25deba699bb3ae078f2e8dc549158df6fe2fe06b6bf1e6fdcc5784bcd35b0"
       },
       {
         "path": "proofs/package/Lax11Proofs/MsoComposition.lean",
-        "bytes": 32442,
-        "sha256": "2edf078686eb5a349c33f422b0540b426d3f79951f5dbb8bcd36396b8fd983ee"
+        "bytes": 32425,
+        "sha256": "47e56258ad7bfc01c3b2a8e3c6f31dfb965fa611f6cd28f01ed6939f16b7c97c"
       },
       {
         "path": "proofs/package/Lax11Proofs/MsoTable.lean",
@@ -1686,38 +1686,38 @@
       },
       {
         "path": "proofs/package/Lax11Proofs/TreeFold.lean",
-        "bytes": 19655,
-        "sha256": "d03c03847cfb9bf8b47704674fecf3ba990ed80a2b9d4f1311a95461b976acee"
+        "bytes": 19675,
+        "sha256": "8b3c5424f54de7732961132bbc1577b0579192f4d14e602349d3b24d56556384"
       },
       {
         "path": "proofs/package/Lax11Proofs/TreeFoldMain.lean",
-        "bytes": 16203,
-        "sha256": "a4b56a70ffd26ef77988db39431dc22a1b26d3743769fbe339ada1f483fec958"
+        "bytes": 16231,
+        "sha256": "3cb377185ae120066fddd59dcc9746066846f1919c1e9af1c2def78d88832f7e"
       },
       {
         "path": "proofs/package/Lax11Proofs/TreeFoldRun.lean",
-        "bytes": 20528,
-        "sha256": "5fc40553321754eea25493867e8c68ba995ffc3d63567f5217bdc5809ae005e6"
+        "bytes": 20544,
+        "sha256": "b683a0324b797e6cb2def9d1bdf444cd7d4b33a5d3d270a76fbd1e4feb1cd2a3"
       },
       {
         "path": "proofs/package/Lax11Proofs/VC.lean",
-        "bytes": 6813,
-        "sha256": "a8a9aa97721dcd27c7aeed9a055acfb8d17086a432a455c487a9e0b988a9dc12"
+        "bytes": 6833,
+        "sha256": "ab854e6b602ae0697125810d0d52b73646b5db3f66d67602090340a727951930"
       },
       {
         "path": "proofs/package/Lax11Proofs/VCLoop.lean",
-        "bytes": 28592,
-        "sha256": "c1e85ae47ead1437673f994dc129e8e55c475527f8adc52d74bb398bd8a4bf05"
+        "bytes": 28608,
+        "sha256": "684da300a5eab7691a71c73bf2fefb34f93477d9f4a137c3cd30c1eb98193731"
       },
       {
         "path": "proofs/package/Lax11Proofs/VCMain.lean",
-        "bytes": 19286,
-        "sha256": "25440cdb7965d8421f6fc4c3f893c330b83cbafee858cc220180bb389affd1fa"
+        "bytes": 19310,
+        "sha256": "38cf7ac299fb8bbb22c97032dd18d36e5ade26d78cabb27471fe6bccd15748d6"
       },
       {
         "path": "proofs/package/Lax11Proofs/VCScan.lean",
-        "bytes": 15090,
-        "sha256": "bec201f4648c27a6baa5b960474279077387ff53af332521c7009a556e18b3a9"
+        "bytes": 15106,
+        "sha256": "8ed5280e7557f24a7fcbe2ab316e26ea30580d48cf15f2196aabf9e15091d777"
       },
       {
         "path": "proofs/package/Lax11Proofs/VCSpec.lean",
@@ -1732,9 +1732,9 @@
       {
         "path": "proofs/package/lean-toolchain",
         "bytes": 25,
-        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
       }
     ],
-    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:d75cc4ea7bcb98741f0ac65c82c505ce989af60051fe36622f97166707077646"
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:de8300f45c0dccadc17e76dc708cb6cd559d68d33919d066e50b1248e2708e7e"
   }
 }
