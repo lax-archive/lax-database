@@ -4,5 +4,1075 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 129
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-303562",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "Panoptic Quality: exact rules for inclusion, removal and duplication, the sharpness of the matching threshold, and the annotator ceiling",
+      "authors": [
+        {
+          "name": "Joel Cruz Cabrera",
+          "orcid": "0009-0005-4048-1237",
+          "github": "joelcanary"
+        }
+      ],
+      "bibEntries": []
+    },
+    "abstract": "Panoptic Quality (Kirillov et al., 2019) scores an instance segmentation as the sum of the matched intersection-over-union values over $|TP| + \\tfrac12|FP| + \\tfrac12|FN|$. This submission treats the metric as a function of those four counts and proves the exact identities that govern how it moves when one prediction is added, removed, or duplicated.\n\nThe inclusion rule: a candidate that matches with probability $p$ and IoU $j$ raises the expected score if and only if $p\\,j > \\mathrm{PQ}/2$, because the denominator rises by exactly $\\tfrac12$ whether the candidate matches or not. The removal rule is its mirror image, and the two are inverse. Under evaluators that accumulate every pair above the threshold instead of a one-to-one matching, a duplicate of a matched prediction with IoU $v$ raises the score if and only if $v > \\mathrm{PQ}$, and no reweighting of false positives and false negatives removes this incentive; under one-to-one matching the same duplicate is a false positive and lowers the score exactly when false positives carry positive weight.\n\nTwo further statements concern the matching itself and the data. With the strict threshold $\\mathrm{IoU} > \\tfrac12$ a prediction matches at most one of any family of disjoint annotations, and the threshold is sharp: at $\\tfrac12$ a prediction can tie with two. When two annotators of the same image disagree in their instance counts, the Panoptic Quality of any prediction scored against both is strictly below $1$, by a margin of half the disagreement.\n\nAll statements are elementary and their proofs are short; their value is that a competition, a benchmark, or a paper can cite the exact condition rather than an intuition. They were used to select the operating point of a solar-filament segmentation pipeline and to diagnose a metric-inflating evaluator.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax303562.AnnotatorCeiling",
+      "path": "concepts/Lax303562/AnnotatorCeiling.lean",
+      "title": "The ceiling imposed by two disagreeing annotators",
+      "type": "theorem",
+      "description": "When the same image is annotated twice, with `a` and `b` instances, a prediction\nwith `m` instances can be scored against both. Its true positives against the\nfirst annotator are at most `a`, and against the second at most `m`. If the\nannotators disagree in their counts, `a < b`, the total number of true positives\nstays strictly below the combined denominator `m + (a + b)/2`, by a margin of\n`(b − a)/2`: half the disagreement.\n\nSince each matched IoU is at most `1`, the combined numerator is at most the\nnumber of true positives, so the combined Panoptic Quality is strictly below `1`\nfor every prediction. The ceiling is set by the annotators, not by the model.",
+      "imports": [
+        "Lax303562.PanopticQuality"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax303562.PanopticQuality\n\n/-!\n---\ntitle: The ceiling imposed by two disagreeing annotators\ntype: theorem\n---\nWhen the same image is annotated twice, with `a` and `b` instances, a prediction\nwith `m` instances can be scored against both. Its true positives against the\nfirst annotator are at most `a`, and against the second at most `m`. If the\nannotators disagree in their counts, `a < b`, the total number of true positives\nstays strictly below the combined denominator `m + (a + b)/2`, by a margin of\n`(b − a)/2`: half the disagreement.\n\nSince each matched IoU is at most `1`, the combined numerator is at most the\nnumber of true positives, so the combined Panoptic Quality is strictly below `1`\nfor every prediction. The ceiling is set by the annotators, not by the model.\n-/\n\nnamespace Lax303562.AnnotatorCeiling\n\n/-- With `a < b` annotated instances and `m` predicted ones, the true positives\nagainst both annotators are strictly fewer than the combined denominator. -/\naxiom ceiling_two_annotators (m a b tpA tpB : ℕ)\n    (hab : a < b) (hA : tpA ≤ a) (hB : tpB ≤ m) :\n    ((tpA : ℝ) + tpB) < (m : ℝ) + ((a : ℝ) + b) / 2\n\n/-- The combined Panoptic Quality against two disagreeing annotators is strictly\nbelow `1`, whatever the prediction. -/\naxiom pq_lt_one_of_disagreement (sA sB : ℝ) (m a b tpA tpB : ℕ)\n    (hab : a < b) (hA : tpA ≤ a) (hB : tpB ≤ m)\n    (hsA : sA ≤ tpA) (hsB : sB ≤ tpB) (hm : 0 < m) :\n    (sA + sB) / ((m : ℝ) + ((a : ℝ) + b) / 2) < 1\n\nend Lax303562.AnnotatorCeiling\n",
+      "statements": [
+        {
+          "id": "Lax303562.AnnotatorCeiling.ceiling_two_annotators",
+          "signature": "ceiling_two_annotators : ∀ (m a b tpA tpB : Nat),\n  instLTNat.lt a b →\n    instLENat.le tpA a →\n      instLENat.le tpB m →\n        Real.instLT.lt (instHAdd.hAdd tpA.cast tpB.cast)\n          (instHAdd.hAdd m.cast (instHDiv.hDiv (instHAdd.hAdd a.cast b.cast) 2))",
+          "startLine": 22,
+          "endLine": 26,
+          "doc": "With `a < b` annotated instances and `m` predicted ones, the true positives\nagainst both annotators are strictly fewer than the combined denominator."
+        },
+        {
+          "id": "Lax303562.AnnotatorCeiling.pq_lt_one_of_disagreement",
+          "signature": "pq_lt_one_of_disagreement : ∀ (sA sB : Real) (m a b tpA tpB : Nat),\n  instLTNat.lt a b →\n    instLENat.le tpA a →\n      instLENat.le tpB m →\n        Real.instLE.le sA tpA.cast →\n          Real.instLE.le sB tpB.cast →\n            instLTNat.lt 0 m →\n              Real.instLT.lt\n                (instHDiv.hDiv (instHAdd.hAdd sA sB)\n                  (instHAdd.hAdd m.cast (instHDiv.hDiv (instHAdd.hAdd a.cast b.cast) 2)))\n                1",
+          "startLine": 28,
+          "endLine": 33,
+          "doc": "The combined Panoptic Quality against two disagreeing annotators is strictly\nbelow `1`, whatever the prediction."
+        }
+      ]
+    },
+    {
+      "id": "Lax303562.Candidate",
+      "path": "concepts/Lax303562/Candidate.lean",
+      "title": "The inclusion rule for a candidate prediction",
+      "type": "theorem",
+      "description": "A candidate prediction is included or not before the score is computed. Suppose\nit will match some annotation with probability `p` and, when it does, with IoU\n`j`. Whether it matches or not, the denominator rises by exactly `½`: a match\nturns a false negative into a true positive (`n + 1`, `fn − 1`, net `+½`), a miss\nadds a false positive (`+½`). The expected score after inclusion is therefore\nthe exact quotient `pqWithCandidate`.\n\nThe main statement is the inclusion rule: including the candidate raises the\nexpected Panoptic Quality if and only if its expected contribution `p · j`\nexceeds half the current score. The remaining statements are the two directions\nin the form in which a decision procedure uses them, and the same rule solved for\nthe match probability.",
+      "imports": [
+        "Lax303562.PanopticQuality"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax303562.PanopticQuality\n\n/-!\n---\ntitle: The inclusion rule for a candidate prediction\ntype: theorem\n---\nA candidate prediction is included or not before the score is computed. Suppose\nit will match some annotation with probability `p` and, when it does, with IoU\n`j`. Whether it matches or not, the denominator rises by exactly `½`: a match\nturns a false negative into a true positive (`n + 1`, `fn − 1`, net `+½`), a miss\nadds a false positive (`+½`). The expected score after inclusion is therefore\nthe exact quotient `pqWithCandidate`.\n\nThe main statement is the inclusion rule: including the candidate raises the\nexpected Panoptic Quality if and only if its expected contribution `p · j`\nexceeds half the current score. The remaining statements are the two directions\nin the form in which a decision procedure uses them, and the same rule solved for\nthe match probability.\n-/\n\nnamespace Lax303562.Candidate\n\nopen Lax303562.PanopticQuality\n\n/-- The expected Panoptic Quality after including a candidate that matches with\nprobability `p` and, when it matches, with IoU `j`. -/\nnoncomputable def pqWithCandidate (s p j : ℝ) (n fp fn : ℕ) : ℝ :=\n  (s + p * j) / (den n fp fn + 1 / 2)\n\n/-- Including the candidate raises the expected score if and only if\n`p · j > PQ / 2`. -/\naxiom candidate_iff (s p j : ℝ) (n fp fn : ℕ) (hd : 0 < den n fp fn) :\n    pq s n fp fn < pqWithCandidate s p j n fp fn ↔ pq s n fp fn / 2 < p * j\n\n/-- Above the threshold the candidate raises the score. -/\naxiom lt_of_above (s p j : ℝ) (n fp fn : ℕ) (hd : 0 < den n fp fn)\n    (h : pq s n fp fn / 2 < p * j) : pq s n fp fn < pqWithCandidate s p j n fp fn\n\n/-- At or below the threshold the candidate does not raise the score. -/\naxiom le_of_below (s p j : ℝ) (n fp fn : ℕ) (hd : 0 < den n fp fn)\n    (h : p * j ≤ pq s n fp fn / 2) : pqWithCandidate s p j n fp fn ≤ pq s n fp fn\n\n/-- The rule solved for the match probability: for a positive IoU `j`, the\ncandidate raises the score if and only if `p > PQ / (2 j)`. -/\naxiom equilibrium (s p j : ℝ) (n fp fn : ℕ) (hd : 0 < den n fp fn) (hj : 0 < j) :\n    pq s n fp fn < pqWithCandidate s p j n fp fn ↔ pq s n fp fn / (2 * j) < p\n\nend Lax303562.Candidate\n",
+      "statements": [
+        {
+          "id": "Lax303562.Candidate.candidate_iff",
+          "signature": "candidate_iff : ∀ (s p j : Real) (n fp fn : Nat),\n  Real.instLT.lt 0 (Lax303562.PanopticQuality.den n fp fn) →\n    Iff (Real.instLT.lt (Lax303562.PanopticQuality.pq s n fp fn) (Lax303562.Candidate.pqWithCandidate s p j n fp fn))\n      (Real.instLT.lt (instHDiv.hDiv (Lax303562.PanopticQuality.pq s n fp fn) 2) (instHMul.hMul p j))",
+          "startLine": 31,
+          "endLine": 34,
+          "doc": "Including the candidate raises the expected score if and only if\n`p · j > PQ / 2`."
+        },
+        {
+          "id": "Lax303562.Candidate.equilibrium",
+          "signature": "equilibrium : ∀ (s p j : Real) (n fp fn : Nat),\n  Real.instLT.lt 0 (Lax303562.PanopticQuality.den n fp fn) →\n    Real.instLT.lt 0 j →\n      Iff (Real.instLT.lt (Lax303562.PanopticQuality.pq s n fp fn) (Lax303562.Candidate.pqWithCandidate s p j n fp fn))\n        (Real.instLT.lt (instHDiv.hDiv (Lax303562.PanopticQuality.pq s n fp fn) (instHMul.hMul 2 j)) p)",
+          "startLine": 44,
+          "endLine": 47,
+          "doc": "The rule solved for the match probability: for a positive IoU `j`, the\ncandidate raises the score if and only if `p > PQ / (2 j)`."
+        },
+        {
+          "id": "Lax303562.Candidate.le_of_below",
+          "signature": "le_of_below : ∀ (s p j : Real) (n fp fn : Nat),\n  Real.instLT.lt 0 (Lax303562.PanopticQuality.den n fp fn) →\n    Real.instLE.le (instHMul.hMul p j) (instHDiv.hDiv (Lax303562.PanopticQuality.pq s n fp fn) 2) →\n      Real.instLE.le (Lax303562.Candidate.pqWithCandidate s p j n fp fn) (Lax303562.PanopticQuality.pq s n fp fn)",
+          "startLine": 40,
+          "endLine": 42,
+          "doc": "At or below the threshold the candidate does not raise the score."
+        },
+        {
+          "id": "Lax303562.Candidate.lt_of_above",
+          "signature": "lt_of_above : ∀ (s p j : Real) (n fp fn : Nat),\n  Real.instLT.lt 0 (Lax303562.PanopticQuality.den n fp fn) →\n    Real.instLT.lt (instHDiv.hDiv (Lax303562.PanopticQuality.pq s n fp fn) 2) (instHMul.hMul p j) →\n      Real.instLT.lt (Lax303562.PanopticQuality.pq s n fp fn) (Lax303562.Candidate.pqWithCandidate s p j n fp fn)",
+          "startLine": 36,
+          "endLine": 38,
+          "doc": "Above the threshold the candidate raises the score."
+        }
+      ]
+    },
+    {
+      "id": "Lax303562.Duplication",
+      "path": "concepts/Lax303562/Duplication.lean",
+      "title": "Duplicating a matched prediction under all-pairs accumulation",
+      "type": "theorem",
+      "description": "Some evaluators accumulate *every* (prediction, annotation) pair whose IoU clears\nthe threshold, rather than a one-to-one matching. Under that rule a second copy\nof an already matched prediction, with IoU `v` against the same annotation, adds\n`v` to the numerator and one true positive to the denominator, and creates no\nfalse positive.\n\nThe first statement says exactly when this raises the score: if and only if `v`\nexceeds the current Panoptic Quality. The second says that under one-to-one\nmatching the same copy cannot match (its annotation is taken), counts as a false\npositive, and strictly lowers the score whenever there is anything to lose. The\nthird puts the two together: the same submission moves the metric in opposite\ndirections depending on the counting rule.\n\nHypotheses: `0 < den n fp fn` says that there is at least one prediction or\nannotation, so the quotient is not the empty case.",
+      "imports": [
+        "Lax303562.PanopticQuality"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax303562.PanopticQuality\n\n/-!\n---\ntitle: Duplicating a matched prediction under all-pairs accumulation\ntype: theorem\n---\nSome evaluators accumulate *every* (prediction, annotation) pair whose IoU clears\nthe threshold, rather than a one-to-one matching. Under that rule a second copy\nof an already matched prediction, with IoU `v` against the same annotation, adds\n`v` to the numerator and one true positive to the denominator, and creates no\nfalse positive.\n\nThe first statement says exactly when this raises the score: if and only if `v`\nexceeds the current Panoptic Quality. The second says that under one-to-one\nmatching the same copy cannot match (its annotation is taken), counts as a false\npositive, and strictly lowers the score whenever there is anything to lose. The\nthird puts the two together: the same submission moves the metric in opposite\ndirections depending on the counting rule.\n\nHypotheses: `0 < den n fp fn` says that there is at least one prediction or\nannotation, so the quotient is not the empty case.\n-/\n\nnamespace Lax303562.Duplication\n\nopen Lax303562.PanopticQuality\n\n/-- Under all-pairs accumulation, a duplicate with IoU `v` of an already matched\nprediction raises the Panoptic Quality exactly when `v` is larger than the\ncurrent Panoptic Quality. -/\naxiom dup_iff (s v : ℝ) (n fp fn : ℕ) (hd : 0 < den n fp fn) :\n    pq s n fp fn < pq (s + v) (n + 1) fp fn ↔ pq s n fp fn < v\n\n/-- Under one-to-one matching the duplicate is a false positive, and any false\npositive strictly lowers a positive score. -/\naxiom falsePositive_lt (s : ℝ) (n fp fn : ℕ) (hs : 0 < s) (hd : 0 < den n fp fn) :\n    pq s n (fp + 1) fn < pq s n fp fn\n\n/-- A duplicate better than the current score raises the metric under all-pairs\naccumulation and lowers it under one-to-one matching. -/\naxiom opposite_directions (s v : ℝ) (n fp fn : ℕ) (hs : 0 < s) (hd : 0 < den n fp fn)\n    (hv : pq s n fp fn < v) :\n    pq s n fp fn < pq (s + v) (n + 1) fp fn ∧ pq s n (fp + 1) fn < pq s n fp fn\n\nend Lax303562.Duplication\n",
+      "statements": [
+        {
+          "id": "Lax303562.Duplication.dup_iff",
+          "signature": "dup_iff : ∀ (s v : Real) (n fp fn : Nat),\n  Real.instLT.lt 0 (Lax303562.PanopticQuality.den n fp fn) →\n    Iff\n      (Real.instLT.lt (Lax303562.PanopticQuality.pq s n fp fn)\n        (Lax303562.PanopticQuality.pq (instHAdd.hAdd s v) (instHAdd.hAdd n 1) fp fn))\n      (Real.instLT.lt (Lax303562.PanopticQuality.pq s n fp fn) v)",
+          "startLine": 29,
+          "endLine": 33,
+          "doc": "Under all-pairs accumulation, a duplicate with IoU `v` of an already matched\nprediction raises the Panoptic Quality exactly when `v` is larger than the\ncurrent Panoptic Quality."
+        },
+        {
+          "id": "Lax303562.Duplication.falsePositive_lt",
+          "signature": "falsePositive_lt : ∀ (s : Real) (n fp fn : Nat),\n  Real.instLT.lt 0 s →\n    Real.instLT.lt 0 (Lax303562.PanopticQuality.den n fp fn) →\n      Real.instLT.lt (Lax303562.PanopticQuality.pq s n (instHAdd.hAdd fp 1) fn) (Lax303562.PanopticQuality.pq s n fp fn)",
+          "startLine": 35,
+          "endLine": 38,
+          "doc": "Under one-to-one matching the duplicate is a false positive, and any false\npositive strictly lowers a positive score."
+        },
+        {
+          "id": "Lax303562.Duplication.opposite_directions",
+          "signature": "opposite_directions : ∀ (s v : Real) (n fp fn : Nat),\n  Real.instLT.lt 0 s →\n    Real.instLT.lt 0 (Lax303562.PanopticQuality.den n fp fn) →\n      Real.instLT.lt (Lax303562.PanopticQuality.pq s n fp fn) v →\n        And\n          (Real.instLT.lt (Lax303562.PanopticQuality.pq s n fp fn)\n            (Lax303562.PanopticQuality.pq (instHAdd.hAdd s v) (instHAdd.hAdd n 1) fp fn))\n          (Real.instLT.lt (Lax303562.PanopticQuality.pq s n (instHAdd.hAdd fp 1) fn)\n            (Lax303562.PanopticQuality.pq s n fp fn))",
+          "startLine": 40,
+          "endLine": 44,
+          "doc": "A duplicate better than the current score raises the metric under all-pairs\naccumulation and lowers it under one-to-one matching."
+        }
+      ]
+    },
+    {
+      "id": "Lax303562.Matching",
+      "path": "concepts/Lax303562/Matching.lean",
+      "title": "Matching by intersection over union and the sharpness of the threshold ½",
+      "type": "theorem",
+      "description": "Instances are finite sets of pixels. The intersection over union of two such sets\nis the size of their intersection over the size of their union (with the\nconvention that the IoU of two empty sets is `0`). A prediction is matched to an\nannotation when their IoU exceeds a threshold, and the published metric uses the\nthreshold `½` with a strict inequality.\n\nThe first statement is why this threshold makes the matching unambiguous on the\nannotation side: distinct annotations of one image are disjoint, and no\nprediction can exceed IoU `½` with two disjoint sets. The second statement shows\nthat the strictness is necessary: with `≥ ½` a prediction can tie the threshold\nwith two disjoint annotations. The third states both at once: `½` is the infimum\nof the thresholds under which a prediction matches at most one annotation.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.Finset.Card",
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.Finset.Card\nimport Mathlib.Data.Real.Basic\n\n/-!\n---\ntitle: Matching by intersection over union and the sharpness of the threshold ½\ntype: theorem\n---\nInstances are finite sets of pixels. The intersection over union of two such sets\nis the size of their intersection over the size of their union (with the\nconvention that the IoU of two empty sets is `0`). A prediction is matched to an\nannotation when their IoU exceeds a threshold, and the published metric uses the\nthreshold `½` with a strict inequality.\n\nThe first statement is why this threshold makes the matching unambiguous on the\nannotation side: distinct annotations of one image are disjoint, and no\nprediction can exceed IoU `½` with two disjoint sets. The second statement shows\nthat the strictness is necessary: with `≥ ½` a prediction can tie the threshold\nwith two disjoint annotations. The third states both at once: `½` is the infimum\nof the thresholds under which a prediction matches at most one annotation.\n-/\n\nnamespace Lax303562.Matching\n\n/-- Intersection over union of two finite sets; `0` when both are empty. -/\nnoncomputable def iou {α : Type*} [DecidableEq α] (X Y : Finset α) : ℝ :=\n  ((X ∩ Y).card : ℝ) / ((X ∪ Y).card : ℝ)\n\n/-- No prediction has IoU strictly above `½` with two disjoint annotations. -/\naxiom matches_at_most_one {α : Type*} [DecidableEq α] (P A B : Finset α)\n    (hAB : Disjoint A B) (hA : (1 : ℝ) / 2 < iou P A) (hB : (1 : ℝ) / 2 < iou P B) :\n    False\n\n/-- With the non-strict threshold `≥ ½` a prediction can tie with two disjoint\nannotations. -/\naxiom ties_at_half :\n    ∃ (P A B : Finset ℕ), Disjoint A B ∧ (1 : ℝ) / 2 ≤ iou P A ∧ (1 : ℝ) / 2 ≤ iou P B\n\n/-- The threshold `½` is sharp: strictly above it the matching is unambiguous,\nand at `½` it is not. -/\naxiom threshold_sharp :\n    (∀ (P A B : Finset ℕ), Disjoint A B → (1 : ℝ) / 2 < iou P A →\n        (1 : ℝ) / 2 < iou P B → False)\n    ∧ ¬ (∀ (P A B : Finset ℕ), Disjoint A B → (1 : ℝ) / 2 ≤ iou P A →\n        (1 : ℝ) / 2 ≤ iou P B → False)\n\nend Lax303562.Matching\n",
+      "statements": [
+        {
+          "id": "Lax303562.Matching.matches_at_most_one",
+          "signature": "matches_at_most_one : failed to pretty print expression (use 'set_option pp.rawOnError true' for raw representation)",
+          "startLine": 29,
+          "endLine": 32,
+          "doc": "No prediction has IoU strictly above `½` with two disjoint annotations."
+        },
+        {
+          "id": "Lax303562.Matching.threshold_sharp",
+          "signature": "threshold_sharp : failed to pretty print expression (use 'set_option pp.rawOnError true' for raw representation)",
+          "startLine": 39,
+          "endLine": 45,
+          "doc": "The threshold `½` is sharp: strictly above it the matching is unambiguous,\nand at `½` it is not."
+        },
+        {
+          "id": "Lax303562.Matching.ties_at_half",
+          "signature": "ties_at_half : failed to pretty print expression (use 'set_option pp.rawOnError true' for raw representation)",
+          "startLine": 34,
+          "endLine": 37,
+          "doc": "With the non-strict threshold `≥ ½` a prediction can tie with two disjoint\nannotations."
+        }
+      ]
+    },
+    {
+      "id": "Lax303562.PanopticQuality",
+      "path": "concepts/Lax303562/PanopticQuality.lean",
+      "title": "Panoptic Quality as a function of its four counts",
+      "type": "definition",
+      "description": "The *Panoptic Quality* of an instance segmentation (Kirillov et al., 2019) scores\na set of predicted instances against a set of annotated instances. Predictions and\nannotations are matched by intersection over union; a matched pair is a *true\npositive*, an unmatched prediction a *false positive*, an unmatched annotation a\n*false negative*. The metric is\n\n$$\\mathrm{PQ} = \\frac{\\sum_{\\text{matched pairs}} \\mathrm{IoU}}{|TP| + \\tfrac12 |FP| + \\tfrac12 |FN|}.$$\n\nEverything in this submission is a statement about this quotient as a function of\nfour numbers: the sum `s` of the matched IoUs, the number `n` of matched pairs,\nand the counts `fp` and `fn` of false positives and false negatives. How the\nmatching is produced is a separate question, treated in `Matching`.\n\nThe denominator is defined on its own because every result below is an exact\nstatement about how it moves when one count changes.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.Real.Basic\n\n/-!\n---\ntitle: Panoptic Quality as a function of its four counts\ntype: definition\n---\nThe *Panoptic Quality* of an instance segmentation (Kirillov et al., 2019) scores\na set of predicted instances against a set of annotated instances. Predictions and\nannotations are matched by intersection over union; a matched pair is a *true\npositive*, an unmatched prediction a *false positive*, an unmatched annotation a\n*false negative*. The metric is\n\n$$\\mathrm{PQ} = \\frac{\\sum_{\\text{matched pairs}} \\mathrm{IoU}}{|TP| + \\tfrac12 |FP| + \\tfrac12 |FN|}.$$\n\nEverything in this submission is a statement about this quotient as a function of\nfour numbers: the sum `s` of the matched IoUs, the number `n` of matched pairs,\nand the counts `fp` and `fn` of false positives and false negatives. How the\nmatching is produced is a separate question, treated in `Matching`.\n\nThe denominator is defined on its own because every result below is an exact\nstatement about how it moves when one count changes.\n-/\n\nnamespace Lax303562.PanopticQuality\n\n/-- The denominator of Panoptic Quality: matched pairs count `1`, unmatched\npredictions and unmatched annotations count `½` each. -/\nnoncomputable def den (n fp fn : ℕ) : ℝ := (n : ℝ) + (fp + fn) / 2\n\n/-- Panoptic Quality: the sum `s` of the matched IoUs over the denominator. -/\nnoncomputable def pq (s : ℝ) (n fp fn : ℕ) : ℝ := s / den n fp fn\n\nend Lax303562.PanopticQuality\n",
+      "statements": []
+    },
+    {
+      "id": "Lax303562.Removal",
+      "path": "concepts/Lax303562/Removal.lean",
+      "title": "The removal rule for a prediction already in the list",
+      "type": "theorem",
+      "description": "The mirror image of the inclusion rule. A prediction already in the list\ncontributes `p · j` to the numerator (probability `p` of being matched, IoU `j`\nwhen it is) and exactly `½` to the denominator in both cases: removing a matched\none turns a true positive into a false negative (net `−½`), removing an unmatched\none deletes a false positive (`−½`). The score after removal is the exact\nquotient `pqWithoutPrediction`.\n\nRemoving the prediction raises the Panoptic Quality if and only if its\ncontribution is below half the current score. The hypothesis `½ < den n fp fn`\nsays that something remains after the removal, so the new denominator is\npositive. The last statement closes the circuit with `Candidate`: removing what\ninclusion added returns the original score.",
+      "imports": [
+        "Lax303562.PanopticQuality"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax303562.PanopticQuality\n\n/-!\n---\ntitle: The removal rule for a prediction already in the list\ntype: theorem\n---\nThe mirror image of the inclusion rule. A prediction already in the list\ncontributes `p · j` to the numerator (probability `p` of being matched, IoU `j`\nwhen it is) and exactly `½` to the denominator in both cases: removing a matched\none turns a true positive into a false negative (net `−½`), removing an unmatched\none deletes a false positive (`−½`). The score after removal is the exact\nquotient `pqWithoutPrediction`.\n\nRemoving the prediction raises the Panoptic Quality if and only if its\ncontribution is below half the current score. The hypothesis `½ < den n fp fn`\nsays that something remains after the removal, so the new denominator is\npositive. The last statement closes the circuit with `Candidate`: removing what\ninclusion added returns the original score.\n-/\n\nnamespace Lax303562.Removal\n\nopen Lax303562.PanopticQuality\n\n/-- The Panoptic Quality after removing a prediction that contributed `p · j` to\nthe numerator and `½` to the denominator. -/\nnoncomputable def pqWithoutPrediction (s p j : ℝ) (n fp fn : ℕ) : ℝ :=\n  (s - p * j) / (den n fp fn - 1 / 2)\n\n/-- Removing the prediction raises the score if and only if `p · j < PQ / 2`. -/\naxiom removal_iff (s p j : ℝ) (n fp fn : ℕ) (hd : 1 / 2 < den n fp fn) :\n    pq s n fp fn < pqWithoutPrediction s p j n fp fn ↔ p * j < pq s n fp fn / 2\n\n/-- Below the threshold, removal raises the score. -/\naxiom lt_of_below (s p j : ℝ) (n fp fn : ℕ) (hd : 1 / 2 < den n fp fn)\n    (h : p * j < pq s n fp fn / 2) : pq s n fp fn < pqWithoutPrediction s p j n fp fn\n\n/-- At or above the threshold, removal does not raise the score. -/\naxiom le_of_above (s p j : ℝ) (n fp fn : ℕ) (hd : 1 / 2 < den n fp fn)\n    (h : pq s n fp fn / 2 ≤ p * j) : pqWithoutPrediction s p j n fp fn ≤ pq s n fp fn\n\n/-- Inclusion followed by removal of the same prediction returns the original\nscore. -/\naxiom removal_inverts_inclusion (s p j : ℝ) (n fp fn : ℕ) :\n    (s + p * j - p * j) / (den n fp fn + 1 / 2 - 1 / 2) = pq s n fp fn\n\nend Lax303562.Removal\n",
+      "statements": [
+        {
+          "id": "Lax303562.Removal.le_of_above",
+          "signature": "le_of_above : failed to pretty print expression (use 'set_option pp.rawOnError true' for raw representation)",
+          "startLine": 39,
+          "endLine": 41,
+          "doc": "At or above the threshold, removal does not raise the score."
+        },
+        {
+          "id": "Lax303562.Removal.lt_of_below",
+          "signature": "lt_of_below : failed to pretty print expression (use 'set_option pp.rawOnError true' for raw representation)",
+          "startLine": 35,
+          "endLine": 37,
+          "doc": "Below the threshold, removal raises the score."
+        },
+        {
+          "id": "Lax303562.Removal.removal_iff",
+          "signature": "removal_iff : failed to pretty print expression (use 'set_option pp.rawOnError true' for raw representation)",
+          "startLine": 31,
+          "endLine": 33,
+          "doc": "Removing the prediction raises the score if and only if `p · j < PQ / 2`."
+        },
+        {
+          "id": "Lax303562.Removal.removal_inverts_inclusion",
+          "signature": "removal_inverts_inclusion : failed to pretty print expression (use 'set_option pp.rawOnError true' for raw representation)",
+          "startLine": 43,
+          "endLine": 46,
+          "doc": "Inclusion followed by removal of the same prediction returns the original\nscore."
+        }
+      ]
+    },
+    {
+      "id": "Lax303562.WeightedFamily",
+      "path": "concepts/Lax303562/WeightedFamily.lean",
+      "title": "The duplication incentive survives every choice of error weights",
+      "type": "theorem",
+      "description": "Panoptic Quality is the member `a = b = ½` of the family of metrics\n\n$$m_{a,b} = \\frac{s}{n + a\\,|FP| + b\\,|FN|},$$\n\nwhich weigh false positives by `a` and false negatives by `b`. One might hope\nthat some choice of weights removes the incentive to duplicate matched\npredictions under all-pairs accumulation. It does not: a duplicate adds one true\npositive and no error, so the weights never enter the condition, which is the\nsame `v > m_{a,b}` for every `a` and `b`. Under one-to-one matching the duplicate\nis a false positive, and it lowers the score exactly when false positives carry\npositive weight; with `a = 0` it leaves the score unchanged, so `0 < a` is the\nprecise hypothesis. The last statement identifies Panoptic Quality as the member\n`a = b = ½`.",
+      "imports": [
+        "Lax303562.PanopticQuality"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax303562.PanopticQuality\n\n/-!\n---\ntitle: The duplication incentive survives every choice of error weights\ntype: theorem\n---\nPanoptic Quality is the member `a = b = ½` of the family of metrics\n\n$$m_{a,b} = \\frac{s}{n + a\\,|FP| + b\\,|FN|},$$\n\nwhich weigh false positives by `a` and false negatives by `b`. One might hope\nthat some choice of weights removes the incentive to duplicate matched\npredictions under all-pairs accumulation. It does not: a duplicate adds one true\npositive and no error, so the weights never enter the condition, which is the\nsame `v > m_{a,b}` for every `a` and `b`. Under one-to-one matching the duplicate\nis a false positive, and it lowers the score exactly when false positives carry\npositive weight; with `a = 0` it leaves the score unchanged, so `0 < a` is the\nprecise hypothesis. The last statement identifies Panoptic Quality as the member\n`a = b = ½`.\n-/\n\nnamespace Lax303562.WeightedFamily\n\nopen Lax303562.PanopticQuality\n\n/-- The weighted denominator: matched pairs count `1`, false positives `a`, false\nnegatives `b`. -/\nnoncomputable def wden (a b : ℝ) (n fp fn : ℕ) : ℝ := (n : ℝ) + a * fp + b * fn\n\n/-- The weighted metric: the matched IoU sum over the weighted denominator. -/\nnoncomputable def wm (a b s : ℝ) (n fp fn : ℕ) : ℝ := s / wden a b n fp fn\n\n/-- Under all-pairs accumulation a duplicate with IoU `v` raises the weighted\nmetric exactly when `v` exceeds it, for every choice of weights. -/\naxiom dup_iff (a b s v : ℝ) (n fp fn : ℕ) (hd : 0 < wden a b n fp fn) :\n    wm a b s n fp fn < wm a b (s + v) (n + 1) fp fn ↔ wm a b s n fp fn < v\n\n/-- No choice of weights removes the incentive: for all `a` and `b`, a duplicate\nbetter than the current score raises it. -/\naxiom no_weights_remove_incentive (s v : ℝ) (n fp fn : ℕ) :\n    ∀ a b : ℝ, 0 < wden a b n fp fn → wm a b s n fp fn < v →\n      wm a b s n fp fn < wm a b (s + v) (n + 1) fp fn\n\n/-- Under one-to-one matching the duplicate is a false positive, which lowers a\npositive score whenever false positives carry positive weight. -/\naxiom falsePositive_lt (a b s : ℝ) (n fp fn : ℕ) (ha : 0 < a) (hs : 0 < s)\n    (hd : 0 < wden a b n fp fn) :\n    wm a b s n (fp + 1) fn < wm a b s n fp fn\n\n/-- With weight `a = 0` on false positives, a false positive leaves the score\nunchanged: the hypothesis `0 < a` above is exact. -/\naxiom falsePositive_eq_of_zero_weight (b s : ℝ) (n fp fn : ℕ) :\n    wm 0 b s n (fp + 1) fn = wm 0 b s n fp fn\n\n/-- Both directions at once, for the whole family. -/\naxiom opposite_directions (a b s v : ℝ) (n fp fn : ℕ)\n    (ha : 0 < a) (hs : 0 < s) (hd : 0 < wden a b n fp fn)\n    (hv : wm a b s n fp fn < v) :\n    wm a b s n fp fn < wm a b (s + v) (n + 1) fp fn ∧\n      wm a b s n (fp + 1) fn < wm a b s n fp fn\n\n/-- Panoptic Quality is the member `a = b = ½` of the family. -/\naxiom pq_eq_wm_half (s : ℝ) (n fp fn : ℕ) :\n    pq s n fp fn = wm (1 / 2) (1 / 2) s n fp fn\n\nend Lax303562.WeightedFamily\n",
+      "statements": [
+        {
+          "id": "Lax303562.WeightedFamily.dup_iff",
+          "signature": "dup_iff : ∀ (a b s v : Real) (n fp fn : Nat),\n  Real.instLT.lt 0 (Lax303562.WeightedFamily.wden a b n fp fn) →\n    Iff\n      (Real.instLT.lt (Lax303562.WeightedFamily.wm a b s n fp fn)\n        (Lax303562.WeightedFamily.wm a b (instHAdd.hAdd s v) (instHAdd.hAdd n 1) fp fn))\n      (Real.instLT.lt (Lax303562.WeightedFamily.wm a b s n fp fn) v)",
+          "startLine": 34,
+          "endLine": 37,
+          "doc": "Under all-pairs accumulation a duplicate with IoU `v` raises the weighted\nmetric exactly when `v` exceeds it, for every choice of weights."
+        },
+        {
+          "id": "Lax303562.WeightedFamily.falsePositive_eq_of_zero_weight",
+          "signature": "falsePositive_eq_of_zero_weight : ∀ (b s : Real) (n fp fn : Nat),\n  Eq (Lax303562.WeightedFamily.wm 0 b s n (instHAdd.hAdd fp 1) fn) (Lax303562.WeightedFamily.wm 0 b s n fp fn)",
+          "startLine": 51,
+          "endLine": 54,
+          "doc": "With weight `a = 0` on false positives, a false positive leaves the score\nunchanged: the hypothesis `0 < a` above is exact."
+        },
+        {
+          "id": "Lax303562.WeightedFamily.falsePositive_lt",
+          "signature": "falsePositive_lt : ∀ (a b s : Real) (n fp fn : Nat),\n  Real.instLT.lt 0 a →\n    Real.instLT.lt 0 s →\n      Real.instLT.lt 0 (Lax303562.WeightedFamily.wden a b n fp fn) →\n        Real.instLT.lt (Lax303562.WeightedFamily.wm a b s n (instHAdd.hAdd fp 1) fn)\n          (Lax303562.WeightedFamily.wm a b s n fp fn)",
+          "startLine": 45,
+          "endLine": 49,
+          "doc": "Under one-to-one matching the duplicate is a false positive, which lowers a\npositive score whenever false positives carry positive weight."
+        },
+        {
+          "id": "Lax303562.WeightedFamily.no_weights_remove_incentive",
+          "signature": "no_weights_remove_incentive : ∀ (s v : Real) (n fp fn : Nat) (a b : Real),\n  Real.instLT.lt 0 (Lax303562.WeightedFamily.wden a b n fp fn) →\n    Real.instLT.lt (Lax303562.WeightedFamily.wm a b s n fp fn) v →\n      Real.instLT.lt (Lax303562.WeightedFamily.wm a b s n fp fn)\n        (Lax303562.WeightedFamily.wm a b (instHAdd.hAdd s v) (instHAdd.hAdd n 1) fp fn)",
+          "startLine": 39,
+          "endLine": 43,
+          "doc": "No choice of weights removes the incentive: for all `a` and `b`, a duplicate\nbetter than the current score raises it."
+        },
+        {
+          "id": "Lax303562.WeightedFamily.opposite_directions",
+          "signature": "opposite_directions : ∀ (a b s v : Real) (n fp fn : Nat),\n  Real.instLT.lt 0 a →\n    Real.instLT.lt 0 s →\n      Real.instLT.lt 0 (Lax303562.WeightedFamily.wden a b n fp fn) →\n        Real.instLT.lt (Lax303562.WeightedFamily.wm a b s n fp fn) v →\n          And\n            (Real.instLT.lt (Lax303562.WeightedFamily.wm a b s n fp fn)\n              (Lax303562.WeightedFamily.wm a b (instHAdd.hAdd s v) (instHAdd.hAdd n 1) fp fn))\n            (Real.instLT.lt (Lax303562.WeightedFamily.wm a b s n (instHAdd.hAdd fp 1) fn)\n              (Lax303562.WeightedFamily.wm a b s n fp fn))",
+          "startLine": 56,
+          "endLine": 61,
+          "doc": "Both directions at once, for the whole family."
+        },
+        {
+          "id": "Lax303562.WeightedFamily.pq_eq_wm_half",
+          "signature": "pq_eq_wm_half : failed to pretty print expression (use 'set_option pp.rawOnError true' for raw representation)",
+          "startLine": 63,
+          "endLine": 65,
+          "doc": "Panoptic Quality is the member `a = b = ½` of the family."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax303562Proofs.AnnotatorCeiling.ceiling_two_annotators",
+      "path": "proofs/Lax303562Proofs/AnnotatorCeiling.lean",
+      "conclusion": "Lax303562.AnnotatorCeiling.ceiling_two_annotators",
+      "assumptions": [],
+      "description": "`tpA ≤ a`, `tpB ≤ m` and `a < b` give `tpA + tpB < m + (a + b)/2` with margin\n`(b − a)/2`."
+    },
+    {
+      "id": "Lax303562Proofs.AnnotatorCeiling.pq_lt_one_of_disagreement",
+      "path": "proofs/Lax303562Proofs/AnnotatorCeiling.lean",
+      "conclusion": "Lax303562.AnnotatorCeiling.pq_lt_one_of_disagreement",
+      "assumptions": [],
+      "description": "Each matched IoU is at most `1`, so the numerator is at most the number of true\npositives, which the previous statement bounds below the denominator."
+    },
+    {
+      "id": "Lax303562Proofs.Candidate.candidate_iff",
+      "path": "proofs/Lax303562Proofs/Candidate.lean",
+      "conclusion": "Lax303562.Candidate.candidate_iff",
+      "assumptions": [],
+      "description": "Both denominators are positive; clearing them gives `s · (D + ½) < (s + p j) · D`,\ni.e. `s / (2D) < p j`."
+    },
+    {
+      "id": "Lax303562Proofs.Candidate.equilibrium",
+      "path": "proofs/Lax303562Proofs/Candidate.lean",
+      "conclusion": "Lax303562.Candidate.equilibrium",
+      "assumptions": [],
+      "description": "Divide the inclusion rule by the positive IoU `j`."
+    },
+    {
+      "id": "Lax303562Proofs.Candidate.le_of_below",
+      "path": "proofs/Lax303562Proofs/Candidate.lean",
+      "conclusion": "Lax303562.Candidate.le_of_below",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax303562Proofs.Candidate.lt_of_above",
+      "path": "proofs/Lax303562Proofs/Candidate.lean",
+      "conclusion": "Lax303562.Candidate.lt_of_above",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax303562Proofs.Duplication.dup_iff",
+      "path": "proofs/Lax303562Proofs/Duplication.lean",
+      "conclusion": "Lax303562.Duplication.dup_iff",
+      "assumptions": [],
+      "description": "Clearing the two positive denominators turns the comparison of quotients into\n`s · (D + 1) < (s + v) · D`, i.e. `s < v · D`, which is `s / D < v`."
+    },
+    {
+      "id": "Lax303562Proofs.Duplication.falsePositive_lt",
+      "path": "proofs/Lax303562Proofs/Duplication.lean",
+      "conclusion": "Lax303562.Duplication.falsePositive_lt",
+      "assumptions": [],
+      "description": "The numerator is unchanged and the denominator grows by `½`."
+    },
+    {
+      "id": "Lax303562Proofs.Duplication.opposite_directions",
+      "path": "proofs/Lax303562Proofs/Duplication.lean",
+      "conclusion": "Lax303562.Duplication.opposite_directions",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax303562Proofs.Matching.matches_at_most_one",
+      "path": "proofs/Lax303562Proofs/Matching.lean",
+      "conclusion": "Lax303562.Matching.matches_at_most_one",
+      "assumptions": [],
+      "description": "If `P` overlapped more than half with each of two disjoint sets, the two\noverlaps, which are disjoint subsets of `P`, would together exceed `P`."
+    },
+    {
+      "id": "Lax303562Proofs.Matching.threshold_sharp",
+      "path": "proofs/Lax303562Proofs/Matching.lean",
+      "conclusion": "Lax303562.Matching.threshold_sharp",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax303562Proofs.Matching.ties_at_half",
+      "path": "proofs/Lax303562Proofs/Matching.lean",
+      "conclusion": "Lax303562.Matching.ties_at_half",
+      "assumptions": [],
+      "description": "`P = {1,2,3,4}` has IoU exactly `½` with `A = {1,2}` and with `B = {3,4}`."
+    },
+    {
+      "id": "Lax303562Proofs.Removal.le_of_above",
+      "path": "proofs/Lax303562Proofs/Removal.lean",
+      "conclusion": "Lax303562.Removal.le_of_above",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax303562Proofs.Removal.lt_of_below",
+      "path": "proofs/Lax303562Proofs/Removal.lean",
+      "conclusion": "Lax303562.Removal.lt_of_below",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax303562Proofs.Removal.removal_iff",
+      "path": "proofs/Lax303562Proofs/Removal.lean",
+      "conclusion": "Lax303562.Removal.removal_iff",
+      "assumptions": [],
+      "description": "The remaining denominator `D − ½` is positive by hypothesis; clearing both gives\n`s · (D − ½) < (s − p j) · D`, i.e. `p j < s / (2D)`."
+    },
+    {
+      "id": "Lax303562Proofs.Removal.removal_inverts_inclusion",
+      "path": "proofs/Lax303562Proofs/Removal.lean",
+      "conclusion": "Lax303562.Removal.removal_inverts_inclusion",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax303562Proofs.WeightedFamily.dup_iff",
+      "path": "proofs/Lax303562Proofs/WeightedFamily.lean",
+      "conclusion": "Lax303562.WeightedFamily.dup_iff",
+      "assumptions": [],
+      "description": "The same computation as for Panoptic Quality: the weights never enter, because a\nduplicate creates no false positive and no false negative."
+    },
+    {
+      "id": "Lax303562Proofs.WeightedFamily.falsePositive_eq_of_zero_weight",
+      "path": "proofs/Lax303562Proofs/WeightedFamily.lean",
+      "conclusion": "Lax303562.WeightedFamily.falsePositive_eq_of_zero_weight",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax303562Proofs.WeightedFamily.falsePositive_lt",
+      "path": "proofs/Lax303562Proofs/WeightedFamily.lean",
+      "conclusion": "Lax303562.WeightedFamily.falsePositive_lt",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax303562Proofs.WeightedFamily.no_weights_remove_incentive",
+      "path": "proofs/Lax303562Proofs/WeightedFamily.lean",
+      "conclusion": "Lax303562.WeightedFamily.no_weights_remove_incentive",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax303562Proofs.WeightedFamily.opposite_directions",
+      "path": "proofs/Lax303562Proofs/WeightedFamily.lean",
+      "conclusion": "Lax303562.WeightedFamily.opposite_directions",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax303562Proofs.WeightedFamily.pq_eq_wm_half",
+      "path": "proofs/Lax303562Proofs/WeightedFamily.lean",
+      "conclusion": "Lax303562.WeightedFamily.pq_eq_wm_half",
+      "assumptions": [],
+      "description": ""
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "673a885b61e1f9520bf46a9c4fdd9033c72b2bcc8ba1faf11e583032c64d16d9",
+    "sourceCommit": "4db471d4065eb08f65ae36d012485832e5f34c12",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax303562/AnnotatorCeiling.c",
+        "bytes": 1357,
+        "sha256": "a8c2a3f1342afcce3ebc82dcf43ed77cb01a70da563055597e6eecc1f847334a"
+      },
+      {
+        "path": "concepts/ir/Lax303562/AnnotatorCeiling.c.hash",
+        "bytes": 16,
+        "sha256": "7ac957d88cb286531a98c0441d5e4f4f74e0ef8eb7f27fb214c94808f1d8afb5"
+      },
+      {
+        "path": "concepts/ir/Lax303562/Candidate.c",
+        "bytes": 1343,
+        "sha256": "da89316934eb0074c67a94fe593ef838e2713312b1e2c451f0b9fb835151c0ed"
+      },
+      {
+        "path": "concepts/ir/Lax303562/Candidate.c.hash",
+        "bytes": 16,
+        "sha256": "ceb65df05a5c4fdd0e18825accb2f4fd3a4ffbead6136000c793327a5b1384a3"
+      },
+      {
+        "path": "concepts/ir/Lax303562/Duplication.c",
+        "bytes": 1347,
+        "sha256": "c0b4f17c106dae5fd34871f94223e90eb75eedfac881f483abc607f4b06056ac"
+      },
+      {
+        "path": "concepts/ir/Lax303562/Duplication.c.hash",
+        "bytes": 16,
+        "sha256": "1886bf8285c50baf68d9ecf335a9751f93324787aa1c587599ef8ccde79001c1"
+      },
+      {
+        "path": "concepts/ir/Lax303562/Matching.c",
+        "bytes": 1570,
+        "sha256": "6217531c2b5064c03ad3db7c874ffa4d08516f279e29fc016335abe4ea6a4797"
+      },
+      {
+        "path": "concepts/ir/Lax303562/Matching.c.hash",
+        "bytes": 16,
+        "sha256": "b79dc6b015f0d88d50f73acd97c033c6049144ff6c27e5c2810ae321c750efaf"
+      },
+      {
+        "path": "concepts/ir/Lax303562/PanopticQuality.c",
+        "bytes": 1345,
+        "sha256": "d273881f66717e4f97f7911f96c96c1e27d992d343331a3d02aad22dd8fa237c"
+      },
+      {
+        "path": "concepts/ir/Lax303562/PanopticQuality.c.hash",
+        "bytes": 16,
+        "sha256": "b8cbd4c31eda08678e3228665bcff8cef288b7452a15471ed2a6a21b1166a84f"
+      },
+      {
+        "path": "concepts/ir/Lax303562/Removal.c",
+        "bytes": 1339,
+        "sha256": "f2d68f76b63386bd7cef240ecc828db298caba8636032e350366a58eaa291be0"
+      },
+      {
+        "path": "concepts/ir/Lax303562/Removal.c.hash",
+        "bytes": 16,
+        "sha256": "2d05efdc575b72beca20c5ca1371a6774cc07f2efa2b10808dc76f0b1d1908da"
+      },
+      {
+        "path": "concepts/ir/Lax303562/WeightedFamily.c",
+        "bytes": 1353,
+        "sha256": "341dedb4f35b982c17db446d2410cfe65ed31a653ad899b807c2dc116d742978"
+      },
+      {
+        "path": "concepts/ir/Lax303562/WeightedFamily.c.hash",
+        "bytes": 16,
+        "sha256": "56cfef21e8f82d5eedda56eb57c7763fd85694eb83587f83bbe647b2848057e2"
+      },
+      {
+        "path": "concepts/ir/Lax303562.c",
+        "bytes": 2724,
+        "sha256": "ca83bcf0425fc9a28299a7628babd1e584b0798167d005aee9cbc23c13ae8f1a"
+      },
+      {
+        "path": "concepts/ir/Lax303562.c.hash",
+        "bytes": 16,
+        "sha256": "6f3d55d896ba4706e900a6261f6f25a7f64e0b65472b92865c9f0bf5c9b82b8b"
+      },
+      {
+        "path": "concepts/lib/Lax303562/AnnotatorCeiling.ilean",
+        "bytes": 1417,
+        "sha256": "2c1986bb1b8f26e53f30104dc6ef23aacc8c3e0dad6e7f2a55fa68355982fc7d"
+      },
+      {
+        "path": "concepts/lib/Lax303562/AnnotatorCeiling.ilean.hash",
+        "bytes": 16,
+        "sha256": "f637da457196aef786bca3c3640a16353a59e827e29f0bae96be4ed600fd4d06"
+      },
+      {
+        "path": "concepts/lib/Lax303562/AnnotatorCeiling.olean",
+        "bytes": 14840,
+        "sha256": "7f65f6e0e2e8c665bf0243e284a5ce5b9ed8b530af9039df35c1505a97c08a4a"
+      },
+      {
+        "path": "concepts/lib/Lax303562/AnnotatorCeiling.olean.hash",
+        "bytes": 16,
+        "sha256": "69c16f5260acb3c4fb3c4531361fb3e78c258fe3df99ab57b6751e510d2e7acb"
+      },
+      {
+        "path": "concepts/lib/Lax303562/AnnotatorCeiling.trace",
+        "bytes": 2159,
+        "sha256": "ee34a3116f1182d09010f3f2b432ade61d6c86ec73fbe95e3764323bfa7c397a"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Candidate.ilean",
+        "bytes": 2972,
+        "sha256": "7f8f3f2bf198a05eb6befdd9ceb99c399e0c99c362ca400281ec968f29e898d8"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Candidate.ilean.hash",
+        "bytes": 16,
+        "sha256": "0ff3377745a5f8728a7bb3b31012c37485c24a330421afb9a21c209ce4e02ec9"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Candidate.olean",
+        "bytes": 19928,
+        "sha256": "a6f595ca70ce459152a6655342f1fa10697899709673abd9132b355935b07870"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Candidate.olean.hash",
+        "bytes": 16,
+        "sha256": "2f8116db15aecdfd3244cef9561b24ffc5be7bc6aa8e5392ec4ec101fb192bdf"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Candidate.trace",
+        "bytes": 2110,
+        "sha256": "2c2c02ebd60ffd7313a53a385eaaf099ca5eea14f943300b1ea397194e56c136"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Duplication.ilean",
+        "bytes": 2254,
+        "sha256": "9558d3621c2ae0ba5d6c88cc6e4fc36a988a43269f5cffa0ad7e6a88e7284289"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Duplication.ilean.hash",
+        "bytes": 16,
+        "sha256": "0e20270bf537f52f2ef32fdd2cb02f868f2db638b965411096673e68681f98a5"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Duplication.olean",
+        "bytes": 14056,
+        "sha256": "38b0452b56af239514dab4bb4a05c5a4863857ab0d0807aeb5a478561e9557ca"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Duplication.olean.hash",
+        "bytes": 16,
+        "sha256": "32a5c354b768875ab1c105ecd08789f3dad204b5fe9f46e38227eb3528bd7018"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Duplication.trace",
+        "bytes": 2124,
+        "sha256": "e8f7ad65e74161d4160924d8e2de1982b17fa67858500cb5775b1f4a6b9b2c42"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Matching.ilean",
+        "bytes": 3512,
+        "sha256": "3dfa727207b5d64725085a3c1261dbdba93f74c1ce7ad1b0989aa1842a5ab6d8"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Matching.ilean.hash",
+        "bytes": 16,
+        "sha256": "07ceacc724a7c381c1171a654b97b989c598475efabb3fb30f8383cd8524a29c"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Matching.olean",
+        "bytes": 20304,
+        "sha256": "5464e5928cfffcba8541acd9cac0eca873f2befc6b4d165326ad4385aa72a3b0"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Matching.olean.hash",
+        "bytes": 16,
+        "sha256": "873375a07c549388de015b349faf67bfc9cc3dc02c37cadb1e50644f733b6250"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Matching.trace",
+        "bytes": 2260,
+        "sha256": "21d792fad060bf92e92d9b812e78896d9e2e5880cf69ca5c7e42d4d58b786cbd"
+      },
+      {
+        "path": "concepts/lib/Lax303562/PanopticQuality.ilean",
+        "bytes": 998,
+        "sha256": "d9263492ead93a2fee94c8b22c7a38fef26f16d6e2a081801cc68065e478f442"
+      },
+      {
+        "path": "concepts/lib/Lax303562/PanopticQuality.ilean.hash",
+        "bytes": 16,
+        "sha256": "fd29ee31d76c85416b2debe1f838daf479bfee36b0fa2ac930b7321d2faa2e7b"
+      },
+      {
+        "path": "concepts/lib/Lax303562/PanopticQuality.olean",
+        "bytes": 12392,
+        "sha256": "3fb1b277591c62114171db50518cee45671e964049cc60d16748cffdc3c9edf2"
+      },
+      {
+        "path": "concepts/lib/Lax303562/PanopticQuality.olean.hash",
+        "bytes": 16,
+        "sha256": "27e656f782df27e594c6a65886b1df8828d8f8d80c026ecb2bdd8a32b24d0de1"
+      },
+      {
+        "path": "concepts/lib/Lax303562/PanopticQuality.trace",
+        "bytes": 2148,
+        "sha256": "4a1974b4bd0f8ab63ac4a71dbc7da9141afb14e15f5072abe6f462da6271f442"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Removal.ilean",
+        "bytes": 2890,
+        "sha256": "6de266e2f2d9bb8e9792bdab2d8866938138a230d08d68491fa78f77923628ee"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Removal.ilean.hash",
+        "bytes": 16,
+        "sha256": "47f6e72b5b43626f047b78ee75228e73fa41adb0cd8cd78cbf9547962df3d306"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Removal.olean",
+        "bytes": 20304,
+        "sha256": "1f5836a1778649799b2bc76c021fe5f8c43b939687c02704f91385a2e5950f3e"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Removal.olean.hash",
+        "bytes": 16,
+        "sha256": "d2d5868bba58793448fdf785c175a6db3fa77e9977640e2394089ed0be659632"
+      },
+      {
+        "path": "concepts/lib/Lax303562/Removal.trace",
+        "bytes": 2096,
+        "sha256": "79b763844a0ecf1455f1d66169950c5234df6d1270c96e390d7b95f691f94f49"
+      },
+      {
+        "path": "concepts/lib/Lax303562/WeightedFamily.ilean",
+        "bytes": 4764,
+        "sha256": "e9ddbfc50ebf9477738a380a75c4d4975da2fb2e4ad7fe14dc398c051b81c964"
+      },
+      {
+        "path": "concepts/lib/Lax303562/WeightedFamily.ilean.hash",
+        "bytes": 16,
+        "sha256": "bb71dcfef1b3ae1a6b8d4f187c541de5aec80fd2632ccc10a4e8f64f972fd642"
+      },
+      {
+        "path": "concepts/lib/Lax303562/WeightedFamily.olean",
+        "bytes": 26240,
+        "sha256": "a3d01f3932251f21c62ac2423b7f15b38e52d415e3cc12cd284932c9c45739ba"
+      },
+      {
+        "path": "concepts/lib/Lax303562/WeightedFamily.olean.hash",
+        "bytes": 16,
+        "sha256": "7c0b50f35c73e1d5c4d70a66a4bcc0f40952e03bc83ce96f9ce01a80c824ad6c"
+      },
+      {
+        "path": "concepts/lib/Lax303562/WeightedFamily.trace",
+        "bytes": 2145,
+        "sha256": "0b9eafd4df2ce708afc31ef762fe4028ad9b9621c12a388825020fac60213d3b"
+      },
+      {
+        "path": "concepts/lib/Lax303562.ilean",
+        "bytes": 390,
+        "sha256": "e756c16f533181035df129ce14c3d931e5b5945b09656f8c10c4f5c5d09e4dec"
+      },
+      {
+        "path": "concepts/lib/Lax303562.ilean.hash",
+        "bytes": 16,
+        "sha256": "53bf50892a0f22ecd15ba874c5c61c705d3d3496041e05ad406ace8dc5318c09"
+      },
+      {
+        "path": "concepts/lib/Lax303562.olean",
+        "bytes": 2200,
+        "sha256": "78e62b9a98a253564a98cb7b81dd96029b7a3b17a1455b50c8e994d46145cc52"
+      },
+      {
+        "path": "concepts/lib/Lax303562.olean.hash",
+        "bytes": 16,
+        "sha256": "7e37897cc87248424156ef3154b731c82165471e6340556378c19cd141960800"
+      },
+      {
+        "path": "concepts/lib/Lax303562.trace",
+        "bytes": 2940,
+        "sha256": "faeddfbde6dc524d22708fc7c853f29c327099c3f74e6c00f9f6e5638ede423e"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "6be29bcfd5a9a998c8a06e03760b52616d7e388ca9bb9ff3c2a3f31046fc6479"
+      },
+      {
+        "path": "concepts/package/Lax303562/AnnotatorCeiling.lean",
+        "bytes": 1532,
+        "sha256": "8e1013026b1f0f9a0ad42fc060d15e42401c0d322bb229d5d1e1f7b6bfc132b8"
+      },
+      {
+        "path": "concepts/package/Lax303562/Candidate.lean",
+        "bytes": 2224,
+        "sha256": "39ea3f1ca7691e24f859320c05cbc8c6c04fcf93b0d11db611d2e1e8c4baf5ee"
+      },
+      {
+        "path": "concepts/package/Lax303562/Duplication.lean",
+        "bytes": 2037,
+        "sha256": "eca15f7ac1bad02e7319e033d546699c17e89577610b2305dddc4123382471fa"
+      },
+      {
+        "path": "concepts/package/Lax303562/Matching.lean",
+        "bytes": 2126,
+        "sha256": "f1b8f868e49db199b51b0218a36a856596402f9c04b4f0dad91dd9d3b9af39da"
+      },
+      {
+        "path": "concepts/package/Lax303562/PanopticQuality.lean",
+        "bytes": 1450,
+        "sha256": "74fa033bc635214b6399593749e0a093e2461ddea3b8440d1cd74fe3bfb9977b"
+      },
+      {
+        "path": "concepts/package/Lax303562/Removal.lean",
+        "bytes": 2147,
+        "sha256": "0b12e3dc1cb284465a91144c25065c85174773944c12eca6d8976e0e5a1e5e80"
+      },
+      {
+        "path": "concepts/package/Lax303562/WeightedFamily.lean",
+        "bytes": 2982,
+        "sha256": "f79c7d75c6ef161a5381538dafbce8ebc69ca1ff4df787fba87ea99ac09c85a1"
+      },
+      {
+        "path": "concepts/package/Lax303562.lean",
+        "bytes": 206,
+        "sha256": "3e15237fd56c78aae5ded13bc737add0346bf345ab20a52919a3bb1dfbcdf2d3"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax303562Proofs/AnnotatorCeiling.c",
+        "bytes": 1587,
+        "sha256": "87ecb473ff798ef596fa9c2e5f7ae57721a21ca411773adaa32bf4dba39afd65"
+      },
+      {
+        "path": "proofs/ir/Lax303562Proofs/AnnotatorCeiling.c.hash",
+        "bytes": 16,
+        "sha256": "2bf755e2d5cabb62135687ea23be20963f7c3507f88aee701ea037a86a4ed178"
+      },
+      {
+        "path": "proofs/ir/Lax303562Proofs/Candidate.c",
+        "bytes": 1552,
+        "sha256": "08fa202a73229b493f612c461f1b8aa09d6b5ed0dc43e338862dec6bc7393f4e"
+      },
+      {
+        "path": "proofs/ir/Lax303562Proofs/Candidate.c.hash",
+        "bytes": 16,
+        "sha256": "eb2ed2baf1cbbc87e600a31c4d8b3a8e5d5ba9ba17e4206ddadcdbb1b86ab7a1"
+      },
+      {
+        "path": "proofs/ir/Lax303562Proofs/Duplication.c",
+        "bytes": 1562,
+        "sha256": "49202a2dc50ae3b8dd954589d3ee8cdc7e2f09b23aaf3572dec7721d4b56426e"
+      },
+      {
+        "path": "proofs/ir/Lax303562Proofs/Duplication.c.hash",
+        "bytes": 16,
+        "sha256": "54305fae77b7f23b3a26f203b2caffae66dee2d13477d9fa9546fda91b80fc27"
+      },
+      {
+        "path": "proofs/ir/Lax303562Proofs/Matching.c",
+        "bytes": 1547,
+        "sha256": "2ce2b9faa48f7ff1ee895beb2c73bbd629c448680abdd896237edf67e51d05fd"
+      },
+      {
+        "path": "proofs/ir/Lax303562Proofs/Matching.c.hash",
+        "bytes": 16,
+        "sha256": "3daed8d6b70103586604de40baeffb7bee5ef738e85e57de94d77bd0e6151c85"
+      },
+      {
+        "path": "proofs/ir/Lax303562Proofs/Removal.c",
+        "bytes": 1542,
+        "sha256": "6e3f756240031f71e40e8f1cf777abaa40b3008e78a36c9cdbd1d40d1c389e20"
+      },
+      {
+        "path": "proofs/ir/Lax303562Proofs/Removal.c.hash",
+        "bytes": 16,
+        "sha256": "c05e1663a3a036d171cbb70b532f95fff85bd3922b17ddc4d54d6d1517ea8761"
+      },
+      {
+        "path": "proofs/ir/Lax303562Proofs/WeightedFamily.c",
+        "bytes": 1577,
+        "sha256": "2260d771d4f9649820fdd30b659c14c093ac09607c7c99a71cac9d797ba69b24"
+      },
+      {
+        "path": "proofs/ir/Lax303562Proofs/WeightedFamily.c.hash",
+        "bytes": 16,
+        "sha256": "8f41762ffb7ec6e9c405de48e338606247ede2aa46d531078fb0b26e3be942e1"
+      },
+      {
+        "path": "proofs/ir/Lax303562Proofs.c",
+        "bytes": 2676,
+        "sha256": "17444a0f8ae120c9ae84e3df40a0fd9de798beacaff1c3aea180a4754e533fe1"
+      },
+      {
+        "path": "proofs/ir/Lax303562Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "7762b0fb3f28c9bdd11d742f72b3a6271ef4aed46acfb108774a3fedd751f837"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/AnnotatorCeiling.ilean",
+        "bytes": 2500,
+        "sha256": "08c3cb95bdfd66b0ff2576f61799c319d83b8e1f2baa108203484f6d856204ed"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/AnnotatorCeiling.ilean.hash",
+        "bytes": 16,
+        "sha256": "9eddb6df2254879f91360356814838b55b4e8e03e3e9ab999e3e45884c5fa441"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/AnnotatorCeiling.olean",
+        "bytes": 129160,
+        "sha256": "1e7927e0b2a9e39f2b27c4f8b8a47523be63ae9dadadb199e3def86916f9acf9"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/AnnotatorCeiling.olean.hash",
+        "bytes": 16,
+        "sha256": "def8b132cf85d5fc4441bdf91aaa60cf15d70d4e4b286c79aead179fa46d23fc"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/AnnotatorCeiling.trace",
+        "bytes": 2385,
+        "sha256": "4cd0e4e35c42037706b81cda7e528425673d7f45ebe2ed2bdfe25df4da7a39d6"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Candidate.ilean",
+        "bytes": 4468,
+        "sha256": "3bf8c18ab01ae75d9aa5bb108d572e986e0f92bf3837d6422457e3608ca4cd3c"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Candidate.ilean.hash",
+        "bytes": 16,
+        "sha256": "98836590e57108850b4f143103f6d2b244b99039136c23efccfbb525c212b948"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Candidate.olean",
+        "bytes": 143096,
+        "sha256": "bccca6d77d397867c8039a63d23a753483d931426afd591301607de6abb47018"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Candidate.olean.hash",
+        "bytes": 16,
+        "sha256": "d5dce558510e02464dcb3770a696d751060bd3992868ad3bcace0a0bddb596d6"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Candidate.trace",
+        "bytes": 2315,
+        "sha256": "05be5972b8ec277ad348d709fc5eccbce73bf7828061ecbd925a61f97fbfc243"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Duplication.ilean",
+        "bytes": 4263,
+        "sha256": "d1df36f3aae3618b38051339728300720b30d7576470e6c789eeabc5515df3a8"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Duplication.ilean.hash",
+        "bytes": 16,
+        "sha256": "83e2ea89d3303b99e78e5110967d0c9b3d233f77476e35e36fdbcdc822e5e140"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Duplication.olean",
+        "bytes": 154248,
+        "sha256": "c52b1ffa9f3cf4585e06829d5e34ae3d62f01cc4dcaccfe1bee1008491b9bf60"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Duplication.olean.hash",
+        "bytes": 16,
+        "sha256": "d7d82bf82b79ec9dff3a578e2dba66f2aa9ab5ecf2ae63957df085c717b7b30c"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Duplication.trace",
+        "bytes": 2333,
+        "sha256": "4feaea70d1ad721ed9c5d81ee7ebb3eff0f871e659f1f853d3edb9eb5a6ff7fa"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Matching.ilean",
+        "bytes": 8987,
+        "sha256": "072703ce0e02b39fc9d463d44f34a33aff0412d1f8c90e20cd8c784a53d97d66"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Matching.ilean.hash",
+        "bytes": 16,
+        "sha256": "b06a8a866573fd91b6a782b2c19073cc0638661def202b7a0e43f4b35593a999"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Matching.olean",
+        "bytes": 202536,
+        "sha256": "439b180c337031b6140af4a89f9ef528f96140607a1102051f38ce18e7cb8128"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Matching.olean.hash",
+        "bytes": 16,
+        "sha256": "037d239a4f59e55379e5cda0d6662e25be40421f86282d24b13b1b330e85768f"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Matching.trace",
+        "bytes": 2306,
+        "sha256": "c39dddea97bb5e501b48625f42366fc91198d380d291ae8534942e344433499a"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Removal.ilean",
+        "bytes": 4324,
+        "sha256": "0b7219508d91fdbae417069c2a6db0ecc0e4ca0d05a524ecf5f38d51c66aebcc"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Removal.ilean.hash",
+        "bytes": 16,
+        "sha256": "233599a311f895747a66891c6c17cc844b4619e86d2f8b95781914124cb8d161"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Removal.olean",
+        "bytes": 177016,
+        "sha256": "8c2fd5691fcdc3048713ab0a8e0f0eb38eb248bdf8ac67eb1a8639883134a7c8"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Removal.olean.hash",
+        "bytes": 16,
+        "sha256": "1e275f5c222c46241aab740e1932c297813deb92a4f222d141a12bc476a55c5f"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/Removal.trace",
+        "bytes": 2297,
+        "sha256": "355829581791187e779e5ebaa688d1bf0563d4bb631e0a6148a1d28dc5f75c11"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/WeightedFamily.ilean",
+        "bytes": 7319,
+        "sha256": "1da19a889d56e4805fc66b9ce70345d8400c1b743d8a76478628c35c5d696714"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/WeightedFamily.ilean.hash",
+        "bytes": 16,
+        "sha256": "1e5e71baa69f8030c2e1ec8fddfe8017311539c799a57f0e652f7e20c69f41da"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/WeightedFamily.olean",
+        "bytes": 171264,
+        "sha256": "5a988ed6607466f9dab84074848cf7523c32dfee9ab16e276da44342eb4df595"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/WeightedFamily.olean.hash",
+        "bytes": 16,
+        "sha256": "f033480c1b7ffbb065654935e9335fe7737882fb38b8e36ccc1cf8ee20abf07f"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs/WeightedFamily.trace",
+        "bytes": 2367,
+        "sha256": "55cb702020338dad1350a381bd32d9197dfccaa466bbb958f2f244af02b2cb72"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs.ilean",
+        "bytes": 384,
+        "sha256": "7449d5ba9f6fa334ba3bd0a5151812cb1c7d4dcd8a20dd1d9ce46bcfda720c83"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "c7750ca3da3340d7a261cadce5466d48ee1a3da0aedb302462afe8bf2b8cf555"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs.olean",
+        "bytes": 2088,
+        "sha256": "5eceaf8a96dba06ab25aaf04c04d0462e4561faecc666547ade74271f0a5284d"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "c3d7556b7a8ae9b1c1a5f073733b8389d230ebe87181e69ba5603b439fc377a7"
+      },
+      {
+        "path": "proofs/lib/Lax303562Proofs.trace",
+        "bytes": 2974,
+        "sha256": "f89107ad6a5ab93eea07b50f0accc440bbb7a4e31c30efdda9fad10c4bd76a16"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "c7d7451b3b15151bed43cb38506202b5c6c16a814a9d60bf83c670ae998a0cbd"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "ec2bf0a0a3f251792389340d7d1b01bc7755a5d3699545cfbad2973d76cb3676"
+      },
+      {
+        "path": "proofs/package/Lax303562Proofs/AnnotatorCeiling.lean",
+        "bytes": 1375,
+        "sha256": "3dc23ec504cbca6c0afefeb75dd95ffa4b9184d6169e2deaa1184a092a9d9aaf"
+      },
+      {
+        "path": "proofs/package/Lax303562Proofs/Candidate.lean",
+        "bytes": 1830,
+        "sha256": "74ada87207613e4b5ca73e80f4d29ca2d73987760dd5dc38c1747aed43a0b1d4"
+      },
+      {
+        "path": "proofs/package/Lax303562Proofs/Duplication.lean",
+        "bytes": 1783,
+        "sha256": "02104b30e66bb1252359dfa782040fd26dc627407f096ff7165aae5299a72872"
+      },
+      {
+        "path": "proofs/package/Lax303562Proofs/Matching.lean",
+        "bytes": 3105,
+        "sha256": "deea62c6500245d12700d2eb9c8a603c0e0540e8c1ef1d669b47cab7a313861d"
+      },
+      {
+        "path": "proofs/package/Lax303562Proofs/Removal.lean",
+        "bytes": 1672,
+        "sha256": "918eac58a45f530a3d33b0747b57370c7779fa9ff09d027223c164c986ee27f4"
+      },
+      {
+        "path": "proofs/package/Lax303562Proofs/WeightedFamily.lean",
+        "bytes": 2788,
+        "sha256": "2842a25107f239443c0abd571c441632be567ce6c7a07cef367decbc1553dbfb"
+      },
+      {
+        "path": "proofs/package/Lax303562Proofs.lean",
+        "bytes": 209,
+        "sha256": "df7904a7705f821d8b7848acea5970d726518d7c3c5da6598af026459644da99"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:673a885b61e1f9520bf46a9c4fdd9033c72b2bcc8ba1faf11e583032c64d16d9"
   }
 }
