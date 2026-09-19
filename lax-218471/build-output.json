@@ -4,5 +4,1091 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 133
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-218471",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "Compositional polynomial-time computation with black-box subroutines",
+      "authors": [
+        {
+          "name": "Szymon Toruńczyk",
+          "github": "szymtor"
+        },
+        {
+          "name": "GPT"
+        }
+      ],
+      "bibEntries": []
+    },
+    "abstract": "Polynomial-time algorithms can be combined using implementations supplied\nonly by existence theorems. We give a structured stack language with calls\nto a fixed library of input/output contracts and compile it to ordinary\nfinite stack Turing machines. Calls preserve the caller's other stacks and\nfinite control, and reset all private storage. Their exact cost is the\ncallee's running time plus two traversals of each argument and result and\nfour transfer transitions.\n\nPolynomial bounds on source execution and on call argument and result sizes\ngive polynomial bounds on the compiled machine. The resulting interface\nsupports sequencing, conditionals, loops, and adaptive calls inside verified\nprograms. As a direct public corollary, encoded polynomial-time functions are\nclosed under sequential composition, even when their implementations are\nsupplied only by existence theorems.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax218471.Combinators",
+      "path": "concepts/Lax218471/Combinators.lean",
+      "title": "Composition of polynomial-time algorithms",
+      "type": "theorem",
+      "description": "Encoded polynomial-time functions can be used through their existential\nmachine witnesses. Their outputs have polynomially bounded encoded size,\nand composition preserves polynomial time. All size measures refer to the\nspecified encodings; the intermediate encoding is shared by both algorithms.",
+      "imports": [
+        "Lax218471.PolynomialTime"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax218471.PolynomialTime\n\n/-!\n---\ntitle: Composition of polynomial-time algorithms\ntype: theorem\n---\nEncoded polynomial-time functions can be used through their existential\nmachine witnesses. Their outputs have polynomially bounded encoded size,\nand composition preserves polynomial time. All size measures refer to the\nspecified encodings; the intermediate encoding is shared by both algorithms.\n-/\n\nnamespace Lax218471.Combinators\n\nopen PolynomialTime\n\n/-- Every polynomial-time function has polynomially bounded output size. -/\naxiom output_size {α β A B : Type} {ea : α → List A} {eb : β → List B} {f : α → β}\n    (h : Polytime ea eb f) :\n    ∃ p : Polynomial ℕ, ∀ a, (eb (f a)).length ≤ p.eval (ea a).length\n\n/-- An existential polynomial-time algorithm realizes its encoded contract. -/\naxiom graph_realizable {α β A : Type} {ea : α → List A} {eb : β → List A} {f : α → β}\n    (h : Polytime ea eb f) : Nonempty (Implementation (Graph ea eb f))\n\n/-- Sequential composition of algorithms supplied only by existence statements. -/\naxiom comp {α β γ A : Type} [Fintype A] [Inhabited A]\n    {ea : α → List A} {eb : β → List A} {ec : γ → List A}\n    {f : α → β} {g : β → γ} (hf : Polytime ea eb f) (hg : Polytime eb ec g) :\n    Polytime ea ec (g ∘ f)\n\nend Lax218471.Combinators\n",
+      "statements": [
+        {
+          "id": "Lax218471.Combinators.comp",
+          "signature": "comp : ∀ {α β γ A : Type} [Fintype A] [Inhabited A] {ea : α → List A} {eb : β → List A} {ec : γ → List A} {f : α → β}\n  {g : β → γ},\n  Lax218471.PolynomialTime.Polytime ea eb f →\n    Lax218471.PolynomialTime.Polytime eb ec g → Lax218471.PolynomialTime.Polytime ea ec (Function.comp g f)",
+          "startLine": 27,
+          "endLine": 31,
+          "doc": "Sequential composition of algorithms supplied only by existence statements."
+        },
+        {
+          "id": "Lax218471.Combinators.graph_realizable",
+          "signature": "graph_realizable : ∀ {α β A : Type} {ea : α → List A} {eb : β → List A} {f : α → β},\n  Lax218471.PolynomialTime.Polytime ea eb f →\n    Nonempty (Lax218471.PolynomialTime.Implementation (Lax218471.PolynomialTime.Graph ea eb f))",
+          "startLine": 23,
+          "endLine": 25,
+          "doc": "An existential polynomial-time algorithm realizes its encoded contract."
+        },
+        {
+          "id": "Lax218471.Combinators.output_size",
+          "signature": "output_size : ∀ {α β A B : Type} {ea : α → List A} {eb : β → List B} {f : α → β},\n  Lax218471.PolynomialTime.Polytime ea eb f →\n    Exists fun p => ∀ (a : α), instLENat.le (eb (f a)).length (Polynomial.eval (ea a).length p)",
+          "startLine": 18,
+          "endLine": 21,
+          "doc": "Every polynomial-time function has polynomially bounded output size."
+        }
+      ]
+    },
+    {
+      "id": "Lax218471.PolynomialTime",
+      "path": "concepts/Lax218471/PolynomialTime.lean",
+      "title": "Polynomial-time implementations of encoded functions and contracts",
+      "type": "definition",
+      "description": "Polynomial time is measured in the length of the specified input encoding.\nAn implementation contains an actual finite TM2 and a polynomial time bound.\nA contract may restrict the valid inputs: callers must establish the contract\nat every call. This permits direct use of algorithms whose correctness is\nknown only on well-formed encodings.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Computability.TuringMachine.Computable"
+      ],
+      "sourceText": "import Mathlib.Computability.TuringMachine.Computable\n\n/-!\n---\ntitle: Polynomial-time implementations of encoded functions and contracts\ntype: definition\n---\nPolynomial time is measured in the length of the specified input encoding.\nAn implementation contains an actual finite TM2 and a polynomial time bound.\nA contract may restrict the valid inputs: callers must establish the contract\nat every call. This permits direct use of algorithms whose correctness is\nknown only on well-formed encodings.\n-/\n\nnamespace Lax218471.PolynomialTime\n\nopen Turing\n\n/-- Existence of a finite machine computing an encoded function in polynomial time. -/\ndef Polytime {α β A B : Type} (ea : α → List A) (eb : β → List B) (f : α → β) : Prop :=\n  Nonempty (TM2ComputableInPolyTime ea eb f)\n\n/-- A finite machine and a time bound realizing every input/output pair of a contract. -/\nstructure Implementation {A : Type} (R : List A → List A → Prop) extends\n    TM2ComputableAux A A where\n  time : Polynomial ℕ\n  correct : ∀ x y, R x y →\n    Nonempty (TM2OutputsInTime tm (x.map inputAlphabet.symm)\n      (some (y.map outputAlphabet.symm)) (time.eval x.length))\n\n/-- The input/output relation of an encoded function. -/\ndef Graph {α β A : Type} (ea : α → List A) (eb : β → List A) (f : α → β)\n    (x y : List A) : Prop := ∃ a, ea a = x ∧ eb (f a) = y\n\nend Lax218471.PolynomialTime\n",
+      "statements": []
+    },
+    {
+      "id": "Lax218471.Programs",
+      "path": "concepts/Lax218471/Programs.lean",
+      "title": "Structured stack programs with black-box calls",
+      "type": "definition",
+      "description": "Programs use stack operations, finite control, sequencing, conditionals,\nwhile loops, and calls to a fixed library of contracts. A call replaces one\nstack with its result and preserves every other stack and the caller's control.\nThe execution relation records the number of source instructions and a bound\non all call argument and result lengths. In particular, a polynomial bound\non the number of iterations alone does not assert polynomial time.",
+      "imports": [
+        "Lax218471.PolynomialTime",
+        "Lax218471.Subroutine"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax218471.Subroutine\nimport Lax218471.PolynomialTime\n\n/-!\n---\ntitle: Structured stack programs with black-box calls\ntype: definition\n---\nPrograms use stack operations, finite control, sequencing, conditionals,\nwhile loops, and calls to a fixed library of contracts. A call replaces one\nstack with its result and preserves every other stack and the caller's control.\nThe execution relation records the number of source instructions and a bound\non all call argument and result lengths. In particular, a polynomial bound\non the number of iterations alone does not assert polynomial time.\n-/\n\nnamespace Lax218471.Programs\n\nopen Subroutine\n\nvariable {K A σ I : Type}\n\n/-- One local operation; the control type is finite when programs are compiled. -/\ninductive Op (K A σ : Type)\n  | push (k : K) (f : σ → A)\n  | pop (k : K) (f : σ → Option A → σ)\n  | peek (k : K) (f : σ → Option A → σ)\n  | load (f : σ → σ)\n\n/-- A finite program with named library calls. Loops retain their body as finite code. -/\ninductive Program (K A σ I : Type)\n  | atom (o : Op K A σ)\n  | call (i : I) (port : K)\n  | seq (p q : Program K A σ I)\n  | branch (b : σ → Bool) (p q : Program K A σ I)\n  | loop (b : σ → Bool) (p : Program K A σ I)\n\ndef Op.apply [DecidableEq K] (o : Op K A σ) (s : Store (fun _ : K => A) σ) :\n    Store (fun _ : K => A) σ :=\n  match o with\n  | .push k f => ⟨s.state, Function.update s.stk k (f s.state :: s.stk k)⟩\n  | .pop k f => ⟨f s.state (s.stk k).head?, Function.update s.stk k (s.stk k).tail⟩\n  | .peek k f => ⟨f s.state (s.stk k).head?, s.stk⟩\n  | .load f => ⟨f s.state, s.stk⟩\n\n/-- Source execution, with a bound on the length of every argument and reply. -/\ninductive Executes [DecidableEq K] (R : I → List A → List A → Prop) (size : ℕ) :\n    Program K A σ I → Store (fun _ : K => A) σ → Store (fun _ : K => A) σ → ℕ → Prop\n  | atom (o) (s) : Executes R size (.atom o) s (o.apply s) 1\n  | call (i) (port) (s) (y) : R i (s.stk port) y →\n      (s.stk port).length ≤ size → y.length ≤ size →\n      Executes R size (.call i port) s ⟨s.state, Function.update s.stk port y⟩ 1\n  | seq {p q s u t a b} : Executes R size p s u a → Executes R size q u t b →\n      Executes R size (.seq p q) s t (a + b)\n  | branch_true {p q s t a} {b : σ → Bool} : b s.state = true →\n      Executes R size p s t a → Executes R size (.branch b p q) s t (a + 1)\n  | branch_false {p q s t a} {b : σ → Bool} : b s.state = false →\n      Executes R size q s t a → Executes R size (.branch b p q) s t (a + 1)\n  | loop_false {p s} {b : σ → Bool} : b s.state = false →\n      Executes R size (.loop b p) s s 1\n  | loop_true {p s u t a c} {b : σ → Bool} : b s.state = true →\n      Executes R size p s u a → Executes R size (.loop b p) u t c →\n      Executes R size (.loop b p) s t (a + c + 1)\n\nend Lax218471.Programs\n",
+      "statements": []
+    },
+    {
+      "id": "Lax218471.Subroutine",
+      "path": "concepts/Lax218471/Subroutine.lean",
+      "title": "Finite stack subroutines and their interfaces",
+      "type": "definition",
+      "description": "A subroutine has access to the caller's stacks and finite control, together\nwith a private finite collection of working stacks and private finite control.\nAt entry and return its private stacks are empty and its private control is\nreset. Execution counts actual TM2 transitions. This interface makes repeated\ncalls and preservation of unrelated caller data explicit.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Computability.TuringMachine.Computable",
+        "Mathlib.Data.Fintype.Prod",
+        "Mathlib.Data.Fintype.Sum"
+      ],
+      "sourceText": "import Mathlib.Computability.TuringMachine.Computable\nimport Mathlib.Data.Fintype.Sum\nimport Mathlib.Data.Fintype.Prod\n\n/-!\n---\ntitle: Finite stack subroutines and their interfaces\ntype: definition\n---\nA subroutine has access to the caller's stacks and finite control, together\nwith a private finite collection of working stacks and private finite control.\nAt entry and return its private stacks are empty and its private control is\nreset. Execution counts actual TM2 transitions. This interface makes repeated\ncalls and preservation of unrelated caller data explicit.\n-/\n\nnamespace Lax218471.Subroutine\n\nopen Turing\n\n/-- The data visible to a caller between subroutine calls. -/\nstructure Store {K : Type} (Γ : K → Type) (σ : Type) where\n  state : σ\n  stk : ∀ k, List (Γ k)\n\n/-- An ordinary finite TM2 program with a private working region. -/\nstructure Routine {K : Type} (Γ : K → Type) (σ : Type) where\n  W : Type\n  [workEq : DecidableEq W]\n  [workFin : Fintype W]\n  Δ : W → Type\n  τ : Type\n  [stateFin : Fintype τ]\n  initial : τ\n  Label : Type\n  [labelFin : Fintype Label]\n  entry : Label\n  code : Label → TM2.Stmt (Sum.elim Γ Δ) Label (σ × τ)\n\nnamespace Routine\n\nvariable {K σ : Type} {Γ : K → Type} (p : Routine Γ σ)\n\ninstance : DecidableEq p.W := p.workEq\ninstance : Fintype p.W := p.workFin\ninstance : Fintype p.τ := p.stateFin\ninstance : Fintype p.Label := p.labelFin\n\n/-- A boundary configuration contains no private working data. -/\ndef boundary (l : Option p.Label) (s : Store Γ σ) :\n    TM2.Cfg (Sum.elim Γ p.Δ) p.Label (σ × p.τ) where\n  l := l\n  var := (s.state, p.initial)\n  stk := fun | .inl k => s.stk k | .inr _ => []\n\n/-- Exact execution from a clean entry to a clean return. -/\ndef Executes [DecidableEq K] (s t : Store Γ σ) (n : ℕ) : Prop :=\n  (fun c => c.bind (TM2.step p.code))^[n] (some (p.boundary (some p.entry) s)) =\n    some (p.boundary none t)\n\nend Routine\nend Lax218471.Subroutine\n",
+      "statements": []
+    },
+    {
+      "id": "Lax218471.Substitution",
+      "path": "concepts/Lax218471/Substitution.lean",
+      "title": "Polynomial-time substitution of black-box subroutines",
+      "type": "theorem",
+      "description": "A structured program with a fixed library of polynomial-time subroutines\ncompiles to an ordinary finite stack Turing machine. Every call includes\nargument transfer, execution of the supplied machine, output transfer, and\ncleanup of private storage. A bound on source instructions and on every\nargument and reply yields a polynomial bound on actual machine execution.\n\nThe library is chosen before the input. Its implementations may be supplied\nexistentially by other theorems. Calls may be adaptive and may occur inside\nloops, provided the execution proof supplies the stated uniform size bound.",
+      "imports": [
+        "Lax218471.Programs"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax218471.Programs\n\n/-!\n---\ntitle: Polynomial-time substitution of black-box subroutines\ntype: theorem\n---\nA structured program with a fixed library of polynomial-time subroutines\ncompiles to an ordinary finite stack Turing machine. Every call includes\nargument transfer, execution of the supplied machine, output transfer, and\ncleanup of private storage. A bound on source instructions and on every\nargument and reply yields a polynomial bound on actual machine execution.\n\nThe library is chosen before the input. Its implementations may be supplied\nexistentially by other theorems. Calls may be adaptive and may occur inside\nloops, provided the execution proof supplies the stated uniform size bound.\n-/\n\nnamespace Lax218471.Substitution\n\nopen Subroutine Programs PolynomialTime\n\n/-- Compilation to a concrete subroutine, with polynomial overhead per source\ninstruction in the maximum call argument and reply length. -/\naxiom compile {K A σ I : Type} [DecidableEq K] [Fintype A] [Inhabited A]\n    (R : I → List A → List A → Prop)\n    (library : ∀ i, Nonempty (Implementation (R i))) (p : Program K A σ I) :\n    ∃ (r : Routine (fun _ : K => A) σ) (overhead : Polynomial ℕ),\n      ∀ size s t n, Executes R size p s t n →\n        ∃ m ≤ n * overhead.eval size, r.Executes s t m\n\n/-- The caller's initial or final store, with a single designated data stack. -/\ndef ioStore {K A σ : Type} [DecidableEq K]\n    (port : K) (initial : σ) (xs : List A) : Store (fun _ : K => A) σ :=\n  ⟨initial, Function.update (fun _ => []) port xs⟩\n\n/-- Polynomially many source instructions and polynomially bounded calls\nsuffice for polynomial-time computation by an actual finite TM2. -/\naxiom polytime {K A σ I : Type} [DecidableEq K] [Fintype A] [Inhabited A]\n    [Fintype K] [Fintype σ] {α β : Type}\n    (R : I → List A → List A → Prop)\n    (library : ∀ i, Nonempty (Implementation (R i))) (p : Program K A σ I)\n    (input output : K) (initial : σ) (ea : α → List A) (eb : β → List A) (f : α → β)\n    (steps size : Polynomial ℕ)\n    (h : ∀ a, ∃ n ≤ steps.eval (ea a).length,\n      Executes R (size.eval (ea a).length) p\n        (ioStore input initial (ea a)) (ioStore output initial (eb (f a))) n) :\n    Polytime ea eb f\n\nend Lax218471.Substitution\n",
+      "statements": [
+        {
+          "id": "Lax218471.Substitution.compile",
+          "signature": "compile : ∀ {K A σ I : Type} [inst : DecidableEq K] [Fintype A] [Inhabited A] (R : I → List A → List A → Prop),\n  (∀ (i : I), Nonempty (Lax218471.PolynomialTime.Implementation (R i))) →\n    ∀ (p : Lax218471.Programs.Program K A σ I),\n      Exists fun r =>\n        Exists fun overhead =>\n          ∀ (size : Nat) (s t : Lax218471.Subroutine.Store (fun x => A) σ) (n : Nat),\n            Lax218471.Programs.Executes R size p s t n →\n              Exists fun m => And (instLENat.le m (instHMul.hMul n (Polynomial.eval size overhead))) (r.Executes s t m)",
+          "startLine": 23,
+          "endLine": 30,
+          "doc": "Compilation to a concrete subroutine, with polynomial overhead per source\ninstruction in the maximum call argument and reply length."
+        },
+        {
+          "id": "Lax218471.Substitution.polytime",
+          "signature": "polytime : ∀ {K A σ I : Type} [inst : DecidableEq K] [Fintype A] [Inhabited A] [Fintype K] [Fintype σ] {α β : Type}\n  (R : I → List A → List A → Prop),\n  (∀ (i : I), Nonempty (Lax218471.PolynomialTime.Implementation (R i))) →\n    ∀ (p : Lax218471.Programs.Program K A σ I) (input output : K) (initial : σ) (ea : α → List A) (eb : β → List A)\n      (f : α → β) (steps size : Polynomial Nat),\n      (∀ (a : α),\n          Exists fun n =>\n            And (instLENat.le n (Polynomial.eval (ea a).length steps))\n              (Lax218471.Programs.Executes R (Polynomial.eval (ea a).length size) p\n                (Lax218471.Substitution.ioStore input initial (ea a))\n                (Lax218471.Substitution.ioStore output initial (eb (f a))) n)) →\n        Lax218471.PolynomialTime.Polytime ea eb f",
+          "startLine": 37,
+          "endLine": 48,
+          "doc": "Polynomially many source instructions and polynomially bounded calls\nsuffice for polynomial-time computation by an actual finite TM2."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax218471Proofs.Combinators.comp",
+      "path": "proofs/Lax218471Proofs/Combinators.lean",
+      "conclusion": "Lax218471.Combinators.comp",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax218471Proofs.Combinators.graph_realizable",
+      "path": "proofs/Lax218471Proofs/Combinators.lean",
+      "conclusion": "Lax218471.Combinators.graph_realizable",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax218471Proofs.Combinators.output_size",
+      "path": "proofs/Lax218471Proofs/Combinators.lean",
+      "conclusion": "Lax218471.Combinators.output_size",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax218471Proofs.Substitution.compile",
+      "path": "proofs/Lax218471Proofs/Substitution.lean",
+      "conclusion": "Lax218471.Substitution.compile",
+      "assumptions": [],
+      "description": ""
+    },
+    {
+      "id": "Lax218471Proofs.Substitution.polytime",
+      "path": "proofs/Lax218471Proofs/Substitution.lean",
+      "conclusion": "Lax218471.Substitution.polytime",
+      "assumptions": [],
+      "description": ""
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "bf862201a28a6d8f489a81a84afa7081a9be555e74e6fe9739b358534c63f4cc",
+    "sourceCommit": "7fadbfd005b359a66ccc1165b2d1becddb2906b8",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax218471/Combinators.c",
+        "bytes": 1344,
+        "sha256": "b0714822d3ec6a084ef16070b89d0cfa467dd75d6b705bad6ce2c741bb9db79f"
+      },
+      {
+        "path": "concepts/ir/Lax218471/Combinators.c.hash",
+        "bytes": 16,
+        "sha256": "9214b96094ab539aecc5b86fe00ec0e8d5829ae54694bf2588b22077e0a27fb5"
+      },
+      {
+        "path": "concepts/ir/Lax218471/PolynomialTime.c",
+        "bytes": 1412,
+        "sha256": "f39ad1e2fef29f28ce182b43afcbee6dfea226afc0aedc0cae1a226914f9c0b7"
+      },
+      {
+        "path": "concepts/ir/Lax218471/PolynomialTime.c.hash",
+        "bytes": 16,
+        "sha256": "18f9ff68230a2b2f4c38c7b5cdf01a76a74a6052c9183b34509c1b8275787b13"
+      },
+      {
+        "path": "concepts/ir/Lax218471/Programs.c",
+        "bytes": 28130,
+        "sha256": "6a8a891145f2634103331e092dfd747bd821a413c3afc41a2a9eb4e9e20911ff"
+      },
+      {
+        "path": "concepts/ir/Lax218471/Programs.c.hash",
+        "bytes": 16,
+        "sha256": "9a860cb119b504dd5e57c0231472b4fa1219ecd9db77de1862f2f23cb87ccbb5"
+      },
+      {
+        "path": "concepts/ir/Lax218471/Subroutine.c",
+        "bytes": 13512,
+        "sha256": "6fbf333f4c37d6bc83a3ec20b43fc184ad12452b1722e94bc1e01ed8b8c4a364"
+      },
+      {
+        "path": "concepts/ir/Lax218471/Subroutine.c.hash",
+        "bytes": 16,
+        "sha256": "2777c3e8c5045ddd40ff535604b3d923729268dd2c6fc609649d0ee697370ab3"
+      },
+      {
+        "path": "concepts/ir/Lax218471/Substitution.c",
+        "bytes": 4246,
+        "sha256": "c2f16964dc4703aae68f435bfada515671379b0c4abdf0a6ae7fae64292d271b"
+      },
+      {
+        "path": "concepts/ir/Lax218471/Substitution.c.hash",
+        "bytes": 16,
+        "sha256": "f1c8da3e8470222567a91e4b41e71ebd4c4c8dfc3b951bc6f8010094c49a0d2c"
+      },
+      {
+        "path": "concepts/ir/Lax218471.c",
+        "bytes": 2247,
+        "sha256": "2e63be1b92bbfe9f6ebc84d48a752a07a70f737adc40708ce71ad08ac8ee0f26"
+      },
+      {
+        "path": "concepts/ir/Lax218471.c.hash",
+        "bytes": 16,
+        "sha256": "e2fae0b40ad92676d5d0aa3e33408eceeb89b83965abd661b095306564f1d9a1"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Combinators.ilean",
+        "bytes": 2982,
+        "sha256": "bc4ace18b11203f93a0ec91aca16de337520273289e2a76110bae879668b7048"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Combinators.ilean.hash",
+        "bytes": 16,
+        "sha256": "29c0227ea4335f3ac430b62f22ab47394e095844e1b8b227f662cad86ba5600e"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Combinators.olean",
+        "bytes": 14712,
+        "sha256": "254de18e1651f74d81cbf9a00dacf31803f41afc1904c5b56253ad20c5bab925"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Combinators.olean.hash",
+        "bytes": 16,
+        "sha256": "18785b2ea36c9e9f3bbedf4cf023ee3c240298511a23ae9d120f09b2fb2ca6f8"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Combinators.trace",
+        "bytes": 2122,
+        "sha256": "b77d10a2d48dad6f55ad09d34c74c5749aca6fb01baf76ce088ddb972f282b2e"
+      },
+      {
+        "path": "concepts/lib/Lax218471/PolynomialTime.ilean",
+        "bytes": 3425,
+        "sha256": "15fe4423bf059a3a56689d505cda4c9cc0e70838425c1c4ea2611acd4f1ab37d"
+      },
+      {
+        "path": "concepts/lib/Lax218471/PolynomialTime.ilean.hash",
+        "bytes": 16,
+        "sha256": "a7821fd75352fa130592942564f2da58f0d6c550ee46279d3d1b0a9e9543d2b4"
+      },
+      {
+        "path": "concepts/lib/Lax218471/PolynomialTime.olean",
+        "bytes": 92424,
+        "sha256": "70cb01488226804720fd94cb0aa151f2eac625d7c07010ba18b35003a3a37bf5"
+      },
+      {
+        "path": "concepts/lib/Lax218471/PolynomialTime.olean.hash",
+        "bytes": 16,
+        "sha256": "2d33e464caef325eb52be193a3ffb66bd80e78e90075ea1ee08e6e685dee2844"
+      },
+      {
+        "path": "concepts/lib/Lax218471/PolynomialTime.trace",
+        "bytes": 2194,
+        "sha256": "3815040c4cf6f11cab6bf4a4a6f9a64fd7253fb9971f013d9d56a9dbf0d3488e"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Programs.ilean",
+        "bytes": 8279,
+        "sha256": "014e64e4cd32eac7d2a2904fafc88a68dfe1caf4234195f823c4dee3bf0600d0"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Programs.ilean.hash",
+        "bytes": 16,
+        "sha256": "24f7ed1a3f145273cd81a5e303d10c1517d7f192bef635bf11779c1b26ae99a2"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Programs.olean",
+        "bytes": 520728,
+        "sha256": "a25451f2325a41a08256246c2a30db91bd81a8e980b1fda84a2cebde57671b98"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Programs.olean.hash",
+        "bytes": 16,
+        "sha256": "0249da6577287be9a697af2001441bbdd692ba78bc5f6b71f1e64bab8aa1c305"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Programs.trace",
+        "bytes": 2247,
+        "sha256": "12260646ff2505f1b0979b3a0ed1f24e85fde0ac5d05b7d9ab94ca68492d7ffd"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Subroutine.ilean",
+        "bytes": 7884,
+        "sha256": "a2f3d42fba5207bb72aeb3840fab6e4a18ee0934460cbed498c90df3b571d225"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Subroutine.ilean.hash",
+        "bytes": 16,
+        "sha256": "9e8cedc997bf22bedfa01c50c4d02b793aa97db00395c267d9b5f07e0f1d0322"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Subroutine.olean",
+        "bytes": 218672,
+        "sha256": "7c31623f4b2a9c56193d61d6c5c55a882e14b3f35d7c1c61128973c733f6dac3"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Subroutine.olean.hash",
+        "bytes": 16,
+        "sha256": "85050f567b6ad4cb262a8f64310a2c3b0faa74ca96cc9e7874e380d797a75cef"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Subroutine.trace",
+        "bytes": 2490,
+        "sha256": "735512d557eedfed59d170a5554a3f4ba96fb77ccc41a5ad7cfa28b12c51a758"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Substitution.ilean",
+        "bytes": 4397,
+        "sha256": "e584cb2dbe9d9c95ee48912658288ce0ce96b77ec39162228a576dde293a49e2"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Substitution.ilean.hash",
+        "bytes": 16,
+        "sha256": "8328e5a394b884f9ea426434e6067f2a357d1c9c1c3566be527e97bb894f705e"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Substitution.olean",
+        "bytes": 34112,
+        "sha256": "0ba0c4b8d0923222d95f9202793531c1ad835eff2a6284f74e89562b64186c9f"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Substitution.olean.hash",
+        "bytes": 16,
+        "sha256": "9882055bed235a18c8e9f49f060253574217858e7f7df20b9e15d3297cd8faad"
+      },
+      {
+        "path": "concepts/lib/Lax218471/Substitution.trace",
+        "bytes": 2110,
+        "sha256": "9276eea2851941c6fc37fbf003764d6ea120e4d7cec2976b096509db8def3f31"
+      },
+      {
+        "path": "concepts/lib/Lax218471.ilean",
+        "bytes": 299,
+        "sha256": "19e93876c6b8a69c35b2985f0cd40a14b3a0c6411990ff357a4b397f424ec401"
+      },
+      {
+        "path": "concepts/lib/Lax218471.ilean.hash",
+        "bytes": 16,
+        "sha256": "de5eb59a0279e8f85ce1db2bc550ae033ce17962eeb10f7b34ee37c8c1c04411"
+      },
+      {
+        "path": "concepts/lib/Lax218471.olean",
+        "bytes": 1976,
+        "sha256": "367297359d625516a0444741909d77732db72bf2608f4f3c6ece282ba5f23b0f"
+      },
+      {
+        "path": "concepts/lib/Lax218471.olean.hash",
+        "bytes": 16,
+        "sha256": "a56a36b037cd589bc48561105d93d8d72177eb84222381a01992def192a916ef"
+      },
+      {
+        "path": "concepts/lib/Lax218471.trace",
+        "bytes": 2631,
+        "sha256": "6acadbb7450cec5ecc4321e5576815716bb3b75f1c7ac52bee7c27236ef28e20"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "1beaace8a32bf7269a54a9eb140d0b06c8fced34a9dcd982947b62b86ed5c306"
+      },
+      {
+        "path": "concepts/package/Lax218471/Combinators.lean",
+        "bytes": 1339,
+        "sha256": "4d2901c2a2d55d3b7957ae2997d1c09990062cb6cfedaa17e4fde2912ccf6164"
+      },
+      {
+        "path": "concepts/package/Lax218471/PolynomialTime.lean",
+        "bytes": 1397,
+        "sha256": "f2db776c92c9f62c60a2f7ca992234007caf1a78549b8ba0aeb46c315d9b21a9"
+      },
+      {
+        "path": "concepts/package/Lax218471/Programs.lean",
+        "bytes": 2907,
+        "sha256": "cf55d4e4d1e1a53d339b388eda7962a0981963bb7e8a5571e64df38fc97a84c4"
+      },
+      {
+        "path": "concepts/package/Lax218471/Subroutine.lean",
+        "bytes": 1954,
+        "sha256": "efb043632fbdc4b7685ba17b25ce797bb6939487311e46203a98cd8d97a03006"
+      },
+      {
+        "path": "concepts/package/Lax218471/Substitution.lean",
+        "bytes": 2300,
+        "sha256": "e848073e07835e86efec7454d347bd96f14ca49dc2fd00aa62b7af23654b15c2"
+      },
+      {
+        "path": "concepts/package/Lax218471.lean",
+        "bytes": 145,
+        "sha256": "9c873e3ad2b8f1518a66cfa5098e1b8604e43739f14251fd5979a6784037fe12"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Atom.c",
+        "bytes": 21193,
+        "sha256": "f6bee0b8b8dd7203af7453ec0976038ec7aae655b79ead5aca94be498517511b"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Atom.c.hash",
+        "bytes": 16,
+        "sha256": "06df7d2bbdafd2d8cc6195fb8ecd3b12c46b9d885e2c4e0ab903047b541ea9c4"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Call.c",
+        "bytes": 71307,
+        "sha256": "b6495a11640c19adc6b8d139b21e44325eda4c247f186893375213786f81f617"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Call.c.hash",
+        "bytes": 16,
+        "sha256": "c36f9948ec83c8992b0168e8fcc0f360585fff669b1f5bd58dececb2e21befa8"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/CallSimulation.c",
+        "bytes": 10366,
+        "sha256": "df31954fcbca426b5ca0be2a71353441cedbc0409b654754e1fc2d18444e96cb"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/CallSimulation.c.hash",
+        "bytes": 16,
+        "sha256": "af7d9ea78aa451136269a936d54b5251d5d16ad2e54a629e904c2de47208a5c6"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Combinators.c",
+        "bytes": 1887,
+        "sha256": "b33c63cb9f7b2316afd455a364d24122bc808c38ede8fc1a62d17cf640d00585"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Combinators.c.hash",
+        "bytes": 16,
+        "sha256": "4086048bc682616c72b717c66f645499c79a9febca51b6d7bf62b6b3d2523473"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Compiler.c",
+        "bytes": 7850,
+        "sha256": "39c38175ffbf8fe254b60b19232826bb68dcec17d4faf6a3182850547a83b5e4"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Compiler.c.hash",
+        "bytes": 16,
+        "sha256": "d9d6b347c05c570f45f9748b01e3366bbda6fe2d0f373accdade8d79fa465938"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Embedding.c",
+        "bytes": 34316,
+        "sha256": "3e2a4050dd861147cf5d3aae7b24fec575f6c6af2d1ec337b4ca15f5f7196e0e"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Embedding.c.hash",
+        "bytes": 16,
+        "sha256": "38c6976e3e9d2bf49b082ecf8846e7968cccf3b7a55f3b10461c53b86d2cfda4"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/OutputBounds.c",
+        "bytes": 15703,
+        "sha256": "00396271dd652e561a51a73a5e7fafed34120b5015b24bef606c78a9b11607df"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/OutputBounds.c.hash",
+        "bytes": 16,
+        "sha256": "b589664cfcc9f23a0178995a0514f51221615bc61708a0567844e62b343c9a30"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/PointwiseCompiler.c",
+        "bytes": 6943,
+        "sha256": "98d39685e5bc0b9fae81147ff234da5a864fcbfb464cefb7e3245edbb3f817a2"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/PointwiseCompiler.c.hash",
+        "bytes": 16,
+        "sha256": "9608152e34d65dec4a5b3d5ae4726b1467cf351ddebd21bca655597c45ed15db"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/PolynomialBounds.c",
+        "bytes": 1404,
+        "sha256": "f49c596a006bcbee500d5518d32896511c56176cb27dba7db419104af8e92312"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/PolynomialBounds.c.hash",
+        "bytes": 16,
+        "sha256": "479af70b22f16636b5e763bede7a17d212088de58290e1e2dfd53987f4475427"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/RoutineComposition.c",
+        "bytes": 32627,
+        "sha256": "f18e8f3e0bd489e744c3f45107ccc224721ef56eaa6d5587b1c295fb046ca3b5"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/RoutineComposition.c.hash",
+        "bytes": 16,
+        "sha256": "2b791867cc052ff028117a9d284db64a98542e38b325aa9e83bf5e0d826eac0a"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/RoutineControl.c",
+        "bytes": 43488,
+        "sha256": "ad4736ed85c1b57690ae37125b92794b1cb9fa0ef3e76168e153248a8c3bd57b"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/RoutineControl.c.hash",
+        "bytes": 16,
+        "sha256": "129d742fe9aa9d2d24c4327404f1c7765c927f99745e7dc37215b4715259fc94"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/RoutineMachine.c",
+        "bytes": 11568,
+        "sha256": "c621595bb518ad031fa379629e01f8d4c5ebf9b8e543b9df6916d3663440dd91"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/RoutineMachine.c.hash",
+        "bytes": 16,
+        "sha256": "a0901185112e00889ad9a2400df5f15030e7934b5b39e1961d19ac0fcf0c93cf"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Runs.c",
+        "bytes": 1410,
+        "sha256": "04415b35c481f699a4c643767706174e50b5a4fa4b3b0d5e13f873feca35bc7e"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Runs.c.hash",
+        "bytes": 16,
+        "sha256": "541b7034eb929caf64f50ef5634ac69535a3874195fe5664611df142cd7f5ebb"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Substitution.c",
+        "bytes": 1886,
+        "sha256": "a11b50b089adce31e0a96c8fa2058b4c54bcfc0cad4442ecbbccef130208feb8"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Substitution.c.hash",
+        "bytes": 16,
+        "sha256": "9ab34e242575e8fc3e551e41770c9a1ff4928ab61cc5f381fb3fd4621516dd0b"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Transfer.c",
+        "bytes": 23631,
+        "sha256": "f663ca60f382c20fe0e1b8d52990776137ea64bd6cdc24ef39309b307925a97d"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs/Transfer.c.hash",
+        "bytes": 16,
+        "sha256": "ff1c6fa8b61152736c51a5959d7d2a25a7072bcf8e06765b5b22e4b72d3ac4e4"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs.c",
+        "bytes": 5055,
+        "sha256": "30487ef4d6903efeb98d183cd6ad16c5eca125e44aea96fb21deecb0384e37e8"
+      },
+      {
+        "path": "proofs/ir/Lax218471Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "6d3dc116904d867b54dc7e4a193f83baf7273b63933c7921954c53328fa8d295"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Atom.ilean",
+        "bytes": 9620,
+        "sha256": "9cb49032cca7156c3d1b1c54c61d581f4c420c8cf816b12ecdba69eb933d84b4"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Atom.ilean.hash",
+        "bytes": 16,
+        "sha256": "2976cf6407dfbef4de3cdd6fb14b4ffe9358e45762be99da723beda266ab0d17"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Atom.olean",
+        "bytes": 189608,
+        "sha256": "2e25927c3a434b7f3ab243b850310e226a66c3dc99f436a109f176a2d851cb8e"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Atom.olean.hash",
+        "bytes": 16,
+        "sha256": "4c6e132244fbe1a667ff19f301f802a31ff43c27f8a05e098d415090aee7d6cc"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Atom.trace",
+        "bytes": 2332,
+        "sha256": "bc10e042d622e89d15baa2f0b7b1f2a8ac7c4834563b0a449d7bc3930960d48c"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Call.ilean",
+        "bytes": 31654,
+        "sha256": "ee1a71f4f8262248453d735db7b586d1083e24f04a79232709e8908470e767d0"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Call.ilean.hash",
+        "bytes": 16,
+        "sha256": "13c20ba2e5f713fb962f10f69d54f2212312cf0cac7a903179a1bb9b4173f027"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Call.olean",
+        "bytes": 457256,
+        "sha256": "c9c6f134a30b5f32ef70acf0c467499b8dfa5e98087552189fc051a54b877b60"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Call.olean.hash",
+        "bytes": 16,
+        "sha256": "42758eb6976e55d514e1c2edebbdd80637c312339b4ac0b184252af20af7dfca"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Call.trace",
+        "bytes": 4533,
+        "sha256": "c7d72f9344ec62f92eeac9dc97e50b549a0d0f2c0505268e509d78bc5a0cf6ed"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/CallSimulation.ilean",
+        "bytes": 33057,
+        "sha256": "ab55d66a1e285a2c319ff68663bca4b387c732a9a5c8fce3bc0c547b8b5d93f5"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/CallSimulation.ilean.hash",
+        "bytes": 16,
+        "sha256": "d6b53ddab1e7a1399bf8c9774a26966ff272e71349173ed4c5fd1b493516edaa"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/CallSimulation.olean",
+        "bytes": 370120,
+        "sha256": "0dcfabd35bd4003cfbcb914400ef3c0bdcce53e28ce2188911001b57de33a8e5"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/CallSimulation.olean.hash",
+        "bytes": 16,
+        "sha256": "45c5e94a3397bda29d8f32698e8d069cb39d2dc06b995fb7078eca855fec38eb"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/CallSimulation.trace",
+        "bytes": 5373,
+        "sha256": "f16a2fd659e74caf7b55a313948f321659c3afabe221c769579ee97bd3ca7315"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Combinators.ilean",
+        "bytes": 10279,
+        "sha256": "df5791382ab7250685ab45255206551a85c990e8438d63d100dc41f7b55e0dd6"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Combinators.ilean.hash",
+        "bytes": 16,
+        "sha256": "ea14d173e3dbdae3137c4c41d472fa094e515d9e9925a0148a2d86122c224c79"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Combinators.olean",
+        "bytes": 125280,
+        "sha256": "20623c8c9e22471aacb1ec4716fd3fe96cfb1422a724cb631f0ea8843c5abfea"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Combinators.olean.hash",
+        "bytes": 16,
+        "sha256": "a33fcd4df1606d0c5f362877f2b53fd31f0534a2d1abae1314e7f44d26d0f111"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Combinators.trace",
+        "bytes": 2537,
+        "sha256": "0cea42edd2a4923a4db24d063a068d9e8ff5709ab01f674088e89cd310f10fc7"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Compiler.ilean",
+        "bytes": 11400,
+        "sha256": "63cd65a9391284d5d0fda8dd6cba499d902a71bd47934cd3687b0d06da1b53ad"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Compiler.ilean.hash",
+        "bytes": 16,
+        "sha256": "232d1b21cc5b1e092dfbeaa55085e977ae364228e0e5211309459dcdd7aa2dab"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Compiler.olean",
+        "bytes": 461952,
+        "sha256": "2ecfc6a0963ee777b237b3650e63d7b62a4d2054e5ae1ee253b4674291a545e1"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Compiler.olean.hash",
+        "bytes": 16,
+        "sha256": "c4c182c31a1c1ad6a4bc845661d8e10eed068c0509aa6763518a61fcb08334c1"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Compiler.trace",
+        "bytes": 3000,
+        "sha256": "7549ee31f56d14c8d92b358f9db8f230493d298be348663bea4c04a3968d2f42"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Embedding.ilean",
+        "bytes": 20761,
+        "sha256": "1d1d965e6db3dbca3779cc866b24ff23e6515f5020a59d21eeceb15be33fb7ce"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Embedding.ilean.hash",
+        "bytes": 16,
+        "sha256": "61bddcb5a83ff1ce847475191b17fad877bd23eead9832c5312ac9546f95d8b5"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Embedding.olean",
+        "bytes": 612480,
+        "sha256": "cb195bd085b57bf23be72fe54162a94459162c771e26993b09ade8eb16b4973e"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Embedding.olean.hash",
+        "bytes": 16,
+        "sha256": "62765cdb0d3c100cf0d34498d5b73caca3d19ab7ba10db38443fec7c5fac59db"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Embedding.trace",
+        "bytes": 2507,
+        "sha256": "2066595f6904ac9f5d6d4eff2b0f8866e4cd7289e15999de66060a518465dcd3"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/OutputBounds.ilean",
+        "bytes": 23068,
+        "sha256": "7379678a2764f21b65029c3a2dbb1c1c398c9d4530a23c7e1c47dd75bc2478a0"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/OutputBounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "12eb9647d487cc1937284952bd8fc3f912045de48845d234c1cc8abd6412f019"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/OutputBounds.olean",
+        "bytes": 396424,
+        "sha256": "55246acea47ad3427833fc796b7d374ec6e48cca95ac38c8208811da085a637e"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/OutputBounds.olean.hash",
+        "bytes": 16,
+        "sha256": "68533e2ff17365579368cf5d747b490342bf1ba6f34aa045dd45961e4db2951d"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/OutputBounds.trace",
+        "bytes": 3341,
+        "sha256": "a6b045a8052be042c920cccd4330e30312496f029db169a7fef90d9c0297ab07"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/PointwiseCompiler.ilean",
+        "bytes": 24927,
+        "sha256": "cd0e8ba6c1ead1a04dbfcf14d853f14d7b41954947c047db953721f865085050"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/PointwiseCompiler.ilean.hash",
+        "bytes": 16,
+        "sha256": "0403423de2acc862c71483de85b9a78f06472fa4fa9ce181c25c2e8badf9563d"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/PointwiseCompiler.olean",
+        "bytes": 712000,
+        "sha256": "2a1e7f980115343edd9ad562a1fa788c365f9de67b53a7f00ed79e2b2701412f"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/PointwiseCompiler.olean.hash",
+        "bytes": 16,
+        "sha256": "923c67c7bb7739e264024d0535333d3970ab84e88af1ebc2c0c09bd6a589b052"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/PointwiseCompiler.trace",
+        "bytes": 2950,
+        "sha256": "61e2cfc39d1f012971b3582046d017167652e0341281a5912bb44e60f5008625"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/PolynomialBounds.ilean",
+        "bytes": 2142,
+        "sha256": "2db8574f3024b4ba3c11585cb5b708590434d4dab078175676c229cd606ea786"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/PolynomialBounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "1cc0eff186575fdb7dc12a29c70f5342833258fd232cc1fb789aa7b5a8bcc0fe"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/PolynomialBounds.olean",
+        "bytes": 20104,
+        "sha256": "61d368f115cdd076ea4a48fc63c757454685cf99dcb443ac051e247f2cfc7a88"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/PolynomialBounds.olean.hash",
+        "bytes": 16,
+        "sha256": "07f650addddac4a8681ded7efd4e61c9e348d8d8a23a313032c8282ba5ab94b3"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/PolynomialBounds.trace",
+        "bytes": 2278,
+        "sha256": "67467328ac6a04d12f3d25abf4313dd9046c4acc66026dc468c2de096e002a90"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/RoutineComposition.ilean",
+        "bytes": 20011,
+        "sha256": "53c97a9a49c0c9f228afbfbfbfc06c008a8d6c3675dae9a3c9bce51e759d695e"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/RoutineComposition.ilean.hash",
+        "bytes": 16,
+        "sha256": "8d5b7c0ca4d57e4194c1a8e728ea0cc4bf0e881c8d24e15fe9b594696e60933c"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/RoutineComposition.olean",
+        "bytes": 274432,
+        "sha256": "ce30870b425b3285714bd3caa5cb79127d7d286aed8bb8aef021f91b589d6f74"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/RoutineComposition.olean.hash",
+        "bytes": 16,
+        "sha256": "fadaddfec78b61327e68c219ead5f8d38347c58b53f834a14a47c94d450b2708"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/RoutineComposition.trace",
+        "bytes": 3341,
+        "sha256": "d46c3e4536653726bfe40331c1690a1a07f07ae32f2ed10aa43d20fe25cfedd0"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/RoutineControl.ilean",
+        "bytes": 32102,
+        "sha256": "ae699d79c77d33cf95bd280c26cbe2ce39635192c596713533a5640f49df90ca"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/RoutineControl.ilean.hash",
+        "bytes": 16,
+        "sha256": "e8f23f8a65f2abd0818f5f860bb680b1095552f12f407254fd1a2fcc6a4fae34"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/RoutineControl.olean",
+        "bytes": 418584,
+        "sha256": "3c548cdca85fc65271fed57b0a6b35709796b4813b98b7bb71e507aca15d9691"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/RoutineControl.olean.hash",
+        "bytes": 16,
+        "sha256": "18429374cd5f61fee62a66a9ef04e53ef2517f9cbe6395db57e81f9793bcfa2d"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/RoutineControl.trace",
+        "bytes": 4359,
+        "sha256": "157f37abdeb7644f31ef38519fc4641cbd9d93e8f08df2b374555d67e27c6aea"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/RoutineMachine.ilean",
+        "bytes": 10452,
+        "sha256": "0233e590686b8a18963d82a0af42f55e475b071c8359be8f23b930a1557e315e"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/RoutineMachine.ilean.hash",
+        "bytes": 16,
+        "sha256": "28f9ac75db8ea39c766173056c8c031564779c33fada9b571a7657e53d974f9f"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/RoutineMachine.olean",
+        "bytes": 149344,
+        "sha256": "32079bda21649b3c690cb5b205512c815f0ac75ca607f4bdd380734d34e9654d"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/RoutineMachine.olean.hash",
+        "bytes": 16,
+        "sha256": "6fe586273c932965d48fe63740ce6b2a0b8c01bebf20a03e0ecac155d3815ca7"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/RoutineMachine.trace",
+        "bytes": 2417,
+        "sha256": "d5081dc53b99d7d701c19e8d16fc76dd14732ed69bb3ab7ca0ae4c0b3d098a18"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Runs.ilean",
+        "bytes": 4942,
+        "sha256": "6a81227a02846e76da51be7ad9152df9cab11304686c7038fa24e64f25dcb50c"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Runs.ilean.hash",
+        "bytes": 16,
+        "sha256": "c2a5bf5110336eea004ef36e07c459ead70be76fb5fd34ed6a7e6e150d0e3bd5"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Runs.olean",
+        "bytes": 82144,
+        "sha256": "4382e4a15e992313d9b30a4a17d7d67b1aeb1b61c8917465bb541ad08cc883ff"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Runs.olean.hash",
+        "bytes": 16,
+        "sha256": "6592788f994ce98f755f7c29054c1c783ee03b7427fd5d2249551a9e5ee13eee"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Runs.trace",
+        "bytes": 2214,
+        "sha256": "77526a7b37b40ebcc9da523cbf07ee00a5f0b17805c17224cf14c2cc0fa079a0"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Substitution.ilean",
+        "bytes": 9681,
+        "sha256": "2d36606d4789158579fa26215eeb9f91df7189e67a850df01b985a4d96fb447e"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Substitution.ilean.hash",
+        "bytes": 16,
+        "sha256": "447ea65c61f5e43354b1273798f45acb0ff25e1816e1e54982f18e6d1f0a3466"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Substitution.olean",
+        "bytes": 64368,
+        "sha256": "4290adc4722e2e3010e109b860da2d320652a2a48a6eabb899af04bb67349fa7"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Substitution.olean.hash",
+        "bytes": 16,
+        "sha256": "562f924f7597e1566e1ff961a5ee18bd722b518f149a3b76bc1ec7e0449da448"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Substitution.trace",
+        "bytes": 2549,
+        "sha256": "706f45cabff03e4e049fe37d2825a7706f68a6ead9e1614a0524ed99c6e6df6a"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Transfer.ilean",
+        "bytes": 12506,
+        "sha256": "9d201370c6335a92d691ca07390bf016f86de56de44f0b7fde384541bd39c6d5"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Transfer.ilean.hash",
+        "bytes": 16,
+        "sha256": "cff7cccab206964d06f6ff1b85a06c26a0718bbc7a11a039907c77f3e1ab5ca9"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Transfer.olean",
+        "bytes": 255688,
+        "sha256": "2048107f5c4c6333da60770d1b9281be3e890a08c361e39abcbeb364444d3d37"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Transfer.olean.hash",
+        "bytes": 16,
+        "sha256": "78d3147a6a4a3219cd2bd602e183cb61408c7f91f5ddd39c61caed34308ffb70"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs/Transfer.trace",
+        "bytes": 2501,
+        "sha256": "f4ce45a38219a88dd0c5db8500bd69b09e75bb76f3f79832357b5440fb226e42"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs.ilean",
+        "bytes": 835,
+        "sha256": "b5f7a83d494197a0e1e034b052cf9087587e039c32ad57c6cfdb8af4c7f332af"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "cbe5f09cf710893139e4a916469d57e6faf2f86d79de1a6bcc05ced3f83beab8"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs.olean",
+        "bytes": 3048,
+        "sha256": "b57009b8e43ab899a1456a70e08cb68d253c4508c2ed9546f9d83d707c0d8392"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "8e1e0b79e785b0f5ff629ce3e70a2ba468b94be3bbfbe1bebf73520916b8198c"
+      },
+      {
+        "path": "proofs/lib/Lax218471Proofs.trace",
+        "bytes": 4451,
+        "sha256": "014d60b16fce5fd7b9740cb414f41d6ebad359c1c60d5d7012bd06a5315eac65"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "969628aea3778451eb61d98dae26a054695c8c03140c14ad19d342e0d3ee835a"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "a0afefb59da9da38681c7465b5f6584d597a091f416bec016b42989893777d9e"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs/Atom.lean",
+        "bytes": 1883,
+        "sha256": "ffbc3c37585d92afd5c88f6616524cc92eaada7c9edc0723df8f5550ab2504c6"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs/Call.lean",
+        "bytes": 7148,
+        "sha256": "30ef93dcfc560813ddf963b7de1c3f10fb86c0bbf5b4259c409c4f18d62aa198"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs/CallSimulation.lean",
+        "bytes": 7044,
+        "sha256": "e04b40f2dd40badf4cf807ec40506c22ceb13b155f23bec8b32a4f05783c197d"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs/Combinators.lean",
+        "bytes": 2825,
+        "sha256": "a6826ff74bc1b7ffb1a3cc89ad6a973c84ab2b4fa3669a54d6d600326336f8c7"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs/Compiler.lean",
+        "bytes": 2883,
+        "sha256": "0ce4e7e124e2f735ab805c3b3e68b046d51d23120a751bb32fb070257706e391"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs/Embedding.lean",
+        "bytes": 6083,
+        "sha256": "77084f240187d90ffbcd636c91f101bb7542f5d51e70d9852ca9b075ff408b16"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs/OutputBounds.lean",
+        "bytes": 5346,
+        "sha256": "af0998eb9f67ca6fe94ba4dda243032d556ddc7780e8d8c1a0086a974b400123"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs/PointwiseCompiler.lean",
+        "bytes": 8017,
+        "sha256": "576e07cf0640a6524c27f2fe1dbb3478b222b0466a298205f4d85d3cc865fee6"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs/PolynomialBounds.lean",
+        "bytes": 548,
+        "sha256": "439fb95e00e0a4d25e81a7a7d20673ced3bbd01eab71e0ec10eca565332604c8"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs/RoutineComposition.lean",
+        "bytes": 3469,
+        "sha256": "3244483e8b0c56b434c736df5c330a459da6f2b5ebb2162d40d2aeea6c37a321"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs/RoutineControl.lean",
+        "bytes": 6219,
+        "sha256": "a4b5ece310c920e4e989b3cbd9b147da07ffd5e48733536b8116a92c362f3303"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs/RoutineMachine.lean",
+        "bytes": 2284,
+        "sha256": "b8100b90e5b9f62b8deda4b34f1bb591798452228c7d7a76bde428182a11920a"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs/Runs.lean",
+        "bytes": 1644,
+        "sha256": "e9e605b29e480aacd461edf24f389bcf416e642b6d007061286dac082920739e"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs/Substitution.lean",
+        "bytes": 2741,
+        "sha256": "b1e90dc9e617b2c20db9c179d4820cf31a14ecad16ce1b4196e5f94c94746547"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs/Transfer.lean",
+        "bytes": 4438,
+        "sha256": "299b87c71c8033fbaf0b7ac81b97aafc665c0aa6ce7ebeb0d784f4791e7218e4"
+      },
+      {
+        "path": "proofs/package/Lax218471Proofs.lean",
+        "bytes": 525,
+        "sha256": "f2b6d1d7fd2eb10ce4409f3ff80f234a3e0044bc2442133223ed397ec8c1728c"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:bf862201a28a6d8f489a81a84afa7081a9be555e74e6fe9739b358534c63f4cc"
   }
 }
