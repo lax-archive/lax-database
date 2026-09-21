@@ -4,5 +4,791 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 137
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-345332",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "A Simplified NP-Complete Satisfiability Problem",
+      "authors": [
+        {
+          "name": "Yuval Itzhaki",
+          "github": "yuvalyitz"
+        },
+        {
+          "name": "Claude"
+        }
+      ],
+      "bibEntries": [
+        "@article{tovey1984simplified,\n  author  = {Tovey, Craig A.},\n  title   = {A simplified {NP}-complete satisfiability problem},\n  journal = {Discrete Applied Mathematics},\n  volume  = {8},\n  number  = {1},\n  pages   = {85--89},\n  year    = {1984},\n  doi     = {10.1016/0166-218X(84)90081-7}\n}\n"
+      ]
+    },
+    "abstract": "*(3,4)-SAT* is satisfiability restricted to formulas in which every clause has exactly three\nliterals and every variable occurs at most four times. Tovey (1984) proved that it is\nNP-hard. This submission states that theorem: every language in NP has a polynomial-time\nmany-one reduction to (3,4)-SAT, on the CNF encoding and the Turing machines of the\narchive's Cook–Levin theorem.\n\nThe reduction is from unrestricted satisfiability. Every literal occurrence receives a\nfresh variable; a clause is chained through link variables into clauses of at most three\nliterals; a cycle of implications forces the copies of one variable to agree; and every\nshort clause is filled with the negation of a fresh variable that Tovey's thirteen-clause\ngadget forces to be true.\n\nThe correctness of the reduction is proved. Its polynomial running time is stated and not\nproved: the one statement of this submission that remains open.\n"
+  },
+  "requiredByConcepts": [
+    "Lax429075",
+    "Lax434930"
+  ],
+  "requiredByProofs": [
+    "Lax429075",
+    "Lax429075Proofs",
+    "Lax434930",
+    "Lax434930Proofs"
+  ],
+  "concepts": [
+    {
+      "id": "Lax345332.Construction",
+      "path": "concepts/Lax345332/Construction.lean",
+      "title": "The reduction from satisfiability to (3,4)-satisfiability",
+      "type": "definition",
+      "description": "A CNF formula $F$ with $N$ literal occurrences over variables below $V$ is turned into a\n(3,4) formula in two steps.\n\n*Splitting.* The occurrence at position $p$ is replaced by a fresh variable $w_{v,p}$,\nwhere $v$ is the variable occurring there. A clause becomes a chain through link variables\n$z_p$: the clause $(l_0 \\vee \\dots \\vee l_{L-1})$ becomes\n$(l_0 \\vee z_0), (\\bar z_0 \\vee l_1 \\vee z_1), \\dots, (\\bar z_{L-2} \\vee l_{L-1})$, and an\nempty clause stays empty. For every $v$ the implications $w_{v,p+1} \\to w_{v,p}$, taken\ncyclically over all positions, force the copies of $v$ to agree. Clauses now have at most\nthree literals and every variable occurs at most three times.\n\n*Padding.* Every clause with fewer than three literals is filled with literals $\\bar y$,\neach on a fresh variable $y$ that a private copy of Tovey's gadget forces to be true. The\ngadget has thirteen clauses on $y$ and nine further variables; $y$ occurs three times in\nit and every other variable four times.\n\nThe reduction on words decodes a formula, applies the two steps and encodes the result; a\nword that encodes no formula is treated as the formula with one empty clause.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "All copies $w_{v,p}$ with $v < V$ and $p < N$ are created and tied together, not only those\nof pairs that occur. This makes the cyclic successor of a position simply the next\nposition, at the cost of an output of quadratic size."
+        }
+      ],
+      "imports": [
+        "Lax345332.ThreeFourSat"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax345332.ThreeFourSat\n\n/-!\n---\ntitle: The reduction from satisfiability to (3,4)-satisfiability\ntype: definition\n---\nA CNF formula $F$ with $N$ literal occurrences over variables below $V$ is turned into a\n(3,4) formula in two steps.\n\n*Splitting.* The occurrence at position $p$ is replaced by a fresh variable $w_{v,p}$,\nwhere $v$ is the variable occurring there. A clause becomes a chain through link variables\n$z_p$: the clause $(l_0 \\vee \\dots \\vee l_{L-1})$ becomes\n$(l_0 \\vee z_0), (\\bar z_0 \\vee l_1 \\vee z_1), \\dots, (\\bar z_{L-2} \\vee l_{L-1})$, and an\nempty clause stays empty. For every $v$ the implications $w_{v,p+1} \\to w_{v,p}$, taken\ncyclically over all positions, force the copies of $v$ to agree. Clauses now have at most\nthree literals and every variable occurs at most three times.\n\n*Padding.* Every clause with fewer than three literals is filled with literals $\\bar y$,\neach on a fresh variable $y$ that a private copy of Tovey's gadget forces to be true. The\ngadget has thirteen clauses on $y$ and nine further variables; $y$ occurs three times in\nit and every other variable four times.\n\nThe reduction on words decodes a formula, applies the two steps and encodes the result; a\nword that encodes no formula is treated as the formula with one empty clause.\n\n# Formalization notes\n\nAll copies $w_{v,p}$ with $v < V$ and $p < N$ are created and tied together, not only those\nof pairs that occur. This makes the cyclic successor of a position simply the next\nposition, at the cost of an output of quadratic size.\n-/\n\nnamespace Lax345332.Construction\n\nopen Lax429075.CNF Lax429075.Encoding Lax434930.PolynomialTime Lax345332.ThreeFourSat\n\n-- The gadget\n\n/-- Tovey's thirteen clauses on the variables `g, g+1, …, g+9`; they force `g` to be true. -/\ndef gadget (g : ℕ) : Formula :=\n  let y := g\n  let a (j : ℕ) := g + 1 + 3 * j\n  let b (j : ℕ) := g + 2 + 3 * j\n  let d (j : ℕ) := g + 3 + 3 * j\n  ((List.range 3).map fun j => [⟨y, true⟩, ⟨a j, true⟩, ⟨b j, true⟩]) ++\n  ((List.range 3).flatMap fun j =>\n    [[⟨d j, true⟩, ⟨a j, true⟩, ⟨b j, false⟩], [⟨d j, true⟩, ⟨a j, false⟩, ⟨b j, true⟩],\n     [⟨d j, true⟩, ⟨a j, false⟩, ⟨b j, false⟩]]) ++\n  [[⟨d 0, false⟩, ⟨d 1, false⟩, ⟨d 2, false⟩]]\n\n-- Padding\n\n/-- The base of the `t`-th gadget of the `k`-th clause, above the variables below `B`. -/\ndef ybase (B k t : ℕ) : ℕ := B + 30 * k + 10 * t\n\n/-- The padding literals of a clause of length `n`. -/\ndef pads (B k n : ℕ) : Clause := (List.range (3 - n)).map fun t => ⟨ybase B k t, false⟩\n\n/-- The `k`-th clause, padded, with its three gadgets. -/\ndef unit (B k : ℕ) (C : Clause) : Formula :=\n  (C ++ pads B k C.length) ::\n    (gadget (ybase B k 0) ++ gadget (ybase B k 1) ++ gadget (ybase B k 2))\n\n/-- The padded formula. -/\ndef pad (B : ℕ) (G : Formula) : Formula :=\n  (List.range G.length).flatMap fun k => unit B k (G.getD k [])\n\n-- Splitting\n\n/-- The copy of the variable `v` at position `p`. -/\ndef wv (V v p : ℕ) : ℕ := v + p * V\n\n/-- The link variable after position `p`. -/\ndef zv (V N p : ℕ) : ℕ := V * N + p\n\ndef dflt : Literal := ⟨0, false⟩\n\n/-- The `i`-th clause of the chain of `C`, whose first literal sits at position `o`. -/\ndef chainClause (V N o : ℕ) (C : Clause) (i : ℕ) : Clause :=\n  (if i = 0 then [] else [⟨zv V N (o + i - 1), false⟩]) ++\n    [⟨wv V (C.getD i dflt).index (o + i), (C.getD i dflt).positive⟩] ++\n    (if i + 1 = C.length then [] else [⟨zv V N (o + i), true⟩])\n\ndef chainClauses (V N o : ℕ) (C : Clause) : Formula :=\n  if C.length = 0 then [[]] else (List.range C.length).map (chainClause V N o C)\n\ndef chains (V N : ℕ) : ℕ → Formula → Formula\n  | _, [] => []\n  | o, C :: F => chainClauses V N o C ++ chains V N (o + C.length) F\n\n/-- The cyclic successor on positions. -/\ndef next (N p : ℕ) : ℕ := if p + 1 < N then p + 1 else 0\n\n/-- The implications `w v (next p) → w v p`. -/\ndef cycles (V N : ℕ) : Formula :=\n  (List.range (V * N)).map fun k => [⟨k, true⟩, ⟨wv V (k % V) (next N (k / V)), false⟩]\n\n/-- The number of literal occurrences. -/\ndef size (F : Formula) : ℕ := (F.map List.length).sum\n\n/-- A strict bound on the variables. -/\ndef bound : Formula → ℕ\n  | [] => 1\n  | C :: F => max (C.foldr (fun l b => max (l.index + 1) b) 1) (bound F)\n\ndef split (F : Formula) : Formula :=\n  chains (bound F) (size F) 0 F ++ cycles (bound F) (size F)\n\n-- The reduction\n\n/-- The reduction on formulas. -/\ndef transform (F : Formula) : Formula := pad (bound F * size F + size F) (split F)\n\n/-- The formula a word stands for. -/\ndef parseF (w : Word) : Formula := (decodeCNF w).getD [[]]\n\n/-- The reduction on words. -/\ndef reduce (w : Word) : Word := encodeCNF (transform (parseF w))\n\n/-- The image is a (3,4) formula. -/\naxiom transform_isThreeFour (F : Formula) : IsThreeFour (transform F)\n\n/-- The image is satisfiable exactly when the formula is. -/\naxiom transform_sat (F : Formula) : Satisfiable F ↔ Satisfiable (transform F)\n\n/-- The reduction on words is correct. -/\naxiom reduce_correct (w : Word) : w ∈ Lax429075.Satisfiability.SAT ↔ reduce w ∈ SAT34\n\n/-- The reduction on words is computable in polynomial time. -/\naxiom reduce_polyTime : Nonempty (Turing.TM2ComputableInPolyTime id id reduce)\n\nend Lax345332.Construction\n",
+      "statements": [
+        {
+          "id": "Lax345332.Construction.reduce_correct",
+          "signature": "reduce_correct : ∀ (w : Lax434930.PolynomialTime.Word),\n  Iff (Set.instMembership.mem Lax429075.Satisfiability.SAT w)\n    (Set.instMembership.mem Lax345332.ThreeFourSat.SAT34 (Lax345332.Construction.reduce w))",
+          "startLine": 127,
+          "endLine": 128,
+          "doc": "The reduction on words is correct."
+        },
+        {
+          "id": "Lax345332.Construction.reduce_polyTime",
+          "signature": "reduce_polyTime : Nonempty (Turing.TM2ComputableInPolyTime id id Lax345332.Construction.reduce)",
+          "startLine": 130,
+          "endLine": 131,
+          "doc": "The reduction on words is computable in polynomial time."
+        },
+        {
+          "id": "Lax345332.Construction.transform_isThreeFour",
+          "signature": "transform_isThreeFour : ∀ (F : Lax429075.CNF.Formula), Lax345332.ThreeFourSat.IsThreeFour (Lax345332.Construction.transform F)",
+          "startLine": 121,
+          "endLine": 122,
+          "doc": "The image is a (3,4) formula."
+        },
+        {
+          "id": "Lax345332.Construction.transform_sat",
+          "signature": "transform_sat : ∀ (F : Lax429075.CNF.Formula),\n  Iff (Lax429075.CNF.Satisfiable F) (Lax429075.CNF.Satisfiable (Lax345332.Construction.transform F))",
+          "startLine": 124,
+          "endLine": 125,
+          "doc": "The image is satisfiable exactly when the formula is."
+        }
+      ]
+    },
+    {
+      "id": "Lax345332.ThreeFourSat",
+      "path": "concepts/Lax345332/ThreeFourSat.lean",
+      "title": "(3,4)-satisfiability is NP-hard",
+      "type": "theorem",
+      "description": "*(3,4)-SAT* is satisfiability restricted to formulas in which every clause contains\nexactly three literals and every variable occurs at most four times. Tovey proved that it\nis NP-hard: every language in NP has a polynomial-time many-one reduction to it.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The restriction is a predicate on the CNF formulas of the archive's Cook–Levin submission,\nso the encoding and the notion of satisfiability are shared with unrestricted SAT.\nOccurrences are counted with multiplicity."
+        }
+      ],
+      "imports": [
+        "Lax429075.Reductions",
+        "Lax429075.Satisfiability"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax429075.Reductions\nimport Lax429075.Satisfiability\n\n/-!\n---\ntitle: (3,4)-satisfiability is NP-hard\ntype: theorem\n---\n*(3,4)-SAT* is satisfiability restricted to formulas in which every clause contains\nexactly three literals and every variable occurs at most four times. Tovey proved that it\nis NP-hard: every language in NP has a polynomial-time many-one reduction to it.\n\n# Formalization notes\n\nThe restriction is a predicate on the CNF formulas of the archive's Cook–Levin submission,\nso the encoding and the notion of satisfiability are shared with unrestricted SAT.\nOccurrences are counted with multiplicity.\n-/\n\nnamespace Lax345332.ThreeFourSat\n\nopen Lax429075.CNF Lax434930.PolynomialTime\n\n/-- The number of occurrences of the variable `i` in the formula `F`. -/\ndef occurrences (F : Formula) (i : ℕ) : ℕ :=\n  (F.flatMap fun C => C.filter fun l => l.index == i).length\n\n/-- `F` is a *(3,4)* formula: every clause has exactly three literals, and every variable\noccurs at most four times. -/\ndef IsThreeFour (F : Formula) : Prop :=\n  (∀ C ∈ F, C.length = 3) ∧ ∀ i, occurrences F i ≤ 4\n\n/-- **(3,4)-SAT** as a language: the encodings of satisfiable (3,4) formulas. -/\ndef SAT34 : Language :=\n  {w | ∃ F : Formula, Lax429075.Encoding.encodeCNF F = w ∧ IsThreeFour F ∧ Satisfiable F}\n\n/-- **Theorem 2.3 (Tovey).** (3,4)-SAT is NP-hard. -/\naxiom npHard :\n    ∀ A : Language, A ∈ Lax434930.NondeterministicPolynomialTime.NP →\n      Lax429075.Reductions.ManyOne A SAT34\n\nend Lax345332.ThreeFourSat\n",
+      "statements": [
+        {
+          "id": "Lax345332.ThreeFourSat.npHard",
+          "signature": "npHard : ∀ (A : Lax434930.PolynomialTime.Language),\n  Set.instMembership.mem Lax434930.NondeterministicPolynomialTime.NP A →\n    Lax429075.Reductions.ManyOne A Lax345332.ThreeFourSat.SAT34",
+          "startLine": 37,
+          "endLine": 40,
+          "doc": "**Theorem 2.3 (Tovey).** (3,4)-SAT is NP-hard."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax345332Proofs.Reduction.npHard",
+      "path": "proofs/Lax345332Proofs/Reduction.lean",
+      "conclusion": "Lax345332.ThreeFourSat.npHard",
+      "assumptions": [
+        "Lax345332.Construction.reduce_polyTime",
+        "Lax429075.EncodingCorrect.roundtrip",
+        "Lax429075.SATHard.hardness"
+      ],
+      "description": "Satisfiability is NP-hard by the Cook–Levin theorem, the reduction is correct and runs in\npolynomial time, and polynomial-time many-one reductions compose."
+    },
+    {
+      "id": "Lax345332Proofs.Reduction.reduce_correct",
+      "path": "proofs/Lax345332Proofs/Reduction.lean",
+      "conclusion": "Lax345332.Construction.reduce_correct",
+      "assumptions": [
+        "Lax429075.EncodingCorrect.roundtrip"
+      ],
+      "description": "The encoding is injective and a decoded word is the encoding of what it decodes to, so the\nstatement is that of the reduction on formulas; a word that encodes nothing is sent to the\nimage of an unsatisfiable formula."
+    },
+    {
+      "id": "Lax345332Proofs.Transform.transform_isThreeFour",
+      "path": "proofs/Lax345332Proofs/Transform.lean",
+      "conclusion": "Lax345332.Construction.transform_isThreeFour",
+      "assumptions": [],
+      "description": "Padding makes every clause three literals long. Below the padding base the occurrence counts\nare those of the split formula, at most three; above it a variable belongs to one gadget of\none clause, where it occurs at most four times, the forced variable three times in the\ngadget and once as padding."
+    },
+    {
+      "id": "Lax345332Proofs.Transform.transform_sat",
+      "path": "proofs/Lax345332Proofs/Transform.lean",
+      "conclusion": "Lax345332.Construction.transform_sat",
+      "assumptions": [],
+      "description": "Splitting: an assignment of `F` is copied to every position and the link after a literal is\nset to \"no literal so far is true\"; conversely the cycle makes all copies of a variable\nequal, and a chain with all literals false propagates a true link into its last clause.\nPadding: the gadgets force the padding literals false, and can always be satisfied."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "460e59d760c0517916989041eab8ee4b837ab498815bef3cc500615169719642",
+    "sourceCommit": "e5915ce3e3c2b2d7f3d2546b9fa8a0cd7bf1a277",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax345332/Construction.c",
+        "bytes": 65280,
+        "sha256": "553da43b1097ff29223459b7b28f512de246013e97b77663a7bf7dc1eb26c8a3"
+      },
+      {
+        "path": "concepts/ir/Lax345332/Construction.c.hash",
+        "bytes": 16,
+        "sha256": "f3d216a289695e6cc309959a7cfc6af032ce89d698161e03b239005306811973"
+      },
+      {
+        "path": "concepts/ir/Lax345332/ThreeFourSat.c",
+        "bytes": 7401,
+        "sha256": "45016ddc936acce3bfefc5b0b4a59055fb879d8ccbebbbc8651d82f7fab568f5"
+      },
+      {
+        "path": "concepts/ir/Lax345332/ThreeFourSat.c.hash",
+        "bytes": 16,
+        "sha256": "fb5a297f34ce6aceb960d57d65221cc99426926b0a17b0c877b6b48b3d2d6bbb"
+      },
+      {
+        "path": "concepts/ir/Lax345332.c",
+        "bytes": 1551,
+        "sha256": "0d2955f86117b9e2cbc61ab49bbbca4bbd9bfa8499e6f31c1e09aaabb7cf53f7"
+      },
+      {
+        "path": "concepts/ir/Lax345332.c.hash",
+        "bytes": 16,
+        "sha256": "c50aba9085727c09296eede681112d4deddc1d08dad99b708998be8885fb7ae1"
+      },
+      {
+        "path": "concepts/lib/Lax345332/Construction.ilean",
+        "bytes": 14386,
+        "sha256": "efbcbb40d4279a381dccd9c68ba77fbc067876ce8d6e5021cf22362bbce47a16"
+      },
+      {
+        "path": "concepts/lib/Lax345332/Construction.ilean.hash",
+        "bytes": 16,
+        "sha256": "3c24f721866bbc6f8dacdb507dba96c1c78908bf5a656f4f5f2c99b3da3938fc"
+      },
+      {
+        "path": "concepts/lib/Lax345332/Construction.olean",
+        "bytes": 224144,
+        "sha256": "54aa484f6590a5a6dcd7d8f084894616f4681b0dffbc3170a8b86dd56cfe7a4d"
+      },
+      {
+        "path": "concepts/lib/Lax345332/Construction.olean.hash",
+        "bytes": 16,
+        "sha256": "60a5fd7626a76dcecc150471b3f48e30a87b56e8e89ac5a7994990347a3830c4"
+      },
+      {
+        "path": "concepts/lib/Lax345332/Construction.trace",
+        "bytes": 2235,
+        "sha256": "9fb848e8489b79cde1b545f1f5735f3a9db77ec0804fc700492f2da74623bacb"
+      },
+      {
+        "path": "concepts/lib/Lax345332/ThreeFourSat.ilean",
+        "bytes": 3020,
+        "sha256": "f6347d600397d1178ab66d626c7d507eb81f9788caf1b45cb24eec579c10c7a4"
+      },
+      {
+        "path": "concepts/lib/Lax345332/ThreeFourSat.ilean.hash",
+        "bytes": 16,
+        "sha256": "b7f1fbd58a1bb953b78bd25f1013cec57904a953f1c84ffb6945608ed6f9cbfd"
+      },
+      {
+        "path": "concepts/lib/Lax345332/ThreeFourSat.olean",
+        "bytes": 37408,
+        "sha256": "e32b19fb83a5612ba39f51fbd92f1e25f224f04b037738d11b632093d90f33f6"
+      },
+      {
+        "path": "concepts/lib/Lax345332/ThreeFourSat.olean.hash",
+        "bytes": 16,
+        "sha256": "f0b7e1067b988fddca44471fc7a794098488c5ea0d5fe1f3597c2572db455e5a"
+      },
+      {
+        "path": "concepts/lib/Lax345332/ThreeFourSat.trace",
+        "bytes": 2385,
+        "sha256": "b724563dca544255660c49b7e49aaa70ccccdfb8fd4ec3d599e38c42cc90edb3"
+      },
+      {
+        "path": "concepts/lib/Lax345332.ilean",
+        "bytes": 169,
+        "sha256": "c8381634c3acab1014f778df0de4bc776418e295f06fd5bd01025a444f3d88c6"
+      },
+      {
+        "path": "concepts/lib/Lax345332.ilean.hash",
+        "bytes": 16,
+        "sha256": "b0cf4718668cd68e9e577e53bbd5036d5bcd5da2dbe5d6801d61131e26d6d9f1"
+      },
+      {
+        "path": "concepts/lib/Lax345332.olean",
+        "bytes": 1640,
+        "sha256": "577efb462acbfc78f8808cf41d27b72cb1cecf1ad46cf3fb42a590b12a3b36f0"
+      },
+      {
+        "path": "concepts/lib/Lax345332.olean.hash",
+        "bytes": 16,
+        "sha256": "8542ee4d9c46b2bd179d3808e9c48565ed4c24819059fa842d5936895584de81"
+      },
+      {
+        "path": "concepts/lib/Lax345332.trace",
+        "bytes": 2301,
+        "sha256": "9d55f3f146ea100716a3493dbee9fddc8d4f21bce83e63beb8272fc35b85fcdc"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3581,
+        "sha256": "86c48d0c0252314090d17c386508b1dee6fa81411a5a220435497507abdf97ac"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 571,
+        "sha256": "5371343584cc0c71e6d61df4d7851982c713df1bf973f2c11998b7af04b34fd9"
+      },
+      {
+        "path": "concepts/package/Lax345332/Construction.lean",
+        "bytes": 5337,
+        "sha256": "b8b8ffe5ec05a2058e33e6bb89a0576427d2fb2eecb962ee40d557fb2433e1fa"
+      },
+      {
+        "path": "concepts/package/Lax345332/ThreeFourSat.lean",
+        "bytes": 1533,
+        "sha256": "e650223fd58e6eeee6cf3c71969e9cafd12bcd01892936966850a48880196a1c"
+      },
+      {
+        "path": "concepts/package/Lax345332.lean",
+        "bytes": 60,
+        "sha256": "dff17279c3b8e9e03751901d1006fc02e4237c416538f968867aab115424d98b"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/Gadget.c",
+        "bytes": 5596,
+        "sha256": "61cb3bc4abac40ed5bac660888897cb3a9ed26dd2313ea3bc786dd59a2cadd4f"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/Gadget.c.hash",
+        "bytes": 16,
+        "sha256": "0241277738d4fbba32466af5714b9d1572b323a99f550cda13251863e05993c1"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/GadgetOcc.c",
+        "bytes": 1813,
+        "sha256": "d74c54e8ea2fb553f17d3f3d87d25919439a6924ad758b30e8ad92b6d1e2fc27"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/GadgetOcc.c.hash",
+        "bytes": 16,
+        "sha256": "e9101a08dc98c5ea83d01e0f8b88e6e629bb6043920efa49bd0d6382a69ba080"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/Occ.c",
+        "bytes": 2423,
+        "sha256": "1cd9626d6e625a85eb779b7d805f8d4f9893a4fa90e7d838a67a64b09a6e0cb2"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/Occ.c.hash",
+        "bytes": 16,
+        "sha256": "1223172974dff6eae18d82a60a66fca0cb31f287e5bc102107db2308781aff79"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/Pad.c",
+        "bytes": 4224,
+        "sha256": "d183636ca9fa796962c4070f8136190772e339b206bfe1e6f68520e475d404f6"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/Pad.c.hash",
+        "bytes": 16,
+        "sha256": "aec3f3920b8f1b099730498f1df80557f13f8a8226e905db3325f718ac71e260"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/PadOcc.c",
+        "bytes": 1558,
+        "sha256": "b1e811989e65325c98a125a488a48b1e40b93c8cc2b1430d3cd50dcde2908ff0"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/PadOcc.c.hash",
+        "bytes": 16,
+        "sha256": "6952f7c610323611322aa7edfa5d444907b21f085632fc0390ad71a9930676d4"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/Reduction.c",
+        "bytes": 2414,
+        "sha256": "64243ccc67cfb94b300beabf2ffb908642836feed07cd99b5f29362e9f2a8141"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/Reduction.c.hash",
+        "bytes": 16,
+        "sha256": "0c2836e374bd8c370598cfe7f60ea1fd3a6aec8eb9a07d4adcf3ccdf1c87864b"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/Split.c",
+        "bytes": 3432,
+        "sha256": "dab4bd38fc995edba17931454b0959e1cbc972a56209fa051c35c983c5bc4d39"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/Split.c.hash",
+        "bytes": 16,
+        "sha256": "57b9e844e7d0bf818d5acaef39eb0c5921b8b73fb88c45e71f66f7057fdf9eda"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/SplitSat.c",
+        "bytes": 13324,
+        "sha256": "78de0b53069863f941baa4b8ddb511c1ee7080522123aec267c5dc207f788430"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/SplitSat.c.hash",
+        "bytes": 16,
+        "sha256": "6d40925d63e1ad7e81da043fa76cfd7541b359b894eb0fe28d6822f155e9a20d"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/SplitShape.c",
+        "bytes": 3141,
+        "sha256": "dcfcd786b3704ddde5161db210bfe9a6867a015f723bd013602b6b62c716e67c"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/SplitShape.c.hash",
+        "bytes": 16,
+        "sha256": "5fa384e4b1256880325cc1cc1acec2ac4aafd2952d2879f7c959a21c4d919a47"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/SplitSound.c",
+        "bytes": 1581,
+        "sha256": "9adfb4804acb258f34259bdb11427d8ad6e0274374d93507f876bbcf6957e5c0"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/SplitSound.c.hash",
+        "bytes": 16,
+        "sha256": "bf5f75a867167a2078299f3536d5ef5fa2a6967b40320cfd82b6879a8c69eae2"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/Transform.c",
+        "bytes": 1585,
+        "sha256": "e42dd7613b4ebd3d534cef2932444a7d0e6a25d52be92da7a4ace3a404e13bab"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs/Transform.c.hash",
+        "bytes": 16,
+        "sha256": "d0206a26e7c8ed3ffa1c53c7d3c9cb1b641d3be0ef27ae6d1efbf55c43d675d0"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs.c",
+        "bytes": 3870,
+        "sha256": "606a58aaa815711901022e73f8d81176c4db98bcd6f38f0840d176ae5be636cc"
+      },
+      {
+        "path": "proofs/ir/Lax345332Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "812d7adeb82e33cf905e091059cb0ccd1f746117c26dd334f56bad080016d2c2"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Gadget.ilean",
+        "bytes": 3594,
+        "sha256": "10eb5eb218bcd1c03b7e659803524ccaaeaf444cd53ff2964973f67dcaa993ed"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Gadget.ilean.hash",
+        "bytes": 16,
+        "sha256": "0ee6a12de979da07418e7bdccac56da22e4800e6828a5bc11c429f581a3afd9d"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Gadget.olean",
+        "bytes": 2041088,
+        "sha256": "76e10f49064ec50b165cabebbc47fa551bb6e49db3750130ef76b3faffbd268c"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Gadget.olean.hash",
+        "bytes": 16,
+        "sha256": "5ad618c195d00ea0dbe7d2a31730e184dbb45b76118c7d0e477305ee874fee0d"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Gadget.trace",
+        "bytes": 2389,
+        "sha256": "b6cce7fd6d0b34b00cfcbc078b8a5ae205fc418af3afe934eeeebcdbe92b8142"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/GadgetOcc.ilean",
+        "bytes": 1811,
+        "sha256": "45c64449cfd7a9d0d28b0901c99108ef8f90cd03204912e46ed3716d1586d9f5"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/GadgetOcc.ilean.hash",
+        "bytes": 16,
+        "sha256": "ed4d79f59f4d6e5684d9333e25d31545ee5c26c549f63daa9ce9673e6d2ad21c"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/GadgetOcc.olean",
+        "bytes": 948632,
+        "sha256": "7e1dccd5ea425cf409edc215cb87b3dae51d0069cf5eef677acdb38bb429b6c1"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/GadgetOcc.olean.hash",
+        "bytes": 16,
+        "sha256": "ae0e8eefac0c85a228a77f975ed4be4b3e9aeb579756cda7801bb53deffe5582"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/GadgetOcc.trace",
+        "bytes": 2688,
+        "sha256": "3a71954097670ad150fd32132529c06b5d58bf2a173a6e3f1e1ab1d19bcf4c90"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Occ.ilean",
+        "bytes": 8316,
+        "sha256": "2ca9072f36c80a28325c14fe683fa82417af4eead9a1086baa0cf72f1111fd54"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Occ.ilean.hash",
+        "bytes": 16,
+        "sha256": "96884a9b3c13233f88585701146952e510cb00fff28aef0e61430bb8927368ef"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Occ.olean",
+        "bytes": 444824,
+        "sha256": "51b7942389693a90232a6c0e909f4e6759caa2a8e2bebaa49f3ce586b8a90ef8"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Occ.olean.hash",
+        "bytes": 16,
+        "sha256": "5c8569a5134615da03be6b203377d829876f120977b0ed60dd1cb96473005ed3"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Occ.trace",
+        "bytes": 2368,
+        "sha256": "4ecc963a0439a7618bf146a26d4de339c4878c38d2983e1ca6320062b1ea994a"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Pad.ilean",
+        "bytes": 16804,
+        "sha256": "bbac2cfc38c09805f50db7b744ca1aade3d7c3929fe6d1462e4891bcc18bceb4"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Pad.ilean.hash",
+        "bytes": 16,
+        "sha256": "287555de1fae46ce8bef874409d48bb436ae7252885d6519cdbee57a0750f0b3"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Pad.olean",
+        "bytes": 332072,
+        "sha256": "f3eb274486f97b129bac92fb5d520ab8f8d9e9bf0db86673b70dbfc54f0f4e3e"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Pad.olean.hash",
+        "bytes": 16,
+        "sha256": "c172c902ec4c617697628621884c73029ae29fb139edcd39d4e5a3fdc605fb41"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Pad.trace",
+        "bytes": 2508,
+        "sha256": "143e4e8aabba7ee8492b32d004235c9d8189cf584cdbb0321626729f552d24d7"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/PadOcc.ilean",
+        "bytes": 15669,
+        "sha256": "e133d87ab735ecd5bc1dc260030f00aa0251ea2b2a58a0fe7d524c8dc3fb7f71"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/PadOcc.ilean.hash",
+        "bytes": 16,
+        "sha256": "6c57a3c69dd14f2fafe5d0bc08083205bf4a7e5677bdcc83d29e6e9c3b1079e6"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/PadOcc.olean",
+        "bytes": 752016,
+        "sha256": "37ab3366acadbe75b677ebf830fdd986395719224d904f8e047b8aa8ca10a927"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/PadOcc.olean.hash",
+        "bytes": 16,
+        "sha256": "9561ebbe49fac9cb4cfd2d98772bbbe010af1d35732864deb755ffb6c83a2ac6"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/PadOcc.trace",
+        "bytes": 2510,
+        "sha256": "6268c5a3aa4715ef17fd6d78d8c62008cb97401193902a06ad4fe804e321f528"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Reduction.ilean",
+        "bytes": 7031,
+        "sha256": "3e056255a9a77001a0debcffb33f9fae7dc578c893e7b460654fe084b4ec7f7b"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Reduction.ilean.hash",
+        "bytes": 16,
+        "sha256": "b2a60b008a7bcc9cbdb266ea51a5be4be8bda655a6a66a152bdcb69e5eed0d20"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Reduction.olean",
+        "bytes": 53528,
+        "sha256": "f041b13889bed9d4a3dfe85a3745a6e1d32b587a81fa4c99922d52f23826a2ca"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Reduction.olean.hash",
+        "bytes": 16,
+        "sha256": "8647cfc53f563bf1f46982daf3846b02e03e086fdf63552835b861873b189792"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Reduction.trace",
+        "bytes": 3090,
+        "sha256": "6ae0522effe9995019a1948a5413c0652170de74f2b1c273b9650d14120fbd76"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Split.ilean",
+        "bytes": 5496,
+        "sha256": "9785011180c4f9a9fc5ace882808191e1098311573a4a8a5e4113b8a62a454f8"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Split.ilean.hash",
+        "bytes": 16,
+        "sha256": "b5575ca288ad77be81f65363393299b30c9b5f0cfe3cf0fb50a8bded8710978b"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Split.olean",
+        "bytes": 201824,
+        "sha256": "741e61309d288ca2d29f84cad1703a619890c01e860961322c224e0e04fcec44"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Split.olean.hash",
+        "bytes": 16,
+        "sha256": "d78911f411ba33b030b68e81a62a37fb0d75842a7565f96969ec039abdba01a1"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Split.trace",
+        "bytes": 2503,
+        "sha256": "c6d8beaa8875aaa78ad07fc1bee1ee1506a4ae5b9a698efe574309c2fffedcd4"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/SplitSat.ilean",
+        "bytes": 21352,
+        "sha256": "6b1f2cfd4df3ace42ccb10629e9b8b6b8760109a2397771bbfe9ff3e000c8ab5"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/SplitSat.ilean.hash",
+        "bytes": 16,
+        "sha256": "57f20f1a69b89e2bea1707aa14567cf8c30d0c66acb40b4e1a00899d846aa4ca"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/SplitSat.olean",
+        "bytes": 403544,
+        "sha256": "11db63e7ec515f8a3edf3a1e364963703178a1fe4ee71f6b8ecb97277ef00dec"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/SplitSat.olean.hash",
+        "bytes": 16,
+        "sha256": "1ce2880821387286c1922c833ce8de437e9220294cedfdf693e3d37b57283688"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/SplitSat.trace",
+        "bytes": 2528,
+        "sha256": "fc352a80adffbeee742c63dc461b9b639628242553958ba2227615e1ae12a41f"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/SplitShape.ilean",
+        "bytes": 18495,
+        "sha256": "3a58fcb7fc1237eab5add5feba9253792c6ce07d1c01955146f25875de52262d"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/SplitShape.ilean.hash",
+        "bytes": 16,
+        "sha256": "af50e8e32f5642d81124dfa03c0ea9d2675800d003c6c627865e67fb35e9bc5f"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/SplitShape.olean",
+        "bytes": 731704,
+        "sha256": "71010f77eff9e7709eee6f3faf2db64a91c99549a59ed369b2e950615ac32325"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/SplitShape.olean.hash",
+        "bytes": 16,
+        "sha256": "c0abb57b2d901f626bb46c8cf7bc5efc805501bb2539377af1a80bf3f00134f6"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/SplitShape.trace",
+        "bytes": 2716,
+        "sha256": "b86c7aa8cabbccdd0a50c02f5bd7c0a845f5a7a2f9cea214465d9f76d82730a3"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/SplitSound.ilean",
+        "bytes": 20978,
+        "sha256": "61329a4aea87f5ebf91c430c5b3dd5abadc6bac94e71cda560ea171b0d73ad50"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/SplitSound.ilean.hash",
+        "bytes": 16,
+        "sha256": "9cdc361cc50b65ad87eb69c695017f30c800376ea3d901f2ccb3c4c8b013e58d"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/SplitSound.olean",
+        "bytes": 410184,
+        "sha256": "a3e62a850b1dc5a99aaef6eb636df35171f23832b2266ccf0a65fba379d1a912"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/SplitSound.olean.hash",
+        "bytes": 16,
+        "sha256": "c5782ab8852a0982dbe72fcf92c97e79df4ed75d7d42069c7a2cffb13c4a3033"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/SplitSound.trace",
+        "bytes": 2555,
+        "sha256": "8fbea1a5598a25060fd1636f2ffa449f97ee86019b0418123974f63cc907632a"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Transform.ilean",
+        "bytes": 14365,
+        "sha256": "fc7c1b19b7df9e7af575b6eea86b3f12e5634438fbd6265b916446a434d65f00"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Transform.ilean.hash",
+        "bytes": 16,
+        "sha256": "6ec088630bae4ae070da75a37b8c5a8958fd07425d534eca77b406f105c41621"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Transform.olean",
+        "bytes": 266696,
+        "sha256": "e18a87c492f06b25a6e182220230649affb5092feb31f661b103391e1eb9472d"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Transform.olean.hash",
+        "bytes": 16,
+        "sha256": "be987fa096989316106588fa3e92a125e646b491de28430c244faaee39f4dbfc"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs/Transform.trace",
+        "bytes": 2552,
+        "sha256": "038e1601f40afdc66ea21b4ea141d1e4ed70cc8e464e4bb67f6bc79f378118ac"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs.ilean",
+        "bytes": 592,
+        "sha256": "30b198ee54bac1062adfa5c2a85d172fa082a0255af90ff6d8abe2db40740e2a"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "1db246d1439c9853d06c9b4b57a91a5d364271d93899542049b667d703a2a131"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs.olean",
+        "bytes": 2608,
+        "sha256": "6947b4123dc59b5d64906977aecab241489327b8d036cb72deee6e572c6cd26b"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "910c21daae63744ca937f75143946d47fb973aa11b33dad8a0d33b072b91de74"
+      },
+      {
+        "path": "proofs/lib/Lax345332Proofs.trace",
+        "bytes": 3913,
+        "sha256": "7226b8525581086459f1df175c4ddc058f797459e715c554533a4bc3360e390a"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 4203,
+        "sha256": "21dc6e3fd9aa770525bff973bb3510763d184e73997a14ff3dfd760b1e65d846"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 1249,
+        "sha256": "3207548e432748bf617df7fa0860a8eaa30822dd971b872dbfc073c2cfa41950"
+      },
+      {
+        "path": "proofs/package/Lax345332Proofs/Gadget.lean",
+        "bytes": 1686,
+        "sha256": "2e3a1d3b9fcce852043ee03698337993c06c81d4a632f9489fa7666945b625d7"
+      },
+      {
+        "path": "proofs/package/Lax345332Proofs/GadgetOcc.lean",
+        "bytes": 976,
+        "sha256": "7565fa66e0f4eeff06c061810fa206bc2f55fcf5187a23167dbb74a2ac6fb3b4"
+      },
+      {
+        "path": "proofs/package/Lax345332Proofs/Occ.lean",
+        "bytes": 2878,
+        "sha256": "4b6f9a859324c758e9952181ea2194fbfe774d695b3f0ce6c0b71d30786336f6"
+      },
+      {
+        "path": "proofs/package/Lax345332Proofs/Pad.lean",
+        "bytes": 5232,
+        "sha256": "121de5d6de65e5b1edd5fabeaebbca77bd1b5de14670219101e5e7b99e14cf08"
+      },
+      {
+        "path": "proofs/package/Lax345332Proofs/PadOcc.lean",
+        "bytes": 5600,
+        "sha256": "45d5f62e68b1e967dbd3e9b7d8ea0f499b046ead7f51225d468b21bd42cf8603"
+      },
+      {
+        "path": "proofs/package/Lax345332Proofs/Reduction.lean",
+        "bytes": 2816,
+        "sha256": "c1427509c9a228497c4011d8fbc3426134379b728d31217b604a328f3094b9a6"
+      },
+      {
+        "path": "proofs/package/Lax345332Proofs/Split.lean",
+        "bytes": 1928,
+        "sha256": "d5e9394c1dd561929f75e6072c346c7655a0c2bc12117c7308337a52cdc23f83"
+      },
+      {
+        "path": "proofs/package/Lax345332Proofs/SplitSat.lean",
+        "bytes": 5706,
+        "sha256": "030428fa5f9dc0041d222572354dfa78e63929acae3d18d25ae698d1c5f3642e"
+      },
+      {
+        "path": "proofs/package/Lax345332Proofs/SplitShape.lean",
+        "bytes": 6524,
+        "sha256": "4de1b870eb2e833a7b03ec2d78f50dc9610c8ad1d9662b807c10405022e033fe"
+      },
+      {
+        "path": "proofs/package/Lax345332Proofs/SplitSound.lean",
+        "bytes": 6049,
+        "sha256": "3e528dcc25f989f9e016a2544ac602f630a27f6193e2faafdaadd2da24f678bf"
+      },
+      {
+        "path": "proofs/package/Lax345332Proofs/Transform.lean",
+        "bytes": 4506,
+        "sha256": "79af608454ca10a3c3bd8fe2a11d3875354842fe4c158f5a7a789f3a991e5a9a"
+      },
+      {
+        "path": "proofs/package/Lax345332Proofs.lean",
+        "bytes": 342,
+        "sha256": "9884a7e016856205c09548e9eee6a9b2ddf0c09643dc42439114bc77f0114e1d"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:460e59d760c0517916989041eab8ee4b837ab498815bef3cc500615169719642"
   }
 }
