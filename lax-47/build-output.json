@@ -9,13 +9,19 @@
     "manifest": {
       "specVersion": "1",
       "id": "lax-47",
-      "leanVersion": "v4.30.0",
-      "mathlibVersion": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
       "title": "Tight Inapproximability of Max Independent Set in Triangle-Free Graphs",
       "authors": [
         {
           "name": "Édouard Bonnet",
           "github": "EdouardBonnet"
+        },
+        {
+          "name": "Codex 5.6"
+        },
+        {
+          "name": "Codex 6"
         }
       ],
       "bibEntries": [
@@ -23,16 +29,18 @@
         "@inproceedings{Hastad1996Clique,\n  title = {Clique is hard to approximate within $n^{1-\\varepsilon}$},\n  author = {Håstad, Johan},\n  booktitle = {37th Annual Symposium on Foundations of Computer Science},\n  pages = {627--636},\n  year = {1996},\n  doi = {10.1109/SFCS.1996.548522}\n}\n"
       ]
     },
-    "abstract": "This submission formalizes the main inapproximability theorem of *Tight\nInapproximability of Max Independent Set in Triangle-Free Graphs*.  Assuming\nHåstad's promise hardness of Max Independent Set, it proves that,\nfor every constant $\\varepsilon>0$, a polynomial-time\n$N^{1/2-\\varepsilon}$-approximation algorithm on $N$-vertex triangle-free\ngraphs implies $NP\\subseteq BPP$.\n\nThe reduction blows each vertex of an $n$-vertex graph up into $n$\nvertices, samples the blow-up edges independently, and resamples the edges of\npresent triangles.  The formalization proves triangle-freeness, completeness,\nthe fixed-set soundness estimate, the finite-seed probability bound, and the\nfinal gap arithmetic.  The infinite product table occurs only in the\nprobabilistic analysis; the program itself reads a polynomially bounded finite\nfamily of uniform bits.\n\nPolynomial time, $NP$, and $BPP$ use a bounded interpreter for fixed finite\nbinary multi-stack Turing machines.  Every semantic answer is the output of\nthat interpreter.  The composed triangle-removal program has a fixed recursive\nevaluator whose state and operation count are produced by the same execution,\nand the proof derives explicit polynomial bounds for the reduction, the\napproximation-machine call, decoding, threshold arithmetic, and random bits.\n"
+    "abstract": "Unless $NP\\subseteq BPP$, for every constant $\\varepsilon>0$, Max\nIndependent Set on $N$-vertex triangle-free graphs admits no polynomial-time\n$N^{1/2-\\varepsilon}$-approximation algorithm. This is the main\ninapproximability theorem of *Tight Inapproximability of Max Independent Set\nin Triangle-Free Graphs*. Its proof uses Håstad's general-graph promise-gap\nhardness theorem as an unproven axiom.\n\nThe reduction blows each vertex of an $n$-vertex graph up into $n$\nvertices, samples the blow-up edges independently, and resamples the edges of\npresent triangles.  The formalization proves triangle-freeness, completeness,\nthe fixed-set soundness estimate, the finite-seed probability bound, and the\nfinal gap arithmetic.  The infinite product table occurs only in the\nprobabilistic analysis; the program itself reads a polynomially bounded finite\nfamily of uniform bits.\n\nPolynomial time is certified by a finite Turing machine. The proof derives\nexplicit polynomial bounds for the reduction, the approximation-machine\ncall, decoding, threshold arithmetic, and the number of random bits.\n"
   },
   "requiredByConcepts": [
-    "Lax51"
+    "Lax434930",
+    "Lax666725",
+    "Lax759944"
   ],
   "requiredByProofs": [
-    "Lax13Proofs",
-    "Lax41",
-    "Lax41Proofs",
-    "Lax51Proofs"
+    "Lax296731",
+    "Lax296731Proofs",
+    "Lax759944",
+    "Lax759944Proofs"
   ],
   "concepts": [
     {
@@ -40,7 +48,7 @@
       "path": "concepts/Lax47/Complexity.lean",
       "title": "Executable graph encodings and triangle-free approximation",
       "type": "definition",
-      "description": "Graphs are finite Boolean adjacency matrices with symmetry and looplessness\ncertificates.  Their machine word is the vertex count followed by the complete\nrow-major matrix, with Booleans encoded by $0$ and $1$.  An approximation is a\nfunction certified polynomial-time by the Lax51 finite-Turing model; its\nreturned independent set is decoded from that certified function.",
+      "description": "Graphs are finite Boolean adjacency matrices with symmetry and looplessness\ncertificates.  Their machine word is the vertex count followed by the complete\nrow-major matrix, with Booleans encoded by $0$ and $1$.  An approximation is a\nfunction certified polynomial-time by the Lax759944 finite-Turing model; its\nreturned independent set is decoded from that certified function.",
       "imports": [
         "Lax47.Machine"
       ],
@@ -49,7 +57,7 @@
         "Mathlib.Combinatorics.SimpleGraph.Clique",
         "Mathlib.Data.Finset.Card"
       ],
-      "sourceText": "import Lax47.Machine\nimport Mathlib.Analysis.SpecialFunctions.Pow.Real\nimport Mathlib.Combinatorics.SimpleGraph.Clique\nimport Mathlib.Data.Finset.Card\n\n/-!\n---\ntitle: Executable graph encodings and triangle-free approximation\ntype: definition\n---\nGraphs are finite Boolean adjacency matrices with symmetry and looplessness\ncertificates.  Their machine word is the vertex count followed by the complete\nrow-major matrix, with Booleans encoded by $0$ and $1$.  An approximation is a\nfunction certified polynomial-time by the Lax51 finite-Turing model; its\nreturned independent set is decoded from that certified function.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax47.Complexity\n\nopen Lax47.Machine\n\nexport Lax47.Machine\n  (BitString Language RandomSeed PolytimeProgram NPVerifier BPPAlgorithm\n    InNP InBPP NPSubsetBPP polynomialBound pairBits)\n\n/-- An executable simple graph on the labeled vertex set $\\operatorname{Fin}(n)$. -/\nstructure GraphCode (n : ℕ) where\n  adjacent : Fin n → Fin n → Bool\n  loopless : ∀ vertex, adjacent vertex vertex = false\n  symmetric : ∀ left right, adjacent left right = adjacent right left\n\n/-- The mathematical simple graph represented by a Boolean adjacency matrix. -/\ndef GraphCode.graph {n : ℕ} (code : GraphCode n) : SimpleGraph (Fin n) where\n  Adj left right := code.adjacent left right = true\n  symm left right h := by\n    change code.adjacent right left = true\n    rw [← code.symmetric]\n    exact h\n  loopless := ⟨fun vertex ↦ by\n    simp [code.loopless]⟩\n\n/-- Vertex count followed by the row-major adjacency matrix. -/\ndef GraphCode.bits {n : ℕ} (code : GraphCode n) : BitString :=\n  n :: List.ofFn fun rank : Fin (n * n) ↦\n    let vertex := finProdFinEquiv.symm rank\n    bitWord (code.adjacent vertex.1 vertex.2)\n\n/-- Decode the first $n$ output bits as a vertex set. -/\ndef decodeVertexSet (n : ℕ) (bits : BitString) : Finset (Fin n) :=\n  Finset.univ.filter fun vertex ↦ bits[vertex.1]? = some 1\n\n/-- A polynomial-time executable approximation for triangle-free Max Independent Set. -/\nstructure TriangleFreeMISApproximation (ε : ℝ) where\n  program : PolytimeProgram\n  correctness : ∀ (n : ℕ) (code : GraphCode n),\n    code.graph.CliqueFree 3 →\n    let set := decodeVertexSet n (program.output code.bits)\n    code.graph.IsIndepSet set ∧\n      (code.graph.indepNum : ℝ) ≤\n        Real.rpow n ((1 : ℝ) / 2 - ε) * set.card\n\nend Lax47.Complexity\n",
+      "sourceText": "import Lax47.Machine\nimport Mathlib.Analysis.SpecialFunctions.Pow.Real\nimport Mathlib.Combinatorics.SimpleGraph.Clique\nimport Mathlib.Data.Finset.Card\n\n/-!\n---\ntitle: Executable graph encodings and triangle-free approximation\ntype: definition\n---\nGraphs are finite Boolean adjacency matrices with symmetry and looplessness\ncertificates.  Their machine word is the vertex count followed by the complete\nrow-major matrix, with Booleans encoded by $0$ and $1$.  An approximation is a\nfunction certified polynomial-time by the Lax759944 finite-Turing model; its\nreturned independent set is decoded from that certified function.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax47.Complexity\n\nopen Lax47.Machine\n\nexport Lax47.Machine\n  (BitString RandomSeed PolytimeProgram polynomialBound pairBits)\n\n/-- An executable simple graph on the labeled vertex set $\\operatorname{Fin}(n)$. -/\nstructure GraphCode (n : ℕ) where\n  adjacent : Fin n → Fin n → Bool\n  loopless : ∀ vertex, adjacent vertex vertex = false\n  symmetric : ∀ left right, adjacent left right = adjacent right left\n\n/-- The mathematical simple graph represented by a Boolean adjacency matrix. -/\ndef GraphCode.graph {n : ℕ} (code : GraphCode n) : SimpleGraph (Fin n) where\n  Adj left right := code.adjacent left right = true\n  symm := ⟨fun left right h ↦ by\n    rw [← code.symmetric]\n    exact h⟩\n  loopless := ⟨fun vertex ↦ by\n    simp [code.loopless]⟩\n\n/-- Vertex count followed by the row-major adjacency matrix. -/\ndef GraphCode.bits {n : ℕ} (code : GraphCode n) : BitString :=\n  n :: List.ofFn fun rank : Fin (n * n) ↦\n    let vertex := finProdFinEquiv.symm rank\n    bitWord (code.adjacent vertex.1 vertex.2)\n\n/-- Decode the first $n$ output bits as a vertex set. -/\ndef decodeVertexSet (n : ℕ) (bits : BitString) : Finset (Fin n) :=\n  Finset.univ.filter fun vertex ↦ bits[vertex.1]? = some 1\n\n/-- A polynomial-time executable approximation for triangle-free Max Independent Set. -/\nstructure TriangleFreeMISApproximation (ε : ℝ) where\n  program : PolytimeProgram\n  correctness : ∀ (n : ℕ) (code : GraphCode n),\n    code.graph.CliqueFree 3 →\n    let set := decodeVertexSet n (program.output code.bits)\n    code.graph.IsIndepSet set ∧\n      (code.graph.indepNum : ℝ) ≤\n      Real.rpow n ((1 : ℝ) / 2 - ε) * set.card\n\n/-- Max Independent Set on triangle-free graphs admits a polynomial-time\n$n^{1/2-\\varepsilon}$-approximation. -/\ndef TriangleFreeMISApproximable (ε : ℝ) : Prop :=\n  Nonempty (TriangleFreeMISApproximation ε)\n\nend Lax47.Complexity\n",
       "statements": []
     },
     {
@@ -57,58 +65,70 @@
       "path": "concepts/Lax47/Gap.lean",
       "title": "Finite-Turing promise-gap algorithms for Max Independent Set",
       "type": "definition",
-      "description": "The Håstad premise is stated only for functions certified by Lax51's genuine\nfinite-Turing polynomial-time predicate.  A randomized program fixes constants\n$c,k$ and receives exactly $c(n+1)^k$ uniform bits on an $n$-vertex input.\nThere is no special constructor for the reduction and no detached step\nannotation.  For an integer $q>2$, the high promise is\n$n^{1-1/q}\\leq\\alpha(H)$, the low promise is\n$\\alpha(H)\\leq n^{1/q}$, and the acceptance threshold is\n$n^{q+3}\\leq |S|^q$.",
+      "description": "The Håstad premise is stated only for functions certified by Lax759944's genuine\nfinite-Turing polynomial-time predicate.  A randomized program fixes constants\n$c,k$ and receives exactly $c(n+1)^k$ uniform bits on an $n$-vertex input.\nThere is no special constructor for the reduction and no detached step\nannotation.  For an integer $q>2$, the high promise is\n$n^{1-1/q}\\leq\\alpha(H)$, the low promise is\n$\\alpha(H)\\leq n^{1/q}$, and the acceptance threshold is\n$n^{q+3}\\leq |S|^q$.",
       "imports": [
         "Lax47.Complexity"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax47.Complexity\n\n/-!\n---\ntitle: Finite-Turing promise-gap algorithms for Max Independent Set\ntype: definition\n---\nThe Håstad premise is stated only for functions certified by Lax51's genuine\nfinite-Turing polynomial-time predicate.  A randomized program fixes constants\n$c,k$ and receives exactly $c(n+1)^k$ uniform bits on an $n$-vertex input.\nThere is no special constructor for the reduction and no detached step\nannotation.  For an integer $q>2$, the high promise is\n$n^{1-1/q}\\leq\\alpha(H)$, the low promise is\n$\\alpha(H)\\leq n^{1/q}$, and the acceptance threshold is\n$n^{q+3}\\leq |S|^q$.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax47.Gap\n\nopen Lax47.Machine Lax47.Complexity\n\n/- ### Standard randomized finite-Turing programs -/\n\n/-- A polynomial-time finite-Turing program with one fixed monomial tape bound. -/\nstructure GapProgram (q : ℕ) where\n  program : PolytimeProgram\n  randomnessConstant : ℕ\n  randomnessExponent : ℕ\n  randomnessConstant_pos : 0 < randomnessConstant\n\n/-- The exact, uniformly specified random-tape length on order $n$. -/\ndef GapProgram.randomBitCount {q : ℕ} (program : GapProgram q) (n : ℕ) : ℕ :=\n  polynomialBound program.randomnessConstant program.randomnessExponent n\n\n/-- Finite uniform seed type read by a gap program on an $n$-vertex graph. -/\nabbrev GapProgram.Seed {q : ℕ} (program : GapProgram q) (n : ℕ) :=\n  RandomSeed (program.randomBitCount n)\n\n/-- Boolean answer returned by the program's certified Turing computation. -/\ndef GapProgram.accepts {q : ℕ} (program : GapProgram q) (n : ℕ)\n    (input : GraphCode n) (seed : program.Seed n) : Bool :=\n  decide (program.program.output (pairBits input.bits seed.bits) = [1])\n\n/-- Uniform seed enumeration for a finite-Turing program. -/\ndef GapProgram.seeds {q : ℕ} (program : GapProgram q) (n : ℕ) :\n    Finset (program.Seed n) :=\n  Finset.univ\n\n/-- Seeds on which the finite-Turing program returns true. -/\ndef GapProgram.acceptingSeeds {q : ℕ} (program : GapProgram q)\n    (n : ℕ) (input : GraphCode n) : Finset (program.Seed n) :=\n  (program.seeds n).filter fun seed ↦ program.accepts n input seed\n\n/- ### Certified polynomial gap solvers -/\n\n/--\nA bounded-error finite-Turing polynomial-time solver for Håstad's rational\npromise gap. The uniform random-tape length is the fixed monomial stored in\nthe gap program.\n-/\nstructure MISGapSolver (q : ℕ) where\n  program : GapProgram q\n  cutoff : ℕ\n  completeness : ∀ (n : ℕ), cutoff ≤ n → ∀ input : GraphCode n,\n    Real.rpow n (1 - (q : ℝ)⁻¹) ≤ (input.graph.indepNum : ℝ) →\n      2 * (program.seeds n).card ≤\n        3 * (program.acceptingSeeds n input).card\n  soundness : ∀ (n : ℕ), cutoff ≤ n → ∀ input : GraphCode n,\n    (input.graph.indepNum : ℝ) ≤ Real.rpow n ((q : ℝ)⁻¹) →\n      3 * (program.acceptingSeeds n input).card ≤\n        (program.seeds n).card\n\nend Lax47.Gap\n",
+      "sourceText": "import Lax47.Complexity\n\n/-!\n---\ntitle: Finite-Turing promise-gap algorithms for Max Independent Set\ntype: definition\n---\nThe Håstad premise is stated only for functions certified by Lax759944's genuine\nfinite-Turing polynomial-time predicate.  A randomized program fixes constants\n$c,k$ and receives exactly $c(n+1)^k$ uniform bits on an $n$-vertex input.\nThere is no special constructor for the reduction and no detached step\nannotation.  For an integer $q>2$, the high promise is\n$n^{1-1/q}\\leq\\alpha(H)$, the low promise is\n$\\alpha(H)\\leq n^{1/q}$, and the acceptance threshold is\n$n^{q+3}\\leq |S|^q$.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax47.Gap\n\nopen Lax47.Machine Lax47.Complexity\n\n/- ### Standard randomized finite-Turing programs -/\n\n/-- A polynomial-time finite-Turing program with one fixed monomial tape bound. -/\nstructure GapProgram (q : ℕ) where\n  program : PolytimeProgram\n  randomnessConstant : ℕ\n  randomnessExponent : ℕ\n  randomnessConstant_pos : 0 < randomnessConstant\n\n/-- The exact, uniformly specified random-tape length on order $n$. -/\ndef GapProgram.randomBitCount {q : ℕ} (program : GapProgram q) (n : ℕ) : ℕ :=\n  polynomialBound program.randomnessConstant program.randomnessExponent n\n\n/-- Finite uniform seed type read by a gap program on an $n$-vertex graph. -/\nabbrev GapProgram.Seed {q : ℕ} (program : GapProgram q) (n : ℕ) :=\n  RandomSeed (program.randomBitCount n)\n\n/-- Boolean answer returned by the program's certified Turing computation. -/\ndef GapProgram.accepts {q : ℕ} (program : GapProgram q) (n : ℕ)\n    (input : GraphCode n) (seed : program.Seed n) : Bool :=\n  decide (program.program.output (pairBits input.bits seed.bits) = [1])\n\n/-- Uniform seed enumeration for a finite-Turing program. -/\ndef GapProgram.seeds {q : ℕ} (program : GapProgram q) (n : ℕ) :\n    Finset (program.Seed n) :=\n  Finset.univ\n\n/-- Seeds on which the finite-Turing program returns true. -/\ndef GapProgram.acceptingSeeds {q : ℕ} (program : GapProgram q)\n    (n : ℕ) (input : GraphCode n) : Finset (program.Seed n) :=\n  (program.seeds n).filter fun seed ↦ program.accepts n input seed\n\n/- ### Certified polynomial gap solvers -/\n\n/--\nA bounded-error finite-Turing polynomial-time solver for Håstad's rational\npromise gap. The uniform random-tape length is the fixed monomial stored in\nthe gap program.\n-/\nstructure MISGapSolver (q : ℕ) where\n  program : GapProgram q\n  cutoff : ℕ\n  completeness : ∀ (n : ℕ), cutoff ≤ n → ∀ input : GraphCode n,\n    Real.rpow n (1 - (q : ℝ)⁻¹) ≤ (input.graph.indepNum : ℝ) →\n      2 * (program.seeds n).card ≤\n        3 * (program.acceptingSeeds n input).card\n  soundness : ∀ (n : ℕ), cutoff ≤ n → ∀ input : GraphCode n,\n    (input.graph.indepNum : ℝ) ≤ Real.rpow n ((q : ℝ)⁻¹) →\n      3 * (program.acceptingSeeds n input).card ≤\n        (program.seeds n).card\n\nend Lax47.Gap\n",
       "statements": []
     },
     {
       "id": "Lax47.Hastad",
       "path": "concepts/Lax47/Hastad.lean",
       "title": "Håstad's inapproximability of Max Independent Set",
-      "type": "definition",
-      "description": "Håstad's general-graph inapproximability result supplies the hardness premise\nused by the reduction.  We use its equivalent rational promise-gap form.  For\nevery integer $q>2$, a bounded-error polynomial-step algorithm distinguishing\n$n$-vertex graphs $H$ with $\\alpha(H)\\leq n^{1/q}$ from those with\n$n^{1-1/q}\\leq\\alpha(H)$ would imply $NP\\subseteq BPP$.\n\nThis concept only defines that premise. It does not assert Håstad's result as\nan archive axiom; the main theorem of this submission is the implication from\nthis premise to the triangle-free inapproximability conclusion.",
+      "type": "theorem",
+      "description": "Håstad's general-graph inapproximability result supplies the hardness theorem\nused by the reduction. We use its rational promise-gap form. For\nevery integer $q>2$, a bounded-error polynomial-step algorithm distinguishing\n$n$-vertex graphs $H$ with $\\alpha(H)\\leq n^{1/q}$ from those with\n$n^{1-1/q}\\leq\\alpha(H)$ would imply $NP\\subseteq BPP$.\n\nThis result is assumed without proof.",
       "imports": [
-        "Lax47.Gap"
+        "Lax434930.NondeterministicPolynomialTime",
+        "Lax47.Gap",
+        "Lax666725.RandomizedPolynomialTime"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax47.Gap\n\n/-!\n---\ntitle: Håstad's inapproximability of Max Independent Set\ntype: definition\n---\nHåstad's general-graph inapproximability result supplies the hardness premise\nused by the reduction.  We use its equivalent rational promise-gap form.  For\nevery integer $q>2$, a bounded-error polynomial-step algorithm distinguishing\n$n$-vertex graphs $H$ with $\\alpha(H)\\leq n^{1/q}$ from those with\n$n^{1-1/q}\\leq\\alpha(H)$ would imply $NP\\subseteq BPP$.\n\nThis concept only defines that premise. It does not assert Håstad's result as\nan archive axiom; the main theorem of this submission is the implication from\nthis premise to the triangle-free inapproximability conclusion.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax47.Hastad\n\nopen Lax47.Machine Lax47.Gap\n\n/-- Håstad's general-graph promise-gap inapproximability premise. -/\ndef Inapproximability : Prop :=\n  ∀ q : ℕ, 3 ≤ q → MISGapSolver q → NPSubsetBPP\n\nend Lax47.Hastad\n",
-      "statements": []
+      "sourceText": "import Lax47.Gap\nimport Lax434930.NondeterministicPolynomialTime\nimport Lax666725.RandomizedPolynomialTime\n\n/-!\n---\ntitle: Håstad's inapproximability of Max Independent Set\ntype: theorem\n---\nHåstad's general-graph inapproximability result supplies the hardness theorem\nused by the reduction. We use its rational promise-gap form. For\nevery integer $q>2$, a bounded-error polynomial-step algorithm distinguishing\n$n$-vertex graphs $H$ with $\\alpha(H)\\leq n^{1/q}$ from those with\n$n^{1-1/q}\\leq\\alpha(H)$ would imply $NP\\subseteq BPP$.\n\nThis result is assumed without proof.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax47.Hastad\n\nopen Lax47.Gap\nopen Lax434930.NondeterministicPolynomialTime\nopen Lax666725.RandomizedPolynomialTime\n\n/-- Håstad's general-graph promise-gap inapproximability theorem. -/\naxiom inapproximability :\n  ∀ q : ℕ, 3 ≤ q → MISGapSolver q → NP ⊆ BPP\n\nend Lax47.Hastad\n",
+      "statements": [
+        {
+          "id": "Lax47.Hastad.inapproximability",
+          "signature": "inapproximability : ∀ (q : Nat),\n  instLENat.le 3 q →\n    ∀ (a : Lax47.Gap.MISGapSolver q),\n      Set.instLE.le Lax434930.NondeterministicPolynomialTime.NP Lax666725.RandomizedPolynomialTime.BPP",
+          "startLine": 27,
+          "endLine": 29,
+          "doc": "Håstad's general-graph promise-gap inapproximability theorem."
+        }
+      ]
     },
     {
       "id": "Lax47.Machine",
       "path": "concepts/Lax47/Machine.lean",
-      "title": "Polynomial-time computation on the Lax51 finite-Turing model",
+      "title": "Polynomial-time computation on the Lax759944 finite-Turing model",
       "type": "definition",
-      "description": "All algorithms in this submission compute total functions on finite words of\nnatural numbers.  Polynomial time is exactly Lax51's predicate: a fixed\nfinite multi-stack Turing machine transforms the canonical binary encoding of\nthe input word into the canonical binary encoding of its output within a\npolynomial number of transitions.\n\nIn particular, a program's semantic function is tied to an actual finite\nTuring machine by $TuringPolytime$.  Randomized algorithms receive a finite\nlist of independent uniform bits, represented by the words $0$ and $1$.",
+      "description": "All algorithms in this submission compute total functions on finite words of\nnatural numbers.  Polynomial time is exactly Lax759944's predicate: a fixed\nfinite multi-stack Turing machine transforms the canonical binary encoding of\nthe input word into the canonical binary encoding of its output within a\npolynomial number of transitions.\n\nIn particular, a program's semantic function is tied to an actual finite\nTuring machine by $TuringPolytime$.  Randomized algorithms receive a finite\nlist of independent uniform bits, represented by the words $0$ and $1$.",
       "imports": [
-        "Lax51.TuringPolytime"
+        "Lax759944.TuringPolytime"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax51.TuringPolytime\n\n/-!\n---\ntitle: Polynomial-time computation on the Lax51 finite-Turing model\ntype: definition\n---\nAll algorithms in this submission compute total functions on finite words of\nnatural numbers.  Polynomial time is exactly Lax51's predicate: a fixed\nfinite multi-stack Turing machine transforms the canonical binary encoding of\nthe input word into the canonical binary encoding of its output within a\npolynomial number of transitions.\n\nIn particular, a program's semantic function is tied to an actual finite\nTuring machine by $TuringPolytime$.  Randomized algorithms receive a finite\nlist of independent uniform bits, represented by the words $0$ and $1$.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax47.Machine\n\nopen Lax51.BinaryWordEncoding Lax51.TuringPolytime\n\n/-- A finite machine word.  Boolean data use the entries $0$ and $1$. -/\nabbrev BitString := List ℕ\n\n/-- The convenient monomial bound $c(n+1)^k$. -/\ndef polynomialBound (c k n : ℕ) : ℕ :=\n  c * (n + 1) ^ k\n\n/-- A total word function computed in polynomial time by a finite Turing machine. -/\nstructure PolytimeProgram where\n  function : BitString → BitString\n  polytime : TuringPolytime function\n\n/-- The semantic output certified by the program's finite Turing machine. -/\ndef PolytimeProgram.output (program : PolytimeProgram)\n    (input : BitString) : BitString :=\n  program.function input\n\n/-- A length-prefixed pairing of two finite words. -/\ndef pairBits (left right : BitString) : BitString :=\n  left.length :: left ++ right\n\n/-- A uniformly random string of exactly $r$ bits. -/\nabbrev RandomSeed (r : ℕ) := Fin r → Bool\n\n/-- Encode one Boolean as a natural-number word. -/\ndef bitWord (bit : Bool) : ℕ :=\n  if bit then 1 else 0\n\n/-- The word representation of a fixed-length random seed. -/\ndef RandomSeed.bits {r : ℕ} (seed : RandomSeed r) : BitString :=\n  (List.ofFn seed).map bitWord\n\n/-- A decision problem over finite words. -/\nabbrev Language := Set BitString\n\n/-- A polynomial-time verifier whose certificate binary size is polynomially bounded. -/\nstructure NPVerifier (language : Language) where\n  program : PolytimeProgram\n  certificateConstant : ℕ\n  certificateExponent : ℕ\n  certificateConstant_pos : 0 < certificateConstant\n  correctness : ∀ input : BitString,\n    input ∈ language ↔ ∃ certificate : BitString,\n      bitSize certificate ≤ polynomialBound\n        certificateConstant certificateExponent (bitSize input) ∧\n      program.output (pairBits input certificate) = [1]\n\n/-- Membership in $NP$ in the Lax51 finite-Turing model. -/\ndef InNP (language : Language) : Prop :=\n  Nonempty (NPVerifier language)\n\n/-- A polynomial-time randomized decision program using polynomially many uniform bits. -/\nstructure BPPAlgorithm (language : Language) where\n  program : PolytimeProgram\n  randomnessConstant : ℕ\n  randomnessExponent : ℕ\n  randomnessConstant_pos : 0 < randomnessConstant\n  correctness : ∀ input : BitString,\n    let randomBitCount := polynomialBound\n      randomnessConstant randomnessExponent (bitSize input)\n    let seeds : Finset (RandomSeed randomBitCount) := Finset.univ\n    let accepting := seeds.filter fun seed ↦\n      program.output (pairBits input seed.bits) = [1]\n    (input ∈ language → 2 * seeds.card ≤ 3 * accepting.card) ∧\n      (input ∉ language → 3 * accepting.card ≤ seeds.card)\n\n/-- Membership in $BPP$ in the same finite-Turing model. -/\ndef InBPP (language : Language) : Prop :=\n  Nonempty (BPPAlgorithm language)\n\n/-- The complexity-class inclusion appearing in the inapproximability theorem. -/\ndef NPSubsetBPP : Prop :=\n  ∀ language : Language, InNP language → InBPP language\n\nend Lax47.Machine\n",
+      "sourceText": "import Lax759944.TuringPolytime\n\n/-!\n---\ntitle: Polynomial-time computation on the Lax759944 finite-Turing model\ntype: definition\n---\nAll algorithms in this submission compute total functions on finite words of\nnatural numbers.  Polynomial time is exactly Lax759944's predicate: a fixed\nfinite multi-stack Turing machine transforms the canonical binary encoding of\nthe input word into the canonical binary encoding of its output within a\npolynomial number of transitions.\n\nIn particular, a program's semantic function is tied to an actual finite\nTuring machine by $TuringPolytime$.  Randomized algorithms receive a finite\nlist of independent uniform bits, represented by the words $0$ and $1$.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax47.Machine\n\nopen Lax759944.BinaryWordEncoding Lax759944.TuringPolytime\n\n/-- A finite machine word.  Boolean data use the entries $0$ and $1$. -/\nabbrev BitString := List ℕ\n\n/-- The convenient monomial bound $c(n+1)^k$. -/\ndef polynomialBound (c k n : ℕ) : ℕ :=\n  c * (n + 1) ^ k\n\n/-- A total word function computed in polynomial time by a finite Turing machine. -/\nstructure PolytimeProgram where\n  function : BitString → BitString\n  polytime : TuringPolytime function\n\n/-- The semantic output certified by the program's finite Turing machine. -/\ndef PolytimeProgram.output (program : PolytimeProgram)\n    (input : BitString) : BitString :=\n  program.function input\n\n/-- A length-prefixed pairing of two finite words. -/\ndef pairBits (left right : BitString) : BitString :=\n  left.length :: left ++ right\n\n/-- A uniformly random string of exactly $r$ bits. -/\nabbrev RandomSeed (r : ℕ) := Fin r → Bool\n\n/-- Encode one Boolean as a natural-number word. -/\ndef bitWord (bit : Bool) : ℕ :=\n  if bit then 1 else 0\n\n/-- The word representation of a fixed-length random seed. -/\ndef RandomSeed.bits {r : ℕ} (seed : RandomSeed r) : BitString :=\n  (List.ofFn seed).map bitWord\n\nend Lax47.Machine\n",
       "statements": []
     },
     {
       "id": "Lax47.Theorem12",
       "path": "concepts/Lax47/Theorem12.lean",
-      "title": "Håstad hardness implies tight inapproximability in triangle-free graphs",
+      "title": "Tight inapproximability of Max Independent Set in triangle-free graphs",
       "type": "theorem",
-      "description": "Assume Håstad's general-graph inapproximability premise. Then, for every\nconstant $\\varepsilon>0$, a polynomial-time\n$N^{1/2-\\varepsilon}$-approximation algorithm for Max Independent Set on\n$N$-vertex triangle-free graphs implies $NP\\subseteq BPP$.\n\nThe entire implication, including the randomized reduction from the Håstad\npromise gap, is the statement formalized below and proved by this submission.\nIts triangle-free conclusion is Theorem 1.2 in the submitted paper.",
+      "description": "Unless $NP\\subseteq BPP$, for every constant $\\varepsilon>0$, Max\nIndependent Set on $N$-vertex triangle-free graphs admits no polynomial-time\n$N^{1/2-\\varepsilon}$-approximation algorithm.\n\nThis is Theorem 1.2. Its proof uses Håstad's general-graph promise-gap\nhardness theorem and a randomized triangle-removal reduction.",
       "imports": [
-        "Lax47.Hastad"
+        "Lax434930.NondeterministicPolynomialTime",
+        "Lax47.Complexity",
+        "Lax666725.RandomizedPolynomialTime"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax47.Hastad\n\n/-!\n---\ntitle: Håstad hardness implies tight inapproximability in triangle-free graphs\ntype: theorem\n---\nAssume Håstad's general-graph inapproximability premise. Then, for every\nconstant $\\varepsilon>0$, a polynomial-time\n$N^{1/2-\\varepsilon}$-approximation algorithm for Max Independent Set on\n$N$-vertex triangle-free graphs implies $NP\\subseteq BPP$.\n\nThe entire implication, including the randomized reduction from the Håstad\npromise gap, is the statement formalized below and proved by this submission.\nIts triangle-free conclusion is Theorem 1.2 in the submitted paper.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax47.Theorem12\n\nopen Lax47.Complexity\n\n/-- Håstad hardness implies tight conditional inapproximability on triangle-free graphs. -/\naxiom theorem_1_2 :\n  Lax47.Hastad.Inapproximability →\n    ∀ (ε : ℝ), 0 < ε → TriangleFreeMISApproximation ε → NPSubsetBPP\n\nend Lax47.Theorem12\n",
+      "sourceText": "import Lax47.Complexity\nimport Lax434930.NondeterministicPolynomialTime\nimport Lax666725.RandomizedPolynomialTime\n\n/-!\n---\ntitle: Tight inapproximability of Max Independent Set in triangle-free graphs\ntype: theorem\n---\nUnless $NP\\subseteq BPP$, for every constant $\\varepsilon>0$, Max\nIndependent Set on $N$-vertex triangle-free graphs admits no polynomial-time\n$N^{1/2-\\varepsilon}$-approximation algorithm.\n\nThis is Theorem 1.2. Its proof uses Håstad's general-graph promise-gap\nhardness theorem and a randomized triangle-removal reduction.\n-/\n\nset_option autoImplicit false\n\nnamespace Lax47.Theorem12\n\nopen Lax47.Complexity\nopen Lax434930.NondeterministicPolynomialTime\nopen Lax666725.RandomizedPolynomialTime\n\n/-- Unless $NP\\subseteq BPP$, no polynomial-time $N^{1/2-\\varepsilon}$\napproximation exists for Max Independent Set on triangle-free graphs. -/\naxiom theorem_1_2 :\n  ¬ NP ⊆ BPP →\n    ∀ (ε : ℝ), 0 < ε → ¬ TriangleFreeMISApproximable ε\n\nend Lax47.Theorem12\n",
       "statements": [
         {
           "id": "Lax47.Theorem12.theorem_1_2",
-          "signature": "theorem_1_2 : Lax47.Hastad.Inapproximability →\n  ∀ (ε : Real), Real.instLT.lt 0 ε → ∀ (a : Lax47.Complexity.TriangleFreeMISApproximation ε), Lax47.Machine.NPSubsetBPP",
-          "startLine": 24,
-          "endLine": 27,
-          "doc": "Håstad hardness implies tight conditional inapproximability on triangle-free graphs."
+          "signature": "theorem_1_2 : Not (Set.instLE.le Lax434930.NondeterministicPolynomialTime.NP Lax666725.RandomizedPolynomialTime.BPP) →\n  ∀ (ε : Real), Real.instLT.lt 0 ε → Not (Lax47.Complexity.TriangleFreeMISApproximable ε)",
+          "startLine": 26,
+          "endLine": 30,
+          "doc": "Unless $NP\\subseteq BPP$, no polynomial-time $N^{1/2-\\varepsilon}$\napproximation exists for Max Independent Set on triangle-free graphs."
         }
       ]
     }
@@ -118,16 +138,19 @@
       "id": "Lax47Proofs.theorem_1_2",
       "path": "proofs/Lax47Proofs/Main.lean",
       "conclusion": "Lax47.Theorem12.theorem_1_2",
-      "assumptions": [],
-      "description": "The polynomial-cutoff randomized blow-up converts a purported\n$N^{1/2-\\varepsilon}$ triangle-free approximation into a bounded-error,\npolynomial-step solver for Håstad's general-graph promise gap. Applying the\nHåstad premise proves the triangle-free conclusion."
+      "assumptions": [
+        "Lax47.Hastad.inapproximability",
+        "Lax759944.TuringRamPolytimeEquivalence.ramPolytime_iff_turingPolytime"
+      ],
+      "description": "The polynomial-cutoff randomized blow-up converts a purported\n$N^{1/2-\\varepsilon}$ triangle-free approximation into a bounded-error,\npolynomial-step solver for Håstad's general-graph promise gap. Håstad's\nhardness theorem then contradicts $NP\\nsubseteq BPP$."
     }
   ],
   "capture": {
     "formatVersion": 1,
-    "digest": "404a6c454237f68411057f12a36cc5bfe1940094ad4d15a6c8ee145872be3fce",
-    "sourceCommit": "e8e3010e3aae3531db7677c4acb8b0561cc21022",
-    "leanToolchain": "leanprover/lean4:v4.30.0",
-    "mathlibCommit": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "digest": "6e50becb4db7160a9208b10f6f631365bc099f6d69c81e7faedf16777c8c45a0",
+    "sourceCommit": "8a644f892c183ef96b77cb88c15efe203ba8a048",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
     "files": [
       {
         "path": "concepts/ir/Lax47/Complexity.c",
@@ -151,33 +174,33 @@
       },
       {
         "path": "concepts/ir/Lax47/Hastad.c",
-        "bytes": 1269,
-        "sha256": "92e778e85062ba5eeb605c5a36e4e95a9ec5b7b7be9106ceb9c3a327b518816e"
+        "bytes": 1833,
+        "sha256": "4bc78a723e88d1d31e0ac15529a5c2cffd6d54872a0a7232675eeb0a366a770f"
       },
       {
         "path": "concepts/ir/Lax47/Hastad.c.hash",
         "bytes": 16,
-        "sha256": "47a802b8c9e8df3a42753fbc3f027b52e9a24a8178c75e2c2bfa05c7b0612be7"
+        "sha256": "f511f0c033bf25184f21556acdae28ce80c9fdf04204f9aff4763faa32643ce4"
       },
       {
         "path": "concepts/ir/Lax47/Machine.c",
-        "bytes": 6394,
-        "sha256": "2f3c139e74fe5047cbcc0575cc884cfa4d81af9e974edb833f4450fe981b1ab3"
+        "bytes": 6414,
+        "sha256": "8a1e75b4a7cd69b99e305a996f032533dd53ab0ad5a4eb0ed8af848d99d880c0"
       },
       {
         "path": "concepts/ir/Lax47/Machine.c.hash",
         "bytes": 16,
-        "sha256": "1cc4bf726a2b6c48b7a997ba926e2d51264254a076f079a1fd4af25e2a8666c3"
+        "sha256": "ee23260679c2da0211bc16f82032fc0cc46698946dfde0ddcdb0f3af52a1b8db"
       },
       {
         "path": "concepts/ir/Lax47/Theorem12.c",
-        "bytes": 1284,
-        "sha256": "6ebf0583f50de587e0154794036f10f382efbd75a8129e4dc8b364727317e654"
+        "bytes": 1860,
+        "sha256": "bfe71eec8ab719decc608335413173f71aa2c0b1acdcf0e29602d2f67496be71"
       },
       {
         "path": "concepts/ir/Lax47/Theorem12.c.hash",
         "bytes": 16,
-        "sha256": "f09a8711e6f135e846b68ea30dfcd6d16023e0321c4f0e03a9c333d90399ca24"
+        "sha256": "243fd5f3b5615d9edbbdfcf6da377186efd1a8121bdad26c04be09e5b33ff9d1"
       },
       {
         "path": "concepts/ir/Lax47.c",
@@ -191,28 +214,28 @@
       },
       {
         "path": "concepts/lib/Lax47/Complexity.ilean",
-        "bytes": 8890,
-        "sha256": "f7216839143f6d30cc0e52f7a73dddded169030a1420bdeae3456bcc3398232d"
+        "bytes": 8580,
+        "sha256": "79bbfba41fd536db6338c4e09d57c6adab1f0767bb5dd69d731a36cf8ff6fbe9"
       },
       {
         "path": "concepts/lib/Lax47/Complexity.ilean.hash",
         "bytes": 16,
-        "sha256": "41d659b6d39c250b974dc384a8a8f4040ab7044c70ceeaad3cd9f272ba367b1c"
+        "sha256": "ee9b9b3c14dbaae970a09244375a87afd0ed140693a6ab6b0dc705b02fc9b678"
       },
       {
         "path": "concepts/lib/Lax47/Complexity.olean",
-        "bytes": 113168,
-        "sha256": "2aac081f3c3bf3cb557c5714a81f3425bdb9beb24f6a6804f1283e9ad3316a98"
+        "bytes": 115592,
+        "sha256": "c06d0cd1406c0c59b8b36c9e10ee934b814a8b1d9c1ca36712568a3fae3711d2"
       },
       {
         "path": "concepts/lib/Lax47/Complexity.olean.hash",
         "bytes": 16,
-        "sha256": "0cb4a6cf3e34c09e9d729bc1fab161e503077165719e73364b2e3a574360d048"
+        "sha256": "5e8ac7d756a219575c9027b0b4d2c911790f6527997aa7cfd1f021bb376fcc1e"
       },
       {
         "path": "concepts/lib/Lax47/Complexity.trace",
-        "bytes": 2776,
-        "sha256": "ff22ce68ea11e10ea7be7780eb9e6f92495dea78da540d94944b97e180e87726"
+        "bytes": 2822,
+        "sha256": "4e99a62e30838254a128222409b988e04e3a00eb03c19be0b901a75b294e5682"
       },
       {
         "path": "concepts/lib/Lax47/Gap.ilean",
@@ -226,93 +249,93 @@
       },
       {
         "path": "concepts/lib/Lax47/Gap.olean",
-        "bytes": 176120,
-        "sha256": "a09f096c7e237e2c6cfc17089100561bfadf4371618381b12c80b1761baac87a"
+        "bytes": 178640,
+        "sha256": "cd49d88393c1db36339055fcd7e5e6bd86fc6c60c4d9ea9970f069f2b2d8dd93"
       },
       {
         "path": "concepts/lib/Lax47/Gap.olean.hash",
         "bytes": 16,
-        "sha256": "f5029bb49d966ed516071b81c07b96c0ba79402ca76606217ba10a3cee46433d"
+        "sha256": "836d3a4f28a68a4294afc60c2b75afaec6e171578bd1ba08507252a16aa271be"
       },
       {
         "path": "concepts/lib/Lax47/Gap.trace",
-        "bytes": 2139,
-        "sha256": "841ec8ddecf14a9087c6e45ebb7d831e839be8ba6d2e4fc2783a1ad6020c439c"
+        "bytes": 2214,
+        "sha256": "8a48937e93b0a044c63ce9af145fa1eb8fad2291f825aaad5c8b2f711b70eb09"
       },
       {
         "path": "concepts/lib/Lax47/Hastad.ilean",
-        "bytes": 823,
-        "sha256": "4f4bcc37e330fd419e013422aab9244080de0779b6b102a3e7e64e4155be3f1a"
+        "bytes": 1205,
+        "sha256": "2cc95340d23c1e6227aa0b4a86125d52e45844b4f2e0cb2dcb92600b1f9dd6b8"
       },
       {
         "path": "concepts/lib/Lax47/Hastad.ilean.hash",
         "bytes": 16,
-        "sha256": "c6966f383e35852a19a19c65b74aa180fa8e1377889766126480fbc273d1a67f"
+        "sha256": "5fd6a0e44d3a33bb9482bc1242b7ed3089b0b36ed869f661c6af3005f29089be"
       },
       {
         "path": "concepts/lib/Lax47/Hastad.olean",
-        "bytes": 7064,
-        "sha256": "cafa863084071e6d74fd5fa8277c21e7739ec9ff18f7d34375e1e46530ab0eb6"
+        "bytes": 8304,
+        "sha256": "c76ba1da0134f609e58673d200f1a34fedf02f5b80de8ba520e5b1cffd2fcbb6"
       },
       {
         "path": "concepts/lib/Lax47/Hastad.olean.hash",
         "bytes": 16,
-        "sha256": "277cd9dbfc57d534d3bab0f97350b877068added27c97a8f8ca68859cd1783f1"
+        "sha256": "4be0b894d5a89f8540b217268feb23c9fb9dbf52c09fcd499519b5acd3d89a70"
       },
       {
         "path": "concepts/lib/Lax47/Hastad.trace",
-        "bytes": 2149,
-        "sha256": "88291af5ae15305fdd04cbeead7bdeae25f1637e5034bfac790df3643ce86051"
+        "bytes": 2609,
+        "sha256": "51bd0dfd1ecca8646b2d5438c05d4b0273fd6bd8858b132cceaa2ba415f3bd47"
       },
       {
         "path": "concepts/lib/Lax47/Machine.ilean",
-        "bytes": 8297,
-        "sha256": "8f820656a9acb447aee4a7f8e1743e86a2801e9ba2a0e61bf3e463b38afec2ba"
+        "bytes": 3693,
+        "sha256": "92e32775469d2a3db9c079bfb0bfafd019f7564df674adb271795c74bc6a1a92"
       },
       {
         "path": "concepts/lib/Lax47/Machine.ilean.hash",
         "bytes": 16,
-        "sha256": "b477e219bca918e6bd8e6043f4b8d807caf5d4254a3916fc0640feccc5b3204e"
+        "sha256": "818d372bf08649a969af219664b4a7fe969ffd8fab53ce76f592edd659dea259"
       },
       {
         "path": "concepts/lib/Lax47/Machine.olean",
-        "bytes": 153952,
-        "sha256": "2097c2455ed2286ac8c2ade544bb1d683b13290428e250b508dc66ebc2359ca6"
+        "bytes": 60344,
+        "sha256": "a1c28b6a16f49d8a993b3c7f045d387bcd08f2fec975851980f924e09fd79c1e"
       },
       {
         "path": "concepts/lib/Lax47/Machine.olean.hash",
         "bytes": 16,
-        "sha256": "3d06293ffd717735015d528a79f3b34920b572a078f97326ac7bb4c8f7a63eed"
+        "sha256": "2cadf0576313541a9195992849812edc469d1bde36dfc8a987036ff54715d479"
       },
       {
         "path": "concepts/lib/Lax47/Machine.trace",
-        "bytes": 2188,
-        "sha256": "841e00e0af986ff2bcaffea325716ec4356f5b1cb759bf072aaf613ee3f6cb06"
+        "bytes": 2265,
+        "sha256": "7b1647037f4ee716e4b177f92930b36d6210f9df04e2567189fb71e13b739203"
       },
       {
         "path": "concepts/lib/Lax47/Theorem12.ilean",
-        "bytes": 1041,
-        "sha256": "7f4cdaacb64a33e72b5895a3a254eea8170fc31c094c65af444c2bc54af19d3b"
+        "bytes": 1237,
+        "sha256": "9d83f8dd4e3d78779775d8452056b1c725684521ca998afda67d790fb8be0d67"
       },
       {
         "path": "concepts/lib/Lax47/Theorem12.ilean.hash",
         "bytes": 16,
-        "sha256": "e1f97b99b7ed369f302dda0302523e32e432b329275b3c2b3b8da0c2edcf8f27"
+        "sha256": "64dbaeca5cd60d18f258b69fda71e9bd353661a5d0a0bd4dc72eb0bccf5c65b5"
       },
       {
         "path": "concepts/lib/Lax47/Theorem12.olean",
-        "bytes": 7432,
-        "sha256": "4333688b00150eae3ebb03d273246e0f072e2847c9bd38ed2a008a75788a64e2"
+        "bytes": 8960,
+        "sha256": "9703c86d0a02e9c2b72942a6d5bf57c8cae27255d4c9339222f6fde331d47170"
       },
       {
         "path": "concepts/lib/Lax47/Theorem12.olean.hash",
         "bytes": 16,
-        "sha256": "b60b2a3cf4c8ae3b2e107b00b66b35ef39f24fca722dcdf1a93727e6e259e990"
+        "sha256": "be6c9b430990e2db10743d7926ddb94c1d4375a28396587e1c02947bcb78ffcd"
       },
       {
         "path": "concepts/lib/Lax47/Theorem12.trace",
-        "bytes": 2179,
-        "sha256": "f3580d459427a3c4e7bb2f3f25ffcd9f80d4c3ad5a755179b2ec66054ceecd65"
+        "bytes": 2644,
+        "sha256": "d6264aedffee9843e2fe7baeef7987f511268aaf56fc8f66f746dd309fd1eeda"
       },
       {
         "path": "concepts/lib/Lax47.ilean",
@@ -326,53 +349,53 @@
       },
       {
         "path": "concepts/lib/Lax47.olean",
-        "bytes": 1760,
-        "sha256": "160898e3d97bcad86375520d3f5ff817218c64b2741d683c721fb96b3b245def"
+        "bytes": 1944,
+        "sha256": "eea6fbdb627e81e589f54915c04dd959c7914211c07b4d90ca855a39e4b0a13d"
       },
       {
         "path": "concepts/lib/Lax47.olean.hash",
         "bytes": 16,
-        "sha256": "a36e516dd7ed230ff23d33739cb298f97520e48a29ae00000470e851d95a34f3"
+        "sha256": "6c1d12cae9defbd45216367c4a00765b425072726e9947ba37893aeb326310c3"
       },
       {
         "path": "concepts/lib/Lax47.trace",
-        "bytes": 2645,
-        "sha256": "aa8f1cfd5f2145f2d6aa94ad47d7ff4fb71cfd852e0f2a39d204c6575df34ffc"
+        "bytes": 2708,
+        "sha256": "3294116598718f56fcc183bd66d31bff86be7faa645df32a93ed9840c8595f90"
       },
       {
         "path": "concepts/package/lake-manifest.json",
-        "bytes": 3570,
-        "sha256": "7dae1712ec9105ebfbec3e6eda4f9b3519da29dedfe83f38f7432f858a49cdde"
+        "bytes": 4005,
+        "sha256": "7b10fd5f423f515a078ea30ca050dd2a46d0fa264b5312b2d2b2f87bbdf2bca2"
       },
       {
         "path": "concepts/package/lakefile.toml",
-        "bytes": 382,
-        "sha256": "15df50bfe0210a5269bc5ddcd05485c5caf5609e9fb9aef259f000ae71975de4"
+        "bytes": 713,
+        "sha256": "448ab4976afe83c483ae036302ef3c483c231538e56da02cf01806058a75ea01"
       },
       {
         "path": "concepts/package/Lax47/Complexity.lean",
-        "bytes": 2438,
-        "sha256": "ca40f8477d2362e3ee7fdd62527156576ad4465bb45e83dc5671e229f6cdf939"
+        "bytes": 2563,
+        "sha256": "9e5df5580540c5a72b91cdddc0711cfe28a00b4430417c1ee6e793a05dc2210c"
       },
       {
         "path": "concepts/package/Lax47/Gap.lean",
-        "bytes": 2912,
-        "sha256": "9f2f4adea077a3bc3ce74f574607aaeec5a77419055aba59c21678624d8250e8"
+        "bytes": 2916,
+        "sha256": "671167e486548177f64906a4945e86f3b8ad19eaa4722769e8fbc8ba6cc21195"
       },
       {
         "path": "concepts/package/Lax47/Hastad.lean",
-        "bytes": 952,
-        "sha256": "95cf48d7e64e33f2798b42666d087e5ca4afbf3789ee6422aba80cf945196e00"
+        "bytes": 908,
+        "sha256": "4bb9d0aa1a0445089a4ed1ca9423de32d7ebff2fb243873b47d2d33170339d31"
       },
       {
         "path": "concepts/package/Lax47/Machine.lean",
-        "bytes": 3706,
-        "sha256": "4535c249700ba0154a016767edf8380002e78eb1a8d8547ac46714ca52a5b456"
+        "bytes": 1946,
+        "sha256": "896b7b36bd196ff894157ff2a531335c1559fc88f93450c55db945570f52be5c"
       },
       {
         "path": "concepts/package/Lax47/Theorem12.lean",
-        "bytes": 935,
-        "sha256": "e9c3ed84080e11c38e19f4688cce9244e2e595be6ad12da5b728a84963d175d4"
+        "bytes": 985,
+        "sha256": "c1af60198c84b6db4b87fdea52bebcee0fa50f30a03b80a918a8bfe19389059e"
       },
       {
         "path": "concepts/package/Lax47.lean",
@@ -382,27 +405,27 @@
       {
         "path": "concepts/package/lean-toolchain",
         "bytes": 25,
-        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
       },
       {
         "path": "proofs/ir/Lax47Proofs/Construction.c",
-        "bytes": 35826,
-        "sha256": "1e389b8118eaefc5e873d78bf4cc5e5aec13c07a7a64ccb0f01494f67a5f5438"
+        "bytes": 35902,
+        "sha256": "6b367476aa4bafa8ee0a7bbbda9c3483539687cd6704b1f5715382e167f416d4"
       },
       {
         "path": "proofs/ir/Lax47Proofs/Construction.c.hash",
         "bytes": 16,
-        "sha256": "9e76b43399106047a3dc6d43648678d9f5a6b0ede09209beb063554e9b5c5998"
+        "sha256": "c25b0fcf05bd03ce76a4ccd3da5c334bf81df3a92252050a71d32675cbba2f38"
       },
       {
         "path": "proofs/ir/Lax47Proofs/FiniteExecution.c",
-        "bytes": 15150,
-        "sha256": "5e9a119c2f874b4f49b11cee6d198a8dec8b45111252623e90dfdcb243f312b0"
+        "bytes": 15110,
+        "sha256": "3e9794f5d3f83c09a59f90820c56df4e19adad8f78e7a29d101017191fbe9203"
       },
       {
         "path": "proofs/ir/Lax47Proofs/FiniteExecution.c.hash",
         "bytes": 16,
-        "sha256": "155d2038ad45e9491b9ddee9a6200ad00bae6a315a45064da735aee6ddd557de"
+        "sha256": "118135fbd1c046376116ba36588d364481301bd7641bb6b058afe231c6715411"
       },
       {
         "path": "proofs/ir/Lax47Proofs/FlatReduction.c",
@@ -416,33 +439,33 @@
       },
       {
         "path": "proofs/ir/Lax47Proofs/GapMachine.c",
-        "bytes": 44209,
-        "sha256": "bc5e6a0733c5269e98f60db6872158c397fb0aa7961e26d86aba4277b16ef43e"
+        "bytes": 44238,
+        "sha256": "0a0809f06f13408a92c7fbf05562bcd23412644bac5c6ea06c2f18d099778f73"
       },
       {
         "path": "proofs/ir/Lax47Proofs/GapMachine.c.hash",
         "bytes": 16,
-        "sha256": "5d4ab8a1b8eb9c2941f5c790fc693050f801ecbe223112f76c4ae6a44fb8c196"
+        "sha256": "20da3d1dd265c89a801e206a947f0c613b2628b3b6df3541e368006585e50a7a"
       },
       {
         "path": "proofs/ir/Lax47Proofs/GapMachineBounded.c",
-        "bytes": 3156,
-        "sha256": "582d9c9061f53a3b51a05bb66b083502b623bc49ca4335d4617a6ca9a57a2b0a"
+        "bytes": 3192,
+        "sha256": "a9e1bb0a9ac551f1097fe88f3b6723fda89916c864da431d5097d4d9d1279f7e"
       },
       {
         "path": "proofs/ir/Lax47Proofs/GapMachineBounded.c.hash",
         "bytes": 16,
-        "sha256": "4d66493059ef9c7b2de7cf0ea1298109953a639c0eafda1e0cc9eeea29401a86"
+        "sha256": "5bcda0d14d818ca682c3e044eaa52834742e1b917c7246cd5890b6f5d317e225"
       },
       {
         "path": "proofs/ir/Lax47Proofs/GapMachinePolytime.c",
-        "bytes": 3568,
-        "sha256": "f931c9643ffe4f5baf2c4b0222b16865d52935d46bf51a1edcd7f101f2172975"
+        "bytes": 3576,
+        "sha256": "537b54426f16d9230837d0de61ad2a0fb5bb8c49bf14b884bf0221b0f1430884"
       },
       {
         "path": "proofs/ir/Lax47Proofs/GapMachinePolytime.c.hash",
         "bytes": 16,
-        "sha256": "bed8d98fe6c8c6844d44f3ba5f4e5cac34627a97e351ba63c5d42683ef91762a"
+        "sha256": "577d1160dc20533e01829dca0e08b7472ea3c70b8559b74d6cd19c8d715e2055"
       },
       {
         "path": "proofs/ir/Lax47Proofs/GapMachineRun.c",
@@ -456,33 +479,43 @@
       },
       {
         "path": "proofs/ir/Lax47Proofs/GapTransfer.c",
-        "bytes": 5163,
-        "sha256": "b488a7d220b67e76c08085b51a08216ac9ec9e43f3dda24c7a37a85f21bb14d8"
+        "bytes": 5154,
+        "sha256": "2fcc04a12854e4740a161697d619667c61dd67256020ea2ecefdd8591eb2fde1"
       },
       {
         "path": "proofs/ir/Lax47Proofs/GapTransfer.c.hash",
         "bytes": 16,
-        "sha256": "105bcbd309c94b4664c085d3db14611cba75988bded8c8499130e4729c382b2a"
+        "sha256": "052c43702ff8ea91e19e8c00f2e76b8208cba735b288b91c9b608f5af15a7e19"
+      },
+      {
+        "path": "proofs/ir/Lax47Proofs/InputHarness.c",
+        "bytes": 7892,
+        "sha256": "65afd431ab0781d27684c5717e774c964bf20f6eaf558e7790f4d92c269a5c74"
+      },
+      {
+        "path": "proofs/ir/Lax47Proofs/InputHarness.c.hash",
+        "bytes": 16,
+        "sha256": "c1d3100b5d7457602d5a6ec085b829cb07aa1eea49cfcd84937aded54eca321b"
       },
       {
         "path": "proofs/ir/Lax47Proofs/Main.c",
-        "bytes": 1545,
-        "sha256": "2dbdb3f3d1316e20a1ce4a6433071f4063374a2975f3caa3de0b1478b0743bf1"
+        "bytes": 1744,
+        "sha256": "e61e9e5ce9ea12ad88348083c06471c40b98725a443808c8f9e15a1c8441ed3c"
       },
       {
         "path": "proofs/ir/Lax47Proofs/Main.c.hash",
         "bytes": 16,
-        "sha256": "4b7a634564adf44f374ec0427aed1fe6da277edfdcf3866d5f16c930bc0189d5"
+        "sha256": "f7cdf4e7a1fe8f9714adaf9f039495ff96c572027d7bc28eddd95f4bf1b0ab3b"
       },
       {
         "path": "proofs/ir/Lax47Proofs/OperationalReduction.c",
-        "bytes": 15036,
-        "sha256": "588134bb3e06b21f95913560115a3bda25cfce68a73d41403c2e9a3c8455ba25"
+        "bytes": 15054,
+        "sha256": "ad9b8fefcb2c3e410c0b4c62827361c8f1eca4dd2c148d4006eead407053d5b2"
       },
       {
         "path": "proofs/ir/Lax47Proofs/OperationalReduction.c.hash",
         "bytes": 16,
-        "sha256": "7e18b3fcfe5957a0059af2a70dd502b120524054586578f43c197edf6075fe00"
+        "sha256": "5b604f0387a5fd695abd00b602102c653181c6906b029fb56e95be09779f18dc"
       },
       {
         "path": "proofs/ir/Lax47Proofs/ProofSupport.c",
@@ -496,33 +529,33 @@
       },
       {
         "path": "proofs/ir/Lax47Proofs/RamReduction.c",
-        "bytes": 238118,
-        "sha256": "09b6269bc65e77873710082781df905692dcf8d6bf903d56cf548b06b5c38726"
+        "bytes": 238102,
+        "sha256": "40b48f35f67c65279c59f4645b60586eb3dccce53f00d7b967f704a81c4461bb"
       },
       {
         "path": "proofs/ir/Lax47Proofs/RamReduction.c.hash",
         "bytes": 16,
-        "sha256": "8ce3daa50879cdfb380f1ae984ef9d789dadec52c23ba3b9fd1fbfe9cbeebf15"
+        "sha256": "1f760c9522d713d6335df96d08f02cb0c0d18294a929d0f0a7b6b21243adf4aa"
       },
       {
         "path": "proofs/ir/Lax47Proofs/RamReductionCorrectness.c",
-        "bytes": 9274,
-        "sha256": "c862b70ff89a9d17edab949ca695c3cec3e4e69f27b3c1c87fa4d77c2e0467c4"
+        "bytes": 9292,
+        "sha256": "c11ed6250198f45a67d664e189c141dc95310bcfac8c032ff6cbaaf820255417"
       },
       {
         "path": "proofs/ir/Lax47Proofs/RamReductionCorrectness.c.hash",
         "bytes": 16,
-        "sha256": "10182a51cc5fe9ea46ddc9cadf4485f568f0be043c44560b7e3bc6a452a7deb0"
+        "sha256": "395743d8b27b4b5c090f4099d06f59cd90fa646b9d3a9ac2361cc087130aa602"
       },
       {
         "path": "proofs/ir/Lax47Proofs/RamReductionCounter.c",
-        "bytes": 9681,
-        "sha256": "a80186c59092a1d4c37e8f51518dfaa700d67fc4c3acff69881e3971548f195b"
+        "bytes": 9708,
+        "sha256": "580bb48ab9a81833123b7469310a80c782871dcbc1bae64685c5eba9de8f1421"
       },
       {
         "path": "proofs/ir/Lax47Proofs/RamReductionCounter.c.hash",
         "bytes": 16,
-        "sha256": "5dc61c58f70f3b2b4cf3f25a77b87ba10b3f5c45c87541b1e86102051034d044"
+        "sha256": "4dc7b656b765080c203429a213e0881efce8d7b34ee725e43fb4682eeb62c69d"
       },
       {
         "path": "proofs/ir/Lax47Proofs/RamReductionFull.c",
@@ -556,23 +589,23 @@
       },
       {
         "path": "proofs/ir/Lax47Proofs/RamReductionScan.c",
-        "bytes": 8871,
-        "sha256": "058ca0b28b494e8a0a992c21ea42c72f56809a4f0a867491a746349ff8dafd6c"
+        "bytes": 8907,
+        "sha256": "c261ff38382171df3c6a31f35a175f5d666b26d1b72337fe9a5bddbf9bf37e0a"
       },
       {
         "path": "proofs/ir/Lax47Proofs/RamReductionScan.c.hash",
         "bytes": 16,
-        "sha256": "909a92a5819e061c9a83fcefab1c949d96dc685072ae998d9064b3d346d58e17"
+        "sha256": "2010a094347e2696c2e42bfad8ad159321188dd30d9c5172987f8f2d815ee8a8"
       },
       {
         "path": "proofs/ir/Lax47Proofs/RamReductionSemantics.c",
-        "bytes": 12381,
-        "sha256": "f3ab90ee3e95126473ba24c1be930192f08d4f036d20172407127a475f082eda"
+        "bytes": 12378,
+        "sha256": "334ee956b9b449fcbd7847c857abbac1921e8528326b86e20cd7daf401537390"
       },
       {
         "path": "proofs/ir/Lax47Proofs/RamReductionSemantics.c.hash",
         "bytes": 16,
-        "sha256": "bba424905b21ccc6090f028f19232e19e59b56f7effef891b01ab19d76f9aec4"
+        "sha256": "3495120bdb96b6d2701c5fdda1e58178d673b52dd746de78e9a151f07db7014c"
       },
       {
         "path": "proofs/ir/Lax47Proofs/RamReductionTriangle.c",
@@ -586,740 +619,770 @@
       },
       {
         "path": "proofs/ir/Lax47Proofs/Redirect.c",
-        "bytes": 50537,
-        "sha256": "5681b93b3eb2a2800089d908ed33207b025d5cf2b3b1c1e83bcee80543a04666"
+        "bytes": 50894,
+        "sha256": "f3fa92cd9dbbf06dbc03535ef2368eca76cdf978dc69aad70ecba2d46721d150"
       },
       {
         "path": "proofs/ir/Lax47Proofs/Redirect.c.hash",
         "bytes": 16,
-        "sha256": "8421c9d427318b06a80e56658f8f1aba6289d2f403b6fa10a6d25de518507773"
+        "sha256": "bc4128f80a74c91f6e8c5182112227dbba6c40f736fe435e02c17e4f68f5eaae"
       },
       {
         "path": "proofs/ir/Lax47Proofs/Reduction.c",
-        "bytes": 53151,
-        "sha256": "e0129a67b41a2c0b121f66a93fc9fd4e44680d8bd6686dd01c40a451ae37dadb"
+        "bytes": 53167,
+        "sha256": "35e815a0fbb8f2f46bc87a8d496e2e04fb7edfe46e7e6cc03e4e85bdab6e7225"
       },
       {
         "path": "proofs/ir/Lax47Proofs/Reduction.c.hash",
         "bytes": 16,
-        "sha256": "57d55228227dc0c47b240fac32c6d33320963411b760046b20dc467e968ef81f"
+        "sha256": "aa5a85bfbb9da9a1edbf1e24cc65fa3e8ad606039c23d382f7dfb14982f846a4"
       },
       {
         "path": "proofs/ir/Lax47Proofs.c",
-        "bytes": 6700,
-        "sha256": "909e0a253deb672689c4aa6c3d78b80c6ea312de2c681b4ca4a9484391e93219"
+        "bytes": 6947,
+        "sha256": "112b808801e137942fcd9604eebc57f41d0e18977fa5f59dd867cc14e2186af5"
       },
       {
         "path": "proofs/ir/Lax47Proofs.c.hash",
         "bytes": 16,
-        "sha256": "193078857cd22c90bfd6cde31b8ea66bc8b6f6b60d1387eae3c6ae2ac593acd8"
+        "sha256": "7f2475faeb2f2d989cd256a6f6f55efd55a0d09c08530d024a2a37e8b77d99de"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Construction.ilean",
-        "bytes": 328264,
-        "sha256": "7df4cee714afe98a833327101d544f33bdcf3b7cb77c823e1b91934f068ccb88"
+        "bytes": 328964,
+        "sha256": "11cc0cb390f36d282c96d261386af5e8b717be350ca7de1d15c13f2ecdf76e77"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Construction.ilean.hash",
         "bytes": 16,
-        "sha256": "06a0040ab67a52919ed2eed4e1ae4891d47cb423be598720a8a71f87272dab2a"
+        "sha256": "1bab0155fa91330504f28519a1c53ac5e01a25cd9172f18993d169a4d79aba8f"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Construction.olean",
-        "bytes": 3067872,
-        "sha256": "acad6c9b42ac236b80e6e7b3a06ab05a7c13feba70d15779d41bd16c62182693"
+        "bytes": 3050168,
+        "sha256": "86dae4f6444e6bfd79ac88663f334bff934d44e66e2f44cd7623d474bfeb66dd"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Construction.olean.hash",
         "bytes": 16,
-        "sha256": "5fceacafdf939add09c77dfa638853978a21a0e14c441226f840d8e1e4461fd6"
+        "sha256": "1f6f5d02bf2c5f4f01f8a42bc8fc642d985dd114c0e8aac22562859de381643f"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Construction.trace",
-        "bytes": 5445,
-        "sha256": "629c24432e963e99e544e1db0bed500ac3f252b819f5c6cee5c96fc31416c392"
+        "bytes": 9824,
+        "sha256": "75ce86676db2c870818fa712302bab0b017bf24d93afd80645ed82fbe4b12b39"
       },
       {
         "path": "proofs/lib/Lax47Proofs/FiniteExecution.ilean",
-        "bytes": 66316,
-        "sha256": "eb984fb3869c5f760cd104c02f44fe86d0b3e87976c5981d2a070eac046a0328"
+        "bytes": 66389,
+        "sha256": "6319e239302bbe4852569fda13ed108c98711318e0d0e6daa8e6abb42e984fed"
       },
       {
         "path": "proofs/lib/Lax47Proofs/FiniteExecution.ilean.hash",
         "bytes": 16,
-        "sha256": "d8aec8709f42c80bfc0f1da6f797b0617814f0dce06d68eeba86083d76a757e0"
+        "sha256": "f95faee466e255f876d4ea44c84d802e3b47bfaa401dde86b2468c845ccea948"
       },
       {
         "path": "proofs/lib/Lax47Proofs/FiniteExecution.olean",
-        "bytes": 1496768,
-        "sha256": "f2d2dc2699aee07c2ae9226c5bd59b013c7268c200fcf040feaf3c4176e978dd"
+        "bytes": 1506776,
+        "sha256": "c29e091d037f90c3d32ab4f58168d42bb6c1b74693698ee022714051dcbe4709"
       },
       {
         "path": "proofs/lib/Lax47Proofs/FiniteExecution.olean.hash",
         "bytes": 16,
-        "sha256": "44650d8f03cb0c1c19c557d8e29ef51df2bd8ef044fa16758bc4e23f234dd79c"
+        "sha256": "3f5f26a65305cb78fdc42bd59755a8618b0ef1ba7732f9fc4a51684f98184ec5"
       },
       {
         "path": "proofs/lib/Lax47Proofs/FiniteExecution.trace",
-        "bytes": 2771,
-        "sha256": "8b337ca1878816910cd83c2a301093b315a991bf468d146703e0e9088977dadd"
+        "bytes": 6828,
+        "sha256": "c1228ad9a3b15bd6b154b2ad6e59fa77772bc87eb29ccc466872a0aad9140de7"
       },
       {
         "path": "proofs/lib/Lax47Proofs/FlatReduction.ilean",
-        "bytes": 89937,
-        "sha256": "2142ff9940c9a206b3d0b10c5f237beeda431f54c401ed82e9a69dc80572980f"
+        "bytes": 90440,
+        "sha256": "7f86fb582fbbd46ba33220c4f2d2ac660edb51cdecf3688ecc336b9c282381d8"
       },
       {
         "path": "proofs/lib/Lax47Proofs/FlatReduction.ilean.hash",
         "bytes": 16,
-        "sha256": "b8d8f355cac0ec3ff66863b49377ef97f82dafbf9a2d22e1ed639362b030da51"
+        "sha256": "68ddca27fcd2b45da638bbf1802bed689725525b523e2f29d1663c9a4b70c67e"
       },
       {
         "path": "proofs/lib/Lax47Proofs/FlatReduction.olean",
-        "bytes": 1788880,
-        "sha256": "0113ba3653be4a8c4f21a4de87671217ebf81b2269779161f9bc7497de0b8ca8"
+        "bytes": 1810296,
+        "sha256": "c463b856168b439dabf8914d50020676d180768081af54cbc7436a60da3477b8"
       },
       {
         "path": "proofs/lib/Lax47Proofs/FlatReduction.olean.hash",
         "bytes": 16,
-        "sha256": "9764f95a2c552ad0bc1afd416a689120cbd90d8631019e5e357bfac53315e088"
+        "sha256": "5362771d8e6395474d2ebcd0587ef9747351aaa236cb67058d0c07d8b800ecd7"
       },
       {
         "path": "proofs/lib/Lax47Proofs/FlatReduction.trace",
-        "bytes": 2950,
-        "sha256": "a5de6eb2290773c9c1b0333da09381953a28a0559ec1c9ae39ad523d29c8374a"
+        "bytes": 3668,
+        "sha256": "4a66a2d37479f3ff8e9d2c1b686baabd70c226f6a5c5921a91d1bbbc870631e7"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachine.ilean",
-        "bytes": 80551,
-        "sha256": "7230ed63feb5cd5934193aa69f71f1b83d1dc88dd8ecbe3614ffb3e98365ae41"
+        "bytes": 82013,
+        "sha256": "6a912ef5db62141978ae541daec351e885a9e4f99def27c8aede10cf977b1765"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachine.ilean.hash",
         "bytes": 16,
-        "sha256": "3fc8cbc95fb9655984843363c5477e3049af4640c656e647cff87c76f2d23d69"
+        "sha256": "db38ca576df27ca273b2980fff7aebd311c8f375697059900076d3022c624d1e"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachine.olean",
-        "bytes": 719088,
-        "sha256": "c9daa0851b6f8a03759c85002cec5b207e5849150076f2672bdf6e1bcab496b1"
+        "bytes": 744584,
+        "sha256": "72c91422f85f625de654db12836cad9eb56a0b9fd76aac849e257584caf76d61"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachine.olean.hash",
         "bytes": 16,
-        "sha256": "60761b02338785f4052158bc2879071b08efde1ca227fa780f7bfb81bea106c8"
+        "sha256": "1d67730b20f14d6208141ae316e08d9cef35efc6246472cf211ade237b72a5d2"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachine.trace",
-        "bytes": 4820,
-        "sha256": "ee46f3c0461bb93f9ca2a73d1824c9dc7831328f8afc3b7cb1897cf841eed6c0"
+        "bytes": 4536,
+        "sha256": "a2e60d786b95b69f33f552282b14472a07e3fb33bde79d0b7e7e2eb654d01112"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachineBounded.ilean",
-        "bytes": 41585,
-        "sha256": "e70767aee20af44d23c15b46fb4ce5397005260437778b176c158271ee0185b4"
+        "bytes": 43051,
+        "sha256": "a61762b006fbd6c52cd11b6e63ade554dc5f5c34f75f6c52fe3dad2be0efd527"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachineBounded.ilean.hash",
         "bytes": 16,
-        "sha256": "1d323b5c26410fde00fbbd00a291af176339afa1bbd33df98e9c65d3a9c859bf"
+        "sha256": "47b2713a09a9949a52f3f4a356e48b43a8b8df84e957f4282571b8f3187d4195"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachineBounded.olean",
-        "bytes": 827816,
-        "sha256": "aa158580ee2f5d9c02bb152e0183bfbbcfd2a0c6a8b4357b2ba9208f4e096f48"
+        "bytes": 842464,
+        "sha256": "c05003f72b6fb017af8ad8ff35676d3c1e9a9137b5e4eee36c034c5f93cd9d57"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachineBounded.olean.hash",
         "bytes": 16,
-        "sha256": "cd25bb8edfc582d75d304d0e6bb43ea87a3260174e6653622b53bdfc1cc59f03"
+        "sha256": "0f44d770023e9326c443680b1d9dd886348709f8beafb4e86c4e7517b0470d96"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachineBounded.trace",
-        "bytes": 2777,
-        "sha256": "659ba4bf1580ae82133f0db6f2d7df86ab10c9252d4f5d2317a995f2df9f0897"
+        "bytes": 2791,
+        "sha256": "5d4fea364e0ca55f59dba73d5c1a366171a5356e1278a11b57ced70572a3dbb6"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachinePolytime.ilean",
-        "bytes": 91401,
-        "sha256": "86219d2a8c1b7bae1d5fd19beec114f0ae677c55da2aa97939a9fb6f7dc65c41"
+        "bytes": 92758,
+        "sha256": "1511c2ad82e5ff6ee9a825c55f6f45639a20c76c76aa4b07141d3d2c81ed7ef5"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachinePolytime.ilean.hash",
         "bytes": 16,
-        "sha256": "3fa5d25dd57f8f1d95f98db99d1e0510be5a026e47ae2b0c09d5b9767f96c63d"
+        "sha256": "4e892d889113573aa8e593bc68de657d524c60c6907b3ecb0d9ea0007fbd7de6"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachinePolytime.olean",
-        "bytes": 3689184,
-        "sha256": "f8efdf827d69d74d4031e073e50ac12ce5639a833a42472765df7e4879dd55e6"
+        "bytes": 3698376,
+        "sha256": "d2bae8fdf1aebc859f91d89739d016525b804ad5c03a410bd066c56fa03ad1f4"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachinePolytime.olean.hash",
         "bytes": 16,
-        "sha256": "229571a08cbc717d8eed1fa4792887a43dd97161ae4c164e9630e9035d07050b"
+        "sha256": "eddc2503784948482cd66e2427fd143b97b171d8b063cd02301523fab5c2bfdc"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachinePolytime.trace",
-        "bytes": 3238,
-        "sha256": "969db84ef3054947fbfcf2404b4b246465e4053f357f51d761d4030aa4e99f9a"
+        "bytes": 3239,
+        "sha256": "54ce979c8af4debcb7d47ff6d4d854b879111a348f85830b781cb9abe7939ca4"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachineRun.ilean",
-        "bytes": 51968,
-        "sha256": "01ed9c9525bd49d61291b1b531a454de9c03dcf6c1c3d84438d891fab7ba7be6"
+        "bytes": 52895,
+        "sha256": "b8797ae63191ccfe32a3d38eab6ded96136e18b75ca40d6ba51da3549ddbbc16"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachineRun.ilean.hash",
         "bytes": 16,
-        "sha256": "78cd6f22b3e6e3ea58fc101a233cac828d7d84a0ad38ba47c072404a87eec0a2"
+        "sha256": "48a1691525823936cbfebce2af40c5ec1afb2bca4687d433edcb63f6274adf78"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachineRun.olean",
-        "bytes": 1296808,
-        "sha256": "78064b54eecb136bc2f10917928c6b7125dda748794496eef79b484bc7fc3dda"
+        "bytes": 1307424,
+        "sha256": "7cd9fef5a1e17e6709fc993bed0a36a60ffd95ae82d70949efee96dc6b1a5c86"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachineRun.olean.hash",
         "bytes": 16,
-        "sha256": "030c19008922b361573905e7b08f5287070c0cb9d297f306362749e48b8f088b"
+        "sha256": "35d655297793e70bcea2266b331b3b81f58ea85a11795cb2053c6466a23ecea7"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapMachineRun.trace",
-        "bytes": 3062,
-        "sha256": "91809121db3403855e0a6c23c22337bc24d5b9b893e4ff05fd42b2ad0707b6c5"
+        "bytes": 3055,
+        "sha256": "acd7e428ba39e27ef6df0eabd0317135b423bc53541ec1c88eafece898e58294"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapTransfer.ilean",
-        "bytes": 68003,
-        "sha256": "478a622bd28ef0416d3f3a3a6be364036c95d95e069ef05dde619dcf6fd0616e"
+        "bytes": 68440,
+        "sha256": "bd929a0231e5c2cac06b22837162d9efa6c25d9c3e261789421200f7ab3d05f3"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapTransfer.ilean.hash",
         "bytes": 16,
-        "sha256": "d4e7cd8886ec829317d3040859f70c0e78bd29432341a41058fbfd95a89cf0bb"
+        "sha256": "390eba2a239b3ef580ccb28f19b140f175694638ed65fb8e5d07a224fe5cd193"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapTransfer.olean",
-        "bytes": 965840,
-        "sha256": "1a4076d1586609d38c8638e63360c93af085afae6f93dab1c657c2c04acd0c25"
+        "bytes": 961368,
+        "sha256": "5c48d6d5ab009873774ebd7eceea676fe4bf34890b1bc8b4e3a962c44bdd2d24"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapTransfer.olean.hash",
         "bytes": 16,
-        "sha256": "be6f281021666c96a2b2151e5e2a7a68039d19a73d56cb96a7aae64263e234e9"
+        "sha256": "ef860e9735866db1353093b719feafe0bcdfa965bc0c6172aea5c8d52150e114"
       },
       {
         "path": "proofs/lib/Lax47Proofs/GapTransfer.trace",
-        "bytes": 3801,
-        "sha256": "3576881248365f03c2290b6b0a125e94d2676f971d2cc956b837062da6c83fc2"
+        "bytes": 4184,
+        "sha256": "ac7c50207219572763f25424ea770f6cb23b93c201339cb2f8e39733a032f52f"
+      },
+      {
+        "path": "proofs/lib/Lax47Proofs/InputHarness.ilean",
+        "bytes": 33493,
+        "sha256": "a25bf3dc27fb176d56b754dbb60d663bc6e0d1f41b657dfc7454366d675ec44e"
+      },
+      {
+        "path": "proofs/lib/Lax47Proofs/InputHarness.ilean.hash",
+        "bytes": 16,
+        "sha256": "61df7782d4828c24b34dccd2dffecdfdb47be986a0343b55e1e79877072e45ca"
+      },
+      {
+        "path": "proofs/lib/Lax47Proofs/InputHarness.olean",
+        "bytes": 437744,
+        "sha256": "b50a6f634834935e462dac9d43891984c075a87b6797fa041d6fbd9f0041c6e6"
+      },
+      {
+        "path": "proofs/lib/Lax47Proofs/InputHarness.olean.hash",
+        "bytes": 16,
+        "sha256": "0ae27ecf2f7ab7a8626146633574911de8e254706492897ad49d520c5450b3cf"
+      },
+      {
+        "path": "proofs/lib/Lax47Proofs/InputHarness.trace",
+        "bytes": 2570,
+        "sha256": "47b54288725b46eb790860cd4af1cac8908f1d14498dd70978f7aeb2e73cdf96"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Main.ilean",
-        "bytes": 1369,
-        "sha256": "ce8a336e1ce3240f76f51ae1076f0598972adbc2a45c917f8685f6d47da2bb8f"
+        "bytes": 1762,
+        "sha256": "ad5ca7944b261587b108774b42adb80ec856bf65e6eb86a5a4f6b226771480c9"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Main.ilean.hash",
         "bytes": 16,
-        "sha256": "716603e4653c1048faf8334ebbe2c300e9d9e0bbad99e04d1491d9dcec803d0e"
+        "sha256": "02241d0398f4ec28d36eb010ce60a1444b77b870dd0e089c315122b0518b90ad"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Main.olean",
-        "bytes": 14192,
-        "sha256": "1cc3d27404216b067bf7237d3cbcc061957d61e2fecc87b9836527946c663dcd"
+        "bytes": 17288,
+        "sha256": "0d29c7c0a5f7dec4c2d3ca7608b3242b8b9dbb572b17952280e95788886c5fae"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Main.olean.hash",
         "bytes": 16,
-        "sha256": "04441264cf629c41a2b07032ecc1b747b4054eaa52bf577499c713cb6ddbc5d4"
+        "sha256": "29c7fd4a6ad4fcb4a356fa314ec7ca5859ca72a6572176ded8f0e5f4978cf6cb"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Main.trace",
-        "bytes": 2611,
-        "sha256": "137b3ffc863889e4853cf6eb7754a9062084e9616529f240c54624e4520fc2b2"
+        "bytes": 2764,
+        "sha256": "509507fb2cd12899e384ae042ba34134125bafa20eebcf7dd0843eb18040a89f"
       },
       {
         "path": "proofs/lib/Lax47Proofs/OperationalReduction.ilean",
-        "bytes": 86217,
-        "sha256": "80c7d2990caeee6bbc9ab574190a112dbdd9c6a640d6ad99150bcf7ffdb0f47b"
+        "bytes": 86452,
+        "sha256": "777f308a455ddfee17c5e3dfa9534ebd1a50b239232b17464bf5a99da492d57c"
       },
       {
         "path": "proofs/lib/Lax47Proofs/OperationalReduction.ilean.hash",
         "bytes": 16,
-        "sha256": "5e5754cb9e90d96ae5f8d456639d9c02d6d0f6e024167ca4b389f6b6f4b5327c"
+        "sha256": "8ce7b411c73a0e3f43c23ffa21dafdd7e728337cc198ff1659274fe350037201"
       },
       {
         "path": "proofs/lib/Lax47Proofs/OperationalReduction.olean",
-        "bytes": 2059744,
-        "sha256": "da42ad3b54dab8c7259f2c3003157b27797e40586fd4fc909296f0b1d57ed957"
+        "bytes": 2062048,
+        "sha256": "79046ea02beda094f5e5cc7800639cff9793f5465c76c5986e71361ee81f4249"
       },
       {
         "path": "proofs/lib/Lax47Proofs/OperationalReduction.olean.hash",
         "bytes": 16,
-        "sha256": "2605dd63b195717b33c682f3ed0ebbfd9f67116e3857e771cb38b5bfd77d4fc9"
+        "sha256": "b4dade0abaf5f973aa1cff5a160ca20909aefe02948325f50e133cd1dbb1f2aa"
       },
       {
         "path": "proofs/lib/Lax47Proofs/OperationalReduction.trace",
-        "bytes": 3714,
-        "sha256": "ff62e44dbdf1b850cec345c1e3a09f0aa7a8fa5e78eaa64c14cc76754050268e"
+        "bytes": 3670,
+        "sha256": "87190d219ed84f219e44107771073c8d0a9f97af0666ca5da9a1e65479f0dd78"
       },
       {
         "path": "proofs/lib/Lax47Proofs/ProofSupport.ilean",
-        "bytes": 8619,
-        "sha256": "0a08c1f2fecebf37101e3215f1ddd0d233575e875d801de9a0f97fb11701eeb6"
+        "bytes": 8766,
+        "sha256": "314000b317628d77026c5665218599fbddae34a110fab6759b61168c73157859"
       },
       {
         "path": "proofs/lib/Lax47Proofs/ProofSupport.ilean.hash",
         "bytes": 16,
-        "sha256": "94726402e4d0bb9c84fa853daf3ced3ffba02dfd280ff01a83a9cd6b04b678ca"
+        "sha256": "92525b11261dd134126f7fc00dc487cb2f20cf075e1d4a5ad39302ec63a0d71c"
       },
       {
         "path": "proofs/lib/Lax47Proofs/ProofSupport.olean",
-        "bytes": 83896,
-        "sha256": "2663c4e3330af13033b8d44f0efdd472aa6fbac58987b75cc94188d9ec9808ea"
+        "bytes": 87120,
+        "sha256": "18c087b5483540fc6f32203001cfec7c54d0ce283b0e0e98d0e2aedce06d9a3f"
       },
       {
         "path": "proofs/lib/Lax47Proofs/ProofSupport.olean.hash",
         "bytes": 16,
-        "sha256": "654c20970aa77e2f733eeb88959d35207a05be351a2913ee02ea9cd5b3baa6e3"
+        "sha256": "8de7abb263c70117fce20219460bf80b67070bf64e78dd01203dddb74c4d899e"
       },
       {
         "path": "proofs/lib/Lax47Proofs/ProofSupport.trace",
-        "bytes": 2498,
-        "sha256": "3dca1ffdf43b4186c2b724a61064158a3f3da69dcaf429778fdbc464f0a64035"
+        "bytes": 2519,
+        "sha256": "f08d6d0f5deacd3b12a29b135b5055d64cfa5e0671a14cb880cc176c5208dba0"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReduction.ilean",
-        "bytes": 61410,
-        "sha256": "6ab70a5b3f8044d93f04beca49a96f6d8d7a173b05bf5e196d85325797b9a94e"
+        "bytes": 61962,
+        "sha256": "efae07697a4b0e0de69ac093441e3276c38181103a34e327d42b03b777be4579"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReduction.ilean.hash",
         "bytes": 16,
-        "sha256": "311831ff96f1e015dd4ecb80db1a0c88ed2eeb86dddaa6feadf8d4c6bc837f6b"
+        "sha256": "7eccb510cfb9199bf3bfb65133561d1659c30cbe85966c0e19b352dc175316da"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReduction.olean",
-        "bytes": 587392,
-        "sha256": "b41e7e756f889ad217c3758cf314a5cff4d89eab3201f1e554986f32cde8036f"
+        "bytes": 589048,
+        "sha256": "7cd2cc506515d5e67961362e3016e17d05455e5fd4bad7219db0458786b97a64"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReduction.olean.hash",
         "bytes": 16,
-        "sha256": "14f127ed9f00421ff5f15ece5cb2b60ea30d4b73238f345025b983a05626a162"
+        "sha256": "4396631707b69d81c3591bd3192c58492da3faa3848f33ae5597bb21f81c3772"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReduction.trace",
-        "bytes": 3517,
-        "sha256": "72ca05334a3f8c33af3858b18807e89e83f0d3c9559ea4c7552737629cc033cf"
+        "bytes": 3494,
+        "sha256": "1efb1efd81911d3ffa9c7bb508e2152088245abe6029bd7d6ae06c75efaa12d6"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionCorrectness.ilean",
-        "bytes": 69852,
-        "sha256": "bfd92dda182af5575d90998fdb54e74b8395ba45e38d8a2575cc204b03c3687e"
+        "bytes": 70764,
+        "sha256": "45555e82b9b7deeaa16e8c7d0d7d68ba7fe70758b2aa23886f6b500c318642f2"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionCorrectness.ilean.hash",
         "bytes": 16,
-        "sha256": "95a0ce58b156a4c2865cecc0e9c7d8954ac085633b3f7fca278b64dd499dbb05"
+        "sha256": "f40168b52c6a94b06813f79206c6cf2eeec56179aceed8cc28abd97182fd12af"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionCorrectness.olean",
-        "bytes": 2210352,
-        "sha256": "5c4171adbf348828dd31cbf33b514797778686bca90808c25d7bfe538f2cf26c"
+        "bytes": 2238176,
+        "sha256": "cd7e64fabb7ec7e8ba92a17cdd47af2bd9f012230bd81259e4b7a054a602138d"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionCorrectness.olean.hash",
         "bytes": 16,
-        "sha256": "f1788bab9b90d9192d67f5501f1083da3590a9318b2c5bb469d0f526fb5955a6"
+        "sha256": "24acf09f4f21791afbefb26a481479981acd78a2146eab0b06e4cb923b77696d"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionCorrectness.trace",
-        "bytes": 9811,
-        "sha256": "f0f121b9bea454385548f9c464580d62ca501ea84fad2fdf5259de4a40ec6a94"
+        "bytes": 8696,
+        "sha256": "1762e4df65e4ac21368626b3480bbf9f542fe025c75264692e67eb2972fb698a"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionCounter.ilean",
-        "bytes": 40326,
-        "sha256": "690ed57f1cba736175391b2b8f2a192760c6d934ff953dc386c9ce3850e47a4c"
+        "bytes": 41076,
+        "sha256": "8f14026a3502fc63d707e359e2456bab97d78168ec1506422ea7897d4e8f68f6"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionCounter.ilean.hash",
         "bytes": 16,
-        "sha256": "f2e3bd80f80edb78e569a3991c55379765faf98cd06509931a57cbb774cc366c"
+        "sha256": "7140bf35bc4de794f9b872dbd5a4bde4a98958e4999a81d506ddc16fdb2398de"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionCounter.olean",
-        "bytes": 588104,
-        "sha256": "ced6aee5fae55374e97585b9027cfdac11d5fcac1607423fd8b0e8dfc2f4f341"
+        "bytes": 594048,
+        "sha256": "9c1e9e6bc62e563963675cdb863856eeebd59d0e897a1ee17afc5d20489d1c1c"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionCounter.olean.hash",
         "bytes": 16,
-        "sha256": "aa20435f98e61a3e6086a5a0685f855f5d981add1b5b4c1c3fd7706eb791dd2b"
+        "sha256": "815c81e3d25c20b1cb15050721ae6fc7b04bfb03d309d7dbae504bfe8bf4937e"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionCounter.trace",
-        "bytes": 2601,
-        "sha256": "93727fbfe4e6a2e77dcb979f4ec132c2ef2d72baa1e4acc4803422cc34a8c33a"
+        "bytes": 2613,
+        "sha256": "0685095ab4e1e4feab42cf075aed4fad511774dfd8194e887ef7fa73795f1282"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionFull.ilean",
-        "bytes": 40950,
-        "sha256": "93e6a0bf0b01af4f9aa1b6abff11ac94e4ac22756bc5f97ce73dbd36109d58c1"
+        "bytes": 41628,
+        "sha256": "820b858bd107cf2972c9b47ed758f37f31905aa257a32f6b8c38c5e456c9d09e"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionFull.ilean.hash",
         "bytes": 16,
-        "sha256": "c666d9ab7f1b154bdaaaa10314f2acfb225fcdf4fdda4c22d2799b346a086e33"
+        "sha256": "0e44901fd723dbe80a558823846bf76463938d0c9aa9b44c5100564a3f7087cc"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionFull.olean",
-        "bytes": 628064,
-        "sha256": "16dc3ea3e43023a59f7814d4757da5c04da85fa80e836ce389dd39b0181954b9"
+        "bytes": 640512,
+        "sha256": "431c05321223f5ae5d983d9fdb1f439a4572e2e8bea2ad6459e222fbc0e7bfda"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionFull.olean.hash",
         "bytes": 16,
-        "sha256": "2edd916a76e9ec9a95235d89fba18c6388d6d3bf90184b7a810d9814633f440b"
+        "sha256": "fea1cd5eedfacc98792e165795e2eff3c0c01a8310f2ce9bb016a94171c0d4fb"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionFull.trace",
-        "bytes": 2946,
-        "sha256": "adbcb7378e02472b07558dd41fe1835892f7bba05169104e7256ea8589000ed5"
+        "bytes": 2906,
+        "sha256": "8027df7c9ca4c9235ffa7b4cb9f9bb3327b3ebf73f9af93e90e0bb47a5a15c24"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionOutput.ilean",
-        "bytes": 100671,
-        "sha256": "dad4abe2553b798c6fb97b0de439f65ffe09b94575486d439b81af8763530152"
+        "bytes": 101844,
+        "sha256": "cacc774f5f6f4c70bbece57765dce64f7a1192d18a8c30d99446e5ed6b865588"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionOutput.ilean.hash",
         "bytes": 16,
-        "sha256": "058474595a43ab0444bab6872408a413716990baa2fa57199a710dc33de86ef8"
+        "sha256": "693387b4335bb21f302acdcdf3a8e9dfda0236194e8af9db4f6ee2f39c15e093"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionOutput.olean",
-        "bytes": 1739024,
-        "sha256": "8da7e02b72df400620367e849aada9cba2b28adb513d0fa72f0e69c99621267c"
+        "bytes": 1768080,
+        "sha256": "ee71260757bbc70837499848ed64d10fcdc8736cfba42b473f6f64a63d2dc4d1"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionOutput.olean.hash",
         "bytes": 16,
-        "sha256": "05d58db073b5d53815abf96f7e59256ccf8c11e6d214ba25f3825ce83c752e6b"
+        "sha256": "db7a92357a5475b5e946d11da880472ed5b8ee364ee86b12a209914d6c07153b"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionOutput.trace",
-        "bytes": 5357,
-        "sha256": "b3e363dafbe4df6f6e9f1546962602b0ec338b959fee08509f69712e794be842"
+        "bytes": 5162,
+        "sha256": "880e452bd688bb36d97cedbd9fd680c876d3657700d2cdecbd3e12586bf8ea74"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionRounds.ilean",
-        "bytes": 25226,
-        "sha256": "8d8d402b60dd9182373f4a241326ad92b0d9e70021f4d659b515e084435bb77e"
+        "bytes": 25823,
+        "sha256": "8241a7ab6ff217a22685285fa293fb6995d4c30645a829d2161137c2336b177e"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionRounds.ilean.hash",
         "bytes": 16,
-        "sha256": "01aea4e8a37c7e6a43f40582d1b9ee500402ed4dd492525f05b7b3bcc0006d8a"
+        "sha256": "9ee7325ec65505e68a0759e1d7f734af5ac43fb5e6af63da3ee6cbeb11efcc43"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionRounds.olean",
-        "bytes": 362968,
-        "sha256": "cdc90285b1f743a0d6175b31b0c98df090fd410cabd1fb117d5b559bfdd436d8"
+        "bytes": 365072,
+        "sha256": "f403868be67228e8162ac1334f01ab67894eaf3e76077366a94877a849986bc5"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionRounds.olean.hash",
         "bytes": 16,
-        "sha256": "3932fcae6cb7a6daf508a019b4b02c1972de52c3aaac95a6e9ed118d164fff87"
+        "sha256": "8727e951a7f0559a64140dc189442621eff92b307da847d2b582b22b352dbb6b"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionRounds.trace",
-        "bytes": 2608,
-        "sha256": "6f61753e6decd3bf4660bf101a271a5941185fdcf60af086eb015b29dd275481"
+        "bytes": 2612,
+        "sha256": "8157cd7082500a340e916f3d26045d1a12266ab9302533899cb094d0fdf8e83b"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionScan.ilean",
-        "bytes": 58699,
-        "sha256": "a80f7edb43ee63536d56c5ae589de72739f722229fdbcb80672f2d76e4f00f7d"
+        "bytes": 59649,
+        "sha256": "5de0cb755e4b81e9baf292810d589cc677169155e2a97161da64852a949e2f8b"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionScan.ilean.hash",
         "bytes": 16,
-        "sha256": "f548e7de7f0921b46a908f020aa14c8b92b5eed6ddc8f8322df49901b8b24324"
+        "sha256": "2da1b008c0981058c6aa84a5bde1678df2fc7a4db1b82f89f44f3df67cff0640"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionScan.olean",
-        "bytes": 1105432,
-        "sha256": "95fab9750fcf55c650bac684a055226212378cdf89d2a7a9077bbb1fef21296a"
+        "bytes": 1113864,
+        "sha256": "99c517c02afcfa5188f5b29faaf9f2ed1414bca98fbc594889b353715453ffe4"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionScan.olean.hash",
         "bytes": 16,
-        "sha256": "71860fa974bf5f15484720a785b77db6d2dda33c4d57aa8fdd49b9279c7fde9c"
+        "sha256": "85cc90a0389405a117e34939f91e83442fe7d2244535b8141136664405b6bd67"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionScan.trace",
-        "bytes": 3809,
-        "sha256": "0a0c6e1da5b9e6a99518d9293a6fecf1561e5e528f7f3f1573ec41e757fde569"
+        "bytes": 3779,
+        "sha256": "bc31510edc6642798c5b4a1bb4abb5160dddf4a7b7bdb1d3b819dbdf1b419c2b"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionSemantics.ilean",
-        "bytes": 102280,
-        "sha256": "ec2412ea400b3a79699db0fed957dab2f4f58e8f38dee54464accc36514d56a0"
+        "bytes": 102992,
+        "sha256": "92926ebcb98cedc37e519c90b9a207def59d9277fd68a79b1caa6ab18d683775"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionSemantics.ilean.hash",
         "bytes": 16,
-        "sha256": "c929881e75f7e83f720edc9cdd05d727fb791b869a06ccb0aa798605eb354a73"
+        "sha256": "312eae58a2916c2d70686ced1a330699a65d13a5d4d44bd780050df91c9372a7"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionSemantics.olean",
-        "bytes": 2433544,
-        "sha256": "8fd06e8a3f4052d500664f7d8602b199ca465921eac76bc5d28a49a08b7482fe"
+        "bytes": 2453880,
+        "sha256": "17dcc52bbf792d27f2d5a96a3fc8f07a8113e9849b458e86314d26ee30eca1ea"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionSemantics.olean.hash",
         "bytes": 16,
-        "sha256": "3fef71703a9c8bb21d27bef0fb3c5f4a4f2a4eb14044ba4395a07e963a729ee8"
+        "sha256": "8b805a43f1f1fb2a12508c2ea139f7a32503ef5ad04d1c1630991958f0a089b4"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionSemantics.trace",
-        "bytes": 11521,
-        "sha256": "8dd6aaa96938c3c23f08d06027511e534b9be061379df85125cdd6e3fd5f0bd3"
+        "bytes": 10350,
+        "sha256": "db89ffe37a5761b4ee64f5cd3fecfb52773000a4d3fe7834445bef9f5b1bba43"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionTriangle.ilean",
-        "bytes": 73587,
-        "sha256": "38a13d8770cf7f107bf9edbdd2eae747d640dd8cdbd38e83e5dcf0c39f90fe2a"
+        "bytes": 74078,
+        "sha256": "0eb5cbe62b74a83dad6baf45a5a345b9fe0d7f23a076065cdf2de9b0e5f520e4"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionTriangle.ilean.hash",
         "bytes": 16,
-        "sha256": "56a7858de54784085a6e1ea026beb468ef16d91a3a6fd773ebf1f1dff6d9e15d"
+        "sha256": "27797e6e814b786d69d9b3ffb710405fc100a7913203e38acdba463959f00099"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionTriangle.olean",
-        "bytes": 772440,
-        "sha256": "5929ed38ef7db18e96ad0c331e4941379782a1567c9fc307f0bcd0e1d6e92be9"
+        "bytes": 776192,
+        "sha256": "38dfcde0f1a53020fe8f02c224a83bb15c58119fc4746ca77ced396344e9e9cd"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionTriangle.olean.hash",
         "bytes": 16,
-        "sha256": "1d3eba23e3d2d239ecafa8f6b0960984a8540790048cf7947e248c8dbf15ea4a"
+        "sha256": "8527d885cf2aa11a75bc05b5bf6d028cf3d1a2239c8eaa4714f450425e62afee"
       },
       {
         "path": "proofs/lib/Lax47Proofs/RamReductionTriangle.trace",
-        "bytes": 2628,
-        "sha256": "56e24b241cb9bb99e96b24f48f31104a5038c809f20ab125528ae00369111e63"
+        "bytes": 2637,
+        "sha256": "5e62fdad6f1466d449eae0a8dc94d4c2c99eb443b303d59f942cce7d4ebd2858"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Redirect.ilean",
-        "bytes": 62595,
-        "sha256": "8dea64c549bf245425ea6c60e50f6ce32ed758e43d79aca9f008dac487a24a13"
+        "bytes": 63876,
+        "sha256": "53a6bfe79944cdee2fc1434f401b4fe9e92694cf78487a034791a786970a61c2"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Redirect.ilean.hash",
         "bytes": 16,
-        "sha256": "c3769bbad37d3bee8afc079c2d410d28ea282971c981938682e282ecd7f9e5eb"
+        "sha256": "56789e9c9d2d48323a49f6948ea32d9d722dccd060050d0215236be7a531a2ce"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Redirect.olean",
-        "bytes": 875520,
-        "sha256": "cf309d31e3835e4092240484426b57fb92a1487b81b6bb158b6f5563785f4637"
+        "bytes": 882232,
+        "sha256": "80934e2d6527aa17f14721ab25acb88150cb0a3b0c8eec82ce23723519ddbfa1"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Redirect.olean.hash",
         "bytes": 16,
-        "sha256": "3b686cb5c992d4788933cde329d3fd093beb4b9df8c9474f5df80f567db0460c"
+        "sha256": "23b3345ff99606f6c3036c65d2055b609d0a34464261dc294804e9fa9395ba08"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Redirect.trace",
-        "bytes": 2868,
-        "sha256": "513b4e15d36bc39dae001f489faefd3a0ae9ab3ca016f44a058797ed5c3488b3"
+        "bytes": 2836,
+        "sha256": "719b653815525987412a240602cd897e3e337f1e58d0cb1374002a3f6b2a9997"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Reduction.ilean",
-        "bytes": 25998,
-        "sha256": "a938e3fa2d34a4ae543ed3e92b52341a6438f9c54ea4a4b22ed1f5f562542804"
+        "bytes": 26155,
+        "sha256": "8c3253287c860c86f4ae2ab15c869ff052e1f566e8a682922ddcc675f0c424a3"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Reduction.ilean.hash",
         "bytes": 16,
-        "sha256": "776c06e7bb126f6b5600d636225a79783c37dfaa6ba4e3e157e762d220966cae"
+        "sha256": "9bcf055305146559a18caf754a00982daa807c86811fe621d49ea8db07666bcf"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Reduction.olean",
-        "bytes": 260408,
-        "sha256": "ccb129257513e4a813a41b1d19b5f8b6b4a3b0f8a3303ad63059f46c8b4eee62"
+        "bytes": 263416,
+        "sha256": "91705055a19121cf037b5597e8806e701a2456882fae88bd7500e5cc64035806"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Reduction.olean.hash",
         "bytes": 16,
-        "sha256": "9605e1fe309bba77949302f60a3fc8f20f1f1a0a301613f220c1e048b3c59a0b"
+        "sha256": "c0052c3c718ee345c36d4feb8d3efe83661ef06f78c35d20c7629e6898bacce1"
       },
       {
         "path": "proofs/lib/Lax47Proofs/Reduction.trace",
-        "bytes": 3092,
-        "sha256": "5a2751e4d9c09f6d33617c96583d1330ca9baa8d9feddcb7742c258087413877"
+        "bytes": 3100,
+        "sha256": "c85405caf9183ca9c411553bb3ab66d0f0f49f21c0f27c0e0b0e069afa0a2996"
       },
       {
         "path": "proofs/lib/Lax47Proofs.ilean",
-        "bytes": 1176,
-        "sha256": "021e1c2dd5d9cf50be43e675a645b53d7787362529385842d4c4a08f68ddf7f0"
+        "bytes": 1223,
+        "sha256": "78fec182e1dd3219c535748df0b7b3b31b39d1abbf86e839cc8e85c8674036fd"
       },
       {
         "path": "proofs/lib/Lax47Proofs.ilean.hash",
         "bytes": 16,
-        "sha256": "9029f57569d904c824059237c13978efe7036fb9d66fef1a69e7b80b30302fd7"
+        "sha256": "65c039553214d3001404271f7ce9cef93a6180439699ac468526a78fe4d3945b"
       },
       {
         "path": "proofs/lib/Lax47Proofs.olean",
-        "bytes": 3776,
-        "sha256": "e599ee47c14d79c49c3d6d64433956045040f1dfd33f980202b35e89127511cb"
+        "bytes": 4072,
+        "sha256": "f52cff95f970c73bf586c2fff68a322a8c8d6a15a21fe03d6b4cf278c9653cf2"
       },
       {
         "path": "proofs/lib/Lax47Proofs.olean.hash",
         "bytes": 16,
-        "sha256": "e2e86ff0d615e7992a0efb127275aad2005f60e377ad255916dbab3bc8c23701"
+        "sha256": "195c8c4a1eecdfa35b3c29705a5e2a1146ef2c5bba27bcbce9f34ddfbd4af562"
       },
       {
         "path": "proofs/lib/Lax47Proofs.trace",
-        "bytes": 6062,
-        "sha256": "c3d4ad62e336a83d85d522d6793254639e5a5ca7ef4ba399d0ff7252264bc30a"
+        "bytes": 6108,
+        "sha256": "085c22b3c8bacf120743c8a3f460d0c983417287feb72e897b3b37ac60b52b8c"
       },
       {
         "path": "proofs/package/lake-manifest.json",
-        "bytes": 4584,
-        "sha256": "d5971d66edfa4b84e8b3cf5ea97d5128adefcdd869ca63d2672694a92301f77a"
+        "bytes": 4835,
+        "sha256": "255b4f38e77c16e223dd4c3fb564d732f6c7a28396d13d70143001c9df497f21"
       },
       {
         "path": "proofs/package/lakefile.toml",
-        "bytes": 924,
-        "sha256": "8d9019cda59e60eb8bd8bcfc40dfae6251223ea55b23652dd3a43a3f240355ed"
+        "bytes": 914,
+        "sha256": "285aa1a5eca88c0f574c80394b3fb5f6b12dc9c69a03129710de89ce4adff758"
       },
       {
         "path": "proofs/package/Lax47Proofs/Construction.lean",
-        "bytes": 98375,
-        "sha256": "aa9fc1627ad241e1f0c6dc763a59f7e3fdfa3809ad29d0ea832703d01e1ebd90"
+        "bytes": 98676,
+        "sha256": "5d661854657699e5a868d8044559e51594fded4e07e49e00bf1a6afb7c1be415"
       },
       {
         "path": "proofs/package/Lax47Proofs/FiniteExecution.lean",
-        "bytes": 18240,
-        "sha256": "cbb049890996852c303e7db84c33e660676f04eef9bbb7bf5a73266946a615c2"
+        "bytes": 18298,
+        "sha256": "ee239186af07cfc03aa4288195f85787cbcedc0fa7b9453d85421cea28660a84"
       },
       {
         "path": "proofs/package/Lax47Proofs/FlatReduction.lean",
-        "bytes": 29196,
-        "sha256": "58f56583391a1800737a234cdc4c57429f02047a3c6626806562e21b855eca86"
+        "bytes": 29293,
+        "sha256": "33c03b676b2e4292d8983b393182e02a1d3baa5b2e82a1af402a0681401f08f4"
       },
       {
         "path": "proofs/package/Lax47Proofs/GapMachine.lean",
-        "bytes": 23801,
-        "sha256": "d1bf3137bf80de4da561d5e7a9a8bdf21938206c20a9cb2100f897b0f5715d29"
+        "bytes": 24043,
+        "sha256": "7fca439e781802ef8384f2ad681e5f1609b6a52d6bb9ddde7b67f68cac9c87b7"
       },
       {
         "path": "proofs/package/Lax47Proofs/GapMachineBounded.lean",
-        "bytes": 14598,
-        "sha256": "bc44b9f3f284cde46f1d5a43d19b1c36bd694cb7407ee0f786785689facaf769"
+        "bytes": 14695,
+        "sha256": "433074703ff4a70e8bb5c17ea0247fdda07a23f74b377b28f3f47bc5ff080764"
       },
       {
         "path": "proofs/package/Lax47Proofs/GapMachinePolytime.lean",
-        "bytes": 45712,
-        "sha256": "db68850f88e2b94908a22d210f8d99133325e5dd4c6a92288ae2c519bb80f5ca"
+        "bytes": 45978,
+        "sha256": "93bdb452208925c238d8727c31ef111e975b5b5c5538f37480054ec508c568a7"
       },
       {
         "path": "proofs/package/Lax47Proofs/GapMachineRun.lean",
-        "bytes": 21145,
-        "sha256": "fef549201210adede166680739461b97111b5e1198fe6ec9708150b11db01bbe"
+        "bytes": 21234,
+        "sha256": "102eb6fea6cb0d52ea93d3cb38f45bab9c39a6fc608e79bd1868d7a64fe5b185"
       },
       {
         "path": "proofs/package/Lax47Proofs/GapTransfer.lean",
-        "bytes": 39625,
-        "sha256": "282e7143ef4e39881c8ddbc724dd9e763960d6579f35b1b1f69d6638cf846cc7"
+        "bytes": 39733,
+        "sha256": "a5320a04e903423119c693f60b93456ea7d21671c1d4dd59d52bca97426cb31d"
+      },
+      {
+        "path": "proofs/package/Lax47Proofs/InputHarness.lean",
+        "bytes": 13099,
+        "sha256": "9335755e1b9aa910c59364e76523536b2f12a142003600b12ab55d03476359e4"
       },
       {
         "path": "proofs/package/Lax47Proofs/Main.lean",
-        "bytes": 787,
-        "sha256": "33582ef19292615125b60a5b374becde3b662528f65db53ba7d1f4420bd3e0a9"
+        "bytes": 968,
+        "sha256": "4b8b2da833aff271b78ec1ae791cfd13844115b7ab5b56d9523074f43d609eb6"
       },
       {
         "path": "proofs/package/Lax47Proofs/OperationalReduction.lean",
-        "bytes": 25858,
-        "sha256": "c369e24e591c6dae16aaf82d6baa131c0e494df75da0b7a878fa2273959ea0c0"
+        "bytes": 25924,
+        "sha256": "a5fdca8eb3f711353dd365603b8d58eea2940977e81cdd80be83548a5a865f3f"
       },
       {
         "path": "proofs/package/Lax47Proofs/ProofSupport.lean",
-        "bytes": 2195,
-        "sha256": "218458232339d94f9741931cb8cd9d37a4e371876aed787898223929f92f6ce6"
+        "bytes": 2249,
+        "sha256": "8f5775efb9a4ef0af7b060a4e6039bd6d6a8fcdcce2f67f00b275e3b11d12053"
       },
       {
         "path": "proofs/package/Lax47Proofs/RamReduction.lean",
-        "bytes": 14932,
-        "sha256": "8f3b34078b39da83efadf3bc011d9f1adb75430b36b84e7448e777d30571282f"
+        "bytes": 15003,
+        "sha256": "a27a6a3f2f95e3c8b72d26e0bbe88a18ec2f30abe2bdd42075f0f9e8f714c3b9"
       },
       {
         "path": "proofs/package/Lax47Proofs/RamReductionCorrectness.lean",
-        "bytes": 21859,
-        "sha256": "e549a34f9c8cbb0ff9fd25607b4602706f0bf3280b985a061532c952e0b0a513"
+        "bytes": 21942,
+        "sha256": "550aa95c48657b841efb171f2e8c38eb7a2008d79711b99313a34425b925582e"
       },
       {
         "path": "proofs/package/Lax47Proofs/RamReductionCounter.lean",
-        "bytes": 15046,
-        "sha256": "2b77915552d7422ec81566ed61f9e3d948562a02b5ec164de6d34c969863f181"
+        "bytes": 15127,
+        "sha256": "48fddb60bff11f2a6302a3f09907ccceb62911b812eed03989365f3575a3cd2c"
       },
       {
         "path": "proofs/package/Lax47Proofs/RamReductionFull.lean",
-        "bytes": 14472,
-        "sha256": "da7750c4976b7112014e8f0cf89e03b157b428bbd5d078e5d82a288f202c9e39"
+        "bytes": 14553,
+        "sha256": "087e02b398ba2709aba566edda293a1899fa2130bd7fd9b10950e18cf247a30d"
       },
       {
         "path": "proofs/package/Lax47Proofs/RamReductionOutput.lean",
-        "bytes": 36064,
-        "sha256": "840666bc63fe400e858ff01dccb315a1b6a26744ece4509fc11e4269b35128a0"
+        "bytes": 36169,
+        "sha256": "a0726bc74beb13d2b4f70f0ff67619dd1d1c0fd92f4fd2e6d88ee860cdf121ad"
       },
       {
         "path": "proofs/package/Lax47Proofs/RamReductionRounds.lean",
-        "bytes": 9013,
-        "sha256": "38a8cf24b13594414147535cdd97c0ccc2fb6a5a14600d8ff87b723836f9e3b1"
+        "bytes": 9094,
+        "sha256": "cc4dc298edcbe415d20c6ece245e20e97fe238c65dbe84d9a17c79ce6d6dd3e9"
       },
       {
         "path": "proofs/package/Lax47Proofs/RamReductionScan.lean",
-        "bytes": 20175,
-        "sha256": "3b0acd5d9dddb3595a8e0fc4ec7aacf26d6bb321c72fbb27b14e70355384df70"
+        "bytes": 20325,
+        "sha256": "1f402f471876966d50cbfb67be1c95c7d0bd49d1961699e195561137d82d9e61"
       },
       {
         "path": "proofs/package/Lax47Proofs/RamReductionSemantics.lean",
-        "bytes": 72855,
-        "sha256": "bdaf697186db7104eec2aad7d81d560baeb84e90ec0749c23ddd8b066547f073"
+        "bytes": 72940,
+        "sha256": "b5f6114e0f8d4aee0f89eed6369e4c1570db90d384b916bca0125981591e6acc"
       },
       {
         "path": "proofs/package/Lax47Proofs/RamReductionTriangle.lean",
-        "bytes": 27388,
-        "sha256": "f2381e39170453fa35690cfc44299f207d700ca9061e283d132663fbd8e871c9"
+        "bytes": 27469,
+        "sha256": "3c1abf25036b3c4a9042aeab979b8fec7a7903f634b6ddd6952545494b0b4bb5"
       },
       {
         "path": "proofs/package/Lax47Proofs/Redirect.lean",
-        "bytes": 24149,
-        "sha256": "4130b2d385e2b5d8e879246a4624c7b170c74dab0e28fea73f1251d02c79eba7"
+        "bytes": 24306,
+        "sha256": "1051c97cdf23f89fa326a6366d23f664a3088e6d1bba66520471bac9eccceeea"
       },
       {
         "path": "proofs/package/Lax47Proofs/Reduction.lean",
-        "bytes": 9515,
-        "sha256": "893595abd4c9e864bcfc06abbc59167a952ddc057904ee92acab2f99eec953ec"
+        "bytes": 9577,
+        "sha256": "bc7a453f5cc65e99c619c894fb658de51e2797f64097ed4b0c89999b673badce"
       },
       {
         "path": "proofs/package/Lax47Proofs.lean",
-        "bytes": 765,
-        "sha256": "d3913e13da896193bdc71dae1c895094ec7942ee2a0a663cc97450ad8caa042a"
+        "bytes": 797,
+        "sha256": "18426a36a91d9d5ca97d8f337bc860ee62967a07004cf04f31d2a10058fc5dd3"
       },
       {
         "path": "proofs/package/lean-toolchain",
         "bytes": 25,
-        "sha256": "54727eec5cba149c18842e6deb5c41b369d66455c93ce135d7d5347c782b2325"
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
       }
     ],
-    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:404a6c454237f68411057f12a36cc5bfe1940094ad4d15a6c8ee145872be3fce"
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:6e50becb4db7160a9208b10f6f631365bc099f6d69c81e7faedf16777c8c45a0"
   }
 }
