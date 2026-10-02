@@ -4,5 +4,480 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 154
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-965890",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "Constructive Lovász Local Lemma",
+      "authors": [
+        {
+          "name": "Édouard Bonnet, Codex 5.6 and 6",
+          "github": "EdouardBonnet"
+        }
+      ],
+      "bibEntries": [
+        "@article{MoserTardos2010,\n  title = {A Constructive Proof of the General {Lovász} Local Lemma},\n  author = {Moser, Robin A. and Tardos, Gábor},\n  journal = {Journal of the ACM},\n  volume = {57},\n  number = {2},\n  pages = {11:1--11:15},\n  year = {2010},\n  month = jan,\n  doi = {10.1145/1667053.1667060},\n  url = {https://doi.org/10.1145/1667053.1667060}\n}\n",
+        "@article{HaeuplerSahaSrinivasan2011,\n  title = {New Constructive Aspects of the {Lovász} Local Lemma},\n  author = {Haeupler, Bernhard and Saha, Barna and Srinivasan, Aravind},\n  journal = {Journal of the ACM},\n  volume = {58},\n  number = {6},\n  pages = {28:1--28:28},\n  year = {2011},\n  month = dec,\n  doi = {10.1145/2049697.2049702},\n  url = {https://doi.org/10.1145/2049697.2049702}\n}\n"
+      ],
+      "supersedes": "lax-296731"
+    },
+    "abstract": "This submission formalizes Theorem 1.2 of Moser and Tardos, *A Constructive\nProof of the General Lovász Local Lemma*, and Theorem 2.2 of Haeupler, Saha,\nand Srinivasan, *New Constructive Aspects of the Lovász Local Lemma*.  For\nfinitely many measurable bad events determined by mutually independent random\nvariables, it proves the asymmetric local-lemma conclusion and the resampling\nalgorithm's expected per-event and total resampling bounds.  It also proves\nthat any observed event is true at some stage—and hence in the output\ndistribution—with probability at most its original probability times the\ninverse local-lemma product over its dependency neighborhood.  The proofs use\nresampling tables, proper witness trees, branching-process weight estimates,\nand a finite-termination argument.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax965890.HaeuplerSahaSrinivasanDefinitions",
+      "path": "concepts/Lax965890/HaeuplerSahaSrinivasanDefinitions.lean",
+      "title": "Definitions for the Haeupler–Saha–Srinivasan distributional theorem",
+      "type": "definition",
+      "description": "Fix a finite collection of mutually independent random variables and a finite\nset of bad events determined by them.  The Moser--Tardos algorithm repeatedly\nresamples a currently true bad event.  Besides the bad events, we may observe\nany other event $B$ determined by the same variables.  This file defines the\nbad-event restriction of the event family, the dependency neighborhood\n$\\Gamma(B)$, the event that $B$ is true at some stage of the algorithm, and\nthe event that $B$ is true in its final output.",
+      "imports": [
+        "Lax965890.MoserTardosDefinitions"
+      ],
+      "mathlibImports": [
+        "Mathlib"
+      ],
+      "sourceText": "import Mathlib\nimport Lax965890.MoserTardosDefinitions\n\n/-!\n---\ntitle: Definitions for the Haeupler–Saha–Srinivasan distributional theorem\ntype: definition\n---\nFix a finite collection of mutually independent random variables and a finite\nset of bad events determined by them.  The Moser--Tardos algorithm repeatedly\nresamples a currently true bad event.  Besides the bad events, we may observe\nany other event $B$ determined by the same variables.  This file defines the\nbad-event restriction of the event family, the dependency neighborhood\n$\\Gamma(B)$, the event that $B$ is true at some stage of the algorithm, and\nthe event that $B$ is true in its final output.\n-/\n\nset_option autoImplicit false\n\nopen scoped ENNReal\n\nnamespace Lax965890.HaeuplerSahaSrinivasanDefinitions\n\nopen scoped Classical\n\nopen Lax965890.MoserTardosDefinitions\n\nvariable {Event : Type} [Fintype Event] [DecidableEq Event]\nvariable {Variable : Type} [Fintype Variable] [DecidableEq Variable]\nvariable (Value : Variable → Type) [∀ i, MeasurableSpace (Value i)]\n\n/-- An event belonging to the finite family on which the algorithm runs. -/\nabbrev BadEventIndex (badEvents : Finset Event) := {A // A ∈ badEvents}\n\n/-- The variables determining a bad event. -/\ndef badEventVariables (badEvents : Finset Event)\n    (variablesOf : Event → Finset Variable) :\n    BadEventIndex badEvents → Finset Variable :=\n  fun A ↦ variablesOf A.1\n\n/-- The local set defining a bad event. -/\ndef badEventSet (badEvents : Finset Event)\n    (variablesOf : Event → Finset Variable)\n    (event : ∀ A, Set (LocalAssignment Value (variablesOf A))) :\n    ∀ A, Set (LocalAssignment Value (badEventVariables badEvents variablesOf A)) :=\n  fun A ↦ event A.1\n\n/--\nThe bad events other than `B` that share at least one determining variable\nwith `B`.\n-/\ndef dependencyNeighborhood (badEvents : Finset Event)\n    (variablesOf : Event → Finset Variable) (B : Event) :\n    Finset (BadEventIndex badEvents) :=\n  Finset.univ.filter fun A ↦\n    A.1 ≠ B ∧ ¬Disjoint (variablesOf A.1) (variablesOf B)\n\n/-- The observed event `B` is true in the assignment at stage `n`. -/\ndef eventOccursAt (badEvents : Finset Event)\n    (variablesOf : Event → Finset Variable)\n    (event : ∀ A, Set (LocalAssignment Value (variablesOf A)))\n    (selectionRule : ResamplingRule Value\n      (badEventVariables badEvents variablesOf)\n      (badEventSet Value badEvents variablesOf event))\n    (table : ResamplingTable Value) (B : Event) (n : Nat) : Prop :=\n  violates Value variablesOf event\n    (currentAssignment Value table\n      (runCounts Value (badEventVariables badEvents variablesOf)\n        (badEventSet Value badEvents variablesOf event) selectionRule table n)) B\n\n/-- The set of sample tables on which `B` is true at least once. -/\ndef eventEverOccurs (badEvents : Finset Event)\n    (variablesOf : Event → Finset Variable)\n    (event : ∀ A, Set (LocalAssignment Value (variablesOf A)))\n    (selectionRule : ResamplingRule Value\n      (badEventVariables badEvents variablesOf)\n      (badEventSet Value badEvents variablesOf event))\n    (B : Event) : Set (ResamplingTable Value) :=\n  {table | ∃ n, eventOccursAt Value badEvents variablesOf event selectionRule table B n}\n\n/--\nThe first stage at which the algorithm has terminated.  On a nonterminating\ntable it is set to zero; under the local-lemma hypotheses that exceptional set\nhas probability zero.\n-/\nnoncomputable def outputTime (badEvents : Finset Event)\n    (variablesOf : Event → Finset Variable)\n    (event : ∀ A, Set (LocalAssignment Value (variablesOf A)))\n    (selectionRule : ResamplingRule Value\n      (badEventVariables badEvents variablesOf)\n      (badEventSet Value badEvents variablesOf event))\n    (table : ResamplingTable Value) : Nat :=\n  if h : ∃ n, resamplingLog Value (badEventVariables badEvents variablesOf)\n        (badEventSet Value badEvents variablesOf event) selectionRule table n = none\n      then Nat.find h\n      else 0\n\n/-- The assignment returned when the resampling algorithm terminates. -/\nnoncomputable def outputAssignment (badEvents : Finset Event)\n    (variablesOf : Event → Finset Variable)\n    (event : ∀ A, Set (LocalAssignment Value (variablesOf A)))\n    (selectionRule : ResamplingRule Value\n      (badEventVariables badEvents variablesOf)\n      (badEventSet Value badEvents variablesOf event))\n    (table : ResamplingTable Value) : Assignment Value :=\n  currentAssignment Value table\n    (runCounts Value (badEventVariables badEvents variablesOf)\n      (badEventSet Value badEvents variablesOf event) selectionRule table\n      (outputTime Value badEvents variablesOf event selectionRule table))\n\n/-- The set of sample tables whose output assignment makes `B` true. -/\nnoncomputable def eventOccursInOutput (badEvents : Finset Event)\n    (variablesOf : Event → Finset Variable)\n    (event : ∀ A, Set (LocalAssignment Value (variablesOf A)))\n    (selectionRule : ResamplingRule Value\n      (badEventVariables badEvents variablesOf)\n      (badEventSet Value badEvents variablesOf event))\n    (B : Event) : Set (ResamplingTable Value) :=\n  {table | violates Value variablesOf event\n    (outputAssignment Value badEvents variablesOf event selectionRule table) B}\n\n/-- The probability that `B` is true at least once during the algorithm. -/\nnoncomputable def probabilityEventEverOccurs\n    (distribution : ∀ i, MeasureTheory.Measure (Value i))\n    (badEvents : Finset Event) (variablesOf : Event → Finset Variable)\n    (event : ∀ A, Set (LocalAssignment Value (variablesOf A)))\n    (selectionRule : ResamplingRule Value\n      (badEventVariables badEvents variablesOf)\n      (badEventSet Value badEvents variablesOf event))\n    (B : Event) : ℝ≥0∞ :=\n  tableMeasure Value distribution\n    (eventEverOccurs Value badEvents variablesOf event selectionRule B)\n\n/-- The probability that `B` is true in the algorithm's output. -/\nnoncomputable def probabilityEventInOutput\n    (distribution : ∀ i, MeasureTheory.Measure (Value i))\n    (badEvents : Finset Event) (variablesOf : Event → Finset Variable)\n    (event : ∀ A, Set (LocalAssignment Value (variablesOf A)))\n    (selectionRule : ResamplingRule Value\n      (badEventVariables badEvents variablesOf)\n      (badEventSet Value badEvents variablesOf event))\n    (B : Event) : ℝ≥0∞ :=\n  tableMeasure Value distribution\n    (eventOccursInOutput Value badEvents variablesOf event selectionRule B)\n\nend Lax965890.HaeuplerSahaSrinivasanDefinitions\n",
+      "statements": []
+    },
+    {
+      "id": "Lax965890.HaeuplerSahaSrinivasanTheorem22",
+      "path": "concepts/Lax965890/HaeuplerSahaSrinivasanTheorem22.lean",
+      "title": "Haeupler–Saha–Srinivasan Theorem 2.2",
+      "type": "theorem",
+      "description": "Suppose the asymmetric local-lemma conditions hold for a finite set\n$\\mathcal A$ of bad events.  Let $B$ be any event determined by the same\nindependent random variables, whether or not $B$ belongs to $\\mathcal A$.\nThe probability that $B$ is true at least once during the Moser--Tardos\nalgorithm is at most\n$$\n  \\Pr[B]\\prod_{C\\in\\Gamma(B)}(1-x(C))^{-1}.\n$$\nIn particular, the same bound holds for the probability that $B$ is true in\nthe output distribution of the algorithm.",
+      "imports": [
+        "Lax965890.HaeuplerSahaSrinivasanDefinitions"
+      ],
+      "mathlibImports": [
+        "Mathlib"
+      ],
+      "sourceText": "import Mathlib\nimport Lax965890.HaeuplerSahaSrinivasanDefinitions\n\n/-!\n---\ntitle: Haeupler–Saha–Srinivasan Theorem 2.2\ntype: theorem\n---\nSuppose the asymmetric local-lemma conditions hold for a finite set\n$\\mathcal A$ of bad events.  Let $B$ be any event determined by the same\nindependent random variables, whether or not $B$ belongs to $\\mathcal A$.\nThe probability that $B$ is true at least once during the Moser--Tardos\nalgorithm is at most\n$$\n  \\Pr[B]\\prod_{C\\in\\Gamma(B)}(1-x(C))^{-1}.\n$$\nIn particular, the same bound holds for the probability that $B$ is true in\nthe output distribution of the algorithm.\n-/\n\nset_option autoImplicit false\n\nopen scoped ENNReal\n\nnamespace Lax965890.HaeuplerSahaSrinivasanTheorem22\n\nopen Lax965890.MoserTardosDefinitions\nopen Lax965890.HaeuplerSahaSrinivasanDefinitions\n\n/-- The distributional local lemma of Haeupler, Saha, and Srinivasan, Theorem 2.2. -/\naxiom theorem_2_2\n    {Event : Type} [Fintype Event] [DecidableEq Event]\n    {Variable : Type} [Fintype Variable] [DecidableEq Variable]\n    (Value : Variable → Type) [∀ i, MeasurableSpace (Value i)]\n    (distribution : ∀ i, MeasureTheory.Measure (Value i))\n    [∀ i, MeasureTheory.IsProbabilityMeasure (distribution i)]\n    (badEvents : Finset Event)\n    (variablesOf : Event → Finset Variable)\n    (event : ∀ A, Set (LocalAssignment Value (variablesOf A)))\n    (event_measurable : ∀ A, MeasurableSet (event A))\n    (selectionRule : ResamplingRule Value\n      (badEventVariables badEvents variablesOf)\n      (badEventSet Value badEvents variablesOf event))\n    (x : BadEventIndex badEvents → NNReal)\n    (x_positive : ∀ A, 0 < x A)\n    (x_less_than_one : ∀ A, x A < 1)\n    (local_lemma_hypothesis : ∀ A,\n      eventProbability Value distribution\n          (badEventVariables badEvents variablesOf)\n          (badEventSet Value badEvents variablesOf event) A ≤\n        ((x A * ∏ C ∈ dependencyNeighborhood badEvents variablesOf A.1,\n          (1 - x C) : NNReal) : ℝ≥0∞))\n    (B : Event) :\n    let upperBound :=\n      eventProbability Value distribution variablesOf event B *\n        ((∏ C ∈ dependencyNeighborhood badEvents variablesOf B,\n          (1 - x C)⁻¹ : NNReal) : ℝ≥0∞)\n    probabilityEventEverOccurs Value distribution badEvents variablesOf event\n        selectionRule B ≤ upperBound ∧\n      probabilityEventInOutput Value distribution badEvents variablesOf event\n        selectionRule B ≤ upperBound\n\nend Lax965890.HaeuplerSahaSrinivasanTheorem22\n",
+      "statements": [
+        {
+          "id": "Lax965890.HaeuplerSahaSrinivasanTheorem22.theorem_2_2",
+          "signature": "theorem_2_2 : ∀ {Event : Type} [Fintype Event] [inst : DecidableEq Event] {Variable : Type} [Fintype Variable]\n  [inst_2 : DecidableEq Variable] (Value : Variable → Type) [inst_3 : (i : Variable) → MeasurableSpace (Value i)]\n  (distribution : (i : Variable) → MeasureTheory.Measure (Value i))\n  [∀ (i : Variable), MeasureTheory.IsProbabilityMeasure (distribution i)] (badEvents : Finset Event)\n  (variablesOf : Event → Finset Variable)\n  (event : (A : Event) → Set (Lax965890.MoserTardosDefinitions.LocalAssignment Value (variablesOf A))),\n  (∀ (A : Event), MeasurableSet (event A)) →\n    ∀\n      (selectionRule :\n        Lax965890.MoserTardosDefinitions.ResamplingRule Value\n          (Lax965890.HaeuplerSahaSrinivasanDefinitions.badEventVariables badEvents variablesOf)\n          (Lax965890.HaeuplerSahaSrinivasanDefinitions.badEventSet Value badEvents variablesOf event))\n      (x : Lax965890.HaeuplerSahaSrinivasanDefinitions.BadEventIndex badEvents → NNReal),\n      (∀ (A : Lax965890.HaeuplerSahaSrinivasanDefinitions.BadEventIndex badEvents),\n          NNReal.instPartialOrder.lt 0 (x A)) →\n        (∀ (A : Lax965890.HaeuplerSahaSrinivasanDefinitions.BadEventIndex badEvents),\n            NNReal.instPartialOrder.lt (x A) 1) →\n          (∀ (A : Lax965890.HaeuplerSahaSrinivasanDefinitions.BadEventIndex badEvents),\n              ENNReal.instLE.le\n                (Lax965890.MoserTardosDefinitions.eventProbability Value distribution\n                  (Lax965890.HaeuplerSahaSrinivasanDefinitions.badEventVariables badEvents variablesOf)\n                  (Lax965890.HaeuplerSahaSrinivasanDefinitions.badEventSet Value badEvents variablesOf event) A)\n                (ENNReal.ofNNReal\n                  (instHMul.hMul (x A)\n                    ((Lax965890.HaeuplerSahaSrinivasanDefinitions.dependencyNeighborhood badEvents variablesOf\n                          A.val).prod\n                      fun C => instHSub.hSub 1 (x C))))) →\n            ∀ (B : Event),\n              let upperBound :=\n                instHMul.hMul (Lax965890.MoserTardosDefinitions.eventProbability Value distribution variablesOf event B)\n                  (ENNReal.ofNNReal\n                    ((Lax965890.HaeuplerSahaSrinivasanDefinitions.dependencyNeighborhood badEvents variablesOf B).prod\n                      fun C => NNReal.instInv.inv (instHSub.hSub 1 (x C))));\n              And\n                (ENNReal.instLE.le\n                  (Lax965890.HaeuplerSahaSrinivasanDefinitions.probabilityEventEverOccurs Value distribution badEvents\n                    variablesOf event selectionRule B)\n                  upperBound)\n                (ENNReal.instLE.le\n                  (Lax965890.HaeuplerSahaSrinivasanDefinitions.probabilityEventInOutput Value distribution badEvents\n                    variablesOf event selectionRule B)\n                  upperBound)",
+          "startLine": 30,
+          "endLine": 61,
+          "doc": "The distributional local lemma of Haeupler, Saha, and Srinivasan, Theorem 2.2."
+        }
+      ]
+    },
+    {
+      "id": "Lax965890.MoserTardos",
+      "path": "concepts/Lax965890/MoserTardos.lean",
+      "title": "The Moser–Tardos theorem",
+      "type": "theorem",
+      "description": "Let a finite family of mutually independent random variables determine a\nfinite family of measurable bad events.  For a bad event $A$, let $\\Gamma(A)$\nbe the other bad events sharing a variable with $A$.  If there are numbers\n$x(A)\\in(0,1)$ such that\n$$\n  \\Pr[A] \\le x(A)\\prod_{B\\in\\Gamma(A)}(1-x(B)),\n$$\nthen some assignment avoids every bad event.  Moreover, the Moser--Tardos\nresampling algorithm resamples each $A$ at most an expected\n$x(A)/(1-x(A))$ times, so its expected total number of resamplings is at most\nthe sum of these bounds.",
+      "imports": [
+        "Lax965890.MoserTardosDefinitions"
+      ],
+      "mathlibImports": [
+        "Mathlib"
+      ],
+      "sourceText": "import Mathlib\nimport Lax965890.MoserTardosDefinitions\n\n/-!\n---\ntitle: The Moser–Tardos theorem\ntype: theorem\n---\nLet a finite family of mutually independent random variables determine a\nfinite family of measurable bad events.  For a bad event $A$, let $\\Gamma(A)$\nbe the other bad events sharing a variable with $A$.  If there are numbers\n$x(A)\\in(0,1)$ such that\n$$\n  \\Pr[A] \\le x(A)\\prod_{B\\in\\Gamma(A)}(1-x(B)),\n$$\nthen some assignment avoids every bad event.  Moreover, the Moser--Tardos\nresampling algorithm resamples each $A$ at most an expected\n$x(A)/(1-x(A))$ times, so its expected total number of resamplings is at most\nthe sum of these bounds.\n-/\n\nset_option autoImplicit false\n\nopen scoped ENNReal\n\nnamespace Lax965890.MoserTardos\n\nopen Lax965890.MoserTardosDefinitions\n\n/--\nThe constructive asymmetric Lovász local lemma (Moser--Tardos, Theorem 1.2),\nincluding its expected resampling bounds.\n-/\naxiom moser_tardos\n    {Event : Type} [Fintype Event] [DecidableEq Event]\n    {Variable : Type} [Fintype Variable] [DecidableEq Variable]\n    (Value : Variable → Type) [∀ i, MeasurableSpace (Value i)]\n    (distribution : ∀ i, MeasureTheory.Measure (Value i))\n    [∀ i, MeasureTheory.IsProbabilityMeasure (distribution i)]\n    (variablesOf : Event → Finset Variable)\n    (badEvent : ∀ A, Set (LocalAssignment Value (variablesOf A)))\n    (badEvent_measurable : ∀ A, MeasurableSet (badEvent A))\n    (selectionRule : ResamplingRule Value variablesOf badEvent)\n    (x : Event → NNReal)\n    (x_positive : ∀ A, 0 < x A)\n    (x_less_than_one : ∀ A, x A < 1)\n    (local_lemma_hypothesis : ∀ A,\n      eventProbability Value distribution variablesOf badEvent A ≤\n        ((x A * ∏ B ∈ dependencyNeighborhood variablesOf A, (1 - x B) : NNReal) :\n          ℝ≥0∞)) :\n    (∃ assignment : Assignment Value,\n        ∀ A, ¬violates Value variablesOf badEvent assignment A) ∧\n      (∀ A, expectedResamplings Value distribution variablesOf badEvent selectionRule A ≤\n        ((x A / (1 - x A) : NNReal) : ℝ≥0∞)) ∧\n      (∑ A : Event,\n          expectedResamplings Value distribution variablesOf badEvent selectionRule A) ≤\n        ∑ A : Event, ((x A / (1 - x A) : NNReal) : ℝ≥0∞)\n\nend Lax965890.MoserTardos\n",
+      "statements": [
+        {
+          "id": "Lax965890.MoserTardos.moser_tardos",
+          "signature": "moser_tardos : ∀ {Event : Type} [inst : Fintype Event] [inst_1 : DecidableEq Event] {Variable : Type} [Fintype Variable]\n  [inst_3 : DecidableEq Variable] (Value : Variable → Type) [inst_4 : (i : Variable) → MeasurableSpace (Value i)]\n  (distribution : (i : Variable) → MeasureTheory.Measure (Value i))\n  [∀ (i : Variable), MeasureTheory.IsProbabilityMeasure (distribution i)] (variablesOf : Event → Finset Variable)\n  (badEvent : (A : Event) → Set (Lax965890.MoserTardosDefinitions.LocalAssignment Value (variablesOf A))),\n  (∀ (A : Event), MeasurableSet (badEvent A)) →\n    ∀ (selectionRule : Lax965890.MoserTardosDefinitions.ResamplingRule Value variablesOf badEvent) (x : Event → NNReal),\n      (∀ (A : Event), NNReal.instPartialOrder.lt 0 (x A)) →\n        (∀ (A : Event), NNReal.instPartialOrder.lt (x A) 1) →\n          (∀ (A : Event),\n              ENNReal.instLE.le\n                (Lax965890.MoserTardosDefinitions.eventProbability Value distribution variablesOf badEvent A)\n                (ENNReal.ofNNReal\n                  (instHMul.hMul (x A)\n                    ((Lax965890.MoserTardosDefinitions.dependencyNeighborhood variablesOf A).prod fun B =>\n                      instHSub.hSub 1 (x B))))) →\n            And\n              (Exists fun assignment =>\n                ∀ (A : Event), Not (Lax965890.MoserTardosDefinitions.violates Value variablesOf badEvent assignment A))\n              (And\n                (∀ (A : Event),\n                  ENNReal.instLE.le\n                    (Lax965890.MoserTardosDefinitions.expectedResamplings Value distribution variablesOf badEvent\n                      selectionRule A)\n                    (ENNReal.ofNNReal (instHDiv.hDiv (x A) (instHSub.hSub 1 (x A)))))\n                (ENNReal.instLE.le\n                  (Finset.univ.sum fun A =>\n                    Lax965890.MoserTardosDefinitions.expectedResamplings Value distribution variablesOf badEvent\n                      selectionRule A)\n                  (Finset.univ.sum fun A => ENNReal.ofNNReal (instHDiv.hDiv (x A) (instHSub.hSub 1 (x A))))))",
+          "startLine": 30,
+          "endLine": 57,
+          "doc": "The constructive asymmetric Lovász local lemma (Moser--Tardos, Theorem 1.2),\nincluding its expected resampling bounds."
+        }
+      ]
+    },
+    {
+      "id": "Lax965890.MoserTardosDefinitions",
+      "path": "concepts/Lax965890/MoserTardosDefinitions.lean",
+      "title": "Definitions for the Moser–Tardos resampling algorithm",
+      "type": "definition",
+      "description": "This file gives the semantic closure of the Moser--Tardos theorem.  A bad event\nis represented by the set of local assignments on the finite collection of\nindependent random variables that determines it.  An infinite table supplies\nfresh independent samples.  A measurable rule repeatedly chooses a currently\ntrue bad event, whose variables are then advanced to their next samples.  The\ndefinitions below give the dependency neighborhood, the probability of an\nevent, and the expected number of times each event is resampled.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib"
+      ],
+      "sourceText": "import Mathlib\n\n/-!\n---\ntitle: Definitions for the Moser–Tardos resampling algorithm\ntype: definition\n---\nThis file gives the semantic closure of the Moser--Tardos theorem.  A bad event\nis represented by the set of local assignments on the finite collection of\nindependent random variables that determines it.  An infinite table supplies\nfresh independent samples.  A measurable rule repeatedly chooses a currently\ntrue bad event, whose variables are then advanced to their next samples.  The\ndefinitions below give the dependency neighborhood, the probability of an\nevent, and the expected number of times each event is resampled.\n-/\n\nset_option autoImplicit false\n\nopen scoped ENNReal\n\nnamespace Lax965890.MoserTardosDefinitions\n\nvariable {Event : Type} [Fintype Event] [DecidableEq Event]\nvariable {Variable : Type} [Fintype Variable] [DecidableEq Variable]\nvariable (Value : Variable → Type) [∀ i, MeasurableSpace (Value i)]\n\n/-- A coordinate of the infinite resampling table. -/\nabbrev TableIndex := (i : Variable) × Nat\n\n/-- An infinite table of fresh samples, one row for each independent variable. -/\nabbrev ResamplingTable := (j : TableIndex (Variable := Variable)) → Value j.1\n\n/-- An assignment to the variables in a finite scope. -/\nabbrev LocalAssignment (indices : Finset Variable) :=\n  (i : indices) → Value i.1\n\n/-- The product law of an infinite resampling table. -/\nnoncomputable def tableMeasure\n    (distribution : ∀ i, MeasureTheory.Measure (Value i)) :\n    MeasureTheory.Measure (ResamplingTable Value) :=\n  MeasureTheory.Measure.infinitePi\n    fun j : TableIndex (Variable := Variable) ↦ distribution j.1\n\n/-- The product law restricted to a finite collection of variables. -/\nnoncomputable def localMeasure\n    (distribution : ∀ i, MeasureTheory.Measure (Value i))\n    (indices : Finset Variable) :\n    MeasureTheory.Measure (LocalAssignment Value indices) :=\n  MeasureTheory.Measure.infinitePi fun i : indices ↦ distribution i.1\n\n/-- The probability of a bad event under the original product distribution. -/\nnoncomputable def eventProbability\n    (distribution : ∀ i, MeasureTheory.Measure (Value i))\n    (variablesOf : Event → Finset Variable)\n    (badEvent : ∀ A, Set (LocalAssignment Value (variablesOf A)))\n    (A : Event) : ℝ≥0∞ :=\n  localMeasure Value distribution (variablesOf A) (badEvent A)\n\n/-- A complete assignment to the finite family of independent variables. -/\nabbrev Assignment := ∀ i, Value i\n\n/-- Restriction of a complete assignment to an event's scope. -/\ndef restrictAssignment (variablesOf : Event → Finset Variable)\n    (assignment : Assignment Value) (A : Event) :\n    LocalAssignment Value (variablesOf A) :=\n  fun i ↦ assignment i.1\n\n/-- The bad event `A` is true under `assignment`. -/\ndef violates (variablesOf : Event → Finset Variable)\n    (badEvent : ∀ A, Set (LocalAssignment Value (variablesOf A)))\n    (assignment : Assignment Value) (A : Event) : Prop :=\n  restrictAssignment Value variablesOf assignment A ∈ badEvent A\n\n/--\nA measurable deterministic implementation of \"choose any currently true bad\nevent\".  It returns `none` exactly when no bad event is true.\n-/\nstructure ResamplingRule (variablesOf : Event → Finset Variable)\n    (badEvent : ∀ A, Set (LocalAssignment Value (variablesOf A))) where\n  choose : Assignment Value → Option Event\n  measurable_fiber : ∀ result, MeasurableSet {assignment | choose assignment = result}\n  sound : ∀ ⦃assignment : Assignment Value⦄ ⦃A : Event⦄,\n    choose assignment = some A →\n      violates Value variablesOf badEvent assignment A\n  complete : ∀ ⦃assignment : Assignment Value⦄,\n    choose assignment = none →\n      ∀ A, ¬violates Value variablesOf badEvent assignment A\n\n/-- The assignment exposed by a resampling table at the given row counters. -/\ndef currentAssignment (table : ResamplingTable Value) (counts : Variable → Nat) :\n    Assignment Value :=\n  fun i ↦ table ⟨i, counts i⟩\n\n/-- Increment precisely the counters in the scope of the selected event. -/\ndef advanceCounts (variablesOf : Event → Finset Variable)\n    (counts : Variable → Nat) (selected : Option Event) : Variable → Nat :=\n  selected.elim counts fun A i ↦\n    if i ∈ variablesOf A then counts i + 1 else counts i\n\n/-- The row counters after the first `n` iterations of the resampling algorithm. -/\ndef runCounts (variablesOf : Event → Finset Variable)\n    (badEvent : ∀ A, Set (LocalAssignment Value (variablesOf A)))\n    (selectionRule : ResamplingRule Value variablesOf badEvent)\n    (table : ResamplingTable Value) : Nat → Variable → Nat :=\n  Nat.rec (fun _ ↦ 0) fun _ counts ↦\n    advanceCounts variablesOf counts\n      (selectionRule.choose (currentAssignment Value table counts))\n\n/-- The event resampled at time `n`, or `none` once no bad event remains. -/\ndef resamplingLog (variablesOf : Event → Finset Variable)\n    (badEvent : ∀ A, Set (LocalAssignment Value (variablesOf A)))\n    (selectionRule : ResamplingRule Value variablesOf badEvent)\n    (table : ResamplingTable Value) (n : Nat) : Option Event :=\n  selectionRule.choose (currentAssignment Value table\n    (runCounts Value variablesOf badEvent selectionRule table n))\n\n/-- The (possibly infinite) number of times the bad event `A` is resampled. -/\nnoncomputable def resamplingCount (variablesOf : Event → Finset Variable)\n    (badEvent : ∀ A, Set (LocalAssignment Value (variablesOf A)))\n    (selectionRule : ResamplingRule Value variablesOf badEvent)\n    (table : ResamplingTable Value) (A : Event) : ℝ≥0∞ :=\n  ∑' t : Nat, Set.indicator\n    {t | resamplingLog Value variablesOf badEvent selectionRule table t = some A}\n    (fun _ ↦ (1 : ℝ≥0∞)) t\n\n/-- The expected number of resamplings of one event. -/\nnoncomputable def expectedResamplings\n    (distribution : ∀ i, MeasureTheory.Measure (Value i))\n    (variablesOf : Event → Finset Variable)\n    (badEvent : ∀ A, Set (LocalAssignment Value (variablesOf A)))\n    (selectionRule : ResamplingRule Value variablesOf badEvent)\n    (A : Event) : ℝ≥0∞ :=\n  ∫⁻ table, resamplingCount Value variablesOf badEvent selectionRule table A\n    ∂tableMeasure Value distribution\n\n/-- The other bad events that share at least one random variable with `A`. -/\ndef dependencyNeighborhood (variablesOf : Event → Finset Variable)\n    (A : Event) : Finset Event :=\n  Finset.univ.filter fun B ↦\n    B ≠ A ∧ ¬Disjoint (variablesOf A) (variablesOf B)\n\nend Lax965890.MoserTardosDefinitions\n",
+      "statements": []
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax965890Proofs.moser_tardos",
+      "path": "proofs/Lax965890Proofs/MoserTardos.lean",
+      "conclusion": "Lax965890.MoserTardos.moser_tardos",
+      "assumptions": [],
+      "description": "The Moser--Tardos witness-tree argument.  An infinite table supplies every\nfresh sample used by the algorithm.  Each resampling occurrence injects into\na proper witness tree, the probability that a fixed tree occurs is the\nproduct of its event probabilities, and the branching-process estimate sums\nthese products.  Finiteness of that sum also yields a terminating table and\nhence an assignment avoiding all bad events."
+    },
+    {
+      "id": "Lax965890Proofs.theorem_2_2",
+      "path": "proofs/Lax965890Proofs/HaeuplerSahaSrinivasanTheorem22.lean",
+      "conclusion": "Lax965890.HaeuplerSahaSrinivasanTheorem22.theorem_2_2",
+      "assumptions": [],
+      "description": "At the first stage where the observed event is true, adjoin it as a\ndistinguished root to the execution history.  The resulting proper witness\ntree has no further copy of the root and all of its other labels lie in\n`Gamma(B)`.  The witness-tree lemma bounds the probability of every such\ntree, and the branching-process sum is exactly the local-lemma neighborhood\nproduct.  The output event is a subset of the event that the observation was\ntrue at some stage."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "da9a0a6416673131aa5c4f35c4b211547bfbf110697b2a9a5147172b95487d4a",
+    "sourceCommit": "b3856214a13da34e584db6c404622651c1581835",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax965890/HaeuplerSahaSrinivasanDefinitions.c",
+        "bytes": 7157,
+        "sha256": "8b5a81977cf0e11e9d1b7a8e89d1f6b10849b87fb8caaa32a98c17303e751942"
+      },
+      {
+        "path": "concepts/ir/Lax965890/HaeuplerSahaSrinivasanDefinitions.c.hash",
+        "bytes": 16,
+        "sha256": "36caf3bad0f05de79e43666f69d4b7b61f68da2ae070cd42e74dad22260d6426"
+      },
+      {
+        "path": "concepts/ir/Lax965890/HaeuplerSahaSrinivasanTheorem22.c",
+        "bytes": 1629,
+        "sha256": "ed51a721e26a3e1b222a37d6ac387245d5155c1602dea4f2d1ee8be8c4a75067"
+      },
+      {
+        "path": "concepts/ir/Lax965890/HaeuplerSahaSrinivasanTheorem22.c.hash",
+        "bytes": 16,
+        "sha256": "a9c7e739a46ab0670c03badb86e4fa107c2a9aa808bb8a6cde610ab25176ead7"
+      },
+      {
+        "path": "concepts/ir/Lax965890/MoserTardos.c",
+        "bytes": 1556,
+        "sha256": "ca68bd83619e2e885d484d6272a21c22fa467355c179b8cae73facecba7a9900"
+      },
+      {
+        "path": "concepts/ir/Lax965890/MoserTardos.c.hash",
+        "bytes": 16,
+        "sha256": "dcf04c1f4ae853d3b453a23fe008e9e52dd18cb46456b07c83ed074ec388fc63"
+      },
+      {
+        "path": "concepts/ir/Lax965890/MoserTardosDefinitions.c",
+        "bytes": 19510,
+        "sha256": "a921705beb465b4c69055dcec1dccc8d8a0f26045bff263ab169a228d149299a"
+      },
+      {
+        "path": "concepts/ir/Lax965890/MoserTardosDefinitions.c.hash",
+        "bytes": 16,
+        "sha256": "bc127cebd6b594a87298a34cb2f863fdb0d9bfe49722391a28e7f90c89f6665c"
+      },
+      {
+        "path": "concepts/ir/Lax965890.c",
+        "bytes": 2172,
+        "sha256": "221549105ec127ef113ddad9358cd74157edfb12bbd66e661e25a111702715ad"
+      },
+      {
+        "path": "concepts/ir/Lax965890.c.hash",
+        "bytes": 16,
+        "sha256": "1d4fd85bd783445f49551ca3b04accb19aaf4c4c92b7330bd4d76ba59efa3e0a"
+      },
+      {
+        "path": "concepts/lib/Lax965890/HaeuplerSahaSrinivasanDefinitions.ilean",
+        "bytes": 14467,
+        "sha256": "32977eca7cc835489143842beebdfcbd41ee4e4a6ff2f79ddb336cc823c70341"
+      },
+      {
+        "path": "concepts/lib/Lax965890/HaeuplerSahaSrinivasanDefinitions.ilean.hash",
+        "bytes": 16,
+        "sha256": "f7a66828e9d009860e541451da6cadb57a097595156750244a35d9a18c4cf32e"
+      },
+      {
+        "path": "concepts/lib/Lax965890/HaeuplerSahaSrinivasanDefinitions.olean",
+        "bytes": 65128,
+        "sha256": "b8b2e8a6679ae95d65b58b1b9163464a5100d365252d824832939e0cc9bb0f47"
+      },
+      {
+        "path": "concepts/lib/Lax965890/HaeuplerSahaSrinivasanDefinitions.olean.hash",
+        "bytes": 16,
+        "sha256": "5dd1bacc03bb5ce0627c4492655cb5b13bb2266e1bbf73d2ea7e424d719d3b60"
+      },
+      {
+        "path": "concepts/lib/Lax965890/HaeuplerSahaSrinivasanDefinitions.trace",
+        "bytes": 2425,
+        "sha256": "80d19db7a6f72d41d80bb552003878ed84eb04c2ccd6c70bbbcd9cdb5a2c08d7"
+      },
+      {
+        "path": "concepts/lib/Lax965890/HaeuplerSahaSrinivasanTheorem22.ilean",
+        "bytes": 5357,
+        "sha256": "44c5a0cb805661fff4aa6e5f4701a302708789c4a4153c0a043537b61bf4a908"
+      },
+      {
+        "path": "concepts/lib/Lax965890/HaeuplerSahaSrinivasanTheorem22.ilean.hash",
+        "bytes": 16,
+        "sha256": "37e70eca4804a3e4f6f45ae6a7d6d620e1256486a89e4b3a1c6968540a1a568f"
+      },
+      {
+        "path": "concepts/lib/Lax965890/HaeuplerSahaSrinivasanTheorem22.olean",
+        "bytes": 25560,
+        "sha256": "3cc922f57b8bd8d7846bda9f0c0a7625644403b8179a4fe09a8d74d9db58469e"
+      },
+      {
+        "path": "concepts/lib/Lax965890/HaeuplerSahaSrinivasanTheorem22.olean.hash",
+        "bytes": 16,
+        "sha256": "0bb81467b5e6e670b51f7553faf0600be0f9d9fc37b7e83dee2c0696068603f7"
+      },
+      {
+        "path": "concepts/lib/Lax965890/HaeuplerSahaSrinivasanTheorem22.trace",
+        "bytes": 2433,
+        "sha256": "041933fb7e4f6a378bca7be91d17657cc26142a7eecb16af5f6e72dbeead081a"
+      },
+      {
+        "path": "concepts/lib/Lax965890/MoserTardos.ilean",
+        "bytes": 3896,
+        "sha256": "e22a97b4d8543ba9cd6d48959aed8a619bb3a7795cf4e81125a8c00a04072e4a"
+      },
+      {
+        "path": "concepts/lib/Lax965890/MoserTardos.ilean.hash",
+        "bytes": 16,
+        "sha256": "a58c59893431fbc1a32662ac339d4e32341d11e6363d107488f4adfd21d3fe7c"
+      },
+      {
+        "path": "concepts/lib/Lax965890/MoserTardos.olean",
+        "bytes": 23488,
+        "sha256": "ebdd69ec08d0127de3544f72459ff9f8581a02ac8831a26be3161c082e1605b8"
+      },
+      {
+        "path": "concepts/lib/Lax965890/MoserTardos.olean.hash",
+        "bytes": 16,
+        "sha256": "d8ff3450e77eac4d2008f77060821ea8bfdf09b620da511fb3b4287bc6e93dab"
+      },
+      {
+        "path": "concepts/lib/Lax965890/MoserTardos.trace",
+        "bytes": 2265,
+        "sha256": "7d99deba1ffa3e3f41dd3ca957cf68f0de52963b96f3236a10f0a63c8a7f385b"
+      },
+      {
+        "path": "concepts/lib/Lax965890/MoserTardosDefinitions.ilean",
+        "bytes": 13194,
+        "sha256": "edb57c926ec79f7e965e035634e7fa4323b0b76e98bddf755832c57952c6fb98"
+      },
+      {
+        "path": "concepts/lib/Lax965890/MoserTardosDefinitions.ilean.hash",
+        "bytes": 16,
+        "sha256": "e822121dcecf2b81edf87ee729db61abe2baf84ac7a803195105194d4b69b6af"
+      },
+      {
+        "path": "concepts/lib/Lax965890/MoserTardosDefinitions.olean",
+        "bytes": 202664,
+        "sha256": "ce08242bf14528321b000f97f55f6cd3a8b0d8bcc2b0974e66675ec00998677f"
+      },
+      {
+        "path": "concepts/lib/Lax965890/MoserTardosDefinitions.olean.hash",
+        "bytes": 16,
+        "sha256": "78873c3cf08b238a4f504676da2a815e25b3789b3e9cd21ee052f78fec0581ba"
+      },
+      {
+        "path": "concepts/lib/Lax965890/MoserTardosDefinitions.trace",
+        "bytes": 2544,
+        "sha256": "02d875561ded5b5aea475c09c22a64b4cd760b19ca307c3a0d27f667c7cac0a6"
+      },
+      {
+        "path": "concepts/lib/Lax965890.ilean",
+        "bytes": 308,
+        "sha256": "b3b95e52c477ec131a801849b2ad722f48f9b20fbaa38d3586f7b045564faf59"
+      },
+      {
+        "path": "concepts/lib/Lax965890.ilean.hash",
+        "bytes": 16,
+        "sha256": "751cc60a8cc6e86c666bd74fa22d5ab8ff306d946dc1cc4594630b71adcfd400"
+      },
+      {
+        "path": "concepts/lib/Lax965890.olean",
+        "bytes": 1912,
+        "sha256": "0e2a07ed9839a6a5757fd86979470ce4c1f3f7dda129c63dd25e09d42728b9c1"
+      },
+      {
+        "path": "concepts/lib/Lax965890.olean.hash",
+        "bytes": 16,
+        "sha256": "b176c045694225ff3762c5cd0aebc1edc7116219d3697b5ccc8f74c4e01e384a"
+      },
+      {
+        "path": "concepts/lib/Lax965890.trace",
+        "bytes": 2610,
+        "sha256": "26f71eda1012a7cc46aca0ad19890e6d6057cdccf11b0285ae9c85d26a49e539"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "29095846259af72d91519ffa1749f5edb631ab80e765ddd5ea4adadce077e0b4"
+      },
+      {
+        "path": "concepts/package/Lax965890/HaeuplerSahaSrinivasanDefinitions.lean",
+        "bytes": 6484,
+        "sha256": "ce297c4c9d659611babb70aa4bbb34f3a2cfc8ae513d35ce914a602fef6aceb4"
+      },
+      {
+        "path": "concepts/package/Lax965890/HaeuplerSahaSrinivasanTheorem22.lean",
+        "bytes": 2512,
+        "sha256": "f3f481958822e994e4ee9b3c7a79784445bd23d6f4fa157a52af598949f9c99c"
+      },
+      {
+        "path": "concepts/package/Lax965890/MoserTardos.lean",
+        "bytes": 2265,
+        "sha256": "fe77d9e534a18b2975b917171abe8e28277c3696f860f59bb8e18c53e415e2f4"
+      },
+      {
+        "path": "concepts/package/Lax965890/MoserTardosDefinitions.lean",
+        "bytes": 6522,
+        "sha256": "08278c5d7c5656e1470aed9b69bcad5c606953233e955d34ba2f747a25afdeb5"
+      },
+      {
+        "path": "concepts/package/Lax965890.lean",
+        "bytes": 169,
+        "sha256": "7f619d31bec40d08972753bd53627970930a5c6d663cc134298fd2e573c3bce9"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax965890Proofs/HaeuplerSahaSrinivasanTheorem22.c",
+        "bytes": 11000,
+        "sha256": "5c5ba4a83101786edc37ec3c0d7fad4b3cfde5ce1d852f9295a2d1107602b30e"
+      },
+      {
+        "path": "proofs/ir/Lax965890Proofs/HaeuplerSahaSrinivasanTheorem22.c.hash",
+        "bytes": 16,
+        "sha256": "3708af03226b6d0e177a28ee0ff33083dd84bb435b8a3e302ecd0eec542339ae"
+      },
+      {
+        "path": "proofs/ir/Lax965890Proofs/MoserTardos.c",
+        "bytes": 85441,
+        "sha256": "d874a182edf54ee5a526567a16aa5bd1148bec826a955be870ef743c1e223a10"
+      },
+      {
+        "path": "proofs/ir/Lax965890Proofs/MoserTardos.c.hash",
+        "bytes": 16,
+        "sha256": "4a90230579bf37152e61eae3cc658a83c3f0d374a9ab74839d260849cbf00361"
+      },
+      {
+        "path": "proofs/ir/Lax965890Proofs.c",
+        "bytes": 1683,
+        "sha256": "de3c26d8613b259f1beaa4352b3ff8ba3b91d1e610ce8985e919889caecbd964"
+      },
+      {
+        "path": "proofs/ir/Lax965890Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "b617ee805d19a0dd6b08c0610ad0f71b4ef9c0dfb59d6c5a4803402e8b56a4a8"
+      },
+      {
+        "path": "proofs/lib/Lax965890Proofs/HaeuplerSahaSrinivasanTheorem22.ilean",
+        "bytes": 100906,
+        "sha256": "2102849dae591b20d48b51fd6ae84a5825721649f9f4685df7a4e5e0abb11bff"
+      },
+      {
+        "path": "proofs/lib/Lax965890Proofs/HaeuplerSahaSrinivasanTheorem22.ilean.hash",
+        "bytes": 16,
+        "sha256": "7e36119938dd9ee56e61710ccf95affeca8646cf90d15f118bbb567eef8fb05c"
+      },
+      {
+        "path": "proofs/lib/Lax965890Proofs/HaeuplerSahaSrinivasanTheorem22.olean",
+        "bytes": 954488,
+        "sha256": "14a977fc6ff1f1eff4205d491f24c0d8590850fcd5b88c650dc2fd65c3742686"
+      },
+      {
+        "path": "proofs/lib/Lax965890Proofs/HaeuplerSahaSrinivasanTheorem22.olean.hash",
+        "bytes": 16,
+        "sha256": "cf658ac0c7e49dec21946e77fea6dd4bb92c0f2cb193252edf9f9019186bd7ab"
+      },
+      {
+        "path": "proofs/lib/Lax965890Proofs/HaeuplerSahaSrinivasanTheorem22.trace",
+        "bytes": 6417,
+        "sha256": "8049bd6972ee43c544f6f87e04e5536ab4bb5fca8d142ca8b39dc0ecd005a607"
+      },
+      {
+        "path": "proofs/lib/Lax965890Proofs/MoserTardos.ilean",
+        "bytes": 222885,
+        "sha256": "e023f0b876cd5bfe86a7f46f8022e6125667f1b8becb3685c9bcbe8de5dc7250"
+      },
+      {
+        "path": "proofs/lib/Lax965890Proofs/MoserTardos.ilean.hash",
+        "bytes": 16,
+        "sha256": "55d5a9f3a60a58ef362511ffbf4a758de900d90c80201f50241a9d518f94805f"
+      },
+      {
+        "path": "proofs/lib/Lax965890Proofs/MoserTardos.olean",
+        "bytes": 2738944,
+        "sha256": "a064ffa5ee0be5ba7bed2d45914713ae4fdd52bd0852717e7d2e21a99dea7836"
+      },
+      {
+        "path": "proofs/lib/Lax965890Proofs/MoserTardos.olean.hash",
+        "bytes": 16,
+        "sha256": "86b2a4d732822a53fec50bcd657f886daf424a358dd713ed9df2c611e3bc8ddf"
+      },
+      {
+        "path": "proofs/lib/Lax965890Proofs/MoserTardos.trace",
+        "bytes": 29755,
+        "sha256": "f7d30eb1bdf64555d450bbd8259dcd1129536587b1aa8af9a8626cabc59d9f4a"
+      },
+      {
+        "path": "proofs/lib/Lax965890Proofs.ilean",
+        "bytes": 205,
+        "sha256": "315428c870db24a232319fbbf9529f04274085dd1faeb645aaef6931f49628b6"
+      },
+      {
+        "path": "proofs/lib/Lax965890Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "d3bd29f613ae5859bb9cc1cadef562cea90caed31c2d6bfa40d2d1398f3114f2"
+      },
+      {
+        "path": "proofs/lib/Lax965890Proofs.olean",
+        "bytes": 1656,
+        "sha256": "1faa512e594cea928f287b1f385078f113277f2a26fda05eb2b4abb6316a87d6"
+      },
+      {
+        "path": "proofs/lib/Lax965890Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "4751b18c386c1a20451c79ea1b5e8cec0571e4631ff25c0a19bf244e331bee98"
+      },
+      {
+        "path": "proofs/lib/Lax965890Proofs.trace",
+        "bytes": 2348,
+        "sha256": "ae474125aa8f09ca8f21822c75275328fa6011ea035ef157ceef6f4a141e90ef"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "b4f5adb729311690079e40c073157fa5ff715e9897f8b02d4c01b9ef2e6a637a"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "de15010ac14f3fd9daa8503afed3fa0f9de5e504768f80ed725f325c2a25e0ff"
+      },
+      {
+        "path": "proofs/package/Lax965890Proofs/HaeuplerSahaSrinivasanTheorem22.lean",
+        "bytes": 47357,
+        "sha256": "fd421fd48d8fe118291822b51b40da1d389a97eb3ee569a55fa8b6574e32b4c3"
+      },
+      {
+        "path": "proofs/package/Lax965890Proofs/MoserTardos.lean",
+        "bytes": 91214,
+        "sha256": "236f04653825f5391dcd713edbea859bc6112b0dd570342f74b3248252f0de1e"
+      },
+      {
+        "path": "proofs/package/Lax965890Proofs.lean",
+        "bytes": 90,
+        "sha256": "ac5165c214a0923505b47bae2096f40fbe76d2d09721123a2e4a73c2bbc35ed6"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:da9a0a6416673131aa5c4f35c4b211547bfbf110697b2a9a5147172b95487d4a"
   }
 }
