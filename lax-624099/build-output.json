@@ -191,7 +191,7 @@
         "Mathlib.Tactic.FinCases",
         "Mathlib.Tactic.Ring"
       ],
-      "sourceText": "import Mathlib.Order.PiLex\nimport Mathlib.Data.Prod.Lex\nimport Mathlib.Data.Fintype.EquivFin\nimport Mathlib.ModelTheory.Order\nimport Mathlib.ModelTheory.Semantics\nimport Mathlib.ModelTheory.Complexity\nimport Mathlib.Tactic.FinCases\nimport Mathlib.Logic.Equiv.Fin.Basic\nimport Mathlib.Data.Finite.Sigma\nimport Mathlib.Data.Fintype.Lattice\nimport Mathlib.Data.Set.Card\nimport Mathlib.ModelTheory.Syntax\nimport Mathlib.Algebra.BigOperators.Finprod\nimport Mathlib.Data.Set.Finite.Lemmas\nimport Mathlib.SetTheory.Cardinal.Finite\nimport Mathlib.Logic.Equiv.Prod\nimport Mathlib.Algebra.Order.BigOperators.Group.Finset\nimport Mathlib.Order.Lattice.Nat\nimport Mathlib.Data.Fintype.Pigeonhole\nimport Mathlib.Dynamics.FixedPoints.Basic\nimport Mathlib.Data.Fintype.Card\nimport Mathlib.Logic.Relation\nimport Mathlib.Computability.RE\nimport Mathlib.Data.List.NodupEquivFin\nimport Mathlib.Logic.Equiv.Sum\nimport Mathlib.Computability.Primrec.List\nimport Mathlib.Data.Fintype.Pi\nimport Mathlib.Computability.Halting\nimport Mathlib.Computability.PartrecCode\nimport Mathlib.Tactic.Ring\nimport Lax624099.CodeHalting\nimport Lax624099.FiniteSatisfiability\nimport Lax904597.Machines\nimport Lax904597.Problems\n\n/-!\n---\ntitle: Problems as sets of concrete finite structures\ntype: definition\n---\nA problem on finite structures read as a set of concrete data. A presented\nvocabulary numbers the finitely many relation symbols of a vocabulary with\ntheir arities, so that reading a symbol off its number and numbering a\nsymbol are inverse; every vocabulary of the catalog is presented this way,\nand the vocabularies of machine instances, of encoded sentences and of code\ninstances are presented here. A concrete finite structure over a presented\nvocabulary is a universe size and a table of Booleans, one row per symbol,\nthe row of an $n$-ary symbol read at the number of a tuple written in base\nthe size of the universe; out-of-range lookups read false, so every such\npiece of data denotes a structure, on a nonempty linearly ordered universe.\nThe predicate a decision problem defines on concrete structures holds of a\npiece of data when the structure it denotes is a yes-instance. This is the\ntype on which Mathlib's computability notions, decidability and recursive\nenumerability, are read.\n-/\n\nnamespace Lax624099.ConcreteInstances\n\nopen Lax904597.Problems\n\nopen FirstOrder\n\nopen FirstOrder.Language Structure\n\nsection Digits\n\n/-- The number of a tuple of digits, little-endian in base `c`. -/\ndef tupleIdx (c : ℕ) : List ℕ → ℕ\n  | [] => 0\n  | a :: l => a + c * tupleIdx c l\n\n/-- The `j`-th digit of `t` in base `c`. -/\ndef digitAt (c t j : ℕ) : ℕ := t / c ^ j % c\n\nend Digits\n\n/-- A **finitely presented relational vocabulary**: the relation symbols of `L`\nnumbered by `Fin numSyms`, with their arities. Reading a symbol off its number\n(`sym`) and numbering a symbol (`index`) are mutually inverse, so the\npresentation loses nothing.\n\nEvery vocabulary of the catalog is of this shape: `Language.turing` has 12\nsymbols of arity at most 2, `Language.finsat` 14 of arity at most 3. The\npresentations are closed under `Language.sum`\n(`FirstOrder.Language.FinVocab.sum`), which is what lets the second-order\nmachinery – whose vocabularies are sums of the instance's with a block's – be\nencoded by the same means. -/\nstructure FinVocab (L : Language.{0, 0}) where\n  /-- The number of relation symbols. -/\n  numSyms : ℕ\n  /-- The symbol with a given number, together with its arity. -/\n  symOf : Fin numSyms → ((n : ℕ) × L.Relations n)\n  /-- The number of a symbol. -/\n  index : ∀ {n : ℕ}, L.Relations n → Fin numSyms\n  /-- Reading back the symbol with the number of a symbol gives it back. -/\n  symOf_index : ∀ {n : ℕ} (R : L.Relations n), symOf (index R) = ⟨n, R⟩\n  /-- Numbering the symbol with a given number gives that number back. -/\n  index_symOf : ∀ i : Fin numSyms, index (symOf i).2 = i\n\nnamespace FinVocab\n\nvariable {L : Language.{0, 0}} (V : FinVocab L)\n\n/-- The arity of the symbol with a given number. -/\nabbrev arity (i : Fin V.numSyms) : ℕ := (V.symOf i).1\n\n/-- The symbol with a given number. -/\nabbrev sym (i : Fin V.numSyms) : L.Relations (V.arity i) := (V.symOf i).2\n\nend FinVocab\n\n/-- A **concrete finite structure** over the finitely presented vocabulary\n`V`: a universe size and a table of Booleans, one row per relation symbol.\n\nThe universe is `Fin (univSize + 1)`, so it is nonempty by construction; the\nrow of an `n`-ary symbol is read at the number of the tuple, little-endian in\nbase `card`. Anything out of range reads `false`, so every pair of a number\nand a list of lists of Booleans denotes a structure. -/\nstructure FinStruct {L : Language.{0, 0}} (V : FinVocab L) where\n  /-- One less than the size of the universe. -/\n  univSize : ℕ\n  /-- The tables of the relations, one row per symbol. -/\n  table : List (List Bool)\n\nnamespace FinStruct\n\nvariable {L : Language.{0, 0}} {V : FinVocab L}\n\n/-- The size of the universe of a concrete finite structure. -/\nabbrev card (s : FinStruct V) : ℕ := s.univSize + 1\n\n/-- The universe of a concrete finite structure: nonempty and linearly ordered\nby construction. -/\nabbrev Univ (s : FinStruct V) : Type := Fin s.card\n\n/-- The table lookup: does the relation `R` hold of the tuple `x`? -/\ndef relMapBool (s : FinStruct V) {n : ℕ} (R : L.Relations n) (x : Fin n → s.Univ) : Bool :=\n  (s.table.getD (V.index R) []).getD (tupleIdx s.card (List.ofFn fun j => (x j : ℕ))) false\n\n/-- **The structure a piece of data denotes.** -/\ninstance instStructure [L.IsRelational] (s : FinStruct V) : L.Structure s.Univ where\n  funMap f := isEmptyElim f\n  RelMap R x := s.relMapBool R x = true\n\n/-- The concrete structure over a universe `Fin (k + 1)` whose relations are\ngiven by the Boolean function `f`. -/\ndef ofTable (V : FinVocab L) (k : ℕ)\n    (f : ∀ {n : ℕ}, L.Relations n → (Fin n → Fin (k + 1)) → Bool) : FinStruct V where\n  univSize := k\n  table := List.ofFn fun i : Fin V.numSyms =>\n    (List.range ((k + 1) ^ V.arity i)).map fun t =>\n      f (V.sym i) fun j => ⟨digitAt (k + 1) t j, Nat.mod_lt _ (Nat.succ_pos k)⟩\n\n/-- The coding of a concrete finite structure as a pair. -/\ndef equivProd (V : FinVocab L) : FinStruct V ≃ ℕ × List (List Bool) where\n  toFun s := (s.univSize, s.table)\n  invFun p := ⟨p.1, p.2⟩\n  left_inv := fun ⟨_, _⟩ => rfl\n  right_inv := fun _ => rfl\n\n/-- **Concrete finite structures are a `Primcodable` type**: the object\n`ComputablePred` and `REPred` are defined on. -/\ninstance instPrimcodable (V : FinVocab L) : Primcodable (FinStruct V) :=\n  Primcodable.ofEquiv _ (equivProd V)\n\nend FinStruct\n\nopen FirstOrder Language Structure\n\nvariable {L : Language.{0, 0}} [L.IsRelational]\n\n/-- **The set of concrete instances a decision problem denotes.** This is the\nobject `ComputablePred` and `REPred` are about: a problem is an\nisomorphism-closed property of finite structures, and the numbering of\n`FirstOrder.Language.FinStruct` turns it into a property of a `Primcodable`\ntype, with nothing to write per problem. -/\ndef DecisionProblem.toPred (P : DecisionProblem L) (V : FinVocab L) :\n    FinStruct V → Prop := fun s => P s.Univ\n\nopen FirstOrder\n\nopen FirstOrder.Language\n\nnamespace FinVocab\n\nvariable {L L' : Language.{0, 0}}\n\n/-- **A numbering of the symbols is a presentation**, the converse of\n`FirstOrder.Language.FinVocab.symEquiv`. -/\ndef ofEquivSigma (k : ℕ) (e : Fin k ≃ ((n : ℕ) × L.Relations n)) : FinVocab L where\n  numSyms := k\n  symOf := e\n  index R := e.symm ⟨_, R⟩\n  symOf_index R := e.apply_symm_apply _\n  index_symOf i := by simp\n\n/-- **A vocabulary presented by a list of all its symbols**, without\nrepetitions: the way the vocabularies of the catalog, which are finite\nenumerations, are presented. -/\ndef ofList [DecidableEq ((n : ℕ) × L.Relations n)] (l : List ((n : ℕ) × L.Relations n))\n    (nd : l.Nodup) (h : ∀ p : (n : ℕ) × L.Relations n, p ∈ l) : FinVocab L :=\n  ofEquivSigma l.length (List.Nodup.getEquivOfForallMemList l nd h)\n\nend FinVocab\n\nopen Lax904597.Machines Lax624099.FiniteSatisfiability Lax624099.CodeHalting\n\ninstance instDecidableEqSigmaNatRelationsTuring : DecidableEq ((n : ℕ) × turing.Relations n) :=\n  inferInstanceAs (DecidableEq ((n : ℕ) × turingRel n))\n\ninstance instDecidableEqSigmaNatRelationsFinsat : DecidableEq ((n : ℕ) × finsat.Relations n) :=\n  inferInstanceAs (DecidableEq ((n : ℕ) × finsatRel n))\n\ninstance instDecidableEqSigmaNatRelationsCode : DecidableEq ((n : ℕ) × code.Relations n) :=\n  inferInstanceAs (DecidableEq ((n : ℕ) × codeRel n))\n\n/-- **The vocabulary of machine instances, presented**: twelve symbols, six\nunary and six binary. -/\ndef turingVocab : FinVocab turing :=\n  FinVocab.ofList\n    [⟨1, .posn⟩, ⟨1, .tr⟩, ⟨1, .start⟩, ⟨1, .acc⟩, ⟨1, .blank⟩, ⟨1, .right⟩,\n      ⟨2, .le⟩, ⟨2, .tsrc⟩, ⟨2, .tread⟩, ⟨2, .tdst⟩, ⟨2, .twrite⟩, ⟨2, .inp⟩]\n    (by decide) (by rintro ⟨n, R⟩; cases R <;> simp)\n\n/-- **The vocabulary of first-order sentences as instances, presented**:\nfourteen symbols of arity at most three. -/\ndef finsatVocab : FinVocab finsat :=\n  FinVocab.ofList\n    [⟨2, .le⟩, ⟨1, .andN⟩, ⟨1, .orN⟩, ⟨1, .allN⟩, ⟨1, .exN⟩, ⟨2, .child⟩,\n      ⟨2, .bind⟩, ⟨3, .eqL⟩, ⟨3, .neqL⟩, ⟨2, .posL⟩, ⟨2, .negL⟩, ⟨3, .arg⟩,\n      ⟨2, .sig⟩, ⟨1, .root⟩]\n    (by decide) (by rintro ⟨n, R⟩; cases R <;> simp)\n\n/-- **The vocabulary of code instances, presented**: eleven symbols, nine\nunary and two binary. -/\ndef codeVocab : FinVocab code :=\n  FinVocab.ofList\n    [⟨1, .croot⟩, ⟨1, .czero⟩, ⟨1, .csucc⟩, ⟨1, .cleft⟩, ⟨1, .cright⟩, ⟨1, .cpair⟩,\n      ⟨1, .ccomp⟩, ⟨1, .cprec⟩, ⟨1, .crfind⟩, ⟨2, .carg1⟩, ⟨2, .carg2⟩]\n    (by decide) (by rintro ⟨n, R⟩; cases R <;> simp)\n\nend Lax624099.ConcreteInstances\n",
+      "sourceText": "import Mathlib.Order.PiLex\nimport Mathlib.Data.Prod.Lex\nimport Mathlib.Data.Fintype.EquivFin\nimport Mathlib.ModelTheory.Order\nimport Mathlib.ModelTheory.Semantics\nimport Mathlib.ModelTheory.Complexity\nimport Mathlib.Tactic.FinCases\nimport Mathlib.Logic.Equiv.Fin.Basic\nimport Mathlib.Data.Finite.Sigma\nimport Mathlib.Data.Fintype.Lattice\nimport Mathlib.Data.Set.Card\nimport Mathlib.ModelTheory.Syntax\nimport Mathlib.Algebra.BigOperators.Finprod\nimport Mathlib.Data.Set.Finite.Lemmas\nimport Mathlib.SetTheory.Cardinal.Finite\nimport Mathlib.Logic.Equiv.Prod\nimport Mathlib.Algebra.Order.BigOperators.Group.Finset\nimport Mathlib.Order.Lattice.Nat\nimport Mathlib.Data.Fintype.Pigeonhole\nimport Mathlib.Dynamics.FixedPoints.Basic\nimport Mathlib.Data.Fintype.Card\nimport Mathlib.Logic.Relation\nimport Mathlib.Computability.RE\nimport Mathlib.Data.List.NodupEquivFin\nimport Mathlib.Logic.Equiv.Sum\nimport Mathlib.Computability.Primrec.List\nimport Mathlib.Data.Fintype.Pi\nimport Mathlib.Computability.Halting\nimport Mathlib.Computability.PartrecCode\nimport Mathlib.Tactic.Ring\nimport Lax624099.CodeHalting\nimport Lax624099.FiniteSatisfiability\nimport Lax904597.Machines\nimport Lax904597.Problems\n\n/-!\n---\ntitle: Problems as sets of concrete finite structures\ntype: definition\n---\nA problem on finite structures read as a set of concrete data. A presented\nvocabulary numbers the finitely many relation symbols of a vocabulary with\ntheir arities, so that reading a symbol off its number and numbering a\nsymbol are inverse; every vocabulary of the catalog is presented this way,\nand the vocabularies of machine instances, of encoded sentences and of code\ninstances are presented here. A concrete finite structure over a presented\nvocabulary is a universe size and a table of Booleans, one row per symbol,\nthe row of an $n$-ary symbol read at the number of a tuple written in base\nthe size of the universe; out-of-range lookups read false, so every such\npiece of data denotes a structure, on a nonempty linearly ordered universe.\nThe predicate a decision problem defines on concrete structures holds of a\npiece of data when the structure it denotes is a yes-instance. This is the\ntype on which Mathlib's computability notions, decidability and recursive\nenumerability, are read.\n-/\n\nnamespace Lax624099.ConcreteInstances\n\nopen Lax904597.Problems\n\nopen FirstOrder\n\nopen FirstOrder.Language Structure\n\nsection Digits\n\n/-- The number of a tuple of digits, little-endian in base `c`. -/\ndef tupleIdx (c : ℕ) : List ℕ → ℕ\n  | [] => 0\n  | a :: l => a + c * tupleIdx c l\n\n/-- The `j`-th digit of `t` in base `c`. -/\ndef digitAt (c t j : ℕ) : ℕ := t / c ^ j % c\n\nend Digits\n\n/-- A **finitely presented relational vocabulary**: the relation symbols of `L`\nnumbered by `Fin numSyms`, with their arities. Reading a symbol off its number\n(`sym`) and numbering a symbol (`index`) are mutually inverse, so the\npresentation loses nothing.\n\nEvery vocabulary of the catalog is of this shape: `Language.turing` has 12\nsymbols of arity at most 2, `Language.finsat` 14 of arity at most 3. The\npresentations are closed under `Language.sum`\n(`FirstOrder.Language.FinVocab.sum`), which is what lets the second-order\nmachinery – whose vocabularies are sums of the instance's with a block's – be\nencoded by the same means. -/\nstructure FinVocab (L : Language.{0, 0}) where\n  /-- The number of relation symbols. -/\n  numSyms : ℕ\n  /-- The symbol with a given number, together with its arity. -/\n  symOf : Fin numSyms → ((n : ℕ) × L.Relations n)\n  /-- The number of a symbol. -/\n  index : ∀ {n : ℕ}, L.Relations n → Fin numSyms\n  /-- Reading back the symbol with the number of a symbol gives it back. -/\n  symOf_index : ∀ {n : ℕ} (R : L.Relations n), symOf (index R) = ⟨n, R⟩\n  /-- Numbering the symbol with a given number gives that number back. -/\n  index_symOf : ∀ i : Fin numSyms, index (symOf i).2 = i\n\nnamespace FinVocab\n\nvariable {L : Language.{0, 0}} (V : FinVocab L)\n\n/-- The arity of the symbol with a given number. -/\nabbrev arity (i : Fin V.numSyms) : ℕ := (V.symOf i).1\n\n/-- The symbol with a given number. -/\nabbrev sym (i : Fin V.numSyms) : L.Relations (V.arity i) := (V.symOf i).2\n\nend FinVocab\n\n/-- A **concrete finite structure** over the finitely presented vocabulary\n`V`: a universe size and a table of Booleans, one row per relation symbol.\n\nThe universe is `Fin (univSize + 1)`, so it is nonempty by construction; the\nrow of an `n`-ary symbol is read at the number of the tuple, little-endian in\nbase `card`. Anything out of range reads `false`, so every pair of a number\nand a list of lists of Booleans denotes a structure. -/\nstructure FinStruct {L : Language.{0, 0}} (V : FinVocab L) where\n  /-- One less than the size of the universe. -/\n  univSize : ℕ\n  /-- The tables of the relations, one row per symbol. -/\n  table : List (List Bool)\n\nnamespace FinStruct\n\nvariable {L : Language.{0, 0}} {V : FinVocab L}\n\n/-- The size of the universe of a concrete finite structure. -/\nabbrev card (s : FinStruct V) : ℕ := s.univSize + 1\n\n/-- The universe of a concrete finite structure: nonempty and linearly ordered\nby construction. -/\nabbrev Univ (s : FinStruct V) : Type := Fin s.card\n\n/-- The table lookup: does the relation `R` hold of the tuple `x`? -/\ndef relMapBool (s : FinStruct V) {n : ℕ} (R : L.Relations n) (x : Fin n → s.Univ) : Bool :=\n  (s.table.getD (V.index R) []).getD (tupleIdx s.card (List.ofFn fun j => (x j : ℕ))) false\n\n/-- **The structure a piece of data denotes.** -/\ninstance instStructure [L.IsRelational] (s : FinStruct V) : L.Structure s.Univ where\n  funMap f := isEmptyElim f\n  RelMap R x := s.relMapBool R x = true\n\n/-- The concrete structure over a universe `Fin (k + 1)` whose relations are\ngiven by the Boolean function `f`. -/\ndef ofTable (V : FinVocab L) (k : ℕ)\n    (f : ∀ {n : ℕ}, L.Relations n → (Fin n → Fin (k + 1)) → Bool) : FinStruct V where\n  univSize := k\n  table := List.ofFn fun i : Fin V.numSyms =>\n    (List.range ((k + 1) ^ V.arity i)).map fun t =>\n      f (V.sym i) fun j => ⟨digitAt (k + 1) t j, Nat.mod_lt _ (Nat.succ_pos k)⟩\n\n/-- The coding of a concrete finite structure as a pair. -/\ndef equivProd (V : FinVocab L) : FinStruct V ≃ ℕ × List (List Bool) where\n  toFun s := (s.univSize, s.table)\n  invFun p := ⟨p.1, p.2⟩\n  left_inv := fun ⟨_, _⟩ => rfl\n  right_inv := fun _ => rfl\n\n/-- **Concrete finite structures are a `Primcodable` type**: the object\n`ComputablePred` and `REPred` are defined on. -/\ninstance instPrimcodable (V : FinVocab L) : Primcodable (FinStruct V) :=\n  Primcodable.ofEquiv _ (equivProd V)\n\nend FinStruct\n\nopen FirstOrder Language Structure\n\nvariable {L : Language.{0, 0}} [L.IsRelational]\n\n/-- **The set of concrete instances a decision problem denotes.** This is the\nobject `ComputablePred` and `REPred` are about: a problem is an\nisomorphism-closed property of finite structures, and the numbering of\n`FirstOrder.Language.FinStruct` turns it into a property of a `Primcodable`\ntype, with nothing to write per problem. -/\ndef DecisionProblem.toPred (P : DecisionProblem L) (V : FinVocab L) :\n    FinStruct V → Prop := fun s => P s.Univ\n\nopen FirstOrder\n\nopen FirstOrder.Language\n\nnamespace FinVocab\n\nvariable {L L' : Language.{0, 0}}\n\n/-- **A numbering of the symbols is a presentation**, the converse of\n`FirstOrder.Language.FinVocab.symEquiv`. -/\ndef ofEquivSigma (k : ℕ) (e : Fin k ≃ ((n : ℕ) × L.Relations n)) : FinVocab L where\n  numSyms := k\n  symOf := e\n  index R := e.symm ⟨_, R⟩\n  symOf_index R := e.apply_symm_apply _\n  index_symOf i := by simp\n\n/-- **A vocabulary presented by a list of all its symbols**, without\nrepetitions: the way the vocabularies of the catalog, which are finite\nenumerations, are presented. -/\ndef ofList [DecidableEq ((n : ℕ) × L.Relations n)] (l : List ((n : ℕ) × L.Relations n))\n    (nd : l.Nodup) (h : ∀ p : (n : ℕ) × L.Relations n, p ∈ l) : FinVocab L :=\n  ofEquivSigma l.length (List.Nodup.getEquivOfForallMemList l nd h)\n\nend FinVocab\n\nopen Lax904597.Machines Lax624099.FiniteSatisfiability Lax624099.CodeHalting\n\ninstance instDecidableEqSigmaNatRelationsTuring : DecidableEq ((n : ℕ) × turing.Relations n) := by\n  show DecidableEq ((n : ℕ) × turingRel n)\n  infer_instance\n\ninstance instDecidableEqSigmaNatRelationsFinsat : DecidableEq ((n : ℕ) × finsat.Relations n) := by\n  show DecidableEq ((n : ℕ) × finsatRel n)\n  infer_instance\n\ninstance instDecidableEqSigmaNatRelationsCode : DecidableEq ((n : ℕ) × code.Relations n) := by\n  show DecidableEq ((n : ℕ) × codeRel n)\n  infer_instance\n\n/-- **The vocabulary of machine instances, presented**: twelve symbols, six\nunary and six binary. -/\ndef turingVocab : FinVocab turing :=\n  FinVocab.ofList\n    [⟨1, .posn⟩, ⟨1, .tr⟩, ⟨1, .start⟩, ⟨1, .acc⟩, ⟨1, .blank⟩, ⟨1, .right⟩,\n      ⟨2, .le⟩, ⟨2, .tsrc⟩, ⟨2, .tread⟩, ⟨2, .tdst⟩, ⟨2, .twrite⟩, ⟨2, .inp⟩]\n    (by decide) (by rintro ⟨n, R⟩; cases R <;> simp)\n\n/-- **The vocabulary of first-order sentences as instances, presented**:\nfourteen symbols of arity at most three. -/\ndef finsatVocab : FinVocab finsat :=\n  FinVocab.ofList\n    [⟨2, .le⟩, ⟨1, .andN⟩, ⟨1, .orN⟩, ⟨1, .allN⟩, ⟨1, .exN⟩, ⟨2, .child⟩,\n      ⟨2, .bind⟩, ⟨3, .eqL⟩, ⟨3, .neqL⟩, ⟨2, .posL⟩, ⟨2, .negL⟩, ⟨3, .arg⟩,\n      ⟨2, .sig⟩, ⟨1, .root⟩]\n    (by decide) (by rintro ⟨n, R⟩; cases R <;> simp)\n\n/-- **The vocabulary of code instances, presented**: eleven symbols, nine\nunary and two binary. -/\ndef codeVocab : FinVocab code :=\n  FinVocab.ofList\n    [⟨1, .croot⟩, ⟨1, .czero⟩, ⟨1, .csucc⟩, ⟨1, .cleft⟩, ⟨1, .cright⟩, ⟨1, .cpair⟩,\n      ⟨1, .ccomp⟩, ⟨1, .cprec⟩, ⟨1, .crfind⟩, ⟨2, .carg1⟩, ⟨2, .carg2⟩]\n    (by decide) (by rintro ⟨n, R⟩; cases R <;> simp)\n\nend Lax624099.ConcreteInstances\n",
       "statements": []
     },
     {
@@ -1069,8 +1069,8 @@
   ],
   "capture": {
     "formatVersion": 1,
-    "digest": "f9e9498c2543cf0f7eddeac27f0b9674857e39a7f6a422a89c653f0d8ac3772c",
-    "sourceCommit": "3219a5f6d9dbfa8bed37ed0baa3c747433a353b3",
+    "digest": "ae33c2da99d83f7fbcbe7ae0c4d211730ff9c85e8642ac070344f9eeddaa133b",
+    "sourceCommit": "f8eeb1ba6e95c4f8eea6f16401277e4b2124184e",
     "leanToolchain": "leanprover/lean4:v4.33.0",
     "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
     "files": [
@@ -1116,13 +1116,13 @@
       },
       {
         "path": "concepts/ir/Lax624099/ConcreteInstances.c",
-        "bytes": 117737,
-        "sha256": "483cb9fb085e7d99cfc07385242ee315cd0478dc7869faa9647875c6b55c913a"
+        "bytes": 114548,
+        "sha256": "5d631eb494fd56b7da94cbd99530e6c9df2919315194728f938bfb27532f783e"
       },
       {
         "path": "concepts/ir/Lax624099/ConcreteInstances.c.hash",
         "bytes": 16,
-        "sha256": "011da4f1d5fbea96f1cb300624b8cd223a3c252d6ca0e678cd7b429a90b5ed79"
+        "sha256": "c486f006081656f11a773248cb0e1ce0e8ea104927a5d2c830a08e487a3c9623"
       },
       {
         "path": "concepts/ir/Lax624099/FiniteSatisfiability.c",
@@ -1417,7 +1417,7 @@
       {
         "path": "concepts/lib/Lax624099/CodeHaltingInvariance.trace",
         "bytes": 4260,
-        "sha256": "526817b264ed1c38854efd8a950efdd5fd55096a2a0354b2d60b9cceb3c49826"
+        "sha256": "82d5668c5b371cf449b4420bd9baee3b793843b988a98f3813f9a07848bb05fc"
       },
       {
         "path": "concepts/lib/Lax624099/CodehaltREComplete.ilean",
@@ -1442,32 +1442,32 @@
       {
         "path": "concepts/lib/Lax624099/CodehaltREComplete.trace",
         "bytes": 4239,
-        "sha256": "28838a0cf372b61688e1f1c769763c8f25693a16c2de15f8af6e404899f7b911"
+        "sha256": "1a65ebb18b9dc959e878f04fc22cae1ef0c618243d045b934fd3136f3767532c"
       },
       {
         "path": "concepts/lib/Lax624099/ConcreteInstances.ilean",
-        "bytes": 30860,
-        "sha256": "dc851b763f8c58379dad745f0d6193bf0d7b0d4236d254eb7217fd50a33e273f"
+        "bytes": 30114,
+        "sha256": "3b95882e2f20e96d9b3b7538b39b035b2c641556cf6a246db3d9db951579a1ac"
       },
       {
         "path": "concepts/lib/Lax624099/ConcreteInstances.ilean.hash",
         "bytes": 16,
-        "sha256": "7c53bf575ef0183fbe1d4b1837eb2ca68a3d3412fe4c7a975b86bb1dabecb424"
+        "sha256": "e3e450cc9b4991585e44b12197620b5485b1586cd2b700a53882720a86e19b19"
       },
       {
         "path": "concepts/lib/Lax624099/ConcreteInstances.olean",
-        "bytes": 746184,
-        "sha256": "d802bf53c913839327eb80f35822f7388029361dde65b13f4f6da1e62756320a"
+        "bytes": 743776,
+        "sha256": "9cb62719915c66682cd3aa60fecf02d277525fb7f0e22ff9644e8b583960f44d"
       },
       {
         "path": "concepts/lib/Lax624099/ConcreteInstances.olean.hash",
         "bytes": 16,
-        "sha256": "320368c3ac1cf46d7e1057fb48e6d252a13ff0146b1dcf1c8b6d2cc03015caab"
+        "sha256": "52655378b67e762a6476f068602bce706c80f9d4cb8c36ce0c568637d76c40fc"
       },
       {
         "path": "concepts/lib/Lax624099/ConcreteInstances.trace",
         "bytes": 7894,
-        "sha256": "42539a3394e6a00af374fa05d1c080a190e4d6c1a9bee72eb53f9bbe7cb83c7b"
+        "sha256": "d4c52330b08b5da412b23fc6d0010333430d176a388fed026eb6c6cfcb19b10f"
       },
       {
         "path": "concepts/lib/Lax624099/FiniteSatisfiability.ilean",
@@ -1517,7 +1517,7 @@
       {
         "path": "concepts/lib/Lax624099/FiniteSatisfiabilityInvariance.trace",
         "bytes": 4323,
-        "sha256": "683a0c2c9a6b71a464219a48152e7bc957f66a182e3b073c6112b9c370780d3e"
+        "sha256": "9cb6f0c1186af039edaf0f5acd17c54b692cf4fd8a59a7e9235ca3f6d14ba1eb"
       },
       {
         "path": "concepts/lib/Lax624099/FinsatREComplete.ilean",
@@ -1542,7 +1542,7 @@
       {
         "path": "concepts/lib/Lax624099/FinsatREComplete.trace",
         "bytes": 4225,
-        "sha256": "917d3abba295694937626ddd2ce3da30ae49f7ac823463690fbaf8f1d197b77d"
+        "sha256": "dfafec73590b62e7bd33370d3e99b715562dd67ab55304925f3844d7dd667681"
       },
       {
         "path": "concepts/lib/Lax624099/Halting.ilean",
@@ -1592,7 +1592,7 @@
       {
         "path": "concepts/lib/Lax624099/HaltingInvariance.trace",
         "bytes": 4232,
-        "sha256": "6964acd5fa3b9e356faa0d39803f1ddb963b16c44208b2af76192b117b0521b0"
+        "sha256": "f5a602c328d435e4baee0bc0ece1d555d289a9198399768ee502935ccca4e1f8"
       },
       {
         "path": "concepts/lib/Lax624099/HaltingUndecidable.ilean",
@@ -1617,7 +1617,7 @@
       {
         "path": "concepts/lib/Lax624099/HaltingUndecidable.trace",
         "bytes": 4239,
-        "sha256": "011d19710ddc19595cc622c406a4c0a0784a932944550f90d05621e9a1720e95"
+        "sha256": "9e6259b805e73491c83b12352d372f4f0a1a3398ef718618ff19003660cb799c"
       },
       {
         "path": "concepts/lib/Lax624099/HaltREComplete.ilean",
@@ -1642,7 +1642,7 @@
       {
         "path": "concepts/lib/Lax624099/HaltREComplete.trace",
         "bytes": 4211,
-        "sha256": "46fceff2d356baed513a1dc87b181931ae2e1398d4dc665225f6522fdc437d1a"
+        "sha256": "dce9458cb0462c47efac83140d53e44cc2c17bfc019119f4cd78650f26bb9ed7"
       },
       {
         "path": "concepts/lib/Lax624099/NPSubsetRE.ilean",
@@ -1667,7 +1667,7 @@
       {
         "path": "concepts/lib/Lax624099/NPSubsetRE.trace",
         "bytes": 4183,
-        "sha256": "627c7c806de053532a86921e3e2ec970351529774c5d26929f6e816d6b118f27"
+        "sha256": "81072f81d2957fa4d28f71db379b9279bbdd72a8992b6377f2f76df87d1e22b2"
       },
       {
         "path": "concepts/lib/Lax624099/PcpREComplete.ilean",
@@ -1692,7 +1692,7 @@
       {
         "path": "concepts/lib/Lax624099/PcpREComplete.trace",
         "bytes": 4204,
-        "sha256": "2ff20ce31296d15163a61acfc76eac2567805a98b0d5c0b8d61d272191cb6c4a"
+        "sha256": "80c780d22d89a7faaee0d5974452fc510c469c859208da6846026f620cc10887"
       },
       {
         "path": "concepts/lib/Lax624099/PcpUndecidable.ilean",
@@ -1717,7 +1717,7 @@
       {
         "path": "concepts/lib/Lax624099/PcpUndecidable.trace",
         "bytes": 4211,
-        "sha256": "0f722f9bccbdbe3cdcfabea1ac5e6fc78bdca0700db971a3ebb7c1f431ac6a96"
+        "sha256": "e10421a4eaaaa603e353ce455ef660b348676d4fd4421518aa6f34938f9c2c90"
       },
       {
         "path": "concepts/lib/Lax624099/PostCorrespondence.ilean",
@@ -1767,7 +1767,7 @@
       {
         "path": "concepts/lib/Lax624099/PostCorrespondenceInvariance.trace",
         "bytes": 4309,
-        "sha256": "ce2a0f04799f1f5de83f6a2662ff1e39fe805b93b5b60033f070a78847e8b6a7"
+        "sha256": "0c7fc77edc12c3b12765a25fcf9ec8ae08a0a614f41017f56eab1c9d9c725d96"
       },
       {
         "path": "concepts/lib/Lax624099/Problems.ilean",
@@ -1817,7 +1817,7 @@
       {
         "path": "concepts/lib/Lax624099/REClosure.trace",
         "bytes": 4176,
-        "sha256": "b03ea80af2bf9b11b813ef975ffb57d25cb8258d5798468d567b5943c9cb0380"
+        "sha256": "ed1eeefce3ea05b6cf09bbf4bae58a14fb02d55fea022aac61e72ff484abdf55"
       },
       {
         "path": "concepts/lib/Lax624099/ReductionsComputable.ilean",
@@ -1842,7 +1842,7 @@
       {
         "path": "concepts/lib/Lax624099/ReductionsComputable.trace",
         "bytes": 4253,
-        "sha256": "75e409d93553065e830bbf3ad8b81d0b9cdad492c7ec0b653abe24f04ff54438"
+        "sha256": "a3ba798d4574ad54d289cffc718c9abb332fdb154e1c9246f2c153d0b414bcfd"
       },
       {
         "path": "concepts/lib/Lax624099/REFinite.ilean",
@@ -1867,7 +1867,7 @@
       {
         "path": "concepts/lib/Lax624099/REFinite.trace",
         "bytes": 4169,
-        "sha256": "7c9d54766a6652adb091ef876ea2fab4919cfbd98302bc2628c22a80dcd1ff2e"
+        "sha256": "785e9949fb40c950f290b5f2b62e6795944896e85cdc89c679556139718592e7"
       },
       {
         "path": "concepts/lib/Lax624099/REHardUndecidable.ilean",
@@ -1892,7 +1892,7 @@
       {
         "path": "concepts/lib/Lax624099/REHardUndecidable.trace",
         "bytes": 4232,
-        "sha256": "2101fce71663d3d7328b3ea5d1ea1d3c2681bd150377737cdc23d0ce3311ab22"
+        "sha256": "7a3a90d2b4c5159aef145a98ab2bbffa8f01189c581def870e87470bcd2245af"
       },
       {
         "path": "concepts/lib/Lax624099/REIsRecursivelyEnumerable.ilean",
@@ -1917,7 +1917,7 @@
       {
         "path": "concepts/lib/Lax624099/REIsRecursivelyEnumerable.trace",
         "bytes": 4288,
-        "sha256": "9898c97146f06101e3b14400a1fa04c2a37b8081c9edc1c8bb827aaef98ed093"
+        "sha256": "9a82dbd294ec11cc36e9d5812dfdfb313672e4a67bf631f5c9b17eb43543441f"
       },
       {
         "path": "concepts/lib/Lax624099/RENeCoRE.ilean",
@@ -1942,7 +1942,7 @@
       {
         "path": "concepts/lib/Lax624099/RENeCoRE.trace",
         "bytes": 4169,
-        "sha256": "8b7f0ead69fc17b3f87281b94c16042cc57b3d18b414ec2b3a40d7998a92b3bd"
+        "sha256": "a7947d67819f288b8169815c4d25e0d90c67f87d13209317fa607a4b3d33f77c"
       },
       {
         "path": "concepts/lib/Lax624099/Trakhtenbrot.ilean",
@@ -1967,7 +1967,7 @@
       {
         "path": "concepts/lib/Lax624099/Trakhtenbrot.trace",
         "bytes": 4197,
-        "sha256": "542b8d7ea1b52ffa5bf7e5b54241f385321380336b6b846d43da0574b2c27d77"
+        "sha256": "e0f704e41a3e1c76db3ab2ba824d4229186d0ee14210bd6ed391d9a082d4d676"
       },
       {
         "path": "concepts/lib/Lax624099/ValueInvention.ilean",
@@ -2017,7 +2017,7 @@
       {
         "path": "concepts/lib/Lax624099.trace",
         "bytes": 6347,
-        "sha256": "ba0e6f5f6dc57a5a807a7be3a975d7e79e5e81a89dbe9bc12925eb10b068689e"
+        "sha256": "a8b39eaccc74b2e3bb8d6ff58e63ef24c546a3d7f86f3a4cf958ce0242a593c7"
       },
       {
         "path": "concepts/package/lake-manifest.json",
@@ -2051,8 +2051,8 @@
       },
       {
         "path": "concepts/package/Lax624099/ConcreteInstances.lean",
-        "bytes": 9908,
-        "sha256": "72f7be3f95bd3f2cdb0ec42f9416f9c8f4e5fe7cb90c11c3a8710075ec0f02b2"
+        "bytes": 9929,
+        "sha256": "65dddbee4244cc6a185bf5bb608fc7fec54d3b8e21b60f64ba8e76bf315e46c4"
       },
       {
         "path": "concepts/package/Lax624099/FiniteSatisfiability.lean",
@@ -3042,7 +3042,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/Bridge.trace",
         "bytes": 8346,
-        "sha256": "4b9d1d7f1cd80f3c083830a08b051cb15fc0b2ed9eacbb6d691bd57a38dc236c"
+        "sha256": "4d646e12a4f5a26b9e158e3ec4f03a76fb6eb2a55e29023936932824df66a2cf"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Complexity.ilean",
@@ -3067,7 +3067,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Complexity.trace",
         "bytes": 4814,
-        "sha256": "7eac4fadc04d53b7098d02cb0c4990b304cb22e293cb1f098dfd00f93d92c799"
+        "sha256": "03e4a304fdf7dd30dda5c4ff948d7a3b788c75d66c00af97c2961af397c2967e"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Composition.ilean",
@@ -3092,7 +3092,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Composition.trace",
         "bytes": 4998,
-        "sha256": "1d28f4b91f8c30c2c39d4373d785cc40772c21a0617297881767efbcbb4fadbc"
+        "sha256": "2980d1a4bb98b103dfc183ec7e4714f38a2e110e4fdc083f28fca898ce3ad9d0"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/Catalog.ilean",
@@ -3117,7 +3117,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/Catalog.trace",
         "bytes": 10514,
-        "sha256": "5621e12474c58df4328a92c6d2b3462b018512eba78611806222e766fdaccc82"
+        "sha256": "5a0bb5404ec0e84ae4ec896fd34b1ac144c7fbb18ed9f4f85c748f92a18e7738"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/CodeHalt.ilean",
@@ -3142,7 +3142,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/CodeHalt.trace",
         "bytes": 5341,
-        "sha256": "fdaccc3794dccfa37013fb708f49c13794f0e6a7c7b9b927679482bea40fcd64"
+        "sha256": "f9e3e336841692258c6cedbfcaa29f50836eaa5a462d3dde1c5c50875a1e0242"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/CodeHaltComplete.ilean",
@@ -3167,7 +3167,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/CodeHaltComplete.trace",
         "bytes": 5224,
-        "sha256": "275b99992fb2fff097015877a5d950ee8b77312be75f07b108788aae4ac04016"
+        "sha256": "4f0ca6efd01679d853a5112d5678b388d8c05c0954b2eb47051279655a77f266"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/Eval.ilean",
@@ -3192,7 +3192,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/Eval.trace",
         "bytes": 4886,
-        "sha256": "ad5512cf75e984742342606f35455858612b827424df09f3d293acfceb1b10ab"
+        "sha256": "3cfd07807e6e61f29d6aea0710c2d31e76643a9a3a5198855a896ddbd93cc125"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/FinStruct.ilean",
@@ -3217,7 +3217,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/FinStruct.trace",
         "bytes": 5330,
-        "sha256": "2e22ecb89b0d490e0786943fc7a606f3176f1dca7acbd24287fabf7160573e7e"
+        "sha256": "51ade7792259e60c03a0f0711742873975fc07caf2dce8997131d8c63aa6075e"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/PcpComplete.ilean",
@@ -3242,7 +3242,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/PcpComplete.trace",
         "bytes": 5427,
-        "sha256": "d75d18f6828944b47173d719c57c5717d87a01ae92861fc33f4f005f65a5530f"
+        "sha256": "9ed7825ef25fb9fd5b1249cdb0b6fe97504b27520f946bcd3e9f49d9ce9ac1eb"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/Realize.ilean",
@@ -3267,7 +3267,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/Realize.trace",
         "bytes": 5003,
-        "sha256": "625c9ad743c92e3e8a973472146e55c86eaa839cd0f51c457fe436007978467a"
+        "sha256": "e894a4b1f00b7b530d1a46e1425f7896de1f594b29ad741969ad2f86b44227b6"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/Reduction.ilean",
@@ -3292,7 +3292,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/Reduction.trace",
         "bytes": 5701,
-        "sha256": "08ae836c876a71a74661fd7a39a6ede1149473a0fcc2ce4ca6b59d03ab092896"
+        "sha256": "98adcf910c448a16addafcfc402de03b84e6148d76597733f90fdaf7ee44be70"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/REPred.ilean",
@@ -3317,7 +3317,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/REPred.trace",
         "bytes": 5297,
-        "sha256": "c648cfaf0b7ebdafe75ed677b9ac8546a2c04bcdab56c34012a39f83cef80600"
+        "sha256": "47b0aa5e0246fece14d5e714985eec00195b8f98e5db632b527cb5f574734d7f"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/Vocab.ilean",
@@ -3342,7 +3342,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Computability/Vocab.trace",
         "bytes": 5406,
-        "sha256": "07a8d24fa65f05f757a01c06207f13911920e4fed49b36ffb92a0378046b03e5"
+        "sha256": "3370a8b6b13b8cce8a2cfe678d89fd31d77a9ff263d1b52146f3804a8cf884f3"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/FixedPointStep.ilean",
@@ -3367,7 +3367,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/FixedPointStep.trace",
         "bytes": 6387,
-        "sha256": "f01a9ba21cf2131f2bb14260c0a35c98066e83a52fc57a810b31e2dc30fcc1cc"
+        "sha256": "68f48c0e58bfa358120a4cc47f68c104c7bd586a5cf0fadf6e55a0d4d11f0421"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Hierarchy.ilean",
@@ -3392,7 +3392,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Hierarchy.trace",
         "bytes": 6157,
-        "sha256": "b3b5f64f735bc9eed3a92a69d1440eef96306932e8dc7348db1ce1e64997810b"
+        "sha256": "892ac01347802e4f3f0fc022331c7cf7022cd443626e2052b118f841f26ff13c"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Interpretation.ilean",
@@ -3417,7 +3417,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Interpretation.trace",
         "bytes": 5127,
-        "sha256": "6fe3e80fbc829e776ed364bb99ea5d9e915427af13d23552031177f3238d9e41"
+        "sha256": "3ea76da3aa67c9fce6cb1cbf1108cec1b242e133c98f8593a866106ca6683425"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Machines.ilean",
@@ -3442,7 +3442,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Machines.trace",
         "bytes": 4806,
-        "sha256": "ec998a0aa3fe44b8bf0c1706ed9a3af4218122e89c7b30010c9ea468857732ac"
+        "sha256": "a3f31e2d75a57b20565d53cb411c3af1e78a5641ce3866629d85e3286a67e962"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/MachinesUnbounded.ilean",
@@ -3467,7 +3467,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/MachinesUnbounded.trace",
         "bytes": 4857,
-        "sha256": "a5e63bbf3a198deb3b570ff1cd445671103be00bade37358cbe33004ede77baa"
+        "sha256": "ffed34dbdcd41afe6a6b96be82ae990cabda74813d114ac65226d3bda9c6994f"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Numbers/BinRel.ilean",
@@ -3492,7 +3492,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Numbers/BinRel.trace",
         "bytes": 5648,
-        "sha256": "0b51a4a70579cce0f8a1660e52a33d825b9f24defe2e49a70a534c6a11813259"
+        "sha256": "ddb497b16c3aa20d4313a0ae869f678507d02f3793d914984284b8de934dbc65"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Ordered.ilean",
@@ -3517,7 +3517,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Ordered.trace",
         "bytes": 4962,
-        "sha256": "e53d0e1ac7e53baa38aabb76515f64d76b56753e3c49ea4884ee8d24ad88cc2f"
+        "sha256": "8780865d124194081908c82de459ab6fecbd32df53ef4d2850d7f672121d9ac3"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/OrderedComposition.ilean",
@@ -3542,7 +3542,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/OrderedComposition.trace",
         "bytes": 5543,
-        "sha256": "7585f05bba37bcefe31f896e836347a0bc76568aa131851bc418e43104113ed4"
+        "sha256": "67559ba10795c3752485c9fcb211f842aacaba4912cff7331efa11e12733c899"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/OrderWalk.ilean",
@@ -3567,7 +3567,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/OrderWalk.trace",
         "bytes": 5239,
-        "sha256": "0a6ab93a1c5affd8313233e6fc583a7a8a34fb78d74d6a778c67171601ddbf6a"
+        "sha256": "5cfd54464767e9c5525f62a8d2f7bdfd02e9caaf7f77a1d051988832c410cd19"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Padding.ilean",
@@ -3592,7 +3592,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Padding.trace",
         "bytes": 4785,
-        "sha256": "51644bcc6a16809a593ce9907ee166be6ec72b6806532b73945539ab87b181a7"
+        "sha256": "79d88a8e98ed6e7de5a5dae50730bfbdc26993ba0bc3cb7b1b0313e084275690"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Arith.ilean",
@@ -3617,7 +3617,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Arith.trace",
         "bytes": 5010,
-        "sha256": "577da4581250f709e13e4714be5797263a23a77343ec1665194320b8fad60f0b"
+        "sha256": "9ecc2b930fd75befae8846af24652762ff3775a4b9439e86008ecd3945a076d2"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Cert.ilean",
@@ -3642,7 +3642,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Cert.trace",
         "bytes": 5410,
-        "sha256": "72aad3e13db336f7bb4003c09439e501cce439da74125319def952838585a5ef"
+        "sha256": "73560570c531b14fda95b2b12c6eea17b003383472c687e1c1741d1faaa1b459"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Defs.ilean",
@@ -3667,7 +3667,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Defs.trace",
         "bytes": 5083,
-        "sha256": "46cf55d4e6901144945b6643e8b157a9c1053f9dcb2f53ceb8f0e43327c0594f"
+        "sha256": "4cc1e26a2c6ea560abb9c4a60f26f8d0f9ad216620590a0085da41818539e9cb"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Hardness/Draw.ilean",
@@ -3692,7 +3692,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Hardness/Draw.trace",
         "bytes": 5005,
-        "sha256": "2e12117ea245c92ce08457c15f71fc475daffe3b9bd5eda6bd9ee5897a656fce"
+        "sha256": "306f9d1a572b959868185c2a81357eab47b00cac37565e53cc06be02cf03014b"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Hardness/Interp.ilean",
@@ -3717,7 +3717,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Hardness/Interp.trace",
         "bytes": 5229,
-        "sha256": "79568d74ec833b47b92b85a2fd1f62c6c504647c9db5ae232f554084e8319385"
+        "sha256": "fa6babc42292b22316c3bf2994f414e9ebb072efce268bb2421e01d2327efe4d"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Hardness/Tags.ilean",
@@ -3742,7 +3742,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Hardness/Tags.trace",
         "bytes": 5402,
-        "sha256": "bff8026be2fa4005e621ec1bf8d3ea42bb8d22b262641de0e230e9c25b5f40f8"
+        "sha256": "dea4cfd945b0d074bbecb589d1b758ea55822aefcf3c692b5a4cbd5f25f5bffe"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Hardness/Value.ilean",
@@ -3767,7 +3767,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Hardness/Value.trace",
         "bytes": 5324,
-        "sha256": "a8d04a8100333bf0a1f4ce0317d701f4c42e2d47c91e370bc0468d32203a6864"
+        "sha256": "2874d43e163a2655c2b30ef2a78d82be9f489adc44bd11656dd33f01a3bfc60a"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Hardness.ilean",
@@ -3792,7 +3792,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Hardness.trace",
         "bytes": 5365,
-        "sha256": "55ebd8d52f4f682d70b8976668a7af30fa2c26dc6fddb85a52baf62e234f31af"
+        "sha256": "4529c65e0d868ef7b867fa7fef8dde65140186a1efb7ba48e0f4e95d766820ce"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Membership.ilean",
@@ -3817,7 +3817,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Membership.trace",
         "bytes": 5762,
-        "sha256": "494ccadff475a556fa22f6fb3969bc1e376033679f780ed71c636a75a5bde9f1"
+        "sha256": "a6ddaaf85175681faf8e27daf20c6b5ebdb14ec808ae36fd0d4d804a23506efa"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Numerals.ilean",
@@ -3842,7 +3842,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/CodeHalt/Numerals.trace",
         "bytes": 4932,
-        "sha256": "75551b552ffac2cf4c3181c04ff2f5d1dbc62d25ffc6c7a35ab4b3795abe3490"
+        "sha256": "0fcc7e33c1402906fab0051a686581b3adc87d8519023e555b8791c15c9ac6b9"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Defs.ilean",
@@ -3867,7 +3867,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Defs.trace",
         "bytes": 4890,
-        "sha256": "82cac7c04a84a754c15fa1eba3f0edef955ac7c671a6e4cd4bccdcc8b9e3d9a5"
+        "sha256": "2f828ba194a1c334b5a0011723a3c55cfd0ee60b7af9020a9b55fc00f7d2eda9"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Fixpoint.ilean",
@@ -3892,7 +3892,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Fixpoint.trace",
         "bytes": 5078,
-        "sha256": "9c39d110d03c7ecbf8cf0635097653e7e448fe90f704f3ed779b2369e10e9c74"
+        "sha256": "83bf39f4a02ec372e38a677504a7ce38747aa802d875a76edd58795b03492ae4"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Hardness.ilean",
@@ -3917,7 +3917,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Hardness.trace",
         "bytes": 5178,
-        "sha256": "58f85160ca8e761bd357d3434a89c19c18881f8ac3a49d9c755eab6bbf52047e"
+        "sha256": "177f3fd4beb2a789363351821c3e4133b3837aea463ea1d08bb507bc6f4aa770"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Interp.ilean",
@@ -3942,7 +3942,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Interp.trace",
         "bytes": 5366,
-        "sha256": "3030cc18c1ddc69c59050e0edecca598944e645860c9fa3db1c4cf3554101c1f"
+        "sha256": "6feba62dcccb9c995f39de82dc7de859003e93346d8b3d3b1eb731195c038170"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Invented.ilean",
@@ -3967,7 +3967,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Invented.trace",
         "bytes": 4938,
-        "sha256": "00fca8723b9e7c4a381bce5d03d1aef4ffef3c60045e94f08af7c65e31f06773"
+        "sha256": "095186e7f668256d1ce297066ec45b32dfb48b345194cb5ea539add06b83ceb6"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Kernel.ilean",
@@ -3992,7 +3992,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Kernel.trace",
         "bytes": 5142,
-        "sha256": "87670e150e47082ad35a2e225615b2112c9c8e83031dddada51be5c2f7dc6f04"
+        "sha256": "cf4ca3b5af5782a2140b3accf0fad5550e205d960fca19817b080dcc495897f4"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Membership.ilean",
@@ -4017,7 +4017,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Membership.trace",
         "bytes": 5526,
-        "sha256": "081f713d4d0e556ac385b385f3d2d76481ec61393e3614702b845c351da4d678"
+        "sha256": "6756364fdfafbcc8c2cb67e1a21cb715a90ac3a6a3554fc03aa36bfc988aca2b"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Nodes.ilean",
@@ -4042,7 +4042,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Nodes.trace",
         "bytes": 5123,
-        "sha256": "f769b76823d7483b57f7786919e2e70f7db6bfc9dd0ec9a71d2e25b66d982740"
+        "sha256": "e06900a1f0f97743e6e1ff1eced3db56500b145a42a880ffcb89e3a4edd40a25"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Reduction.ilean",
@@ -4067,7 +4067,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat/Reduction.trace",
         "bytes": 5183,
-        "sha256": "d9ae90e73149ac64af9dbc38265b179ad441975f5a69530465880ca7e01e1b9d"
+        "sha256": "805c9ae9f54299d3fff30b29b3c8804a6c880b61cadef58b5e16b782be102f51"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat.ilean",
@@ -4092,7 +4092,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/FinSat.trace",
         "bytes": 5125,
-        "sha256": "ced22e9059928b139e9d526400b1bf17f225789c24d068e9901d75bb0ad1ad00"
+        "sha256": "df8b4076bd88b03fec09fd4b0e2eb9b31a08829669f6d66df326c81effadf91b"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/Defs.ilean",
@@ -4117,7 +4117,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/Defs.trace",
         "bytes": 5109,
-        "sha256": "b4ce9f3c88c5e0e079da34444e03c84d521b46172ecc28e4004cc42313a607d6"
+        "sha256": "2f538e65c4362030d848205112bbc3d835c604085b14327551b8f6516a5a4450"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/Halt.ilean",
@@ -4142,7 +4142,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/Halt.trace",
         "bytes": 5141,
-        "sha256": "bba79568aa5fda6ac95b640fc4160674ac78eb8784736c4bf1b29f8494315230"
+        "sha256": "d2414c603e9a69d9b0c5208ae38b82ccea3ec9cfb0fb7d08077fa50401c81c9d"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltCert.ilean",
@@ -4167,7 +4167,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltCert.trace",
         "bytes": 5145,
-        "sha256": "4da816a5a78f936e1f8fc2bf04843e875893f53339cd87856bacdaa3cfb75839"
+        "sha256": "be1bf7a4c9afa82c473d6d698a0f387bc10904e69f7f341fa677d38c7116d277"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltFin.ilean",
@@ -4192,7 +4192,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltFin.trace",
         "bytes": 5178,
-        "sha256": "afefd7518b933c56aad6405a214ad5af02440bd8ee6198d310f583463715361a"
+        "sha256": "924849c149b2629f1ddaaf73357a412f6494f1346203cbc8131247c8cf30c932"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Bridge.ilean",
@@ -4217,7 +4217,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Bridge.trace",
         "bytes": 5004,
-        "sha256": "ff826a33b191e91df8b74657142b68ba34c5105d12b32dc49a6e348839e93825"
+        "sha256": "2c16316781fb85032c3273607f4eb3c27eccbc8dc301a3fecb0177c98449e262"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Correct.ilean",
@@ -4242,7 +4242,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Correct.trace",
         "bytes": 5513,
-        "sha256": "0f8351d6a17c602c1d4ca8ad3543e66a43d65cfaccc93200e2e54d51b2c6a146"
+        "sha256": "87c74b4d24ea02ca513ff2805890265b55b0c8c8e94f93d8da52351e47570a0a"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Input.ilean",
@@ -4267,7 +4267,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Input.trace",
         "bytes": 5577,
-        "sha256": "78ff7ff5581331c2f89cddda1d7b58ec1de106b1a021c326e656ed75305d945b"
+        "sha256": "71672baf116134377cb7ef80bda433696754d11306853186a5b7f30664e1817f"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Interp.ilean",
@@ -4292,7 +4292,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Interp.trace",
         "bytes": 5508,
-        "sha256": "d42ef45da2da8d7e2cffcf797504fc7d3922612c08add0e86d893b078e9158f2"
+        "sha256": "6989f4d9b2301b0a62212d007c9809d0f6733b20a436e2b4476748e4bbb82e62"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Sim.ilean",
@@ -4317,7 +4317,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Sim.trace",
         "bytes": 4989,
-        "sha256": "26800a925aef60f94b5a35ee1284324ebaf5311c8d4757034905c07a1c711d05"
+        "sha256": "43ce870782e7cb37fd8a89b526199674512d9c60932148a3f95971fec94aa4d0"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/SimCons.ilean",
@@ -4342,7 +4342,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/SimCons.trace",
         "bytes": 5019,
-        "sha256": "cb99a2044d29474421e98926f3a41a5dd42c78d388275c26758be5a77a15af39"
+        "sha256": "8e03e5afe87dc36b6347748a0c050eae13982dab8e6d985548970a22ba8fd875"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/SimNorm.ilean",
@@ -4367,7 +4367,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/SimNorm.trace",
         "bytes": 5011,
-        "sha256": "73dd1879e83870229d9c5e6dda053eb0c85d36c074c5628f90237a8385a78dee"
+        "sha256": "115ee785b0584928616817b88f2b473820e1918b19e4b7044d4302d4776d12bf"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/SimRet.ilean",
@@ -4392,7 +4392,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/SimRet.trace",
         "bytes": 5012,
-        "sha256": "add1a3e30158eb6d2da50ab9f50655b9d95938f278c4b6d3db8ea9c9f9acb24f"
+        "sha256": "87d51421dbb21813f59655a13bb6610c9a1dfd5a5f42e0a7af93c42fda26a9c4"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Table.ilean",
@@ -4417,7 +4417,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Table.trace",
         "bytes": 4999,
-        "sha256": "6f0d5d6d4480e00c445a43952672fa5d6a03c8a1ac3913b80364b953e38fe50a"
+        "sha256": "4082b9161e82f56918515053f5046454d7a684e9bd1934881cbcd41a4fa1904d"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Tags.ilean",
@@ -4442,7 +4442,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Tags.trace",
         "bytes": 5359,
-        "sha256": "6d3f3a8fc7cf3dec4456a61884819c4f468ebae8963cd6ac7d13aee1fc502c25"
+        "sha256": "1444fe1e86e958e9cb63fb4e786749be44fbe9f82bd634fd81e53fabca6b4ed6"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Zip.ilean",
@@ -4467,7 +4467,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard/Zip.trace",
         "bytes": 4987,
-        "sha256": "fae0028fd86b2fdb7d995c1e5e6057cd52fc658fdbdf6bd7179a410619723def"
+        "sha256": "d1f1bc61cd56debf92916f1a08c02861a791c68fdf808707dc0ba7e00ce07867"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard.ilean",
@@ -4492,7 +4492,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltHard.trace",
         "bytes": 5911,
-        "sha256": "330be828c48ae31ac16503ca14ad4fc27f710e111ba6d5b0efc081feaa6de240"
+        "sha256": "48ab2e439117f73ea72b732d26dd984c45e6ec7f333b0f23151dbb208cd90217"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltMem.ilean",
@@ -4517,7 +4517,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/HaltMem.trace",
         "bytes": 5738,
-        "sha256": "ca244dc05a6726a6617c3de75ec477bdb899ae9e04e292fed2ca0eaad779832d"
+        "sha256": "d06236d7da8458b7a4864dd83dffb01bdc5f1b12ae24fc0248334898260ff1a0"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/Membership.ilean",
@@ -4542,7 +4542,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Machine/Membership.trace",
         "bytes": 5933,
-        "sha256": "3619518bbf78e1d2c25025f734953996383f373d855db88f2035560bfbf7f924"
+        "sha256": "ff7e01f6d0abf53b36cb1d73dcd2368b9ae06cd8046fdddf8226f8c11baefd6c"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Cert.ilean",
@@ -4567,7 +4567,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Cert.trace",
         "bytes": 5105,
-        "sha256": "4fe821851159e68384f157d7eac1fb062df3051f4b5cc8142869ffef9063b8a4"
+        "sha256": "aa196f63a5c00a6ff670b1d467b4fd9bd08efbd306fc4e7f4ca704cb05bed9b9"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Defs.ilean",
@@ -4592,7 +4592,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Defs.trace",
         "bytes": 5032,
-        "sha256": "e6e38a22eb2bbe2898df56f5d5d2b772db8d7ae2e0f47f14b5c9b7b5cac637ae"
+        "sha256": "db382b8228dd2a27f9af001983e3e6a0f30326f2bd8a3152eac8e5c95450c812"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Enum.ilean",
@@ -4617,7 +4617,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Enum.trace",
         "bytes": 5193,
-        "sha256": "ad4cfd9133d57b3ddd38a9cb87238be1ef3470e890802c6a47870fb2e16d2b58"
+        "sha256": "3a56e331adeb22016bd25d30d8f93085d68b1c208c2979037adf439141499164"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Hardness/ConfigWord.ilean",
@@ -4642,7 +4642,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Hardness/ConfigWord.trace",
         "bytes": 5234,
-        "sha256": "f0783da2f212110b13f7e0631e3fb031bcf8979f87eae210373bf54ae2f07dde"
+        "sha256": "952acddcd06dd5908246c2c049eb6415a4345c0d2ad492c19bbfc22316466cc1"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Hardness/Draw.ilean",
@@ -4667,7 +4667,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Hardness/Draw.trace",
         "bytes": 5375,
-        "sha256": "b67c394baecd0da37dff5616d4931caa53e2f8c223cd5f74406c9b2f2b4e6a9c"
+        "sha256": "4ca08d24800b5b335c6154dd4957976e534ce83deaadbd200b8b38b116b2aeef"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Hardness/History.ilean",
@@ -4692,7 +4692,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Hardness/History.trace",
         "bytes": 5045,
-        "sha256": "2346009fc0df698c14270f75f3f9a8cf75e971ec474e280e669f3ac8d997c991"
+        "sha256": "6a45c6e964eb35c1668fe3b5124dedd18c6277049ba7a5b4f153fd9ff70dda38"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Hardness/Interp.ilean",
@@ -4717,7 +4717,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Hardness/Interp.trace",
         "bytes": 5518,
-        "sha256": "9f9502c497b2171ceeb2ecb088b0471e0e67fc0fe442bab6f92ed1eb5871a34f"
+        "sha256": "b2e53e6921c08b664efacd172f2cb0824c740765289a03e255dcea56ba41dff3"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Hardness/Match.ilean",
@@ -4742,7 +4742,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Hardness/Match.trace",
         "bytes": 5193,
-        "sha256": "1dea04f583f09a3e8f31e385830767fdf2a2e90f0fabd2ccc6cc593ec84c10ba"
+        "sha256": "cabd6cd2f46dd4296e9714e2511f0dcb42a7fe5dc58a3226971c0a2f4544d00e"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Hardness.ilean",
@@ -4767,7 +4767,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Hardness.trace",
         "bytes": 5163,
-        "sha256": "24ee7b99069daf6fefed029f565803c1c11ef4fdf8d11266494c8a2917344804"
+        "sha256": "adf7bbd169e7d0242a204cac874a42cfa989d3298565794be3b3423f5d3fda2d"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Membership.ilean",
@@ -4792,7 +4792,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Pcp/Membership.trace",
         "bytes": 5717,
-        "sha256": "e83df9c8b2501479522f0b582d7d8b75ecb2630d07655ad0e2a136eec600f70b"
+        "sha256": "77d10f7eb46edfd9ec340700df05f6d54b97177bd455d827b60e521f594be40e"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Sat/Tseitin.ilean",
@@ -4817,7 +4817,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Problems/Sat/Tseitin.trace",
         "bytes": 5422,
-        "sha256": "267983e84e2591dc926e43eaac64b0aa35e35b46b91a843b018f847a8bd42e35"
+        "sha256": "c57f46069d7c4d8373d7248c0797fd87fe978c99ad17117416feb10a62220e2b"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/RecursivelyEnumerable.ilean",
@@ -4842,7 +4842,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/RecursivelyEnumerable.trace",
         "bytes": 5125,
-        "sha256": "a0bb61268bb969908664d71e68ffaac1049d16af2d8985d49147b8d8353cf7f2"
+        "sha256": "ee891371ccc42a658d1d9b997508a279a4197ba66b3d218d8cc5d90f598b7952"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Relativize.ilean",
@@ -4867,7 +4867,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Relativize.trace",
         "bytes": 4820,
-        "sha256": "cb18082a6e9ac1df0b7cfa6c966d151b2de0bfe42ded135f60de5551f18936a0"
+        "sha256": "c6579ef4bf60ca4fc4c8804096afad5f2b082a410a4c64ed61898980cc410bd4"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Relativized.ilean",
@@ -4892,7 +4892,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Relativized.trace",
         "bytes": 4813,
-        "sha256": "76beb0d576217cc931cb8dcac5b4beebbb02695fee3227fd1dc301c1e0b7977a"
+        "sha256": "4f9884274e59b792215fc6ae7d00a96830aa5624e829687ba2512ecdb6225d1a"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/RelComposition.ilean",
@@ -4917,7 +4917,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/RelComposition.trace",
         "bytes": 5074,
-        "sha256": "a7c6b7c1240909c4ce1b129319e3d8c761f0c922cda1ae2de440269684451a6e"
+        "sha256": "47494f5ae4c7df7559c57a8fdf01012bc8d57483a85b84d0105104fa99478fc3"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/SecondOrder.ilean",
@@ -4942,7 +4942,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/SecondOrder.trace",
         "bytes": 4988,
-        "sha256": "9fc9f1c3266392bfb1f58a88a51346fe7b8185fe082e08cc173dc014cf1a9ccc"
+        "sha256": "4b8fc033a89eddddb0ca0a90a3386fa01de893aee954da0e23ac5a41e812143c"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/SecondOrderLift.ilean",
@@ -4967,7 +4967,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/SecondOrderLift.trace",
         "bytes": 4849,
-        "sha256": "779d3f4b2ab0660366e6a24e42629f06d99bafc900d787b7517b44647edfb9d2"
+        "sha256": "0ac8b076c214b7e18a2008aa809f776fe390ce7724d975d438e09984a42edcbc"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/SecondOrderNew.ilean",
@@ -4992,7 +4992,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/SecondOrderNew.trace",
         "bytes": 4850,
-        "sha256": "185adba620bebc146641f9951dde99cdc2caa9a9622a781e86c98eff5054f519"
+        "sha256": "0074ef47171d016cc6ea4514c414a2c65b8e00abfd2d49bb2dd15f6e5ff1f1b1"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/SecondOrderNewOrdered.ilean",
@@ -5017,7 +5017,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/SecondOrderNewOrdered.trace",
         "bytes": 5137,
-        "sha256": "bb844797b4834d03f14352d63d2b4c4405e8dfd24d4a93805eb270e07f7aeb05"
+        "sha256": "537da63b7430436704ea5c853ddb8eacc46c65946d2c31ea56fcd6077051c72c"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/SecondOrderNewPull.ilean",
@@ -5042,7 +5042,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/SecondOrderNewPull.trace",
         "bytes": 5318,
-        "sha256": "8a3773c94e56094fec0af12d15abe1e8534c7a996fba9b8eea5f9ae9bf8dd3d4"
+        "sha256": "4b9c9ffd3f6d1bb588781fac3fdc49566cf7bc09338c35254fdd33165e69a6bd"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/SecondOrderOrdered.ilean",
@@ -5067,7 +5067,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/SecondOrderOrdered.trace",
         "bytes": 5495,
-        "sha256": "4cfbcf094186acecb859fb65386704fcc05c220301550cdc3d34f639cfbb4c18"
+        "sha256": "f38148aff8a1c9475baf26654d81fba4410e2e19c20911c5a11c03a122e33fd3"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/SecondOrderPull.ilean",
@@ -5092,7 +5092,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/SecondOrderPull.trace",
         "bytes": 5230,
-        "sha256": "fe1e0512009c33907cd1978082c7d7d6f668569ea5215068ad1c17cffcef3a31"
+        "sha256": "35aaf0614ff817e5d19436b316723e0a986fa655c509134328c9c59d0fb69c1c"
       },
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Vocabulary.ilean",
@@ -5117,7 +5117,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs/DescriptiveComplexity/Vocabulary.trace",
         "bytes": 4932,
-        "sha256": "b50dbea83091f7f75344ca98bbf1260a11dd9526650468c663aae3a134f01ff3"
+        "sha256": "a362b249515aa079ff66f34e1e94fbe581e341178a17b6f89ae46dbfc8f256be"
       },
       {
         "path": "proofs/lib/Lax624099Proofs.ilean",
@@ -5142,7 +5142,7 @@
       {
         "path": "proofs/lib/Lax624099Proofs.trace",
         "bytes": 22282,
-        "sha256": "a6c68993b157e93495627ab724a2024d483a26bf884453908fdb4386f672b5de"
+        "sha256": "b76cc3ad10dbae3ed09016adabb42a410a38d5c5b23c6c2b088f74f32ce69dda"
       },
       {
         "path": "proofs/package/lake-manifest.json",
@@ -5585,6 +5585,6 @@
         "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
       }
     ],
-    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:f9e9498c2543cf0f7eddeac27f0b9674857e39a7f6a422a89c653f0d8ac3772c"
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:ae33c2da99d83f7fbcbe7ae0c4d211730ff9c85e8642ac070344f9eeddaa133b"
   }
 }
