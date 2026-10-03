@@ -4,5 +4,2098 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 163
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-117614",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "Graph crawling is NP-complete",
+      "authors": [
+        {
+          "name": "Pierre Senellart",
+          "orcid": "0000-0002-7909-5369",
+          "github": "PierreSenellart"
+        },
+        {
+          "name": "Claude (Anthropic)"
+        }
+      ],
+      "bibEntries": [
+        "@inproceedings{gauquier2026efficient,\n  author = {Antoine Gauquier and Ioana Manolescu and Pierre Senellart},\n  title = {Efficient Crawling for Scalable Web Data Acquisition},\n  booktitle = {Proceedings of the 29th International Conference on Extending Database Technology, {EDBT} 2026},\n  year = {2026},\n  doi = {10.48786/edbt.2026.30}\n}\n",
+        "@misc{gauquier2026efficientextended,\n  author = {Antoine Gauquier and Ioana Manolescu and Pierre Senellart},\n  title = {Efficient Crawling for Scalable Web Data Acquisition (Extended Version)},\n  year = {2026},\n  eprint = {2602.11874},\n  archivePrefix = {arXiv}\n}\n",
+        "@software{senellart2026descriptivecomplexity,\n  author = {Pierre Senellart},\n  title = {{DescriptiveComplexity}: Completeness by First-Order Reductions in {Lean}},\n  version = {1.2.2},\n  year = {2026},\n  doi = {10.5281/zenodo.21678423},\n  url = {https://github.com/PierreSenellart/descriptive-complexity}\n}\n"
+      ],
+      "paper": {
+        "folder": "paper",
+        "main": "main.tex",
+        "engine": "pdflatex"
+      }
+    },
+    "abstract": "The NP-completeness of graph crawling, the decision problem behind focused Web\ncrawling in Gauquier, Manolescu and Senellart, “Efficient Crawling for\nScalable Web Data Acquisition” (EDBT 2026), formalized in the\ndescriptive-complexity library and stated on the archive together with the\npaper's extended version (arXiv 2602.11874), whose Proposition 4 and its proof\nare marked. A website is a directed graph of pages and hyperlinks with a root,\ntarget pages and a budget; a crawl is a rooted subtree; the problem asks\nwhether some crawl reaches every target within the budget, at unit page costs.\n\nThe concepts state the problem both ways and relate them. On finite\nstructures, in the sense of the NP core registered as lax-904597, a website\ngraph is a structure with the links, the root, the targets and a marked set\nwhose cardinality is the budget, and GraphCrawling is NP-complete: membership\nby an existential second-order definition, hardness by an ordered first-order\nreduction from Set Cover, the paper's reduction, with Set Cover's\nNP-completeness assumed from the catalog registered as lax-799700. On\npackaged instances, the data a user handles, a computable encoder produces the\nstructure, faithfully and with neither padding nor compression, and a\ncomputable decoder reads an instance back off any raw relation table with\nexactly one root; graph crawling restricted to such well-formed websites is\nNP-complete too.\n\nThe proofs are those of version 1.2.2 of the library, sliced to what these\nstatements use; they assume the core's closure laws and the catalog's\nstatements for Set Cover, so the archive's proof network shows the reduction.\nThe library and its documentation are at\n<https://github.com/PierreSenellart/descriptive-complexity> and\n<https://pierresenellart.github.io/descriptive-complexity/DescriptiveComplexity.html>.\nThe Lean code was written with the assistance of several Claude models; the\ndesign and the statements are the author's.\n"
+  },
+  "requiredByConcepts": [
+    "Lax799700",
+    "Lax904597"
+  ],
+  "requiredByProofs": [
+    "Lax799700",
+    "Lax904597"
+  ],
+  "concepts": [
+    {
+      "id": "Lax117614.CrawlDecoding",
+      "path": "concepts/Lax117614/CrawlDecoding.lean",
+      "title": "Decoding, and well-formed graph crawling is NP-complete",
+      "type": "theorem",
+      "description": "The decoder is sound: an instance it reads off a presented website has a\ncrawl within budget exactly when the presented website graph is a\nyes-instance of the graph crawling problem. It is total on well-formed\nwebsites: every nonempty presented website with exactly one root decodes\nto an instance. And well-formed graph crawling, whose yes-instances are\nexactly the website graphs with one root and a cheap crawl, is NP-complete,\nso the restriction the decoder needs loses nothing.",
+      "imports": [
+        "Lax117614.CrawlInstances",
+        "Lax117614.GraphCrawlingProblem",
+        "Lax117614.WebsiteGraphs",
+        "Lax904597.Classes"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax904597.Classes\nimport Lax117614.WebsiteGraphs\nimport Lax117614.GraphCrawlingProblem\nimport Lax117614.CrawlInstances\n\n/-!\n---\ntitle: Decoding, and well-formed graph crawling is NP-complete\ntype: theorem\n---\nThe decoder is sound: an instance it reads off a presented website has a\ncrawl within budget exactly when the presented website graph is a\nyes-instance of the graph crawling problem. It is total on well-formed\nwebsites: every nonempty presented website with exactly one root decodes\nto an instance. And well-formed graph crawling, whose yes-instances are\nexactly the website graphs with one root and a cheap crawl, is NP-complete,\nso the restriction the decoder needs loses nothing.\n-/\n\nnamespace Lax117614.CrawlDecoding\n\nopen FirstOrder FirstOrder.Language Structure\nopen Lax904597.Problems Lax904597.Classes\nopen Lax117614.WebsiteGraphs Lax117614.GraphCrawlingProblem Lax117614.CrawlInstances\n\n/-- The decoder is sound: an instance it reads off a presented website has a\ncrawl within budget exactly when the presented website graph is a\nyes-instance of GraphCrawling. -/\naxiom crawlDecode_sound : ∀ (S : FinPresentation siteGraph) (i : CrawlInstance),\n  i ∈ crawlDecode S → (ConcreteCrawlHolds i ↔ GraphCrawling (Fin S.card))\n\n/-- The decoder is total on well-formed websites: a nonempty presented website\nwith exactly one root decodes to an instance. -/\naxiom crawlDecode_total : ∀ S : FinPresentation siteGraph,\n  0 < S.card → Fin S.card ⊨ crawlWFSentence → (crawlDecode S).isSome\n\n/-- The yes-instances of WFGraphCrawling are exactly the website graphs with\nexactly one root satisfying `HasCheapCrawl`. -/\naxiom wfGraphCrawling_iff : ∀ (A : Type) [siteGraph.Structure A],\n  WFGraphCrawling A ↔ (A ⊨ crawlWFSentence ∧ HasCheapCrawl A)\n\n/-- WFGraphCrawling is NP-complete: the restriction to well-formed websites\nloses nothing. -/\naxiom wfGraphCrawling_NP_complete : NP.Complete WFGraphCrawling\n\nend Lax117614.CrawlDecoding\n",
+      "statements": [
+        {
+          "id": "Lax117614.CrawlDecoding.crawlDecode_sound",
+          "signature": "crawlDecode_sound : ∀ (S : Lax117614.CrawlInstances.FinPresentation Lax117614.WebsiteGraphs.siteGraph)\n  (i : Lax117614.CrawlInstances.CrawlInstance),\n  Option.instMembership.mem (Lax117614.CrawlInstances.crawlDecode S) i →\n    Iff (Lax117614.CrawlInstances.ConcreteCrawlHolds i)\n      (Lax117614.GraphCrawlingProblem.GraphCrawling.Holds (Fin S.card))",
+          "startLine": 26,
+          "endLine": 30,
+          "doc": "The decoder is sound: an instance it reads off a presented website has a\ncrawl within budget exactly when the presented website graph is a\nyes-instance of GraphCrawling."
+        },
+        {
+          "id": "Lax117614.CrawlDecoding.crawlDecode_total",
+          "signature": "crawlDecode_total : ∀ (S : Lax117614.CrawlInstances.FinPresentation Lax117614.WebsiteGraphs.siteGraph),\n  instLTNat.lt 0 S.card →\n    FirstOrder.Language.Sentence.Realize (Fin S.card) Lax117614.CrawlInstances.crawlWFSentence →\n      Eq (Lax117614.CrawlInstances.crawlDecode S).isSome Bool.true",
+          "startLine": 32,
+          "endLine": 35,
+          "doc": "The decoder is total on well-formed websites: a nonempty presented website\nwith exactly one root decodes to an instance."
+        },
+        {
+          "id": "Lax117614.CrawlDecoding.wfGraphCrawling_iff",
+          "signature": "wfGraphCrawling_iff : ∀ (A : Type) [inst : Lax117614.WebsiteGraphs.siteGraph.Structure A],\n  Iff (Lax117614.CrawlInstances.WFGraphCrawling.Holds A)\n    (And (FirstOrder.Language.Sentence.Realize A Lax117614.CrawlInstances.crawlWFSentence)\n      (Lax117614.GraphCrawlingProblem.HasCheapCrawl A))",
+          "startLine": 37,
+          "endLine": 40,
+          "doc": "The yes-instances of WFGraphCrawling are exactly the website graphs with\nexactly one root satisfying `HasCheapCrawl`."
+        },
+        {
+          "id": "Lax117614.CrawlDecoding.wfGraphCrawling_NP_complete",
+          "signature": "wfGraphCrawling_NP_complete : Lax904597.Classes.NP.Complete Lax117614.CrawlInstances.WFGraphCrawling",
+          "startLine": 42,
+          "endLine": 44,
+          "doc": "WFGraphCrawling is NP-complete: the restriction to well-formed websites\nloses nothing."
+        }
+      ]
+    },
+    {
+      "id": "Lax117614.CrawlEncoding",
+      "path": "concepts/Lax117614/CrawlEncoding.lean",
+      "title": "The encoding of crawling instances is faithful and size-honest",
+      "type": "theorem",
+      "description": "A packaged crawling instance has a crawl within budget exactly when the\nwebsite graph it encodes is a yes-instance of the graph crawling problem;\nthe encoded website graph has at most as many pages as the size of the\ninstance; and the size of the instance is at most $4(n+2)^2$ for $n+1$\npages. The encoding neither pads nor compresses.",
+      "imports": [
+        "Lax117614.CrawlInstances",
+        "Lax117614.GraphCrawlingProblem",
+        "Lax117614.WebsiteGraphs"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax117614.WebsiteGraphs\nimport Lax117614.GraphCrawlingProblem\nimport Lax117614.CrawlInstances\n\n/-!\n---\ntitle: The encoding of crawling instances is faithful and size-honest\ntype: theorem\n---\nA packaged crawling instance has a crawl within budget exactly when the\nwebsite graph it encodes is a yes-instance of the graph crawling problem;\nthe encoded website graph has at most as many pages as the size of the\ninstance; and the size of the instance is at most $4(n+2)^2$ for $n+1$\npages. The encoding neither pads nor compresses.\n-/\n\nnamespace Lax117614.CrawlEncoding\n\nopen FirstOrder FirstOrder.Language Structure\nopen Lax117614.WebsiteGraphs Lax117614.GraphCrawlingProblem Lax117614.CrawlInstances\n\n/-- The encoding is faithful: a packaged instance has a crawl within budget\nexactly when the website graph it encodes is a yes-instance of\nGraphCrawling. -/\naxiom crawlEncoding_faithful : ∀ i : CrawlInstance,\n  ConcreteCrawlHolds i ↔ GraphCrawling (Fin (i.n + 1))\n\n/-- No padding: the encoded structure has at most as many elements as the\ntextbook size of the instance. -/\naxiom crawlSize_ge_card : ∀ i : CrawlInstance, i.n + 1 ≤ crawlSize i\n\n/-- No compression: the textbook size of an instance is polynomial in the\nnumber of elements of the encoded structure. -/\naxiom crawlSize_le_card : ∀ i : CrawlInstance, crawlSize i ≤ 4 * (i.n + 2) ^ 2\n\nend Lax117614.CrawlEncoding\n",
+      "statements": [
+        {
+          "id": "Lax117614.CrawlEncoding.crawlEncoding_faithful",
+          "signature": "crawlEncoding_faithful : ∀ (i : Lax117614.CrawlInstances.CrawlInstance),\n  Iff (Lax117614.CrawlInstances.ConcreteCrawlHolds i)\n    (Lax117614.GraphCrawlingProblem.GraphCrawling.Holds (Fin (instHAdd.hAdd i.n 1)))",
+          "startLine": 22,
+          "endLine": 26,
+          "doc": "The encoding is faithful: a packaged instance has a crawl within budget\nexactly when the website graph it encodes is a yes-instance of\nGraphCrawling."
+        },
+        {
+          "id": "Lax117614.CrawlEncoding.crawlSize_ge_card",
+          "signature": "crawlSize_ge_card : ∀ (i : Lax117614.CrawlInstances.CrawlInstance),\n  instLENat.le (instHAdd.hAdd i.n 1) (Lax117614.CrawlInstances.crawlSize i)",
+          "startLine": 28,
+          "endLine": 30,
+          "doc": "No padding: the encoded structure has at most as many elements as the\ntextbook size of the instance."
+        },
+        {
+          "id": "Lax117614.CrawlEncoding.crawlSize_le_card",
+          "signature": "crawlSize_le_card : ∀ (i : Lax117614.CrawlInstances.CrawlInstance),\n  instLENat.le (Lax117614.CrawlInstances.crawlSize i) (instHMul.hMul 4 (instHPow.hPow (instHAdd.hAdd i.n 2) 2))",
+          "startLine": 32,
+          "endLine": 34,
+          "doc": "No compression: the textbook size of an instance is polynomial in the\nnumber of elements of the encoded structure."
+        }
+      ]
+    },
+    {
+      "id": "Lax117614.CrawlInstances",
+      "path": "concepts/Lax117614/CrawlInstances.lean",
+      "title": "Packaged crawling instances",
+      "type": "definition",
+      "description": "A packaged crawling instance is the website as a user handles it: a page\ncount, a finite set of hyperlinks, a root page, a finite set of target pages\nand a budget, clamped to the page count since a crawl never has more pages\nthan the site. Its size is the textbook one, pages, links, targets and the\nbudget in unary, and its semantics the textbook one, some set of pages\ncontaining the root and the targets, reachable from the root inside itself,\nwithin budget. The encoder computes the website graph of an instance, on its\npages as universe. A presentation is a raw relation table on a finite\nuniverse; a presented website is well-formed when it has exactly one root\npage, which a first-order sentence states, and the decoder reads a packaged\ninstance off a well-formed presented website. Well-formed graph crawling is\nthe graph crawling problem restricted to well-formed website graphs.",
+      "imports": [
+        "Lax117614.GraphCrawlingProblem",
+        "Lax117614.WebsiteGraphs"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Fintype.EquivFin",
+        "Mathlib.Data.Fintype.Lattice",
+        "Mathlib.Logic.Equiv.Fin.Basic",
+        "Mathlib.ModelTheory.Semantics",
+        "Mathlib.ModelTheory.Syntax",
+        "Mathlib.Tactic.FinCases"
+      ],
+      "sourceText": "import Mathlib.ModelTheory.Semantics\nimport Mathlib.ModelTheory.Syntax\nimport Mathlib.Data.Fintype.Lattice\nimport Mathlib.Data.Fintype.EquivFin\nimport Mathlib.Logic.Equiv.Fin.Basic\nimport Mathlib.Tactic.FinCases\nimport Lax117614.WebsiteGraphs\nimport Lax117614.GraphCrawlingProblem\n\n/-!\n---\ntitle: Packaged crawling instances\ntype: definition\n---\nA packaged crawling instance is the website as a user handles it: a page\ncount, a finite set of hyperlinks, a root page, a finite set of target pages\nand a budget, clamped to the page count since a crawl never has more pages\nthan the site. Its size is the textbook one, pages, links, targets and the\nbudget in unary, and its semantics the textbook one, some set of pages\ncontaining the root and the targets, reachable from the root inside itself,\nwithin budget. The encoder computes the website graph of an instance, on its\npages as universe. A presentation is a raw relation table on a finite\nuniverse; a presented website is well-formed when it has exactly one root\npage, which a first-order sentence states, and the decoder reads a packaged\ninstance off a well-formed presented website. Well-formed graph crawling is\nthe graph crawling problem restricted to well-formed website graphs.\n-/\n\nnamespace Lax117614.CrawlInstances\n\nopen FirstOrder\n\nopen FirstOrder.Language Structure\n\nopen Lax904597.Problems Lax904597.Classes Lax799700.Problems\nopen Lax117614.WebsiteGraphs Lax117614.GraphCrawlingProblem\n\n/-- A concretely presented finite `L`-structure: a size and a computable\nrelation table. This is the input type of decoders – the “raw bytes” a\ndecoding computation reads. -/\nstructure FinPresentation (L : Language.{0, 0}) where\n  /-- The number of elements. -/\n  card : ℕ\n  /-- The relations, as computations on `Fin card`. -/\n  relBool : ∀ {n}, L.Relations n → (Fin n → Fin card) → Bool\n\n/-- The `L`-structure a presentation presents. -/\ninstance FinPresentation.str {L : Language.{0, 0}} [L.IsRelational] (S : FinPresentation L) :\n    L.Structure (Fin S.card) where\n  funMap f := isEmptyElim f\n  RelMap R x := S.relBool R x = true\n\n/-- A packaged concrete crawling instance: `n + 1` pages, the hyperlinks, the\nroot page, the target pages, and the budget (clamped to `n + 1` by its type:\na crawl never has more pages than the site). -/\nstructure CrawlInstance where\n  /-- The page count, minus one: pages are `Fin (n + 1)`, so a website is\n  never empty. -/\n  n : ℕ\n  /-- The hyperlinks. -/\n  edges : Finset (Fin (n + 1) × Fin (n + 1))\n  /-- The root page, where crawls start. -/\n  root : Fin (n + 1)\n  /-- The target pages. -/\n  targets : Finset (Fin (n + 1))\n  /-- The budget, clamped by its type: a crawl never has more pages than the\n  site. -/\n  budget : Fin (n + 2)\n  deriving DecidableEq\n\n/-- The textbook size of a packaged instance: pages, links, targets, and the\nbudget in unary. The one audited line of the encoding. -/\ndef crawlSize : CrawlInstance → ℕ\n  | ⟨n, E, _, T, B⟩ => (n + 1) + E.card + T.card + B.1\n\n/-- The textbook semantics of a packaged instance: some set of pages\ncontaining the root and every target, each of its pages reachable from the\nroot by links inside it, within budget. -/\ndef ConcreteCrawlHolds : CrawlInstance → Prop\n  | ⟨n, E, r, T, B⟩ => ∃ S : Finset (Fin (n + 1)), r ∈ S ∧ T ⊆ S ∧\n      (∀ v ∈ S, Relation.ReflTransGen (fun a b => a ∈ S ∧ b ∈ S ∧ (a, b) ∈ E) r v) ∧\n      S.card ≤ B.1\n\n/-- The encoder, standalone and auditable: a plain `def`, so the compiler\nvouches that it computes. -/\ndef crawlRelBool (i : CrawlInstance) {n : ℕ} (R : siteGraph.Relations n) :\n    (Fin n → Fin (i.n + 1)) → Bool :=\n  match n, R with\n  | _, .edge => fun x => decide ((x 0, x 1) ∈ i.edges)\n  | _, .root => fun x => decide (x 0 = i.root)\n  | _, .target => fun x => decide (x 0 ∈ i.targets)\n  | _, .marked => fun x => decide ((x 0).1 < i.budget.1)\n\n/-- The website graph a packaged instance encodes: the pages themselves as\nuniverse, the relations the encoder's computations read as propositions. -/\ninstance crawlStructure (i : CrawlInstance) : siteGraph.Structure (Fin (i.n + 1)) where\n  funMap f := isEmptyElim f\n  RelMap R x := crawlRelBool i R x = true\n\n/-- Well-formedness of a website graph: exactly one root page. What makes an\nhonest decoder possible. -/\nnoncomputable def crawlWFSentence : siteGraph.Sentence :=\n  FirstOrder.Language.Formula.iExs (Fin 1)\n  (FirstOrder.Language.Relations.formula₁ wsRoot (FirstOrder.Language.Term.var (Sum.inr 0)) ⊓\n    FirstOrder.Language.Formula.iAlls (Fin 1)\n      ((FirstOrder.Language.Relations.formula₁ wsRoot\n          (FirstOrder.Language.Term.var (Sum.inr 0))).imp\n        (FirstOrder.Language.Term.equal (FirstOrder.Language.Term.var (Sum.inr 0))\n          (FirstOrder.Language.Term.var (Sum.inl (Sum.inr 0))))))\n\nsection Decoder\n\nvariable (S : FinPresentation siteGraph)\n\n/-- The root pages of a presented website. -/\ndef crawlRoots : Finset (Fin S.card) :=\n  Finset.univ.filter fun x => S.relBool wsRoot ![x]\n\n/-- Decode a presented website whose unique root has been found: read the\nlinks, targets and budget off the tables, the budget clamped to the page\ncount as the packaging requires. (The root's existence is what makes the\npage count positive.) -/\ndef crawlDecodeAt (r : Fin S.card) : CrawlInstance :=\n  ⟨S.card - 1,\n    Finset.univ.filter fun p : Fin (S.card - 1 + 1) × Fin (S.card - 1 + 1) =>\n      S.relBool wsEdge ![Fin.cast (Nat.succ_pred_eq_of_pos r.pos) p.1,\n        Fin.cast (Nat.succ_pred_eq_of_pos r.pos) p.2],\n    Fin.cast (Nat.succ_pred_eq_of_pos r.pos).symm r,\n    Finset.univ.filter fun x : Fin (S.card - 1 + 1) =>\n      S.relBool wsTarget ![Fin.cast (Nat.succ_pred_eq_of_pos r.pos) x],\n    ⟨min ((Finset.univ.filter fun x : Fin (S.card - 1 + 1) =>\n        S.relBool wsMarked ![Fin.cast (Nat.succ_pred_eq_of_pos r.pos) x]).card)\n      (S.card - 1 + 1), by omega⟩⟩\n\n/-- The decoder: `none` unless the site has exactly one root. -/\ndef crawlDecode : Option CrawlInstance :=\n  match (crawlRoots S).sort (· ≤ ·) with\n  | [] => none\n  | [r] => some (crawlDecodeAt S r)\n  | _ :: _ :: _ => none\n\nend Decoder\n\n/-- Graph crawling on well-formed websites: those with exactly one root, the\nones the decoder handles. -/\ndef WFGraphCrawling : DecisionProblem siteGraph :=\n  DecisionProblem.ofPred fun (A : Type) [siteGraph.Structure A] =>\n    A ⊨ crawlWFSentence ∧ HasCheapCrawl A\n\nend Lax117614.CrawlInstances\n",
+      "statements": []
+    },
+    {
+      "id": "Lax117614.GraphCrawlingInvariance",
+      "path": "concepts/Lax117614/GraphCrawlingInvariance.lean",
+      "title": "Invariance and characterization of graph crawling",
+      "type": "lemma",
+      "description": "Having a cheap crawl is invariant under isomorphism of website graphs, and\na website graph is a yes-instance of the graph crawling problem exactly\nwhen it has a cheap crawl.",
+      "imports": [
+        "Lax117614.GraphCrawlingProblem",
+        "Lax117614.WebsiteGraphs",
+        "Lax799700.Problems",
+        "Lax904597.Classes"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax904597.Classes\nimport Lax799700.Problems\nimport Lax117614.WebsiteGraphs\nimport Lax117614.GraphCrawlingProblem\n\n/-!\n---\ntitle: Invariance and characterization of graph crawling\ntype: lemma\n---\nHaving a cheap crawl is invariant under isomorphism of website graphs, and\na website graph is a yes-instance of the graph crawling problem exactly\nwhen it has a cheap crawl.\n-/\n\nnamespace Lax117614.GraphCrawlingInvariance\n\nopen FirstOrder\n\nopen FirstOrder.Language Structure\n\nopen Lax904597.Problems Lax904597.Classes Lax799700.Problems\nopen Lax117614.WebsiteGraphs Lax117614.GraphCrawlingProblem\n\n/-- The property `HasCheapCrawl` is isomorphism-invariant. -/\naxiom hasCheapCrawl_iso : ∀ {A B : Type} [siteGraph.Structure A] [siteGraph.Structure B],\n  (A ≃[siteGraph] B) → (HasCheapCrawl A ↔ HasCheapCrawl B)\n\n/-- The yes-instances of GraphCrawling are exactly the website graphs\nsatisfying `HasCheapCrawl`. -/\naxiom graphCrawling_iff : ∀ (A : Type) [siteGraph.Structure A],\n  GraphCrawling A ↔ HasCheapCrawl A\n\nend Lax117614.GraphCrawlingInvariance\n",
+      "statements": [
+        {
+          "id": "Lax117614.GraphCrawlingInvariance.graphCrawling_iff",
+          "signature": "graphCrawling_iff : ∀ (A : Type) [inst : Lax117614.WebsiteGraphs.siteGraph.Structure A],\n  Iff (Lax117614.GraphCrawlingProblem.GraphCrawling.Holds A) (Lax117614.GraphCrawlingProblem.HasCheapCrawl A)",
+          "startLine": 29,
+          "endLine": 32,
+          "doc": "The yes-instances of GraphCrawling are exactly the website graphs\nsatisfying `HasCheapCrawl`."
+        },
+        {
+          "id": "Lax117614.GraphCrawlingInvariance.hasCheapCrawl_iso",
+          "signature": "hasCheapCrawl_iso : ∀ {A B : Type} [inst : Lax117614.WebsiteGraphs.siteGraph.Structure A]\n  [inst_1 : Lax117614.WebsiteGraphs.siteGraph.Structure B] (a : Lax117614.WebsiteGraphs.siteGraph.Equiv A B),\n  Iff (Lax117614.GraphCrawlingProblem.HasCheapCrawl A) (Lax117614.GraphCrawlingProblem.HasCheapCrawl B)",
+          "startLine": 25,
+          "endLine": 27,
+          "doc": "The property `HasCheapCrawl` is isomorphism-invariant."
+        }
+      ]
+    },
+    {
+      "id": "Lax117614.GraphCrawlingNPComplete",
+      "path": "concepts/Lax117614/GraphCrawlingNPComplete.lean",
+      "title": "Graph crawling is NP-complete",
+      "type": "theorem",
+      "description": "The graph crawling problem is NP-complete, in the sense of the NP core: it\nis definable in existential second-order logic, and every problem of NP\nreduces to it by an ordered first-order reduction. This is Proposition 4 of\nGauquier, Manolescu and Senellart (EDBT 2026) at unit page costs, hardness\ncoming from Set Cover by the paper's reduction.",
+      "imports": [
+        "Lax117614.GraphCrawlingProblem",
+        "Lax117614.WebsiteGraphs",
+        "Lax799700.Problems",
+        "Lax904597.Classes"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax904597.Classes\nimport Lax799700.Problems\nimport Lax117614.WebsiteGraphs\nimport Lax117614.GraphCrawlingProblem\n\n/-!\n---\ntitle: Graph crawling is NP-complete\ntype: theorem\n---\nThe graph crawling problem is NP-complete, in the sense of the NP core: it\nis definable in existential second-order logic, and every problem of NP\nreduces to it by an ordered first-order reduction. This is Proposition 4 of\nGauquier, Manolescu and Senellart (EDBT 2026) at unit page costs, hardness\ncoming from Set Cover by the paper's reduction.\n-/\n\nnamespace Lax117614.GraphCrawlingNPComplete\n\nopen Lax904597.Classes Lax117614.GraphCrawlingProblem\n\n/-- GraphCrawling is NP-complete (Proposition 4 of the paper). -/\naxiom graphCrawling_NP_complete : NP.Complete GraphCrawling\n\nend Lax117614.GraphCrawlingNPComplete\n",
+      "statements": [
+        {
+          "id": "Lax117614.GraphCrawlingNPComplete.graphCrawling_NP_complete",
+          "signature": "graphCrawling_NP_complete : Lax904597.Classes.NP.Complete Lax117614.GraphCrawlingProblem.GraphCrawling",
+          "startLine": 22,
+          "endLine": 23,
+          "doc": "GraphCrawling is NP-complete (Proposition 4 of the paper)."
+        }
+      ]
+    },
+    {
+      "id": "Lax117614.GraphCrawlingProblem",
+      "path": "concepts/Lax117614/GraphCrawlingProblem.lean",
+      "title": "The graph crawling problem",
+      "type": "definition",
+      "description": "A crawl of a website graph is a set of pages containing a root page and\nevery target page, each of its pages reachable from the root by hyperlinks\ninside the set; this is the node set of a rooted subtree, the crawl of\nGauquier, Manolescu and Senellart (EDBT 2026). A website graph has a cheap\ncrawl when it is finite and some crawl has at most as many pages as the\nmarked set has elements, the budget. The graph crawling problem is the\ndecision problem on website graphs whose yes-instances are the website\ngraphs isomorphic to one with a cheap crawl.",
+      "imports": [
+        "Lax117614.WebsiteGraphs",
+        "Lax799700.Problems",
+        "Lax904597.Classes"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Set.Card",
+        "Mathlib.Data.Set.Finite.Lemmas",
+        "Mathlib.ModelTheory.Semantics",
+        "Mathlib.SetTheory.Cardinal.Finite"
+      ],
+      "sourceText": "import Mathlib.SetTheory.Cardinal.Finite\nimport Mathlib.ModelTheory.Semantics\nimport Mathlib.Data.Set.Card\nimport Mathlib.Data.Set.Finite.Lemmas\nimport Lax904597.Classes\nimport Lax799700.Problems\nimport Lax117614.WebsiteGraphs\n\n/-!\n---\ntitle: The graph crawling problem\ntype: definition\n---\nA crawl of a website graph is a set of pages containing a root page and\nevery target page, each of its pages reachable from the root by hyperlinks\ninside the set; this is the node set of a rooted subtree, the crawl of\nGauquier, Manolescu and Senellart (EDBT 2026). A website graph has a cheap\ncrawl when it is finite and some crawl has at most as many pages as the\nmarked set has elements, the budget. The graph crawling problem is the\ndecision problem on website graphs whose yes-instances are the website\ngraphs isomorphic to one with a cheap crawl.\n-/\n\nnamespace Lax117614.GraphCrawlingProblem\n\nopen FirstOrder\n\nopen FirstOrder.Language Structure\n\nopen Lax904597.Problems Lax904597.Classes Lax799700.Problems Lax117614.WebsiteGraphs\n\nsection Reachability\n\nvariable {A : Type}\n\n/-- The directed step available inside a chosen set: an edge whose two\nendpoints are both chosen. -/\ndef DiLink (Adjp : A → A → Prop) (S : A → Prop) (a b : A) : Prop :=\n  S a ∧ S b ∧ Adjp a b\n\n/-- Every member of `S` is reachable from `r` by directed steps inside `S` –\nthe shape of an `r`-rooted subtree with node set `S`, reachability being all a\nbreadth-first traversal needs to assemble the tree. -/\ndef ReachesAllOn (Adjp : A → A → Prop) (r : A) (S : A → Prop) : Prop :=\n  ∀ x, S x → Relation.ReflTransGen (DiLink Adjp S) r x\n\nend Reachability\n\nsection Generic\n\nvariable {A : Type}\n\n/-- Some marked root admits a crawl: a set of pages containing the root and\nevery target, entirely reachable from the root inside itself, of size (the\npaper's total cost, at unit page costs) at most the number encoded by the\nmarked set. -/\ndef CrawlOn (Adjp : A → A → Prop) (Rp Tp Kp : A → Prop) : Prop :=\n  ∃ r, Rp r ∧ ∃ S : A → Prop, S r ∧ (∀ x, Tp x → S x) ∧ ReachesAllOn Adjp r S ∧\n    {x | S x}.ncard ≤ {x | Kp x}.ncard\n\nend Generic\n\nsection Problem\n\nvariable (A : Type) [siteGraph.Structure A]\n\n/-- A website graph admits a crawl within budget: a set of pages containing\nthe marked root and every target, reachable from the root inside itself, with\nat most as many pages as the marked set has elements. (Finiteness of the\nuniverse is part of the property: cardinality thresholds are only meaningful\non finite structures.) -/\ndef HasCheapCrawl : Prop :=\n  Finite A ∧ CrawlOn (WSEdge (A := A)) WSRoot WSTarget WSMarked\n\nend Problem\n\n/-- GRAPH CRAWLING, decision variant at unit page costs: does the website\ngraph satisfy `HasCheapCrawl`? -/\ndef GraphCrawling : DecisionProblem siteGraph :=\n  DecisionProblem.ofPred HasCheapCrawl\n\nend Lax117614.GraphCrawlingProblem\n",
+      "statements": []
+    },
+    {
+      "id": "Lax117614.WebsiteGraphs",
+      "path": "concepts/Lax117614/WebsiteGraphs.lean",
+      "title": "Website graphs",
+      "type": "definition",
+      "description": "A website graph is a finite structure with a binary relation, the\nhyperlinks between pages, and three unary relations: the root pages, the\ntarget pages, and a marked set of pages whose cardinality is the crawling\nbudget, in unary representation. This is the website of Gauquier, Manolescu\nand Senellart (EDBT 2026) at unit page costs, the budget being then a\nnumber of pages.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.Fintype.Lattice",
+        "Mathlib.ModelTheory.Semantics",
+        "Mathlib.ModelTheory.Syntax"
+      ],
+      "sourceText": "import Mathlib.ModelTheory.Semantics\nimport Mathlib.ModelTheory.Syntax\nimport Mathlib.Data.Fintype.Lattice\n\n/-!\n---\ntitle: Website graphs\ntype: definition\n---\nA website graph is a finite structure with a binary relation, the\nhyperlinks between pages, and three unary relations: the root pages, the\ntarget pages, and a marked set of pages whose cardinality is the crawling\nbudget, in unary representation. This is the website of Gauquier, Manolescu\nand Senellart (EDBT 2026) at unit page costs, the budget being then a\nnumber of pages.\n-/\n\nnamespace Lax117614.WebsiteGraphs\n\nopen FirstOrder\n\nopen FirstOrder.Language Structure\n\n/-- The relation symbols of the language. -/\ninductive siteGraphRel : ℕ → Type where\n/-- `edge a b`: a hyperlink from page `a` to page `b`. -/\n  | edge : siteGraphRel 2\n/-- `root a`: the page `a` is the crawl's starting point. -/\n  | root : siteGraphRel 1\n/-- `target a`: the page `a` must be crawled. -/\n  | target : siteGraphRel 1\n/-- `marked a`: the page `a` belongs to the marked set carrying the\n  budget. -/\n  | marked : siteGraphRel 1\n  deriving DecidableEq\n\n/-- The relational language of website graphs: directed links, a root, a set\nof target pages, and a marked set whose cardinality is the crawling budget. -/\ndef siteGraph : FirstOrder.Language :=\n  ⟨fun _ => Empty, siteGraphRel⟩\n\ninstance instIsRelationalSiteGraph : FirstOrder.Language.IsRelational siteGraph := fun _ =>\n  (inferInstance : IsEmpty Empty)\n\n/-- `edge a b`: a hyperlink from page `a` to page `b`. -/\nabbrev wsEdge : siteGraph.Relations 2 :=\n  .edge\n\n/-- `root a`: the page `a` is the crawl's starting point. -/\nabbrev wsRoot : siteGraph.Relations 1 :=\n  .root\n\n/-- `target a`: the page `a` must be crawled. -/\nabbrev wsTarget : siteGraph.Relations 1 :=\n  .target\n\n/-- `marked a`: the page `a` belongs to the marked set carrying the\n  budget. -/\nabbrev wsMarked : siteGraph.Relations 1 :=\n  .marked\n\nsection Shorthands\n\nvariable {A : Type} [siteGraph.Structure A]\n\n/-- A hyperlink in a website graph. -/\ndef WSEdge (a b : A) : Prop := RelMap wsEdge ![a, b]\n\n/-- Being the root of a website graph. -/\ndef WSRoot (a : A) : Prop := RelMap wsRoot ![a]\n\n/-- Being a target page. -/\ndef WSTarget (a : A) : Prop := RelMap wsTarget ![a]\n\n/-- Belonging to the marked set carrying the budget. -/\ndef WSMarked (a : A) : Prop := RelMap wsMarked ![a]\n\nend Shorthands\n\nend Lax117614.WebsiteGraphs\n",
+      "statements": []
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax117614Proofs.Bridge.crawlDecode_sound",
+      "path": "proofs/Lax117614Proofs/Bridge.lean",
+      "conclusion": "Lax117614.CrawlDecoding.crawlDecode_sound",
+      "assumptions": [],
+      "description": "The library's soundness theorem for its decoder, the structure a presentation\npresents being the concept's."
+    },
+    {
+      "id": "Lax117614Proofs.Bridge.crawlDecode_total",
+      "path": "proofs/Lax117614Proofs/Bridge.lean",
+      "conclusion": "Lax117614.CrawlDecoding.crawlDecode_total",
+      "assumptions": [],
+      "description": "The library's totality theorem for its decoder."
+    },
+    {
+      "id": "Lax117614Proofs.Bridge.crawlEncoding_faithful",
+      "path": "proofs/Lax117614Proofs/Bridge.lean",
+      "conclusion": "Lax117614.CrawlEncoding.crawlEncoding_faithful",
+      "assumptions": [],
+      "description": "The library's faithfulness theorem for its bundled encoding, whose structure\non the pages of an instance is the concept's."
+    },
+    {
+      "id": "Lax117614Proofs.Bridge.crawlSize_ge_card",
+      "path": "proofs/Lax117614Proofs/Bridge.lean",
+      "conclusion": "Lax117614.CrawlEncoding.crawlSize_ge_card",
+      "assumptions": [],
+      "description": "The page count is one of the summands of the textbook size."
+    },
+    {
+      "id": "Lax117614Proofs.Bridge.crawlSize_le_card",
+      "path": "proofs/Lax117614Proofs/Bridge.lean",
+      "conclusion": "Lax117614.CrawlEncoding.crawlSize_le_card",
+      "assumptions": [],
+      "description": "The bound the library discharges when it bundles the encoding: links are at\nmost quadratic in the pages, targets and the clamped budget at most linear."
+    },
+    {
+      "id": "Lax117614Proofs.Bridge.graphCrawling_iff",
+      "path": "proofs/Lax117614Proofs/Bridge.lean",
+      "conclusion": "Lax117614.GraphCrawlingInvariance.graphCrawling_iff",
+      "assumptions": [],
+      "description": "The problem given by an invariant property holds exactly where the property\ndoes."
+    },
+    {
+      "id": "Lax117614Proofs.Bridge.graphCrawling_NP_complete",
+      "path": "proofs/Lax117614Proofs/Bridge.lean",
+      "conclusion": "Lax117614.GraphCrawlingNPComplete.graphCrawling_NP_complete",
+      "assumptions": [
+        "Lax799700.SetFamily.setCover_NP_complete",
+        "Lax799700.SetFamily.setCover_iff",
+        "Lax904597.NPClass.NP_mem_congr_finite",
+        "Lax904597.NPClass.cofinalHard_of_orderedReduction"
+      ],
+      "description": "Membership from the library's existential second-order definition of graph\ncrawling; hardness from the library's ordered first-order reduction out of\nSet Cover, which is NP-hard by the catalog's statement for it. Both are\ntransported to the concept's problem along the agreements."
+    },
+    {
+      "id": "Lax117614Proofs.Bridge.hasCheapCrawl_iso",
+      "path": "proofs/Lax117614Proofs/Bridge.lean",
+      "conclusion": "Lax117614.GraphCrawlingInvariance.hasCheapCrawl_iso",
+      "assumptions": [],
+      "description": "The library's invariance theorem for HasCheapCrawl."
+    },
+    {
+      "id": "Lax117614Proofs.Bridge.wfGraphCrawling_iff",
+      "path": "proofs/Lax117614Proofs/Bridge.lean",
+      "conclusion": "Lax117614.CrawlDecoding.wfGraphCrawling_iff",
+      "assumptions": [],
+      "description": "The problem given by an invariant property holds exactly where the property\ndoes."
+    },
+    {
+      "id": "Lax117614Proofs.Bridge.wfGraphCrawling_NP_complete",
+      "path": "proofs/Lax117614Proofs/Bridge.lean",
+      "conclusion": "Lax117614.CrawlDecoding.wfGraphCrawling_NP_complete",
+      "assumptions": [
+        "Lax799700.SetFamily.setCover_NP_complete",
+        "Lax799700.SetFamily.setCover_iff",
+        "Lax904597.NPClass.NP_mem_congr_finite",
+        "Lax904597.NPClass.cofinalHard_of_orderedReduction"
+      ],
+      "description": "Membership from the library's existential second-order definition of graph\ncrawling, strengthened by the first-order well-formedness sentence; hardness\nfrom the library's ordered first-order reduction out of Set Cover, whose image\nis well-formed, Set Cover being NP-hard by the catalog's statement for it.\nBoth are transported to the concept's problem along the agreements."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "f3557c6c6a5bda70dedb27385dacd66991a35fddb663b567abeea374729f4296",
+    "sourceCommit": "19c18a9d2d1f1c8ce11c5c7a5cf2707b0302f0bf",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax117614/CrawlDecoding.c",
+        "bytes": 2071,
+        "sha256": "5f9ecafc55655aa1512ffd53666a9b3219d773a573f8d1ba70e53427071bdd67"
+      },
+      {
+        "path": "concepts/ir/Lax117614/CrawlDecoding.c.hash",
+        "bytes": 16,
+        "sha256": "6311b07a9c23bea9af3e701e62fc1512a1e070794f9e8f475a5fa7e30db97fd0"
+      },
+      {
+        "path": "concepts/ir/Lax117614/CrawlEncoding.c",
+        "bytes": 1849,
+        "sha256": "f67a0a476f22448d41b65754bd441f9e4a76ea496bdacb13b6c7dc24a4b35dbb"
+      },
+      {
+        "path": "concepts/ir/Lax117614/CrawlEncoding.c.hash",
+        "bytes": 16,
+        "sha256": "859291e27e89364bda19c94495a14dc5c0e2aa83a54125bdd65246e1ff845837"
+      },
+      {
+        "path": "concepts/ir/Lax117614/CrawlInstances.c",
+        "bytes": 45504,
+        "sha256": "307c09c4dfa031f5eb1c4f5cc24ba3ede2a6713a42c81d8af8a7f3227f188e34"
+      },
+      {
+        "path": "concepts/ir/Lax117614/CrawlInstances.c.hash",
+        "bytes": 16,
+        "sha256": "30a09a4f3c4f6cd41666a96074ca43bff657f27820cf29e2f7fedc34e9f2ce1d"
+      },
+      {
+        "path": "concepts/ir/Lax117614/GraphCrawlingInvariance.c",
+        "bytes": 2073,
+        "sha256": "b10a7616b8db0d8267ab3e6e1b8d1b4c9243fedc5906d43bfa2609e7a3c35d99"
+      },
+      {
+        "path": "concepts/ir/Lax117614/GraphCrawlingInvariance.c.hash",
+        "bytes": 16,
+        "sha256": "6f3bf4c3741199c6da5d36cb118cbe3bcd2ddd03e58b30b506814e193772b8a5"
+      },
+      {
+        "path": "concepts/ir/Lax117614/GraphCrawlingNPComplete.c",
+        "bytes": 2073,
+        "sha256": "285405198bc7c41a71153449d7a854d0bb5701a29198433da4c92d44671fae70"
+      },
+      {
+        "path": "concepts/ir/Lax117614/GraphCrawlingNPComplete.c.hash",
+        "bytes": 16,
+        "sha256": "ba26d9065d87946698fd84b6bf391c155bdb3db19e5976958b4d5816cbddca8a"
+      },
+      {
+        "path": "concepts/ir/Lax117614/GraphCrawlingProblem.c",
+        "bytes": 3275,
+        "sha256": "a89f62598981a13990da393c845378d2098d0c450a4a815081613175f0a20844"
+      },
+      {
+        "path": "concepts/ir/Lax117614/GraphCrawlingProblem.c.hash",
+        "bytes": 16,
+        "sha256": "56f164fa1cec5f8aa3ed021ada5ebe88fb06255b65cea628b9a91d23484a933f"
+      },
+      {
+        "path": "concepts/ir/Lax117614/WebsiteGraphs.c",
+        "bytes": 19355,
+        "sha256": "61691ec24c9a0afcd791d6d47b22de1846cfb4d015fe4fcb63ec6079950b93c0"
+      },
+      {
+        "path": "concepts/ir/Lax117614/WebsiteGraphs.c.hash",
+        "bytes": 16,
+        "sha256": "6ceee737d3da3f5762d941980e1cca820e1e0f0863a8d3d6435e43918c4cc9df"
+      },
+      {
+        "path": "concepts/ir/Lax117614.c",
+        "bytes": 2841,
+        "sha256": "3f19684a402942db278768b6d8490acccfe282b6cd92d4009283074b1653f799"
+      },
+      {
+        "path": "concepts/ir/Lax117614.c.hash",
+        "bytes": 16,
+        "sha256": "82801890062ee780019f978a892f6404d2786679298a603edec89a2c69c570da"
+      },
+      {
+        "path": "concepts/lib/Lax117614/CrawlDecoding.ilean",
+        "bytes": 4571,
+        "sha256": "bcec7376e21e906392b701fd673e6b11ed5134cb4374ef6225cfd2e3a56ca348"
+      },
+      {
+        "path": "concepts/lib/Lax117614/CrawlDecoding.ilean.hash",
+        "bytes": 16,
+        "sha256": "4a4f75fbdb4d4a958870a28f04b132863164d97ec5a79bb9c74647300e7ba1f3"
+      },
+      {
+        "path": "concepts/lib/Lax117614/CrawlDecoding.olean",
+        "bytes": 15816,
+        "sha256": "8474306977397d8e7953e258d6fb92f8d7f3f7e5aa03e58ffc33346e20007f7d"
+      },
+      {
+        "path": "concepts/lib/Lax117614/CrawlDecoding.olean.hash",
+        "bytes": 16,
+        "sha256": "53b982ab887895c020985319f515129828b816be1dd58cdfc45b07a98d8b89af"
+      },
+      {
+        "path": "concepts/lib/Lax117614/CrawlDecoding.trace",
+        "bytes": 2854,
+        "sha256": "e37e1e4e39e26cbbca2f90d912235cd4faa02791cf5a06aa0cbbab293460c562"
+      },
+      {
+        "path": "concepts/lib/Lax117614/CrawlEncoding.ilean",
+        "bytes": 2394,
+        "sha256": "d017c0e4d628edee44170efda9c78e9727213367c34b13b6b0c61ea8048d84d7"
+      },
+      {
+        "path": "concepts/lib/Lax117614/CrawlEncoding.ilean.hash",
+        "bytes": 16,
+        "sha256": "ada4ec26fe6144e2e80267d5f5da22c7b17671f0a930d866b65f5b62572db6da"
+      },
+      {
+        "path": "concepts/lib/Lax117614/CrawlEncoding.olean",
+        "bytes": 12680,
+        "sha256": "4814643bb982e0725e59aade8357b53e779bac76af47838655348df057c5a4ee"
+      },
+      {
+        "path": "concepts/lib/Lax117614/CrawlEncoding.olean.hash",
+        "bytes": 16,
+        "sha256": "06e8a9445649b4f859441db51f51e39f62373270e9fd85529c931b2132f0a939"
+      },
+      {
+        "path": "concepts/lib/Lax117614/CrawlEncoding.trace",
+        "bytes": 2714,
+        "sha256": "7aa3cc2907d0b578edffbda6f664a3e46ea0225a522d1e357fc8fd407101ddc5"
+      },
+      {
+        "path": "concepts/lib/Lax117614/CrawlInstances.ilean",
+        "bytes": 18420,
+        "sha256": "5a9b6df79a11dece2b8e3526751a35a1ccfc98d279666d64a586963646df506f"
+      },
+      {
+        "path": "concepts/lib/Lax117614/CrawlInstances.ilean.hash",
+        "bytes": 16,
+        "sha256": "4cb6be51af6a500b2a8c39c8cde12526b263082fb70145f917f2f86cc4588795"
+      },
+      {
+        "path": "concepts/lib/Lax117614/CrawlInstances.olean",
+        "bytes": 329136,
+        "sha256": "16888163b49262b9049461f3eb160fb27fbcb255b5275dcf4625e52ccd164ce8"
+      },
+      {
+        "path": "concepts/lib/Lax117614/CrawlInstances.olean.hash",
+        "bytes": 16,
+        "sha256": "d0f8d6f7c47b568fbc32217690e6f539e6186dcc689c584ebb1983ed6942c4e1"
+      },
+      {
+        "path": "concepts/lib/Lax117614/CrawlInstances.trace",
+        "bytes": 3566,
+        "sha256": "a765df9d7045316aa6e15cb17849ca231d1a2c4d622b605273842fa27a5b5e78"
+      },
+      {
+        "path": "concepts/lib/Lax117614/GraphCrawlingInvariance.ilean",
+        "bytes": 2125,
+        "sha256": "caf97fedb2d5ee53ab2ddf239b249c3e1aa193c830bcd184587f923e3757d48c"
+      },
+      {
+        "path": "concepts/lib/Lax117614/GraphCrawlingInvariance.ilean.hash",
+        "bytes": 16,
+        "sha256": "2f3b6093228e975af9e97f8dfb8bfb7ac95297c460d680de186ecfa48c70c7f4"
+      },
+      {
+        "path": "concepts/lib/Lax117614/GraphCrawlingInvariance.olean",
+        "bytes": 9624,
+        "sha256": "669af8e4d61156a9c851607c32ac4213aafd6464a190a3ebb0209136118d5711"
+      },
+      {
+        "path": "concepts/lib/Lax117614/GraphCrawlingInvariance.olean.hash",
+        "bytes": 16,
+        "sha256": "0fe3b2d6d56eaca08b95a6dfeb3b96f3266ffda9abc14200bfb169d22af00644"
+      },
+      {
+        "path": "concepts/lib/Lax117614/GraphCrawlingInvariance.trace",
+        "bytes": 2905,
+        "sha256": "cc79da10e3275cd1832569a298893985e37ace7de06c0faa4ae35db47e0c2e76"
+      },
+      {
+        "path": "concepts/lib/Lax117614/GraphCrawlingNPComplete.ilean",
+        "bytes": 1188,
+        "sha256": "89385458d055d1a89c5b25b33762393efc2413882976c70e90d55671356067f8"
+      },
+      {
+        "path": "concepts/lib/Lax117614/GraphCrawlingNPComplete.ilean.hash",
+        "bytes": 16,
+        "sha256": "d33ce2e0399c8015aceb9a7b24d80fbe65577964e03fbc50474313b2df396de9"
+      },
+      {
+        "path": "concepts/lib/Lax117614/GraphCrawlingNPComplete.olean",
+        "bytes": 5784,
+        "sha256": "4a2c755996b7cfa2b1fdb62d4c92eb685e05fab6b1cf9542f1126368bcf00bf3"
+      },
+      {
+        "path": "concepts/lib/Lax117614/GraphCrawlingNPComplete.olean.hash",
+        "bytes": 16,
+        "sha256": "aa299f57f1a8a373e13f80ca78d9af34d9ad4a012d68518817ddb41dca2c0d10"
+      },
+      {
+        "path": "concepts/lib/Lax117614/GraphCrawlingNPComplete.trace",
+        "bytes": 2905,
+        "sha256": "704a4ee094ac9f35a861be9cbc1d83d2a8665fab1b5aff28febd0ae9220c4ce8"
+      },
+      {
+        "path": "concepts/lib/Lax117614/GraphCrawlingProblem.ilean",
+        "bytes": 3604,
+        "sha256": "ef4e7997c5acc6b365c40fe850453ea80277c37c9f714bb0b130368faed3f073"
+      },
+      {
+        "path": "concepts/lib/Lax117614/GraphCrawlingProblem.ilean.hash",
+        "bytes": 16,
+        "sha256": "7fc73fdf8658fd65080739bbc7c388a9238a76ca102470995a07a50ebb0bce89"
+      },
+      {
+        "path": "concepts/lib/Lax117614/GraphCrawlingProblem.olean",
+        "bytes": 21488,
+        "sha256": "c4bf082764d14253816b75406c1c48283964b9b4955967b592b5b719e0e7f338"
+      },
+      {
+        "path": "concepts/lib/Lax117614/GraphCrawlingProblem.olean.hash",
+        "bytes": 16,
+        "sha256": "a89408325c8e12bbaf54c9c7a9679804d98287b905bf33acbdab068aaef4a9b4"
+      },
+      {
+        "path": "concepts/lib/Lax117614/GraphCrawlingProblem.trace",
+        "bytes": 3382,
+        "sha256": "603edfdd32e7cbf37f9a39e4ea9c23b0a0b99aecf9c7607c2217707df3329cc0"
+      },
+      {
+        "path": "concepts/lib/Lax117614/WebsiteGraphs.ilean",
+        "bytes": 5847,
+        "sha256": "0424166ecd8e62780e9973197087a27b3c6f87b51bf814383af3ca8b3f64aa85"
+      },
+      {
+        "path": "concepts/lib/Lax117614/WebsiteGraphs.ilean.hash",
+        "bytes": 16,
+        "sha256": "ce1d55aad6ce64d5201dba8b6bc2865794b34209a86daa59ed8255727dae6e9e"
+      },
+      {
+        "path": "concepts/lib/Lax117614/WebsiteGraphs.olean",
+        "bytes": 123904,
+        "sha256": "780a3c3e8018016c232762e33f23eca372455b4e6e5e08a750e241d8cacb32b6"
+      },
+      {
+        "path": "concepts/lib/Lax117614/WebsiteGraphs.olean.hash",
+        "bytes": 16,
+        "sha256": "2d748f2ea9085e10e87dd7e63a49d3aa10af230c4ab36a9cb17e814ab0adc1e6"
+      },
+      {
+        "path": "concepts/lib/Lax117614/WebsiteGraphs.trace",
+        "bytes": 2726,
+        "sha256": "66fd17d648c24980abde3798d60544a888e0dba73377cab9ff1d779550d58de0"
+      },
+      {
+        "path": "concepts/lib/Lax117614.ilean",
+        "bytes": 429,
+        "sha256": "d7c3cacf403a8ccdb04aad072ae6af6d4158d931e9c8c426c0c899c887d8d2bf"
+      },
+      {
+        "path": "concepts/lib/Lax117614.ilean.hash",
+        "bytes": 16,
+        "sha256": "a5de96601d5632bfc2f88414c50623451a06570a8b59323544cdd1fc076a08a6"
+      },
+      {
+        "path": "concepts/lib/Lax117614.olean",
+        "bytes": 2224,
+        "sha256": "ef1c47e97d50e01b9487cba9a8a427995439f0944e736021bf19c663b3a9dcd5"
+      },
+      {
+        "path": "concepts/lib/Lax117614.olean.hash",
+        "bytes": 16,
+        "sha256": "68cb6730895bf6cd1d30a767fc2d6d4b730e04cf932c6a686f8aa694d42c0bc3"
+      },
+      {
+        "path": "concepts/lib/Lax117614.trace",
+        "bytes": 3289,
+        "sha256": "fea8a1489f82bc9202d0b5804fd0a437d98aad81486088f75a1abe65151385d4"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3581,
+        "sha256": "93e44230487bab8b68bd0a42338059e67ff4974e9ecc3c834cc97e7d8489b0f5"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 616,
+        "sha256": "10e18bea851a65f20b64315c0ee286494cd3e22f6304afcd3f9eb5b37277097c"
+      },
+      {
+        "path": "concepts/package/Lax117614/CrawlDecoding.lean",
+        "bytes": 1967,
+        "sha256": "2fe126a19d2b7a1a893297c24173bc33d062dc5e43857aa86dd2c943aa3f538b"
+      },
+      {
+        "path": "concepts/package/Lax117614/CrawlEncoding.lean",
+        "bytes": 1391,
+        "sha256": "82332bd705427c28a1b7e501ab0dc8c38507e69cce7a72f76d8615442e0d158c"
+      },
+      {
+        "path": "concepts/package/Lax117614/CrawlInstances.lean",
+        "bytes": 6443,
+        "sha256": "658c868bbfc4ffb9e9c46f93811ec2c25a0495b3cf86e6d361ea37c9fcf19705"
+      },
+      {
+        "path": "concepts/package/Lax117614/GraphCrawlingInvariance.lean",
+        "bytes": 1064,
+        "sha256": "9ff4497f48824c0e8984228f46a1bc16894a9af7e23a46291f950bb683abd725"
+      },
+      {
+        "path": "concepts/package/Lax117614/GraphCrawlingNPComplete.lean",
+        "bytes": 799,
+        "sha256": "469bda2483ef7e9830edf1ec9c94aef22aa9ad073a8f0affce96b14872af68f3"
+      },
+      {
+        "path": "concepts/package/Lax117614/GraphCrawlingProblem.lean",
+        "bytes": 2878,
+        "sha256": "b069e858a3250e1ea11f6192b5fec3b77f3c0bb3a096e0e7554bd0283553ecbe"
+      },
+      {
+        "path": "concepts/package/Lax117614/WebsiteGraphs.lean",
+        "bytes": 2397,
+        "sha256": "2228cef89d45a98afbd9395d7c0147affeaf9c27c6b4aee657379cd1037816ca"
+      },
+      {
+        "path": "concepts/package/Lax117614.lean",
+        "bytes": 245,
+        "sha256": "16a8ce86b166d9bdff8d98b936ed1eadd8d373664e823542a02fe0b35247e30e"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "paper/ACM-Reference-Format.bst",
+        "bytes": 84856,
+        "sha256": "0590db3b8d255a3af91982ab710f3ace5fcaa52434020c9af8a4f141b00b68f3"
+      },
+      {
+        "path": "paper/acmart.cls",
+        "bytes": 96943,
+        "sha256": "077e16177b3f9cf518778b072e235560b7c7ee980063045fcba2727cc66746ba"
+      },
+      {
+        "path": "paper/approach_rl.tex",
+        "bytes": 22491,
+        "sha256": "38a3d53c92037b44cd45b9f455e7b0c0d333ad4adf1d63c1b580979f6b4f5010"
+      },
+      {
+        "path": "paper/apxproof.sty",
+        "bytes": 18261,
+        "sha256": "cc94a64afc98382620cf3a2a19dc9ee6926d6650b80cc40c1850b8de991570df"
+      },
+      {
+        "path": "paper/artifact_availability.tex",
+        "bytes": 2462,
+        "sha256": "952a8d5f5d79095446127dc1befdc73c0b2077043c0888c34fdad56f98b21ae8"
+      },
+      {
+        "path": "paper/conclusion.tex",
+        "bytes": 1148,
+        "sha256": "75cc0b30c1a1aa0657fbd8103731aa87bd7b2e5fb58c59a472a9a35267e5902f"
+      },
+      {
+        "path": "paper/exp-baselines.tex",
+        "bytes": 5979,
+        "sha256": "64ab984e63e965ac8ed82d7e5c22c826e2cf21784a0aa0dd1423fe5448862820"
+      },
+      {
+        "path": "paper/exp-comparison_baselines.tex",
+        "bytes": 16456,
+        "sha256": "25fd33f3d1b0783eab07ce4bec6178152023c8e79b35789e23af81a7a6c7a10e"
+      },
+      {
+        "path": "paper/exp-crawl-modalities.tex",
+        "bytes": 3018,
+        "sha256": "b9bbbc610b7da75e62106cf95c5222788b1833f9a4ea7cf84480e6def9b31e02"
+      },
+      {
+        "path": "paper/exp-hyperparameters.tex",
+        "bytes": 22119,
+        "sha256": "38fe405a32e33060e160a9ac15f5d667f5f28b19bf3e3a2235e9f3cab95cd0cb"
+      },
+      {
+        "path": "paper/exp-sb_algorithm.tex",
+        "bytes": 20283,
+        "sha256": "77dc438dbf2842ad5490fec663c24cd522af50c4ea4f9cba2380418ccb215ed7"
+      },
+      {
+        "path": "paper/exp-se.tex",
+        "bytes": 2222,
+        "sha256": "f7b512269428514eebafc49ce96fda43dc0f179d2cd8118d2dc99c38c65fe3ea"
+      },
+      {
+        "path": "paper/exp-websites.tex",
+        "bytes": 10160,
+        "sha256": "42e391c2f1b5ac968465215412b2c598daa8be1ff67faeb5c87cf59d7645fee6"
+      },
+      {
+        "path": "paper/experiments.tex",
+        "bytes": 891,
+        "sha256": "a4c2a95ee261f83e3f562528bf2068e62f3efe14171a5f18188b95ab049ff953"
+      },
+      {
+        "path": "paper/extensions.tex",
+        "bytes": 1236,
+        "sha256": "6bc009a9b71328126d9d7d29294cec0a427356e902f9da1f1e073326b19aca1b"
+      },
+      {
+        "path": "paper/graph_to_data_crawling.tex",
+        "bytes": 7453,
+        "sha256": "b3227f821935ebd85113abd13d91e62941ec732c5de879224e2a93e8f9dc799f"
+      },
+      {
+        "path": "paper/introduction.tex",
+        "bytes": 7935,
+        "sha256": "a848edf9497b727dcb5c72042255c5349fb03618f99c0b2883c73e53076c3142"
+      },
+      {
+        "path": "paper/keywords_bilstm_tres.tex",
+        "bytes": 888,
+        "sha256": "931a205bb4428ac1949d54f4a70f1427500a39eedae911a76d815433a99f50ef"
+      },
+      {
+        "path": "paper/main.bib",
+        "bytes": 44988,
+        "sha256": "0302de405c3a0abcac2d38972d6898347ddfac434050cb570a73ffdc6419e4f7"
+      },
+      {
+        "path": "paper/main.tex",
+        "bytes": 5538,
+        "sha256": "977d1961bb85638c079485cd6958abfa763d19f77ae12aa7ed4cfb025c0a6102"
+      },
+      {
+        "path": "paper/plots/alpha/be.pdf",
+        "bytes": 289380,
+        "sha256": "3212a72a6f1a81855a6a03aa88092cd316dc39bf029387731bb9bee83a2942aa"
+      },
+      {
+        "path": "paper/plots/alpha/cl.pdf",
+        "bytes": 280843,
+        "sha256": "a6460edf0419f5fb07bc5845786b5c6fa3aaace906166eb0e051b12f70fffad8"
+      },
+      {
+        "path": "paper/plots/alpha/cn.pdf",
+        "bytes": 289334,
+        "sha256": "6906ff176a4d10c87f63c1ac83fa25fb6d722bf3f25bc269bb0148e1bd431f01"
+      },
+      {
+        "path": "paper/plots/alpha/ed.pdf",
+        "bytes": 288262,
+        "sha256": "bc9fa097fbe50e492acf77bd7c2d0b121520882260010d57f9bfbdb2b2b94074"
+      },
+      {
+        "path": "paper/plots/alpha/in.pdf",
+        "bytes": 211851,
+        "sha256": "8e59c737a2c640cee0d4a1720a2f33dc45e97f35e6e87a0f7327a1485364886f"
+      },
+      {
+        "path": "paper/plots/alpha/is.pdf",
+        "bytes": 262842,
+        "sha256": "912b1ba1f710f626642effcd6f2bde1bc41ee7b8789bdae12091a79e84d28097"
+      },
+      {
+        "path": "paper/plots/alpha/ju.pdf",
+        "bytes": 286658,
+        "sha256": "048a5b2fa5e5596acbfd3504ae5c2edf94400251eace74fabc39f8828ee46496"
+      },
+      {
+        "path": "paper/plots/alpha/legend.pdf",
+        "bytes": 12343,
+        "sha256": "37edfa2ec3e051c43b124cd4d193bcf763de071f2f9798ee17184c6f3b38ee78"
+      },
+      {
+        "path": "paper/plots/alpha/nc.pdf",
+        "bytes": 285934,
+        "sha256": "2a3fddc3e1cd8c6e75a394e803a864f0e96e4dddddcdd39c922d650b0f7fdbbe"
+      },
+      {
+        "path": "paper/plots/alpha/oe.pdf",
+        "bytes": 321470,
+        "sha256": "fab514d1ca9a5fd88bca1b04148e6c441dfec0a25607213448113f27a5ec34e9"
+      },
+      {
+        "path": "paper/plots/alpha/ok.pdf",
+        "bytes": 273198,
+        "sha256": "42b22807c0b097e90c2896dfb50d34557948617f7460d35e1d04b2b1da05d307"
+      },
+      {
+        "path": "paper/plots/alpha/qa.pdf",
+        "bytes": 243815,
+        "sha256": "03fc9675e6dec5497fc0e75610bcc121b4b7d2cd94062bb61ccba981a4acf3fc"
+      },
+      {
+        "path": "paper/plots/early_stopping/in.pdf",
+        "bytes": 95820,
+        "sha256": "fe170ed2aba7c7403346f8353f327fbd42b9942baaae736776f4bc054c36de22"
+      },
+      {
+        "path": "paper/plots/early_stopping/ju.pdf",
+        "bytes": 135672,
+        "sha256": "d1d57b6613f279e841440fa19ca72f2ecbe07d7d80010edaec439b9d35d1271d"
+      },
+      {
+        "path": "paper/plots/example_dom_path_vector_computation.pdf",
+        "bytes": 70893,
+        "sha256": "b4306633871630eb018cc2dd2f60cfb39be3d95266d1dff15bfac68ff814b7ca"
+      },
+      {
+        "path": "paper/plots/example_graph_crawling.pdf",
+        "bytes": 51914,
+        "sha256": "e0f09df3ba93a147fa39e21c73370fa6d0f49ec65cadf26dbd40c568f643536f"
+      },
+      {
+        "path": "paper/plots/n_grams/be.pdf",
+        "bytes": 288777,
+        "sha256": "95352534e0506d0aadf075a4c853e18fc389ae2f1ed3046e49e41b9c23c338be"
+      },
+      {
+        "path": "paper/plots/n_grams/cl.pdf",
+        "bytes": 281693,
+        "sha256": "6fcc7f6f6d0f65576848e4afa655618c3c04d3963675057b2ccd0f52a0d7ea2e"
+      },
+      {
+        "path": "paper/plots/n_grams/cn.pdf",
+        "bytes": 287657,
+        "sha256": "bf0c56f0cd004939b00db5e736600d65260a2a5b379a35341fabc64b0e32b227"
+      },
+      {
+        "path": "paper/plots/n_grams/ed.pdf",
+        "bytes": 286316,
+        "sha256": "0bc0ac5209b579e49f203bf2b1cf1f7def8c7473bbc70f6716404b073b79c510"
+      },
+      {
+        "path": "paper/plots/n_grams/in.pdf",
+        "bytes": 211301,
+        "sha256": "e8b3dc0f58db0f969d35873a82b8497628adff9e9fa665a8ed72febd8bdc852a"
+      },
+      {
+        "path": "paper/plots/n_grams/is.pdf",
+        "bytes": 261949,
+        "sha256": "a53a72c49660471882d0026c8fe13235f4d1405b31bf7af2c491c5a1d35b9106"
+      },
+      {
+        "path": "paper/plots/n_grams/ju.pdf",
+        "bytes": 287665,
+        "sha256": "3f373c65470b862edee263d6b9cda8e5281716a0f6fd40c52b9ce2471229d699"
+      },
+      {
+        "path": "paper/plots/n_grams/legend.pdf",
+        "bytes": 9555,
+        "sha256": "f7e6b34e2c9f4450949cea3976fdcbc502c0d1c70ed0309ac8f6599e88865310"
+      },
+      {
+        "path": "paper/plots/n_grams/nc.pdf",
+        "bytes": 286358,
+        "sha256": "26a6178895aa43cafb490bcd4a58836ee74c533ce73c3b0eccb7c137ab2bfedb"
+      },
+      {
+        "path": "paper/plots/n_grams/oe.pdf",
+        "bytes": 321027,
+        "sha256": "941a263b5eaa88e5d4be9e8de02c0698a7fe2dc71d2c7f05492e422cf8994b86"
+      },
+      {
+        "path": "paper/plots/n_grams/ok.pdf",
+        "bytes": 267403,
+        "sha256": "cec8fdf2279b4e45f9ed63bf499a2940812b2843c6f71233fbec2e28794376d6"
+      },
+      {
+        "path": "paper/plots/n_grams/qa.pdf",
+        "bytes": 242504,
+        "sha256": "07cbad84eadf86543c56dbd3ec4f74d4fcfc2387add05d608f1c01f283667d19"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/ab.pdf",
+        "bytes": 124211,
+        "sha256": "4cc0a3133fefd2adef618c5069c57d99a5c33bdd65f7b4b92a869fb5cdc17345"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/as.pdf",
+        "bytes": 122858,
+        "sha256": "b59c80a95790d6758761b3eb61eb4d81e02f75ea939110f3b556ee25d12cee8b"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/be.pdf",
+        "bytes": 291917,
+        "sha256": "2b13e659a7303a8becfe08cc44f08e27b11a40bd5cc948b29b5f02b0d294e94d"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/ce.pdf",
+        "bytes": 117353,
+        "sha256": "c014c2e982d97a110ef4fbc4b97be11ad438a2dbf4ac55e0e32b2c7a5c8b4769"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/cl.pdf",
+        "bytes": 271093,
+        "sha256": "c01597130a09ead24558999adb01bbf02cb6bf8b7118857b42e6afcbd59c2b00"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/cn.pdf",
+        "bytes": 284792,
+        "sha256": "3143380ed003cf05d682164548c309b5d5a49e8e75b244c93c5018414a2ba12b"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/ed.pdf",
+        "bytes": 289236,
+        "sha256": "3116ce0e46549d8d1f9d48234ec03c1efdcc0b1a59164f7def1d05bca12a3235"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/il.pdf",
+        "bytes": 103581,
+        "sha256": "5d0b4ec4f7e6f872f3fa89a5037ba9579db051d63920b13d4ee0bb5e901d0e5e"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/in.pdf",
+        "bytes": 189913,
+        "sha256": "0808e459e981d60299f9eca6ab1138abfe791f5bf26b15f473bd01e40ef1cb25"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/is.pdf",
+        "bytes": 264525,
+        "sha256": "c6cb84dca0ec458c8d69bbca24e59f7309928445d12c79406488d3d4c912216e"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/jp.pdf",
+        "bytes": 125904,
+        "sha256": "bfeeee7268fcbd5109ef5f83c65d064f7e8b30030f819a31c358b4a3d50fa350"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/ju.pdf",
+        "bytes": 296540,
+        "sha256": "e2b6ba3fa54e77e172eb0eb06c36a0eb485cc61dce0100a09733ab6d0ec5f809"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/legend.pdf",
+        "bytes": 8184,
+        "sha256": "d53d242ac007fdd3b02f4b7bd92e3feda8ba0f0faacb2cb4e28874e2b008643d"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/nc.pdf",
+        "bytes": 283960,
+        "sha256": "5ba20ffb28e381d4b533f86f93e7605731bcd99fa7ecb97c3444ba817f3817cf"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/oe.pdf",
+        "bytes": 320316,
+        "sha256": "a400820397447608d860a1166f333fe38025d672f881f82eda86d38f7c122520"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/ok.pdf",
+        "bytes": 265047,
+        "sha256": "23b7e56fe070bd314008ccea3533474c252df1d7501eccf697f9e53bced69b2a"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/qa.pdf",
+        "bytes": 243890,
+        "sha256": "c06c254d5ffeb8b65cc81a30976cf5b708280fa3e33142a09e0c28eb258d009a"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/wh.pdf",
+        "bytes": 114973,
+        "sha256": "0ebcbd90c398eef98fbbbee0aa37d8ae9f9049aab6d7020312770301d0d343ee"
+      },
+      {
+        "path": "paper/plots/oracle_vs_classifier/wo.pdf",
+        "bytes": 108328,
+        "sha256": "eed4c847b61bcf10aa9590672f24170bebec7dd218a938c38f4f254ecf88787d"
+      },
+      {
+        "path": "paper/plots/similarity_threshold/be.pdf",
+        "bytes": 288244,
+        "sha256": "233f91da8ece89664a27164d85c52eac78c731d3d6aadd8c97d73a0a96ce2d0b"
+      },
+      {
+        "path": "paper/plots/similarity_threshold/cl.pdf",
+        "bytes": 276360,
+        "sha256": "eaebbccbcce29c679325e8d64362e514a5ae00058c5aeeecdf74789e4bdca332"
+      },
+      {
+        "path": "paper/plots/similarity_threshold/cn.pdf",
+        "bytes": 291153,
+        "sha256": "efa31744a0f96c4470e536c518c9aa64854f4d87d258758903119e6e69fb273a"
+      },
+      {
+        "path": "paper/plots/similarity_threshold/ed.pdf",
+        "bytes": 251493,
+        "sha256": "e4af31323578835aa167885f94be030d6c285c0d910e4b6db331a166e71f12d4"
+      },
+      {
+        "path": "paper/plots/similarity_threshold/in.pdf",
+        "bytes": 211440,
+        "sha256": "5110bd2b91e1cf45f092a49c77286d3b517add7bf46aa7adcae9c4c0dd8cafd5"
+      },
+      {
+        "path": "paper/plots/similarity_threshold/is.pdf",
+        "bytes": 262236,
+        "sha256": "81317ee1fe41aa4fcf8eddffefe02b72617d82de51ccea86872406c05a246c7a"
+      },
+      {
+        "path": "paper/plots/similarity_threshold/ju.pdf",
+        "bytes": 297490,
+        "sha256": "d7b75aa235132b8017959412b3f1157f0eda9baa53cc167940cf687e0b2bfba9"
+      },
+      {
+        "path": "paper/plots/similarity_threshold/legend.pdf",
+        "bytes": 9871,
+        "sha256": "c57df81ea9e9ad3e18d18be602d2e5859991b56e70c3da737ecd2cdc4dcf6b1d"
+      },
+      {
+        "path": "paper/plots/similarity_threshold/nc.pdf",
+        "bytes": 286997,
+        "sha256": "6eff3c53befb712c616d6df88cee84042d68bb04e5b66c74156acf18f16f1790"
+      },
+      {
+        "path": "paper/plots/similarity_threshold/oe.pdf",
+        "bytes": 322386,
+        "sha256": "dc8f70e403ab94279bec17f477a816b28a83a18804306887e726fd19b08d9a4e"
+      },
+      {
+        "path": "paper/plots/similarity_threshold/ok.pdf",
+        "bytes": 268480,
+        "sha256": "0c8eb4de5aa0df7d020a058f2dc2fb3fb35cea6803b52a09c55998aa84f3e301"
+      },
+      {
+        "path": "paper/plots/similarity_threshold/qa.pdf",
+        "bytes": 242504,
+        "sha256": "0c62ca9f2aedba81ad5091337f2eea2497c4e1832aaee630dea9e94ad57c112c"
+      },
+      {
+        "path": "paper/plots/tag_paths_example.pdf",
+        "bytes": 78148,
+        "sha256": "077b3f58e6d240fc6247c9913ee6edcea503c64d5f8b64c0d21deb6c5f3e8693"
+      },
+      {
+        "path": "paper/plots/top_k_dom_groups.pdf",
+        "bytes": 21022,
+        "sha256": "47cb2bce3b47fd056dfdbea4d2c34a089408a0c12156e7681e4061d1667673c2"
+      },
+      {
+        "path": "paper/plots/url_classifier/be.pdf",
+        "bytes": 28687,
+        "sha256": "305ac6d092ea1b9db22ba9ff32b05a47af4116ffb8b9f1c1286019a6568a2e5b"
+      },
+      {
+        "path": "paper/plots/url_classifier/cl.pdf",
+        "bytes": 29046,
+        "sha256": "bb19c8874d1970227044deb5df5dee921a183aba1198bac8c73a8f69c59fbe49"
+      },
+      {
+        "path": "paper/plots/url_classifier/cn.pdf",
+        "bytes": 25829,
+        "sha256": "549721744f92eb68d99805bbd0eeef25c7ae9dd010f3c1c1369d04825510085e"
+      },
+      {
+        "path": "paper/plots/url_classifier/ed.pdf",
+        "bytes": 32907,
+        "sha256": "e3f0f02ebb6864d25c2779418877ad9cf8a761cfa49bbea21ac6b13b95cc3457"
+      },
+      {
+        "path": "paper/plots/url_classifier/in.pdf",
+        "bytes": 19473,
+        "sha256": "83e9d235c8fd055833dfd8295f3ecdf33f756754c6be98434947d93286b9ca70"
+      },
+      {
+        "path": "paper/plots/url_classifier/is.pdf",
+        "bytes": 23331,
+        "sha256": "70dd621e402a4e8d34e8b72782964905ca95c1519c7204cf63070626c8d45b60"
+      },
+      {
+        "path": "paper/plots/url_classifier/ju.pdf",
+        "bytes": 24690,
+        "sha256": "188a6a38036911b9f2deb581536d3b34e7febb27e306ab11b48060642a68eff5"
+      },
+      {
+        "path": "paper/plots/url_classifier/legend.pdf",
+        "bytes": 8186,
+        "sha256": "b645885ad6f2f7d31f2f849a81117c70b87da9f8944a5e7bd08acedc117b35ac"
+      },
+      {
+        "path": "paper/plots/url_classifier/nc.pdf",
+        "bytes": 26181,
+        "sha256": "64676edc5971621676c6370796f9abceb797784d6e8219243f0acdc62507560a"
+      },
+      {
+        "path": "paper/plots/url_classifier/oe.pdf",
+        "bytes": 29561,
+        "sha256": "770b7ece2a014ec101b0b975919e658d7c96eb8991dfc6d25054800c35a9f0f4"
+      },
+      {
+        "path": "paper/plots/url_classifier/ok.pdf",
+        "bytes": 28202,
+        "sha256": "f8e61b5c89ce4a3cbbd9f4792e892b2a8999d37f4399bfe8df94a97c11af9fa1"
+      },
+      {
+        "path": "paper/plots/url_classifier/qa.pdf",
+        "bytes": 30259,
+        "sha256": "f14cd6cc623dd621fde06a9dd3d53dcf868be4d043f187060e505fd081b8d30c"
+      },
+      {
+        "path": "paper/problem_statement.tex",
+        "bytes": 10744,
+        "sha256": "5a027430cc9bc1f08818e3d87ccee780dfd75001144c66b615d4e3b6802ba7cb"
+      },
+      {
+        "path": "paper/related_work.tex",
+        "bytes": 10940,
+        "sha256": "b26819303dfc8d7ee6ce74cd9a1d8f491bc6588cb574dadae03575c5ca724f66"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/Bridge.c",
+        "bytes": 5864,
+        "sha256": "bdee46aa454a35955189ad7611a5608463f7b14cfa1895f18598fb223572e095"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/Bridge.c.hash",
+        "bytes": 16,
+        "sha256": "b8c24597c228875ff7fe3ecc3d8cac5df363dd834731103ce9a03d897f6f02c0"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Block.c",
+        "bytes": 44972,
+        "sha256": "8a80b561fb1d409daa059c9791db10a2654a71496498cdd77195269196baaf49"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Block.c.hash",
+        "bytes": 16,
+        "sha256": "15b857cf620e371634f836ee6794d7182e8c18aac64897cc619849d34b1c9379"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Complexity.c",
+        "bytes": 51407,
+        "sha256": "0b1134d810283cc51119807502d968ce7fe2b102626aeffe5abe861a8d7cfd32"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Complexity.c.hash",
+        "bytes": 16,
+        "sha256": "c2c08575dd73ab878b49784d269f3c21f6287787d5dc104e7b696e86843ddf68"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Composition.c",
+        "bytes": 10556,
+        "sha256": "c55e110ee7c4915206bc9a5b52afa9357cf27b8af22d67cefaeeae44f8710b69"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Composition.c.hash",
+        "bytes": 16,
+        "sha256": "c693c840fb68ef15293a20f753cae88864b75df78dee0e16771506ec8471e9f7"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Decoding.c",
+        "bytes": 17731,
+        "sha256": "7dda379eae7407ebf3c07678e1d9f40572b193aab64aace482d8b580c735c8ef"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Decoding.c.hash",
+        "bytes": 16,
+        "sha256": "09956a168eee4db90a8609605a20f2f3011f279cddae1255329ee72de845ceea"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Encoding.c",
+        "bytes": 18170,
+        "sha256": "113a08f3e63a89a62fe9d40f9c1a3ff1c354804c8eb825c734c007da73e4fc43"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Encoding.c.hash",
+        "bytes": 16,
+        "sha256": "c0d85b2ff58ab5305faad9c54010ff9aa1eac806abb8b6ff99ce865bd5de5438"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Examples/GraphCrawling.c",
+        "bytes": 99225,
+        "sha256": "524bd5d4d1ce0ae757e77e503484d940a36107647503fcd38720d5f38ed4cc13"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Examples/GraphCrawling.c.hash",
+        "bytes": 16,
+        "sha256": "7d19271a0b9d31553bf85097a706caa98d96f36a81ba385a3e60ea8ad73761a1"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Interpretation.c",
+        "bytes": 53583,
+        "sha256": "5804df7f7b67e49e797934abc07888549b65d52b12344cd965f038feee805dc4"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Interpretation.c.hash",
+        "bytes": 16,
+        "sha256": "f7d9bee3209e0a8ee25f43e4a9bc1911d099f54bf5d8031c75350eb5706f4c97"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Numbers/Unary.c",
+        "bytes": 9095,
+        "sha256": "6996090e49637c95b123d48355d53b71c4170944a9e45e83df2b42d288cc5457"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Numbers/Unary.c.hash",
+        "bytes": 16,
+        "sha256": "3734d9d15eee210c70965f8c125ba4cef7d55e38044dc6eaad7812c653693f73"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Ordered.c",
+        "bytes": 54883,
+        "sha256": "7debdfb7ff22f84cda672648cdc723419d26475f5b136a2e70144adc5ca19670"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Ordered.c.hash",
+        "bytes": 16,
+        "sha256": "c7c242a43b77e5b2023301c0e8f838355794ea6fd4f3a535790b5f24476cdcb0"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/OrderWalk.c",
+        "bytes": 9100,
+        "sha256": "ddef1fd562db6bebf408b5b993f7f7b40d67ec43a2853cd4a22def459c4c7593"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/OrderWalk.c.hash",
+        "bytes": 16,
+        "sha256": "5618d60186cf5cdaf7e11581081612f730435cc32695507f2df3856ffb95c8a5"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Problems/SetFamily/Defs.c",
+        "bytes": 9630,
+        "sha256": "f735751c24a9f79e9572fe02d3e21ed84690fcbbc4ef555057044e7f63a65969"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Problems/SetFamily/Defs.c.hash",
+        "bytes": 16,
+        "sha256": "5103f41045ae2202b9b5e95fc75668e0e64cd8aa3d7d2fd4107763244c336957"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Problems/Steiner/Defs.c",
+        "bytes": 9124,
+        "sha256": "20f9b509bd3e57a1d51488dbaf8b0f2a2b6b2ba4ec74866ce08963ab0c16b99c"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Problems/Steiner/Defs.c.hash",
+        "bytes": 16,
+        "sha256": "80a2d6a1dc9819d330c55e4e6c0a53a3cebf9eeea55995ec11c1258f12c07ec9"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Relativized.c",
+        "bytes": 55918,
+        "sha256": "7e827fca680fae955fd7f5593bff7f74ae436e3d0b79379c9580c643dc1c1758"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Relativized.c.hash",
+        "bytes": 16,
+        "sha256": "194e2fde52fb9cadd4eb839801cb1577eff6ca36f58b763f82a5dc3427a69db6"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/SecondOrder.c",
+        "bytes": 8680,
+        "sha256": "0ab0cd9ceaa279dadfe8e9221febf06251f957302f5df642097f2284fd398f1a"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/SecondOrder.c.hash",
+        "bytes": 16,
+        "sha256": "ad767194548f39b5a8940ab328bdeafed4f868113faa424a49af158e0f5eedb1"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/SecondOrderLift.c",
+        "bytes": 8440,
+        "sha256": "454b760e2af657cea519928481febbffb2a437d8880da03f64a9d69c8a2df4b2"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/SecondOrderLift.c.hash",
+        "bytes": 16,
+        "sha256": "316bf40da2e9f4a92cdb6e4be8b97ba035196c140ca3e493f638115d507ae4bb"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Vocabulary.c",
+        "bytes": 45030,
+        "sha256": "9686bfac304acce338046c40d5b8b195b10ce0e2184976f840e60f4b1e204fc9"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs/DescriptiveComplexity/Vocabulary.c.hash",
+        "bytes": 16,
+        "sha256": "022716878785799db31cdbe880d7cc81d95ed575d3db62b0b3f69da86398ce2f"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs.c",
+        "bytes": 6690,
+        "sha256": "b147548143736ee7966ec8db2d69fea5397e3bd3e6be6b07bf250fa3341cf5de"
+      },
+      {
+        "path": "proofs/ir/Lax117614Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "1c556ed85c1e28923dbf2aaec22536c98c492faeeba73d5f16ffd06c24aea9d0"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/Bridge.ilean",
+        "bytes": 22833,
+        "sha256": "bedb3b7ba652ff81b84eb9a91930c1ea2b371652b25d837d240a64c0cadecdd9"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/Bridge.ilean.hash",
+        "bytes": 16,
+        "sha256": "bcf7b8bbfc3d8044ce8a68a46d5128c29de7cfdf98639429dff8daa655ddc21b"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/Bridge.olean",
+        "bytes": 233400,
+        "sha256": "a5a045a30e831e3c6ca8e2d569648bb3a106d23e7d795a81e85dc650bd29f145"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/Bridge.olean.hash",
+        "bytes": 16,
+        "sha256": "ccc9717463506c5e1c26d38e54fa3056f051d6d54b738aa5fc8d961b95828e4f"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/Bridge.trace",
+        "bytes": 4118,
+        "sha256": "fc53901a763337138dd13d11f289883eab4028fba66777416016f6ca3e718c27"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Block.ilean",
+        "bytes": 2675,
+        "sha256": "84366d44becdeb724ebfb90b0dd0ac540042125aca83a81249d941ecbb81a6f1"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Block.ilean.hash",
+        "bytes": 16,
+        "sha256": "7ea898dcc2ace7b6711d67715cad26e50fc15e890ce245d1300f9e2062d18ebc"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Block.olean",
+        "bytes": 77464,
+        "sha256": "835daba79c64db62271b5d3bc73f8487ddb5a48fca1319a9f2636d67c0efe6df"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Block.olean.hash",
+        "bytes": 16,
+        "sha256": "816baa9cb75221e9262d48d0a6538c47aa0d2fa4979b507f474ba146e373114d"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Block.trace",
+        "bytes": 7314,
+        "sha256": "968cd87b80cf6aab43acce80402ca8a1b39411e0debc7e674168e0830be95032"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Complexity.ilean",
+        "bytes": 9127,
+        "sha256": "cc53c9e1fe4410301c624a4440ec03eb224d2c14719eb29e86b3d00d730cbfa3"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Complexity.ilean.hash",
+        "bytes": 16,
+        "sha256": "3d3c7844259d1b8f2f9f7047328ec53db6124347abc30708629b695629cf4e31"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Complexity.olean",
+        "bytes": 160752,
+        "sha256": "f99ea6151e083e376854d435a903f9c5bdc0abed55ad1bfe9586841782abc30f"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Complexity.olean.hash",
+        "bytes": 16,
+        "sha256": "e1cc90412c69420fc27295b7d5cdd734de9246e946a210513540a1adb1f2afe4"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Complexity.trace",
+        "bytes": 7133,
+        "sha256": "5a8328242d1c805a7bb4b9b835c86fb4242984fdaf469c93fc2b306e83763306"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Composition.ilean",
+        "bytes": 5395,
+        "sha256": "2b5f9a010c09206fad481926999753e159bc214a95f74cd970b6fcadeef6b913"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Composition.ilean.hash",
+        "bytes": 16,
+        "sha256": "17d7c9a516625cbad802e363f4aaf09641e9eb816c260a83b761ccdca2c70c7c"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Composition.olean",
+        "bytes": 41016,
+        "sha256": "f45060fae13a68752db761927909dfc45bf486b8b7b21b907ed92eb7f99d1ce5"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Composition.olean.hash",
+        "bytes": 16,
+        "sha256": "6a826fa209415bd97102b3dcbb8168a75085411bd316a9d87bd9dfaa32c79009"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Composition.trace",
+        "bytes": 7317,
+        "sha256": "56144a62a6ec01e88742230921489c9f5bd9eb631651dbbf8c435b16c033ba94"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Decoding.ilean",
+        "bytes": 30942,
+        "sha256": "60eb20f5cd95718faa59131e2d572d2116e3076dd9d6ade35a5eb2ae217d3868"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Decoding.ilean.hash",
+        "bytes": 16,
+        "sha256": "367ea51701dd4fd61c466084cd316e6c7d7ff34d6d760764578b2098548c8ea5"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Decoding.olean",
+        "bytes": 166792,
+        "sha256": "a92da20f54691b0f489682f4a1dee6b6b52b12d01eb11ce3ca784bccb3e397e9"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Decoding.olean.hash",
+        "bytes": 16,
+        "sha256": "5eb27f66ba76ba3d8e0347bd7a8eb7c36a4adf5679b6643d18121ea0ca1e0cda"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Decoding.trace",
+        "bytes": 7541,
+        "sha256": "e9db4ec1ea86df6b98eca4309ce2db3eb511a08f4dc594b7804532cc4c86d92e"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Encoding.ilean",
+        "bytes": 11793,
+        "sha256": "4d249470358438934a03fd62e603d9fe266c3af9e2102769c9c85596c82688ed"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Encoding.ilean.hash",
+        "bytes": 16,
+        "sha256": "bf08fdbb551d646b509483fcd30c254addcd10f5f20c2c8ac6f354911d221fc5"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Encoding.olean",
+        "bytes": 159672,
+        "sha256": "6b46c8252c53409d01e0af19e0327deac2610978482e4fb8adc178827c760acf"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Encoding.olean.hash",
+        "bytes": 16,
+        "sha256": "354d9862606d88beca8db441eaf3d956632be97b9bc3cf4f7d2e880b183d8a00"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Encoding.trace",
+        "bytes": 7304,
+        "sha256": "238b73095c48656863e5bc9191c2b749630ae36544e20c42ccc2534d9e7822ac"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Examples/GraphCrawling.ilean",
+        "bytes": 217627,
+        "sha256": "d614842b64e15b0f60ad6e533a7feba92b1e980931bec4b311eac7212d009d16"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Examples/GraphCrawling.ilean.hash",
+        "bytes": 16,
+        "sha256": "b65ba59a526fe2f152974adad802794bed6c5c732ed39138c6de39118bf4747d"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Examples/GraphCrawling.olean",
+        "bytes": 1860152,
+        "sha256": "723b1d9e630a67a05c925428bd73913ee856d34bacf58722e565b8d42fe3ab14"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Examples/GraphCrawling.olean.hash",
+        "bytes": 16,
+        "sha256": "dc75973db535ab38e185459cd396e97c1df0689dfba793686e67c06a50d47656"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Examples/GraphCrawling.trace",
+        "bytes": 11538,
+        "sha256": "c6bda04c5b698f0db2c6f4da1310399ce8807aa2bdd7ec60f201c75b8676f817"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Interpretation.ilean",
+        "bytes": 8582,
+        "sha256": "3798175c40e1bd14445c3e1a2bc04a46ecdde3d02501d27150faa60891c0f810"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Interpretation.ilean.hash",
+        "bytes": 16,
+        "sha256": "4b52203b050d3f1c44f0692cefb9bc524c654eb35d280baa8b95224ff04b14aa"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Interpretation.olean",
+        "bytes": 222096,
+        "sha256": "37a78adc5f814c246c893e4dcce6431a396ed9a1830fb22d4ca0cd25a9ff18e5"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Interpretation.olean.hash",
+        "bytes": 16,
+        "sha256": "54ad66ca222706959a54de2e009d7655bd546019ce40473bca23028676f7daa2"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Interpretation.trace",
+        "bytes": 7446,
+        "sha256": "3400738eefe13693fac507256c2faaf894bd9a60e3756dc31c7b239adb84e585"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Numbers/Unary.ilean",
+        "bytes": 12517,
+        "sha256": "138380fa78cea269bd2472423a1d0a8724a214e042f78611d520f63dd544d1d2"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Numbers/Unary.ilean.hash",
+        "bytes": 16,
+        "sha256": "83411197e2ef72b7555d0c86b332dc53700bdde3f267b29257abc38ad9b6e82d"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Numbers/Unary.olean",
+        "bytes": 74224,
+        "sha256": "39201f6ad4084cbbaa76cf6622019be84771d357cf70e37dcb36adbc0be9c705"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Numbers/Unary.olean.hash",
+        "bytes": 16,
+        "sha256": "066e57cdf796bd5f9f06e16b991c82c813438069e3efbfd718c3ec54f748d074"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Numbers/Unary.trace",
+        "bytes": 7595,
+        "sha256": "c1bca4fbada797832e19ae5c1bb9d70beb9aa4473974cb307d94844c7b0f4c15"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Ordered.ilean",
+        "bytes": 3873,
+        "sha256": "1952279c752a9462befd3c7e14a84b9cef27e902cece8ac9b217815ef9c56069"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Ordered.ilean.hash",
+        "bytes": 16,
+        "sha256": "b04525809402f67a450264dd0f9d1dea3bb45445b89b2c735f48336ec4659a91"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Ordered.olean",
+        "bytes": 101984,
+        "sha256": "e9dd63519a78fd6fa79b680f37733de9e8b685be8879d0e66db2c7ad972c5be1"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Ordered.olean.hash",
+        "bytes": 16,
+        "sha256": "c93e4a26c17dbbd82119399ffd10592685856bf61f261b9e796193aeb593f05b"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Ordered.trace",
+        "bytes": 7281,
+        "sha256": "31dde65b6cf0332dd0a9c6eaa9b62f5ec847e8416692c84d0f5fa134950cf97b"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/OrderWalk.ilean",
+        "bytes": 9044,
+        "sha256": "8d1c86afb96a292e6b8553ef60d97c928c6b09debb61bd3bddc0d9ccbccd067e"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/OrderWalk.ilean.hash",
+        "bytes": 16,
+        "sha256": "ce4d632721313a4a7c01473c1f1e77d2095f24f45fb9735fb858db2e43c54fad"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/OrderWalk.olean",
+        "bytes": 60328,
+        "sha256": "eb2845b00beec10ce2caf2f9632ffeea7231d8588f5f141acb8fdfadcd1efff6"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/OrderWalk.olean.hash",
+        "bytes": 16,
+        "sha256": "de6129e82701b332be3b8671e67279e3bb201cef9076e9a118ddcbe1c392f61d"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/OrderWalk.trace",
+        "bytes": 7558,
+        "sha256": "1f19b143b1b96375795ce2fed7bb9c1bba54a91481d4ee4be7efafda97369825"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Problems/SetFamily/Defs.ilean",
+        "bytes": 14517,
+        "sha256": "1b33b667db98fcb2e51d8f57573ac8ebba0b9dacd4318316aa29ff874f13cecc"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Problems/SetFamily/Defs.ilean.hash",
+        "bytes": 16,
+        "sha256": "273296d7ab63f0abc4a832a4b1de407797b41c9d8bb91140320d9299e9c36617"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Problems/SetFamily/Defs.olean",
+        "bytes": 86120,
+        "sha256": "443182233b87892d9b67aa719551016c05468e74a0ab4060dc79465e9b1acc9f"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Problems/SetFamily/Defs.olean.hash",
+        "bytes": 16,
+        "sha256": "56643c3d9d086dbf5263844ac9f7aab39bbe85350a9f15cb72cfe07fa813914f"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Problems/SetFamily/Defs.trace",
+        "bytes": 7668,
+        "sha256": "ae09049421a4ff62ec5b140785d9754dc8e167a202ff657b27135ef738ba0235"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Problems/Steiner/Defs.ilean",
+        "bytes": 4013,
+        "sha256": "d9f42954602ebf715fcfe6f5032ed2af0c1e90920d1feee9fb0997d5844b6b30"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Problems/Steiner/Defs.ilean.hash",
+        "bytes": 16,
+        "sha256": "b73d44c9bc57ca5d047b64b7a2246b8082d02b79bdee1d4de5b50570a9882e3f"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Problems/Steiner/Defs.olean",
+        "bytes": 44440,
+        "sha256": "400fa8a1ab25bd4aa59a48bca2e50e03fa1b9c13d984e15550c46d4d79f91c4e"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Problems/Steiner/Defs.olean.hash",
+        "bytes": 16,
+        "sha256": "0f5ee13eadab5507afa24834edf77f1282ecbdb062b4eab38df40ea6e0076346"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Problems/Steiner/Defs.trace",
+        "bytes": 7654,
+        "sha256": "4d27d9323bda631d1c540136a714237f14239d6054e0ecebff447598a42f4eec"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Relativized.ilean",
+        "bytes": 2644,
+        "sha256": "c7d9d21bae56522d5c60afaf797cf340124f90fcdc3688323588a998c01c1d29"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Relativized.ilean.hash",
+        "bytes": 16,
+        "sha256": "932d9f767c80ac8df15701cfe9b4814fcee3d3ac8e464c7134e6ac1375475438"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Relativized.olean",
+        "bytes": 95656,
+        "sha256": "0870bebec502e33316bffbc8625c8a5d94707fbcc2cb496f4720bb45e17534e4"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Relativized.olean.hash",
+        "bytes": 16,
+        "sha256": "2691e6bc1ae10fb0544e43e594071ab5bf94abadba457ee1f4a508e2c9b11535"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Relativized.trace",
+        "bytes": 7132,
+        "sha256": "ea835884e3cdf597edaf7a647fa99dad0bcc20173f8568a98e594ec9e7962cdc"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/SecondOrder.ilean",
+        "bytes": 2035,
+        "sha256": "dd79e791eec1a0257ea54166c87808476aeefebd0d6ecd629eb288a14ecbb5ac"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/SecondOrder.ilean.hash",
+        "bytes": 16,
+        "sha256": "47250516428bc6145327d6a7daca877243560416572a4c143628bc60784c2823"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/SecondOrder.olean",
+        "bytes": 11232,
+        "sha256": "1aac13acdc5966c734c5186202c146d5bdd3fc3e96f868b3a10ee87c9a0a3648"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/SecondOrder.olean.hash",
+        "bytes": 16,
+        "sha256": "bb087bcacfc03e5702830a515847941dfb20253183f843e8463c010367b8fa36"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/SecondOrder.trace",
+        "bytes": 7307,
+        "sha256": "f3622175b4b1ff0b50b2a45de99807d799ed533af11d5dd66d6590ae1c94e742"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/SecondOrderLift.ilean",
+        "bytes": 3043,
+        "sha256": "0390ed8c288cf731cfad7f79d924fe53b4e79ed5a9d139ff673b4c86a83ee2d0"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/SecondOrderLift.ilean.hash",
+        "bytes": 16,
+        "sha256": "101e23daa7d7e91b56c34d48eee4ad9a447a27be6fb93f406ea02557fe30f1a2"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/SecondOrderLift.olean",
+        "bytes": 13992,
+        "sha256": "954c5ac3ee3bfd10aeec6b77c1ebc4a2f1e0bddaef4b4f77d69a2981c866be6a"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/SecondOrderLift.olean.hash",
+        "bytes": 16,
+        "sha256": "94782db4cd58a4f92329aa10afce8b368839ffadb2538fb2d8efebe3378b56f2"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/SecondOrderLift.trace",
+        "bytes": 7168,
+        "sha256": "7b2c7dbfd818bd2b17443149d5fb6366d710e756705e5a06f839380ad586ae7f"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Vocabulary.ilean",
+        "bytes": 2825,
+        "sha256": "7ef934a95ff9954f41d528fb100045564f8ee8f97117aefc28090cf8cc5eb8fb"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Vocabulary.ilean.hash",
+        "bytes": 16,
+        "sha256": "faa00b2bcc7261365239a4f4fab205c85c6236e89a79515a60a22977dea7eb63"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Vocabulary.olean",
+        "bytes": 75152,
+        "sha256": "38c70b6762dcdbe5c4725eff6f61c36602f696cc313eb0f9b096d4f69247f702"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Vocabulary.olean.hash",
+        "bytes": 16,
+        "sha256": "060b9b49c950b3b36d95cb5583a877919d8df8dc244f6d0af87d7a3c532e382f"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs/DescriptiveComplexity/Vocabulary.trace",
+        "bytes": 7251,
+        "sha256": "b32960d9b7c9ef6f4f591bb129edf8fca9ac8017aa9dbba15dcc83820f2e6230"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs.ilean",
+        "bytes": 1304,
+        "sha256": "9a1bc2e7597fbf3bdfc6fb7f44eaff060a54308785dfc82d75d20e547ce343a3"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "1a7e3313ba66da58bbfa025acd760b0f6827e0bdfd6dab98e4d6b5efbfa9ffd5"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs.olean",
+        "bytes": 3704,
+        "sha256": "da2f11edef750b0276b884bf4c5550e386c25d037b5058d69778341b9564d61c"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "9f1d6e152ab492a5f354ac986f5e8b234673dee35fb5a2165bf64d77adabeaf6"
+      },
+      {
+        "path": "proofs/lib/Lax117614Proofs.trace",
+        "bytes": 5921,
+        "sha256": "fec2bc8d3bb60d48b45d11084213d350ee6b241315547d617c47627e75d47b76"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3771,
+        "sha256": "2bb047a256d31afb5be8c3c89a31cd93b420128544c130c39a02994f8bad2817"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 687,
+        "sha256": "30e938522e38db384c62d2b1bee76fdb8d2644cc7dcf95d40e460369b52512b4"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/Bridge.lean",
+        "bytes": 8675,
+        "sha256": "1c38ba7bee5cf02ebdee287ceb6ddfdf9d65ae81b29293cbbdfd039cd640bddf"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/Block.lean",
+        "bytes": 3387,
+        "sha256": "00cd3dbcefec4262c46c4d1ec74698552c0f085779252d1b323f2bb466d1f1ca"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/Complexity.lean",
+        "bytes": 7220,
+        "sha256": "7f5937d4d72c8bede44db0de83f6ee2de870db8d276bcf658dec76428d54505a"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/Composition.lean",
+        "bytes": 5281,
+        "sha256": "e6fb76d5891109f2fee87d92e7bd6ab41ed8f9419b2b3be2d1783abc1dcef387"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/Decoding.lean",
+        "bytes": 16217,
+        "sha256": "c2c23700b526cfe565325f08e08b6806fb82d7d7009ea77704381ed50b98ed96"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/Encoding.lean",
+        "bytes": 11116,
+        "sha256": "f0abae208c9213816946f04076e010bfdcf5477615c4a03fb19d8ea9c7d623cd"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/Examples/GraphCrawling.lean",
+        "bytes": 70801,
+        "sha256": "a26c465feb11cc80d211ce526572e9c858b6b12e9075e9be05f14f68facb0b8c"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/Interpretation.lean",
+        "bytes": 8196,
+        "sha256": "3e11c861bea3e26dec9c40ccdfcae83509a03daaa33cd69533b4e49bb887f087"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/Numbers/Unary.lean",
+        "bytes": 7352,
+        "sha256": "8535a6a46c3dd72e3d6ba04bd954e945d4a3b8d2089429c87fa024ca005f9d95"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/Ordered.lean",
+        "bytes": 3022,
+        "sha256": "188542a7f156f29b22df9968fa9e1bbb23888d79b7c833336a116b053b42c261"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/OrderWalk.lean",
+        "bytes": 6922,
+        "sha256": "cc199be288e8b23615583b3e4b42a4ac037c06a8d2b2f533f66f10a0e759b126"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/Problems/SetFamily/Defs.lean",
+        "bytes": 9408,
+        "sha256": "493fe522206d88af49720f309c60e9458ba2894f64ef134b0743fb17b994f7db"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/Problems/Steiner/Defs.lean",
+        "bytes": 5328,
+        "sha256": "47980778b449d1e85155d6a48bee603a98abfa7313cbfcd7ce29528d2fd3fab3"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/Relativized.lean",
+        "bytes": 4176,
+        "sha256": "8b249734a97f1e0100b61a63ab7d9f0b97d22ed933a9b55be21e3037c92be304"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/SecondOrder.lean",
+        "bytes": 4383,
+        "sha256": "f18df0d5115c714f0fd1411e4841daaa57fb12644dd834bcc9461fda637875ce"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/SecondOrderLift.lean",
+        "bytes": 3885,
+        "sha256": "2b123bf86fbab4891f3e45a722260512f1789776bfadd4f29b6192c2f490f669"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs/DescriptiveComplexity/Vocabulary.lean",
+        "bytes": 3548,
+        "sha256": "b349c9dfb109af51dffeab99fc70f933fd4e2c6998c37b5f2b477f61b105eff0"
+      },
+      {
+        "path": "proofs/package/Lax117614Proofs.lean",
+        "bytes": 964,
+        "sha256": "2e94cbb604c465f5377806f3268a18b37828c3a41fa9fafa0582eb29f1df1fb1"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:f3557c6c6a5bda70dedb27385dacd66991a35fddb663b567abeea374729f4296"
+  },
+  "paper": {
+    "folder": "paper",
+    "main": "main.tex",
+    "engine": "pdflatex",
+    "pdf": {
+      "digest": "4f8b47a8b69714bb90cf3af80a423094640fe4a489763e279cf4b95c1a04b1fc",
+      "bytes": 14137677,
+      "pages": 32,
+      "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:4f8b47a8b69714bb90cf3af80a423094640fe4a489763e279cf4b95c1a04b1fc"
+    },
+    "pageSizes": [
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ]
+    ],
+    "marks": [
+      {
+        "id": "Lax117614.WebsiteGraphs",
+        "kind": "concept",
+        "begin": {
+          "page": 2,
+          "x": 53.8,
+          "y": 290.58,
+          "mode": "v"
+        },
+        "end": {
+          "page": 2,
+          "x": 53.8,
+          "y": 219.36,
+          "mode": "v"
+        }
+      },
+      {
+        "id": "Lax117614.GraphCrawlingProblem",
+        "kind": "concept",
+        "begin": {
+          "page": 2,
+          "x": 53.8,
+          "y": 219.36,
+          "mode": "v"
+        },
+        "end": {
+          "page": 2,
+          "x": 53.8,
+          "y": 120.85,
+          "mode": "v"
+        }
+      },
+      {
+        "id": "Lax117614.GraphCrawlingNPComplete",
+        "kind": "concept",
+        "begin": {
+          "page": 2,
+          "x": 317.96,
+          "y": 519.51,
+          "mode": "v"
+        },
+        "end": {
+          "page": 2,
+          "x": 317.96,
+          "y": 458.48,
+          "mode": "v"
+        }
+      },
+      {
+        "id": "Lax117614Proofs.Bridge.graphCrawling_NP_complete",
+        "kind": "proof",
+        "begin": {
+          "page": 16,
+          "x": 53.8,
+          "y": 490.85,
+          "mode": "v"
+        },
+        "end": {
+          "page": 17,
+          "x": 259.52,
+          "y": 687.39,
+          "mode": "h"
+        }
+      },
+      {
+        "id": "Lax799700.SetFamily",
+        "kind": "concept",
+        "begin": {
+          "page": 16,
+          "x": 279.46,
+          "y": 397.12,
+          "mode": "h"
+        },
+        "end": {
+          "page": 16,
+          "x": 546.2,
+          "y": 397.12,
+          "mode": "h"
+        }
+      }
+    ]
   }
 }
