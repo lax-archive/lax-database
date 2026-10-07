@@ -4,5 +4,1450 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 187
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-796640",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "A Verified Lean Core for Lax Validation",
+      "authors": [
+        {
+          "name": "Édouard Bonnet",
+          "github": "EdouardBonnet"
+        },
+        {
+          "name": "Codex"
+        }
+      ],
+      "bibEntries": [],
+      "unlisted": true
+    },
+    "abstract": "# A verified Lean core for Lax validation\n\nLax records proofs that may depend on statements not yet proved. To determine\nwhich statements are established, it must follow these dependencies without\ntreating circular reasoning as a proof. We implement a validation core in Lean\nand prove its main guarantees.\n\nThe core finds every axiom used by a declaration, checks the mathematical\nvalidation rules, and computes exactly the statements that follow from the\navailable proofs and declared assumptions. We also verify a certificate checker:\nan accepted certificate accounts for every derivable statement, and every\nwell-formed network has such a certificate with at most one step per statement.\nA controller requires matching reports of successful replay and inspection for\nthe same identified artifact, and any failed stage prevents approval.\n\nThe main theorem shows that every unconditional proved label returned by the\ncombined entry point is sound under an explicit contract for Lean's kernel and\nfaithful inspection. All 26 theorem statements have kernel-replayed proofs,\nwith their dependencies recorded in the proof network. These guarantees concern\nthe executable Lean functions defined here. Using them in the live Lax service\nstill requires integration with source acquisition, input extraction, authentic\nrunner reports, execution, and publication.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax796640.Certificates",
+      "path": "concepts/Lax796640/Certificates.lean",
+      "title": "Certificates for the exact set of established statements",
+      "type": "theorem",
+      "description": "A certificate is a list of statements paired with their chosen proofs, in\ndependency order. Each proof must use only initial assumptions or statements\nalready established earlier in the list. A final check requires the resulting\nset to be closed under every rule in the network.\n\nThe ordered witnesses show that nothing was falsely added. The closure check\nshows that nothing derivable was omitted. Thus one certificate can justify\nboth the proved and unproved classifications for an entire snapshot.\nUnproved here means not derivable from the available rules; it does not mean\nthat the mathematical statement is false.",
+      "imports": [
+        "Lax796640.ProofNetworks"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax796640.ProofNetworks\n\n/-!\n---\ntitle: Certificates for the exact set of established statements\ntype: theorem\n---\nA certificate is a list of statements paired with their chosen proofs, in\ndependency order. Each proof must use only initial assumptions or statements\nalready established earlier in the list. A final check requires the resulting\nset to be closed under every rule in the network.\n\nThe ordered witnesses show that nothing was falsely added. The closure check\nshows that nothing derivable was omitted. Thus one certificate can justify\nboth the proved and unproved classifications for an entire snapshot.\nUnproved here means not derivable from the available rules; it does not mean\nthat the mathematical statement is false.\n-/\n\nnamespace Lax796640.Certificates\n\nopen Declarations ProofNetworks\n\n/-- A step names the statement being established and the proof rule used. -/\nstructure Step where\n  statement : Nat\n  proofId : Nat\n  deriving DecidableEq, BEq, Repr\n\n/-- Check witnesses in order; each new statement must have a grounded proof. -/\ndef checkSteps (n : Network) : List Nat → List Step → Option (List Nat)\n  | known, [] => some known.eraseDups\n  | known, step :: rest =>\n      if !known.contains step.statement && n.rules.any (fun r =>\n          r.proofId == step.proofId && r.conclusion == step.statement &&\n          includes known r.assumptions) then\n        checkSteps n (known ++ [step.statement]) rest\n      else none\n\n/-- Check that every enabled proof rule has its conclusion in the result. -/\ndef checkClosed (n : Network) (known : List Nat) : Bool :=\n  n.rules.all (fun r => !(includes known r.assumptions) || known.contains r.conclusion)\n\n/-- Proposed production entry point for checking an entire classification. -/\ndef check (n : Network) (initial : List Nat) (steps : List Step) : Option (List Nat) :=\n  match checkSteps n initial steps with\n  | none => none\n  | some known => if checkClosed n known then some known else none\n\n/-- An accepted certificate describes precisely all derivable statements. -/\naxiom check_exact (n : Network) (h : WellFormed n) (initial : List Nat)\n    (admitted : ∀ a ∈ initial, a ∈ n.statements) (steps : List Step)\n    (known : List Nat) (accepted : check n initial steps = some known) (a : Nat) :\n    a ∈ known ↔ Derivable n initial a\n\n/-- Every well-formed finite network has a certificate of at most one step\nper statement. The producer is not assumed to be correct or trusted. -/\naxiom certificate_exists (n : Network) (h : WellFormed n) (initial : List Nat)\n    (admitted : ∀ a ∈ initial, a ∈ n.statements) :\n    ∃ steps known, steps.length ≤ n.statements.length ∧\n      check n initial steps = some known\n\n/-- A statement excluded by an accepted certificate has no finite derivation\nin this network from these initial assumptions. -/\naxiom unproved_certificate (n : Network) (h : WellFormed n) (initial : List Nat)\n    (admitted : ∀ a ∈ initial, a ∈ n.statements) (steps : List Step)\n    (known : List Nat) (accepted : check n initial steps = some known)\n    (a : Nat) (excluded : a ∉ known) : ¬ Derivable n initial a\n\nend Lax796640.Certificates\n",
+      "statements": [
+        {
+          "id": "Lax796640.Certificates.certificate_exists",
+          "signature": "certificate_exists : ∀ (n : Lax796640.ProofNetworks.Network),\n  Lax796640.ProofNetworks.WellFormed n →\n    ∀ (initial : List Nat),\n      (∀ (a : Nat), List.instMembership.mem initial a → List.instMembership.mem n.statements a) →\n        Exists fun steps =>\n          Exists fun known =>\n            And (instLENat.le steps.length n.statements.length)\n              (Eq (Lax796640.Certificates.check n initial steps) (Option.some known))",
+          "startLine": 56,
+          "endLine": 61,
+          "doc": "Every well-formed finite network has a certificate of at most one step\nper statement. The producer is not assumed to be correct or trusted."
+        },
+        {
+          "id": "Lax796640.Certificates.check_exact",
+          "signature": "check_exact : ∀ (n : Lax796640.ProofNetworks.Network),\n  Lax796640.ProofNetworks.WellFormed n →\n    ∀ (initial : List Nat),\n      (∀ (a : Nat), List.instMembership.mem initial a → List.instMembership.mem n.statements a) →\n        ∀ (steps : List Lax796640.Certificates.Step) (known : List Nat),\n          Eq (Lax796640.Certificates.check n initial steps) (Option.some known) →\n            ∀ (a : Nat), Iff (List.instMembership.mem known a) (Lax796640.ProofNetworks.Derivable n initial a)",
+          "startLine": 50,
+          "endLine": 54,
+          "doc": "An accepted certificate describes precisely all derivable statements."
+        },
+        {
+          "id": "Lax796640.Certificates.unproved_certificate",
+          "signature": "unproved_certificate : ∀ (n : Lax796640.ProofNetworks.Network),\n  Lax796640.ProofNetworks.WellFormed n →\n    ∀ (initial : List Nat),\n      (∀ (a : Nat), List.instMembership.mem initial a → List.instMembership.mem n.statements a) →\n        ∀ (steps : List Lax796640.Certificates.Step) (known : List Nat),\n          Eq (Lax796640.Certificates.check n initial steps) (Option.some known) →\n            ∀ (a : Nat), Not (List.instMembership.mem known a) → Not (Lax796640.ProofNetworks.Derivable n initial a)",
+          "startLine": 63,
+          "endLine": 68,
+          "doc": "A statement excluded by an accepted certificate has no finite derivation\nin this network from these initial assumptions."
+        }
+      ]
+    },
+    {
+      "id": "Lax796640.Declarations",
+      "path": "concepts/Lax796640/Declarations.lean",
+      "title": "The finite input to the validator",
+      "type": "definition",
+      "description": "The validator receives a finite table of packages and Lean declarations.\nA declaration is a named constant, such as a definition, an axiom, or a\ntheorem. Its references include constants used in both its type and its body,\nand structural links such as an inductive declaration's constructors.\n\nNatural numbers are internal identifiers. Names are retained for readers and\nfor identifying the three permitted background axioms. Distinct declarations\nmust have distinct identifiers and names; the validation rules check this.\n\nThis is the proposed interface of a production Lean component. An adapter\nmust obtain these facts from the same artifacts that passed kernel replay.\nAn input record containing `true` does not itself establish that fact.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.List.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.List.Basic\n\n/-!\n---\ntitle: The finite input to the validator\ntype: definition\n---\nThe validator receives a finite table of packages and Lean declarations.\nA declaration is a named constant, such as a definition, an axiom, or a\ntheorem. Its references include constants used in both its type and its body,\nand structural links such as an inductive declaration's constructors.\n\nNatural numbers are internal identifiers. Names are retained for readers and\nfor identifying the three permitted background axioms. Distinct declarations\nmust have distinct identifiers and names; the validation rules check this.\n\nThis is the proposed interface of a production Lean component. An adapter\nmust obtain these facts from the same artifacts that passed kernel replay.\nAn input record containing `true` does not itself establish that fact.\n-/\n\nnamespace Lax796640.Declarations\n\n/-- Background packages are the pinned Lean and Mathlib environment. -/\ninductive PackageRole where\n  | background\n  | concepts\n  | proofs\n  deriving DecidableEq, BEq, Repr\n\n/-- Only the distinctions needed for the mathematical validation rules. -/\ninductive DeclarationKind where\n  | axiomDecl\n  | theoremDecl\n  | other\n  deriving DecidableEq, BEq, Repr\n\n/-- A package and the packages it directly requires. -/\nstructure Package where\n  id : Nat\n  role : PackageRole\n  environment : String\n  registered : Bool\n  requires : List Nat\n  deriving DecidableEq, BEq, Repr\n\n/-- Facts extracted from one kernel-checked declaration. -/\nstructure Declaration where\n  id : Nat\n  name : String\n  package : Nat\n  kind : DeclarationKind\n  /-- Whether the declared type itself has type `Prop`. -/\n  isProposition : Bool\n  /-- References from types, bodies, and structural links to constructors. -/\n  references : List Nat\n  deriving DecidableEq, BEq, Repr\n\n/-- A kernel comparison and an import check for a proposed conclusion. -/\nstructure Comparison where\n  theoremId : Nat\n  statementId : Nat\n  sameType : Bool\n  conclusionImported : Bool\n  deriving DecidableEq, BEq, Repr\n\n/-- An author's request to record a theorem as a proof of a statement. -/\nstructure Claim where\n  theoremId : Nat\n  statementId : Nat\n  /-- Optional documentation, cross-checked against computed dependencies. -/\n  claimedAssumptions : Option (List Nat)\n  deriving DecidableEq, BEq, Repr\n\n/-- One environment and its complete relevant declaration table.\n`localPackages` are being validated now; other non-background packages must\nalready be registered. Imported packages still have their declarations here.\n-/\nstructure Snapshot where\n  environment : String\n  localPackages : List Nat\n  packages : List Package\n  declarations : List Declaration\n  comparisons : List Comparison\n  claims : List Claim\n  deriving DecidableEq, BEq, Repr\n\n/-- Find a declaration. Duplicate identifiers are rejected before acceptance. -/\ndef declaration (s : Snapshot) (id : Nat) : Option Declaration :=\n  s.declarations.find? (fun d => d.id == id)\n\n/-- Find a package by its identifier. -/\ndef package (s : Snapshot) (id : Nat) : Option Package :=\n  s.packages.find? (fun p => p.id == id)\n\n/-- Every requested identifier belongs to the supplied list. -/\ndef includes (available requested : List Nat) : Bool :=\n  requested.all available.contains\n\n/-- Set equality ignores order and repeated identifiers. -/\ndef sameMembers (left right : List Nat) : Bool :=\n  includes left right && includes right left\n\n/-- The graph conditions needed for bounded dependency traversal. -/\ndef ReferencesWellFormed (s : Snapshot) : Prop :=\n  (s.declarations.map Declaration.id).Nodup ∧\n  ∀ d ∈ s.declarations, ∀ id ∈ d.references,\n    ∃ target ∈ s.declarations, target.id = id\n\nend Lax796640.Declarations\n",
+      "statements": []
+    },
+    {
+      "id": "Lax796640.Dependencies",
+      "path": "concepts/Lax796640/Dependencies.lean",
+      "title": "Finding every axiom used by a declaration",
+      "type": "theorem",
+      "description": "A declaration depends on an axiom when following constant references can\nreach that axiom. We include a path of length zero: an axiom uses itself.\nReferences in types matter as well as references in proof bodies.\n\nThe executable collector expands the set of reachable declarations once per\nround. There are at most as many necessary rounds as declarations. This\nhandles cycles without relying on recursive calls through the graph.\n\nThe two statements below are proof obligations. They concern the concrete\nfunctions in this file, given a complete finite reference table. Establishing\nthat an inspector supplies that table is a separate integration obligation.",
+      "imports": [
+        "Lax796640.Declarations"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax796640.Declarations\n\n/-!\n---\ntitle: Finding every axiom used by a declaration\ntype: theorem\n---\nA declaration depends on an axiom when following constant references can\nreach that axiom. We include a path of length zero: an axiom uses itself.\nReferences in types matter as well as references in proof bodies.\n\nThe executable collector expands the set of reachable declarations once per\nround. There are at most as many necessary rounds as declarations. This\nhandles cycles without relying on recursive calls through the graph.\n\nThe two statements below are proof obligations. They concern the concrete\nfunctions in this file, given a complete finite reference table. Establishing\nthat an inspector supplies that table is a separate integration obligation.\n-/\n\nnamespace Lax796640.Dependencies\n\nopen Declarations\n\n/-- The direct references of a declaration; absent entries have no references.\nMissing referenced declarations are nevertheless rejected by validation. -/\ndef references (s : Snapshot) (id : Nat) : List Nat :=\n  ((declaration s id).map Declaration.references).getD []\n\n/-- A finite path in the graph of constant references. -/\ninductive Reaches (s : Snapshot) : Nat → Nat → Prop where\n  | self (id : Nat) : Reaches s id id\n  | next {start middle finish : Nat} :\n      Reaches s start middle → finish ∈ references s middle →\n      Reaches s start finish\n\n/-- One round retains known declarations and adds their direct references. -/\ndef expand (s : Snapshot) (known : List Nat) : List Nat :=\n  (known ++ known.flatMap (references s)).eraseDups\n\n/-- Run a fixed number of rounds, using ordinary recursion on a natural number. -/\ndef expandFor (s : Snapshot) : Nat → List Nat → List Nat\n  | 0, known => known\n  | rounds + 1, known => expandFor s rounds (expand s known)\n\n/-- The proposed executable collector, with its finite bound built in. -/\ndef reachable (s : Snapshot) (start : Nat) : List Nat :=\n  expandFor s s.declarations.length [start]\n\n/-- Test the recorded kind of a declaration. -/\ndef isAxiom (s : Snapshot) (id : Nat) : Bool :=\n  (declaration s id).any (fun d => d.kind == .axiomDecl)\n\n/-- The specification of an axiom dependency uses finite paths. -/\ndef UsesAxiom (s : Snapshot) (start axiomId : Nat) : Prop :=\n  Reaches s start axiomId ∧ isAxiom s axiomId = true\n\n/-- Compute dependencies from references, never from an author's claimed list. -/\ndef axiomsUsed (s : Snapshot) (start : Nat) : List Nat :=\n  (reachable s start).filter (isAxiom s)\n\n/-- The bounded traversal finds exactly the reachable declarations. -/\naxiom reachable_exact (s : Snapshot) (h : ReferencesWellFormed s)\n    (start : Nat) (existsStart : ∃ d ∈ s.declarations, d.id = start) (id : Nat) :\n    id ∈ reachable s start ↔ Reaches s start id\n\n/-- No used axiom is omitted, and no unrelated axiom is reported. -/\naxiom axiomsUsed_exact (s : Snapshot) (h : ReferencesWellFormed s)\n    (start : Nat) (existsStart : ∃ d ∈ s.declarations, d.id = start) (id : Nat) :\n    id ∈ axiomsUsed s start ↔ UsesAxiom s start id\n\nend Lax796640.Dependencies\n",
+      "statements": [
+        {
+          "id": "Lax796640.Dependencies.axiomsUsed_exact",
+          "signature": "axiomsUsed_exact : ∀ (s : Lax796640.Declarations.Snapshot),\n  Lax796640.Declarations.ReferencesWellFormed s →\n    ∀ (start : Nat),\n      (Exists fun d => And (List.instMembership.mem s.declarations d) (Eq d.id start)) →\n        ∀ (id : Nat),\n          Iff (List.instMembership.mem (Lax796640.Dependencies.axiomsUsed s start) id)\n            (Lax796640.Dependencies.UsesAxiom s start id)",
+          "startLine": 67,
+          "endLine": 70,
+          "doc": "No used axiom is omitted, and no unrelated axiom is reported."
+        },
+        {
+          "id": "Lax796640.Dependencies.reachable_exact",
+          "signature": "reachable_exact : ∀ (s : Lax796640.Declarations.Snapshot),\n  Lax796640.Declarations.ReferencesWellFormed s →\n    ∀ (start : Nat),\n      (Exists fun d => And (List.instMembership.mem s.declarations d) (Eq d.id start)) →\n        ∀ (id : Nat),\n          Iff (List.instMembership.mem (Lax796640.Dependencies.reachable s start) id)\n            (Lax796640.Dependencies.Reaches s start id)",
+          "startLine": 62,
+          "endLine": 65,
+          "doc": "The bounded traversal finds exactly the reachable declarations."
+        }
+      ]
+    },
+    {
+      "id": "Lax796640.Pipeline",
+      "path": "concepts/Lax796640/Pipeline.lean",
+      "title": "Requiring the right checks before approval",
+      "type": "theorem",
+      "description": "The proposed controller records successful concept replay, successful proof\nreplay, and inspection for one identified artifact. Receipts for another\nartifact are ignored. Any failure blocks approval for the rest of this run.\nA new artifact begins a new run with no inherited receipts.\n\nArtifact identifiers include the source commit, environment, captured files,\nand dependency snapshot. Equality of these strings is the controller's check;\ncomputing authentic digests and keeping the represented files immutable are\nobligations of the external runner. Similarly, a replay event is a receipt\nfrom the runner, not a formal proof of kernel execution.\n\nThe functions here are intended to be used by the production controller.\nThe stated guarantees are about these exact functions. Their adoption by the\ncurrent Node pipeline is still planned work.",
+      "imports": [
+        "Lax796640.Validation"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax796640.Validation\n\n/-!\n---\ntitle: Requiring the right checks before approval\ntype: theorem\n---\nThe proposed controller records successful concept replay, successful proof\nreplay, and inspection for one identified artifact. Receipts for another\nartifact are ignored. Any failure blocks approval for the rest of this run.\nA new artifact begins a new run with no inherited receipts.\n\nArtifact identifiers include the source commit, environment, captured files,\nand dependency snapshot. Equality of these strings is the controller's check;\ncomputing authentic digests and keeping the represented files immutable are\nobligations of the external runner. Similarly, a replay event is a receipt\nfrom the runner, not a formal proof of kernel execution.\n\nThe functions here are intended to be used by the production controller.\nThe stated guarantees are about these exact functions. Their adoption by the\ncurrent Node pipeline is still planned work.\n-/\n\nnamespace Lax796640.Pipeline\n\nopen Declarations Validation\n\n/-- The identity shared by replay, inspection, and the eventual publication. -/\nstructure ArtifactKey where\n  sourceCommit : String\n  environment : String\n  captureDigest : String\n  dependencyDigest : String\n  deriving DecidableEq, BEq, Repr\n\n/-- Reports from the external runner. Authenticating them is outside this controller. -/\ninductive Event where\n  | conceptsReplayed (key : ArtifactKey)\n  | proofsReplayed (key : ArtifactKey)\n  | inspected (key : ArtifactKey) (data : Snapshot)\n  | failed\n  deriving DecidableEq, BEq, Repr\n\n/-- Accumulated evidence for one artifact. -/\nstructure State where\n  key : ArtifactKey\n  conceptsReplayed : Bool\n  proofsReplayed : Bool\n  inspection : Option Snapshot\n  failed : Bool\n  deriving DecidableEq, BEq, Repr\n\n/-- Starting a run clears every receipt, even if another run just succeeded. -/\ndef start (key : ArtifactKey) : State :=\n  { key, conceptsReplayed := false, proofsReplayed := false,\n    inspection := none, failed := false }\n\n/-- Advance the controller. A failure is permanent within this run. -/\ndef step (state : State) (event : Event) : State :=\n  if state.failed then state else\n  match event with\n  | .failed => { state with failed := true }\n  | .conceptsReplayed key =>\n      if key == state.key then { state with conceptsReplayed := true } else state\n  | .proofsReplayed key =>\n      if key == state.key then { state with proofsReplayed := true } else state\n  | .inspected key data =>\n      if key == state.key then { state with inspection := some data } else state\n\n/-- Execute a finite sequence of runner events. -/\ndef run (key : ArtifactKey) (events : List Event) : State :=\n  events.foldl step (start key)\n\n/-- Approval requires both replays, an inspection in this environment,\nand acceptance by the concrete mathematical validator. -/\ndef approve (state : State) : Bool :=\n  !state.failed && state.conceptsReplayed && state.proofsReplayed &&\n    state.inspection.any (fun data =>\n      data.environment == state.key.environment && validate data)\n\n/-- The exact inspected input approved at the end of this run, if any. -/\ndef approvedInput (key : ArtifactKey) (events : List Event) : Option Snapshot :=\n  let state := run key events\n  if approve state then state.inspection else none\n\n/-- A declarative record of the required successful stages. -/\ndef EvidenceComplete (key : ArtifactKey) (events : List Event) (data : Snapshot) : Prop :=\n  Event.conceptsReplayed key ∈ events ∧ Event.proofsReplayed key ∈ events ∧\n  Event.inspected key data ∈ events ∧ Event.failed ∉ events ∧\n  data.environment = key.environment ∧ Valid data\n\n/-- An approved input has all required evidence for the same artifact. -/\naxiom approval_requires_evidence (key : ArtifactKey) (events : List Event)\n    (data : Snapshot) (accepted : approvedInput key events = some data) :\n    EvidenceComplete key events data\n\n/-- A failed stage can never be repaired merely by later success receipts. -/\naxiom failure_blocks_approval (key : ArtifactKey) (events : List Event)\n    (failed : Event.failed ∈ events) : approvedInput key events = none\n\n/-- Starting a new run carries no approval from a previous artifact. -/\naxiom fresh_run_unapproved (key : ArtifactKey) : approve (start key) = false\n\nend Lax796640.Pipeline\n",
+      "statements": [
+        {
+          "id": "Lax796640.Pipeline.approval_requires_evidence",
+          "signature": "approval_requires_evidence : ∀ (key : Lax796640.Pipeline.ArtifactKey) (events : List Lax796640.Pipeline.Event)\n  (data : Lax796640.Declarations.Snapshot),\n  Eq (Lax796640.Pipeline.approvedInput key events) (Option.some data) →\n    Lax796640.Pipeline.EvidenceComplete key events data",
+          "startLine": 92,
+          "endLine": 95,
+          "doc": "An approved input has all required evidence for the same artifact."
+        },
+        {
+          "id": "Lax796640.Pipeline.failure_blocks_approval",
+          "signature": "failure_blocks_approval : ∀ (key : Lax796640.Pipeline.ArtifactKey) (events : List Lax796640.Pipeline.Event),\n  List.instMembership.mem events Lax796640.Pipeline.Event.failed →\n    Eq (Lax796640.Pipeline.approvedInput key events) Option.none",
+          "startLine": 97,
+          "endLine": 99,
+          "doc": "A failed stage can never be repaired merely by later success receipts."
+        },
+        {
+          "id": "Lax796640.Pipeline.fresh_run_unapproved",
+          "signature": "fresh_run_unapproved : ∀ (key : Lax796640.Pipeline.ArtifactKey), Eq (Lax796640.Pipeline.approve (Lax796640.Pipeline.start key)) Bool.false",
+          "startLine": 101,
+          "endLine": 102,
+          "doc": "Starting a new run carries no approval from a previous artifact."
+        }
+      ]
+    },
+    {
+      "id": "Lax796640.Production",
+      "path": "concepts/Lax796640/Production.lean",
+      "title": "The proposed production entry points and their guarantees",
+      "type": "theorem",
+      "description": "The functions in this file combine the controller, validation rules, and\ncertificate checker. The implementation to deploy is these same Lean\ndefinitions, not a separately handwritten translation of them.\n\nThe general entry point reports the assumptions under which its results hold.\nThe entry point for ordinary proved labels always supplies an empty assumption\nlist. This prevents a conditional classification from silently being\npresented as an unconditional proof.\n\nThe theorem statements are proved in the separate proof package. Replaying\nthat package checks their proofs. Deployment still requires faithful input\nextraction, authentic runner receipts, correct execution, and a publisher that\nrespects rejection and publishes the very artifact identified by the approved\nrun.",
+      "imports": [
+        "Lax796640.Pipeline",
+        "Lax796640.RelativeSoundness"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax796640.Pipeline\nimport Lax796640.RelativeSoundness\n\n/-!\n---\ntitle: The proposed production entry points and their guarantees\ntype: theorem\n---\nThe functions in this file combine the controller, validation rules, and\ncertificate checker. The implementation to deploy is these same Lean\ndefinitions, not a separately handwritten translation of them.\n\nThe general entry point reports the assumptions under which its results hold.\nThe entry point for ordinary proved labels always supplies an empty assumption\nlist. This prevents a conditional classification from silently being\npresented as an unconditional proof.\n\nThe theorem statements are proved in the separate proof package. Replaying\nthat package checks their proofs. Deployment still requires faithful input\nextraction, authentic runner receipts, correct execution, and a publisher that\nrespects rejection and publishes the very artifact identified by the approved\nrun.\n-/\n\nnamespace Lax796640.Production\n\nopen Declarations ProofNetworks Certificates Validation RelativeSoundness Pipeline\n\n/-- A classification retains the assumptions on which it depends. -/\nstructure Classification where\n  assumed : List Nat\n  established : List Nat\n  deriving DecidableEq, BEq, Repr\n\n/-- Proposed production entry point for classification relative to assumptions. -/\ndef validateAndClassify (key : ArtifactKey) (events : List Event)\n    (initial : List Nat) (certificate : List Step) : Option Classification :=\n  match approvedInput key events with\n  | none => none\n  | some data =>\n      let n := network data\n      if includes n.statements initial then\n        (check n initial certificate).map (fun known =>\n          { assumed := initial.eraseDups, established := known })\n      else none\n\n/-- Proposed entry point for unconditional proved labels. -/\ndef validateAndProve (key : ArtifactKey) (events : List Event)\n    (certificate : List Step) : Option Classification :=\n  validateAndClassify key events [] certificate\n\n/-- The final result is exact for the very snapshot approved by the controller. -/\naxiom classification_exact (key : ArtifactKey) (events : List Event)\n    (initial : List Nat) (certificate : List Step) (result : Classification)\n    (accepted : validateAndClassify key events initial certificate = some result) :\n    result.assumed = initial.eraseDups ∧\n    ∃ data, approvedInput key events = some data ∧ Valid data ∧\n      ∀ a, a ∈ result.established ↔ Derivable (network data) initial a\n\n/-- Main proposed production guarantee. The runner/kernel contract applies to\nthe actual approved input, not to an unrelated model or an arbitrary network. -/\naxiom production_sound (key : ArtifactKey) (events : List Event)\n    (certificate : List Step) (result : Classification) (meaning : Nat → Prop)\n    (trusted : ∀ data, approvedInput key events = some data → KernelContract data meaning)\n    (accepted : validateAndProve key events certificate = some result) :\n    result.assumed = [] ∧ ∀ a ∈ result.established, meaning a\n\n/-- A failure in the runner cannot yield a successful final classification. -/\naxiom production_rejects_failure (key : ArtifactKey) (events : List Event)\n    (failed : Event.failed ∈ events) (initial : List Nat) (certificate : List Step) :\n    validateAndClassify key events initial certificate = none\n\nend Lax796640.Production\n",
+      "statements": [
+        {
+          "id": "Lax796640.Production.classification_exact",
+          "signature": "classification_exact : ∀ (key : Lax796640.Pipeline.ArtifactKey) (events : List Lax796640.Pipeline.Event) (initial : List Nat)\n  (certificate : List Lax796640.Certificates.Step) (result : Lax796640.Production.Classification),\n  Eq (Lax796640.Production.validateAndClassify key events initial certificate) (Option.some result) →\n    And (Eq result.assumed initial.eraseDups)\n      (Exists fun data =>\n        And (Eq (Lax796640.Pipeline.approvedInput key events) (Option.some data))\n          (And (Lax796640.Validation.Valid data)\n            (∀ (a : Nat),\n              Iff (List.instMembership.mem result.established a)\n                (Lax796640.ProofNetworks.Derivable (Lax796640.Validation.network data) initial a))))",
+          "startLine": 52,
+          "endLine": 58,
+          "doc": "The final result is exact for the very snapshot approved by the controller."
+        },
+        {
+          "id": "Lax796640.Production.production_rejects_failure",
+          "signature": "production_rejects_failure : ∀ (key : Lax796640.Pipeline.ArtifactKey) (events : List Lax796640.Pipeline.Event),\n  List.instMembership.mem events Lax796640.Pipeline.Event.failed →\n    ∀ (initial : List Nat) (certificate : List Lax796640.Certificates.Step),\n      Eq (Lax796640.Production.validateAndClassify key events initial certificate) Option.none",
+          "startLine": 68,
+          "endLine": 71,
+          "doc": "A failure in the runner cannot yield a successful final classification."
+        },
+        {
+          "id": "Lax796640.Production.production_sound",
+          "signature": "production_sound : ∀ (key : Lax796640.Pipeline.ArtifactKey) (events : List Lax796640.Pipeline.Event)\n  (certificate : List Lax796640.Certificates.Step) (result : Lax796640.Production.Classification)\n  (meaning : Nat → Prop),\n  (∀ (data : Lax796640.Declarations.Snapshot),\n      Eq (Lax796640.Pipeline.approvedInput key events) (Option.some data) →\n        Lax796640.RelativeSoundness.KernelContract data meaning) →\n    Eq (Lax796640.Production.validateAndProve key events certificate) (Option.some result) →\n      And (Eq result.assumed List.nil) (∀ (a : Nat), List.instMembership.mem result.established a → meaning a)",
+          "startLine": 60,
+          "endLine": 66,
+          "doc": "Main proposed production guarantee. The runner/kernel contract applies to\nthe actual approved input, not to an unrelated model or an arbitrary network."
+        }
+      ]
+    },
+    {
+      "id": "Lax796640.ProofNetworks",
+      "path": "concepts/Lax796640/ProofNetworks.lean",
+      "title": "Finite derivations in a proof network",
+      "type": "theorem",
+      "description": "A proof rule says that its conclusion follows if all its assumptions have\nbeen established. Several rules may have the same conclusion. A derivation\nis a finite tree of rule applications, with designated assumptions at its\nleaves. A rule with no assumptions supplies a starting point.\n\nThe closure algorithm repeatedly applies all available rules. Its result is\nspecified by finite derivability, independently of the algorithm. The target\nequivalence concerns the rules in this snapshot, not all possible Lean proofs.",
+      "imports": [
+        "Lax796640.Declarations"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax796640.Declarations\n\n/-!\n---\ntitle: Finite derivations in a proof network\ntype: theorem\n---\nA proof rule says that its conclusion follows if all its assumptions have\nbeen established. Several rules may have the same conclusion. A derivation\nis a finite tree of rule applications, with designated assumptions at its\nleaves. A rule with no assumptions supplies a starting point.\n\nThe closure algorithm repeatedly applies all available rules. Its result is\nspecified by finite derivability, independently of the algorithm. The target\nequivalence concerns the rules in this snapshot, not all possible Lean proofs.\n-/\n\nnamespace Lax796640.ProofNetworks\n\nopen Declarations\n\n/-- One conditional proof, identified by its theorem declaration. -/\nstructure Rule where\n  proofId : Nat\n  assumptions : List Nat\n  conclusion : Nat\n  deriving DecidableEq, BEq, Repr\n\n/-- Statements and the available rules for establishing them. -/\nstructure Network where\n  statements : List Nat\n  rules : List Rule\n  deriving DecidableEq, BEq, Repr\n\n/-- Rules refer to existing statements and have distinct proof identifiers. -/\ndef WellFormed (n : Network) : Prop :=\n  n.statements.Nodup ∧ (n.rules.map Rule.proofId).Nodup ∧\n  ∀ r ∈ n.rules, r.conclusion ∈ n.statements ∧\n    ∀ a ∈ r.assumptions, a ∈ n.statements\n\n/-- Establish a statement from designated assumptions using finitely many rules. -/\ninductive Derivable (n : Network) (initial : List Nat) : Nat → Prop where\n  | assumption {statement : Nat} :\n      statement ∈ initial → Derivable n initial statement\n  | apply {r : Rule} : r ∈ n.rules →\n      (∀ a ∈ r.assumptions, Derivable n initial a) →\n      Derivable n initial r.conclusion\n\n/-- A set is closed when every rule whose assumptions it contains stays in it. -/\ndef Closed (n : Network) (known : List Nat) : Prop :=\n  ∀ r ∈ n.rules, (∀ a ∈ r.assumptions, a ∈ known) → r.conclusion ∈ known\n\n/-- One round of the executable closure algorithm. -/\ndef advance (n : Network) (known : List Nat) : List Nat :=\n  (known ++ (n.rules.filter (fun r => includes known r.assumptions)).map\n    Rule.conclusion).eraseDups\n\n/-- Each recursive call consumes one round. -/\ndef closeFor (n : Network) : Nat → List Nat → List Nat\n  | 0, known => known.eraseDups\n  | rounds + 1, known => closeFor n rounds (advance n known)\n\n/-- At most one round per statement suffices, even in a cyclic network. -/\ndef closure (n : Network) (initial : List Nat) : List Nat :=\n  closeFor n n.statements.length initial\n\n/-- The computed set is exactly the set of finite derivations. -/\naxiom closure_exact (n : Network) (h : WellFormed n) (initial : List Nat)\n    (admitted : ∀ a ∈ initial, a ∈ n.statements) (statement : Nat) :\n    statement ∈ closure n initial ↔ Derivable n initial statement\n\n/-- The bound built into the algorithm reaches a fixed point. -/\naxiom closure_closed (n : Network) (h : WellFormed n) (initial : List Nat)\n    (admitted : ∀ a ∈ initial, a ∈ n.statements) :\n    Closed n (closure n initial)\n\n/-- Without initial assumptions or a rule with no assumptions, nothing starts. -/\naxiom no_ungrounded_proof (n : Network)\n    (noStart : ∀ r ∈ n.rules, r.assumptions ≠ []) (statement : Nat) :\n    ¬ Derivable n [] statement\n\nend Lax796640.ProofNetworks\n",
+      "statements": [
+        {
+          "id": "Lax796640.ProofNetworks.closure_closed",
+          "signature": "closure_closed : ∀ (n : Lax796640.ProofNetworks.Network),\n  Lax796640.ProofNetworks.WellFormed n →\n    ∀ (initial : List Nat),\n      (∀ (a : Nat), List.instMembership.mem initial a → List.instMembership.mem n.statements a) →\n        Lax796640.ProofNetworks.Closed n (Lax796640.ProofNetworks.closure n initial)",
+          "startLine": 72,
+          "endLine": 75,
+          "doc": "The bound built into the algorithm reaches a fixed point."
+        },
+        {
+          "id": "Lax796640.ProofNetworks.closure_exact",
+          "signature": "closure_exact : ∀ (n : Lax796640.ProofNetworks.Network),\n  Lax796640.ProofNetworks.WellFormed n →\n    ∀ (initial : List Nat),\n      (∀ (a : Nat), List.instMembership.mem initial a → List.instMembership.mem n.statements a) →\n        ∀ (statement : Nat),\n          Iff (List.instMembership.mem (Lax796640.ProofNetworks.closure n initial) statement)\n            (Lax796640.ProofNetworks.Derivable n initial statement)",
+          "startLine": 67,
+          "endLine": 70,
+          "doc": "The computed set is exactly the set of finite derivations."
+        },
+        {
+          "id": "Lax796640.ProofNetworks.no_ungrounded_proof",
+          "signature": "no_ungrounded_proof : ∀ (n : Lax796640.ProofNetworks.Network),\n  (∀ (r : Lax796640.ProofNetworks.Rule), List.instMembership.mem n.rules r → Ne r.assumptions List.nil) →\n    ∀ (statement : Nat), Not (Lax796640.ProofNetworks.Derivable n List.nil statement)",
+          "startLine": 77,
+          "endLine": 80,
+          "doc": "Without initial assumptions or a rule with no assumptions, nothing starts."
+        }
+      ]
+    },
+    {
+      "id": "Lax796640.RelativeSoundness",
+      "path": "concepts/Lax796640/RelativeSoundness.lean",
+      "title": "What acceptance guarantees under the kernel contract",
+      "type": "theorem",
+      "description": "Give each declaration identifier the proposition expressed by its type.\nThe kernel contract below specifies the facts supplied by the trusted Lean\nboundary: a checked theorem follows from its actual axiom dependencies,\nsuccessful type comparisons preserve meaning, and the permitted background\naxioms hold in the chosen interpretation.\n\nThese are explicit hypotheses. This submission does not prove Lean's kernel\nsound, or establish that an arbitrary JSON report came from that kernel.\nFaithful extraction of declaration references and comparisons is necessary\nto apply the contract to the real archive.\n\nThe important intermediate claim is derived rather than assumed: validation\nturns these declaration-level facts into sound proof-network rules. Finite\nderivations then compose those rules. A valid conditional proof may still\nhave unproved assumptions; acceptance alone does not discharge them.",
+      "imports": [
+        "Lax796640.Certificates",
+        "Lax796640.Validation"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax796640.Validation\nimport Lax796640.Certificates\n\n/-!\n---\ntitle: What acceptance guarantees under the kernel contract\ntype: theorem\n---\nGive each declaration identifier the proposition expressed by its type.\nThe kernel contract below specifies the facts supplied by the trusted Lean\nboundary: a checked theorem follows from its actual axiom dependencies,\nsuccessful type comparisons preserve meaning, and the permitted background\naxioms hold in the chosen interpretation.\n\nThese are explicit hypotheses. This submission does not prove Lean's kernel\nsound, or establish that an arbitrary JSON report came from that kernel.\nFaithful extraction of declaration references and comparisons is necessary\nto apply the contract to the real archive.\n\nThe important intermediate claim is derived rather than assumed: validation\nturns these declaration-level facts into sound proof-network rules. Finite\nderivations then compose those rules. A valid conditional proof may still\nhave unproved assumptions; acceptance alone does not discharge them.\n-/\n\nnamespace Lax796640.RelativeSoundness\n\nopen Declarations Dependencies ProofNetworks Validation Certificates\n\n/-- The explicit logical interface to replay and faithful inspection.\n`meaning id` denotes the proposition expressed by the declaration's type;\nthe contract is used only for theorems and their axiom dependencies.\n-/\nstructure KernelContract (s : Snapshot) (meaning : Nat → Prop) : Prop where\n  /-- Kernel-checked theorem bodies establish their types from their axiom leaves. -/\n  theoremSound : ∀ d ∈ s.declarations, d.kind = .theoremDecl →\n    (∀ a, UsesAxiom s d.id a → meaning a) → meaning d.id\n  /-- Conversion compares the actual types, rather than their printed text. -/\n  comparisonSound : ∀ f ∈ s.comparisons, f.sameType = true →\n    (meaning f.theoremId ↔ meaning f.statementId)\n  /-- The three permitted background axioms hold in the chosen interpretation. -/\n  backgroundSound : ∀ a, backgroundAxiom s a = true → meaning a\n\n/-- Each recorded rule preserves truth when all of its assumptions hold. -/\ndef RulesSound (n : Network) (meaning : Nat → Prop) : Prop :=\n  ∀ r ∈ n.rules, (∀ a ∈ r.assumptions, meaning a) → meaning r.conclusion\n\n/-- The validator's acceptance rules justify the edges it records. -/\naxiom validation_rules_sound (s : Snapshot) (meaning : Nat → Prop)\n    (kernel : KernelContract s meaning) (accepted : validate s = true) :\n    RulesSound (network s) meaning\n\n/-- Finite derivations compose sound rules without introducing new assumptions. -/\naxiom derivation_sound (n : Network) (meaning : Nat → Prop)\n    (rules : RulesSound n meaning) (initial : List Nat)\n    (assumptions : ∀ a ∈ initial, meaning a) (a : Nat)\n    (derived : Derivable n initial a) : meaning a\n\n/-- Main mathematical guarantee for the computed closure of accepted records. -/\naxiom established_sound (s : Snapshot) (meaning : Nat → Prop)\n    (kernel : KernelContract s meaning) (accepted : validate s = true)\n    (initial : List Nat) (admitted : ∀ a ∈ initial, a ∈ (network s).statements)\n    (assumptions : ∀ a ∈ initial, meaning a) (a : Nat)\n    (established : a ∈ closure (network s) initial) : meaning a\n\n/-- The same guarantee holds when an arbitrary producer supplies a certificate. -/\naxiom certificate_sound (s : Snapshot) (meaning : Nat → Prop)\n    (kernel : KernelContract s meaning) (accepted : validate s = true)\n    (initial : List Nat) (admitted : ∀ a ∈ initial, a ∈ (network s).statements)\n    (assumptions : ∀ a ∈ initial, meaning a) (steps : List Step)\n    (known : List Nat) (certificate : check (network s) initial steps = some known)\n    (a : Nat) (established : a ∈ known) : meaning a\n\nend Lax796640.RelativeSoundness\n",
+      "statements": [
+        {
+          "id": "Lax796640.RelativeSoundness.certificate_sound",
+          "signature": "certificate_sound : ∀ (s : Lax796640.Declarations.Snapshot) (meaning : Nat → Prop),\n  Lax796640.RelativeSoundness.KernelContract s meaning →\n    Eq (Lax796640.Validation.validate s) Bool.true →\n      ∀ (initial : List Nat),\n        (∀ (a : Nat),\n            List.instMembership.mem initial a → List.instMembership.mem (Lax796640.Validation.network s).statements a) →\n          (∀ (a : Nat), List.instMembership.mem initial a → meaning a) →\n            ∀ (steps : List Lax796640.Certificates.Step) (known : List Nat),\n              Eq (Lax796640.Certificates.check (Lax796640.Validation.network s) initial steps) (Option.some known) →\n                ∀ (a : Nat), List.instMembership.mem known a → meaning a",
+          "startLine": 66,
+          "endLine": 72,
+          "doc": "The same guarantee holds when an arbitrary producer supplies a certificate."
+        },
+        {
+          "id": "Lax796640.RelativeSoundness.derivation_sound",
+          "signature": "derivation_sound : ∀ (n : Lax796640.ProofNetworks.Network) (meaning : Nat → Prop),\n  Lax796640.RelativeSoundness.RulesSound n meaning →\n    ∀ (initial : List Nat),\n      (∀ (a : Nat), List.instMembership.mem initial a → meaning a) →\n        ∀ (a : Nat), Lax796640.ProofNetworks.Derivable n initial a → meaning a",
+          "startLine": 53,
+          "endLine": 57,
+          "doc": "Finite derivations compose sound rules without introducing new assumptions."
+        },
+        {
+          "id": "Lax796640.RelativeSoundness.established_sound",
+          "signature": "established_sound : ∀ (s : Lax796640.Declarations.Snapshot) (meaning : Nat → Prop),\n  Lax796640.RelativeSoundness.KernelContract s meaning →\n    Eq (Lax796640.Validation.validate s) Bool.true →\n      ∀ (initial : List Nat),\n        (∀ (a : Nat),\n            List.instMembership.mem initial a → List.instMembership.mem (Lax796640.Validation.network s).statements a) →\n          (∀ (a : Nat), List.instMembership.mem initial a → meaning a) →\n            ∀ (a : Nat),\n              List.instMembership.mem (Lax796640.ProofNetworks.closure (Lax796640.Validation.network s) initial) a →\n                meaning a",
+          "startLine": 59,
+          "endLine": 64,
+          "doc": "Main mathematical guarantee for the computed closure of accepted records."
+        },
+        {
+          "id": "Lax796640.RelativeSoundness.validation_rules_sound",
+          "signature": "validation_rules_sound : ∀ (s : Lax796640.Declarations.Snapshot) (meaning : Nat → Prop),\n  Lax796640.RelativeSoundness.KernelContract s meaning →\n    Eq (Lax796640.Validation.validate s) Bool.true →\n      Lax796640.RelativeSoundness.RulesSound (Lax796640.Validation.network s) meaning",
+          "startLine": 48,
+          "endLine": 51,
+          "doc": "The validator's acceptance rules justify the edges it records."
+        }
+      ]
+    },
+    {
+      "id": "Lax796640.Stability",
+      "path": "concepts/Lax796640/Stability.lean",
+      "title": "Adding proofs, discharging assumptions, and renaming statements",
+      "type": "theorem",
+      "description": "Several archive operations should preserve existing derivations. Adding\navailable proofs cannot invalidate one. Assumptions can be replaced by their\nown derivations. Reordering the available rules does not change what follows.\nRenaming identifiers consistently also preserves the result, provided the\nrenaming does not merge distinct statements.\n\nThese statements concern immutable mathematical networks. Replacing an\narchived submission is covered only when the replacement satisfies the\nstated network relationship; a successor label alone is not such a proof.",
+      "imports": [
+        "Lax796640.ProofNetworks"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax796640.ProofNetworks\n\n/-!\n---\ntitle: Adding proofs, discharging assumptions, and renaming statements\ntype: theorem\n---\nSeveral archive operations should preserve existing derivations. Adding\navailable proofs cannot invalidate one. Assumptions can be replaced by their\nown derivations. Reordering the available rules does not change what follows.\nRenaming identifiers consistently also preserves the result, provided the\nrenaming does not merge distinct statements.\n\nThese statements concern immutable mathematical networks. Replacing an\narchived submission is covered only when the replacement satisfies the\nstated network relationship; a successor label alone is not such a proof.\n-/\n\nnamespace Lax796640.Stability\n\nopen ProofNetworks\n\n/-- Every original rule remains available in an extension. -/\ndef Extends (original extended : Network) : Prop :=\n  ∀ r ∈ original.rules, r ∈ extended.rules\n\n/-- Rename statement identifiers in assumptions and conclusions. Proof ids stay fixed. -/\ndef rename (f : Nat → Nat) (n : Network) : Network where\n  statements := n.statements.map f\n  rules := n.rules.map (fun r =>\n    { r with assumptions := r.assumptions.map f, conclusion := f r.conclusion })\n\n/-- Adding rules preserves all existing finite derivations. -/\naxiom extension_preserves (n larger : Network) (extension : Extends n larger)\n    (initial : List Nat) (a : Nat) :\n    Derivable n initial a → Derivable larger initial a\n\n/-- Derivations of the assumptions can be substituted into a derivation. -/\naxiom discharge_assumptions (n : Network) (initial replacement : List Nat)\n    (discharge : ∀ a ∈ initial, Derivable n replacement a) (a : Nat) :\n    Derivable n initial a → Derivable n replacement a\n\n/-- The order and multiplicity of identical proof rules have no semantic effect. -/\naxiom rules_order_irrelevant (left right : Network)\n    (sameRules : ∀ r, r ∈ left.rules ↔ r ∈ right.rules)\n    (initial : List Nat) (a : Nat) :\n    Derivable left initial a ↔ Derivable right initial a\n\n/-- An injective renaming preserves and reflects derivability. -/\naxiom renaming_exact (n : Network) (f : Nat → Nat) (injective : Function.Injective f)\n    (initial : List Nat) (a : Nat) :\n    Derivable (rename f n) (initial.map f) (f a) ↔ Derivable n initial a\n\n/-- Recomputing closure from an already closed result changes no membership. -/\naxiom closure_idempotent (n : Network) (h : WellFormed n) (initial : List Nat)\n    (admitted : ∀ a ∈ initial, a ∈ n.statements) (a : Nat) :\n    a ∈ closure n (closure n initial) ↔ a ∈ closure n initial\n\nend Lax796640.Stability\n",
+      "statements": [
+        {
+          "id": "Lax796640.Stability.closure_idempotent",
+          "signature": "closure_idempotent : ∀ (n : Lax796640.ProofNetworks.Network),\n  Lax796640.ProofNetworks.WellFormed n →\n    ∀ (initial : List Nat),\n      (∀ (a : Nat), List.instMembership.mem initial a → List.instMembership.mem n.statements a) →\n        ∀ (a : Nat),\n          Iff\n            (List.instMembership.mem (Lax796640.ProofNetworks.closure n (Lax796640.ProofNetworks.closure n initial)) a)\n            (List.instMembership.mem (Lax796640.ProofNetworks.closure n initial) a)",
+          "startLine": 54,
+          "endLine": 57,
+          "doc": "Recomputing closure from an already closed result changes no membership."
+        },
+        {
+          "id": "Lax796640.Stability.discharge_assumptions",
+          "signature": "discharge_assumptions : ∀ (n : Lax796640.ProofNetworks.Network) (initial replacement : List Nat),\n  (∀ (a : Nat), List.instMembership.mem initial a → Lax796640.ProofNetworks.Derivable n replacement a) →\n    ∀ (a : Nat), Lax796640.ProofNetworks.Derivable n initial a → Lax796640.ProofNetworks.Derivable n replacement a",
+          "startLine": 38,
+          "endLine": 41,
+          "doc": "Derivations of the assumptions can be substituted into a derivation."
+        },
+        {
+          "id": "Lax796640.Stability.extension_preserves",
+          "signature": "extension_preserves : ∀ (n larger : Lax796640.ProofNetworks.Network),\n  Lax796640.Stability.Extends n larger →\n    ∀ (initial : List Nat) (a : Nat),\n      Lax796640.ProofNetworks.Derivable n initial a → Lax796640.ProofNetworks.Derivable larger initial a",
+          "startLine": 33,
+          "endLine": 36,
+          "doc": "Adding rules preserves all existing finite derivations."
+        },
+        {
+          "id": "Lax796640.Stability.renaming_exact",
+          "signature": "renaming_exact : ∀ (n : Lax796640.ProofNetworks.Network) (f : Nat → Nat),\n  Function.Injective f →\n    ∀ (initial : List Nat) (a : Nat),\n      Iff (Lax796640.ProofNetworks.Derivable (Lax796640.Stability.rename f n) (List.map f initial) (f a))\n        (Lax796640.ProofNetworks.Derivable n initial a)",
+          "startLine": 49,
+          "endLine": 52,
+          "doc": "An injective renaming preserves and reflects derivability."
+        },
+        {
+          "id": "Lax796640.Stability.rules_order_irrelevant",
+          "signature": "rules_order_irrelevant : ∀ (left right : Lax796640.ProofNetworks.Network),\n  (∀ (r : Lax796640.ProofNetworks.Rule),\n      Iff (List.instMembership.mem left.rules r) (List.instMembership.mem right.rules r)) →\n    ∀ (initial : List Nat) (a : Nat),\n      Iff (Lax796640.ProofNetworks.Derivable left initial a) (Lax796640.ProofNetworks.Derivable right initial a)",
+          "startLine": 43,
+          "endLine": 47,
+          "doc": "The order and multiplicity of identical proof rules have no semantic effect."
+        }
+      ]
+    },
+    {
+      "id": "Lax796640.Validation",
+      "path": "concepts/Lax796640/Validation.lean",
+      "title": "The executable mathematical validation rules",
+      "type": "theorem",
+      "description": "Validation has two descriptions here. `Valid` states the requirements using\nquantifiers and graph reachability. `validate` is a concrete Boolean program\nusing finite lists and the executable axiom collector. The central obligation\nis that these descriptions agree on every input.\n\nOnly `propext`, `Classical.choice`, and `Quot.sound` are permitted background\naxioms. A concept may state an axiom but may not use another statement as an\nassumption. Proof declarations may use background axioms and statements from\ndirectly required concept packages. A proof claim must name a theorem with\nthe same type as its imported conclusion.\n\nThese are mathematical acceptance rules. Source fetching, declaration\nextraction, namespaces, documentation, paper rendering, and ownership checks\nare outside this function. Package roles and kernel comparisons must be\nauthenticated by the surrounding pipeline; their presence in this data\nstructure is not authentication.",
+      "imports": [
+        "Lax796640.Dependencies",
+        "Lax796640.ProofNetworks"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax796640.Dependencies\nimport Lax796640.ProofNetworks\n\n/-!\n---\ntitle: The executable mathematical validation rules\ntype: theorem\n---\nValidation has two descriptions here. `Valid` states the requirements using\nquantifiers and graph reachability. `validate` is a concrete Boolean program\nusing finite lists and the executable axiom collector. The central obligation\nis that these descriptions agree on every input.\n\nOnly `propext`, `Classical.choice`, and `Quot.sound` are permitted background\naxioms. A concept may state an axiom but may not use another statement as an\nassumption. Proof declarations may use background axioms and statements from\ndirectly required concept packages. A proof claim must name a theorem with\nthe same type as its imported conclusion.\n\nThese are mathematical acceptance rules. Source fetching, declaration\nextraction, namespaces, documentation, paper rendering, and ownership checks\nare outside this function. Package roles and kernel comparisons must be\nauthenticated by the surrounding pipeline; their presence in this data\nstructure is not authentication.\n-/\n\nnamespace Lax796640.Validation\n\nopen Declarations Dependencies ProofNetworks\n\n/-- The fixed background axiom policy of the intended Lax environment. -/\ndef backgroundNames : List String :=\n  [\"propext\", \"Classical.choice\", \"Quot.sound\"]\n\n/-- A background axiom must have both the right name and a background origin. -/\ndef backgroundAxiom (s : Snapshot) (id : Nat) : Bool :=\n  (declaration s id).any (fun d =>\n    d.kind == .axiomDecl && backgroundNames.contains d.name &&\n    (package s d.package).any (fun p => p.role == .background))\n\n/-- An admissible statement is a propositional axiom of a concept package. -/\ndef isStatement (s : Snapshot) (id : Nat) : Bool :=\n  (declaration s id).any (fun d =>\n    d.kind == .axiomDecl && d.isProposition &&\n    (package s d.package).any (fun p => p.role == .concepts))\n\n/-- A proof package may assume statements only from directly required concepts. -/\ndef allowedStatement (s : Snapshot) (proofPackage statement : Nat) : Bool :=\n  isStatement s statement &&\n    (package s proofPackage).any (fun p =>\n      (declaration s statement).any (fun d => p.requires.contains d.package))\n\n/-- An explicit successful comparison for this particular theorem and conclusion. -/\ndef comparisonAgrees (s : Snapshot) (c : Claim) : Bool :=\n  s.comparisons.any (fun f => f.theoremId == c.theoremId &&\n    f.statementId == c.statementId && f.sameType && f.conclusionImported)\n\n/-- Statements used by a theorem, after removing permitted background axioms. -/\ndef assumptionsOf (s : Snapshot) (theoremId : Nat) : List Nat :=\n  (axiomsUsed s theoremId).filter (fun a => !(backgroundAxiom s a))\n\n/-- Declarative requirements on identifiers, package relationships, and references. -/\ndef TablesValid (s : Snapshot) : Prop :=\n  ReferencesWellFormed s ∧\n  (s.declarations.map Declaration.name).Nodup ∧\n  (s.packages.map Package.id).Nodup ∧ s.localPackages.Nodup ∧\n  (∀ id ∈ s.localPackages, ∃ p ∈ s.packages, p.id = id) ∧\n  (∀ d ∈ s.declarations, ∃ p ∈ s.packages, p.id = d.package) ∧\n  (∀ p ∈ s.packages,\n    p.environment = s.environment ∧\n    (p.role = .background ∨ p.id ∈ s.localPackages ∨ p.registered = true) ∧\n    (∀ id ∈ p.requires, ∃ q ∈ s.packages, q.id = id) ∧\n    (p.role = .concepts → ∀ id ∈ p.requires,\n      ∀ q ∈ s.packages, q.id = id → q.role ≠ .proofs)) ∧\n  (∀ f ∈ s.comparisons,\n    (∃ d ∈ s.declarations, d.id = f.theoremId) ∧\n    (∃ d ∈ s.declarations, d.id = f.statementId))\n\n/-- The axiom policy for one declaration, stated without the collector program. -/\ndef DeclarationValid (s : Snapshot) (d : Declaration) : Prop :=\n  ∃ p ∈ s.packages, p.id = d.package ∧\n    match p.role with\n    | .background => True\n    | .concepts =>\n        (d.kind = .axiomDecl → d.isProposition = true) ∧\n        ∀ a, UsesAxiom s d.id a →\n          backgroundAxiom s a = true ∨ (d.kind = .axiomDecl ∧ a = d.id)\n    | .proofs =>\n        ∀ a, UsesAxiom s d.id a →\n          backgroundAxiom s a = true ∨ allowedStatement s d.package a = true\n\n/-- A proof claim agrees with declaration facts and with its actual dependencies. -/\ndef ClaimValid (s : Snapshot) (c : Claim) : Prop :=\n  ∃ d ∈ s.declarations, d.id = c.theoremId ∧ d.kind = .theoremDecl ∧\n    (package s d.package).any (fun p => p.role == .proofs) = true ∧\n    allowedStatement s d.package c.statementId = true ∧\n    comparisonAgrees s c = true ∧\n    ∀ claimed, c.claimedAssumptions = some claimed →\n      ∀ a, a ∈ claimed ↔ UsesAxiom s c.theoremId a ∧ backgroundAxiom s a = false\n\n/-- The independent mathematical specification of acceptance. -/\ndef Valid (s : Snapshot) : Prop :=\n  TablesValid s ∧ (∀ d ∈ s.declarations, DeclarationValid s d) ∧\n  (s.claims.map Claim.theoremId).Nodup ∧ (∀ c ∈ s.claims, ClaimValid s c)\n\n/-- Check finite table integrity before relying on lookups. -/\ndef checkTables (s : Snapshot) : Bool :=\n  let declIds := s.declarations.map Declaration.id\n  let declNames := s.declarations.map Declaration.name\n  let packageIds := s.packages.map Package.id\n  declIds.eraseDups.length == declIds.length &&\n  declNames.eraseDups.length == declNames.length &&\n  packageIds.eraseDups.length == packageIds.length &&\n  s.localPackages.eraseDups.length == s.localPackages.length &&\n  includes packageIds s.localPackages &&\n  s.declarations.all (fun d => packageIds.contains d.package &&\n    includes declIds d.references) &&\n  s.packages.all (fun p => p.environment == s.environment &&\n    (p.role == .background || s.localPackages.contains p.id || p.registered) &&\n    includes packageIds p.requires &&\n    (p.role != .concepts || p.requires.all (fun id =>\n      (package s id).any (fun q => q.role != .proofs)))) &&\n  s.comparisons.all (fun f => declIds.contains f.theoremId &&\n    declIds.contains f.statementId)\n\n/-- Check the declaration policy using computed axiom dependencies. -/\ndef checkDeclaration (s : Snapshot) (d : Declaration) : Bool :=\n  match package s d.package with\n  | none => false\n  | some p =>\n      match p.role with\n      | .background => true\n      | .concepts =>\n          (d.kind != .axiomDecl || d.isProposition) &&\n          (axiomsUsed s d.id).all (fun a => backgroundAxiom s a ||\n            (d.kind == .axiomDecl && a == d.id))\n      | .proofs =>\n          (axiomsUsed s d.id).all (fun a => backgroundAxiom s a ||\n            allowedStatement s d.package a)\n\n/-- Check a proof claim; author-supplied assumptions can never hide a dependency. -/\ndef checkClaim (s : Snapshot) (c : Claim) : Bool :=\n  (declaration s c.theoremId).any (fun d =>\n    d.kind == .theoremDecl &&\n    (package s d.package).any (fun p => p.role == .proofs) &&\n    allowedStatement s d.package c.statementId && comparisonAgrees s c &&\n    match c.claimedAssumptions with\n    | none => true\n    | some claimed => sameMembers claimed (assumptionsOf s c.theoremId))\n\n/-- Proposed production entry point for mathematical validation.\nThis function is executable; it does not call any stated proof obligation. -/\ndef validate (s : Snapshot) : Bool :=\n  checkTables s && s.declarations.all (checkDeclaration s) &&\n  (s.claims.map Claim.theoremId).eraseDups.length == s.claims.length &&\n  s.claims.all (checkClaim s)\n\n/-- The network recorded after acceptance, built from recomputed assumptions. -/\ndef network (s : Snapshot) : Network where\n  statements := (s.declarations.map Declaration.id).filter (isStatement s)\n  rules := s.claims.map (fun c =>\n    { proofId := c.theoremId, assumptions := assumptionsOf s c.theoremId,\n      conclusion := c.statementId })\n\n/-- No network is returned when the mathematical rules fail. -/\ndef acceptedNetwork (s : Snapshot) : Option Network :=\n  if validate s then some (network s) else none\n\n/-- Exact agreement between the executable validator and its specification. -/\naxiom validate_exact (s : Snapshot) : validate s = true ↔ Valid s\n\n/-- Accepted records produce a network with no dangling or duplicate identities. -/\naxiom accepted_network_wellFormed (s : Snapshot) (accepted : validate s = true) :\n    WellFormed (network s)\n\n/-- Every recorded assumption is an actual, non-background axiom dependency. -/\naxiom recorded_assumptions_exact (s : Snapshot) (accepted : validate s = true)\n    (c : Claim) (present : c ∈ s.claims) (a : Nat) :\n    a ∈ assumptionsOf s c.theoremId ↔\n      UsesAxiom s c.theoremId a ∧ backgroundAxiom s a = false\n\nend Lax796640.Validation\n",
+      "statements": [
+        {
+          "id": "Lax796640.Validation.accepted_network_wellFormed",
+          "signature": "accepted_network_wellFormed : ∀ (s : Lax796640.Declarations.Snapshot),\n  Eq (Lax796640.Validation.validate s) Bool.true → Lax796640.ProofNetworks.WellFormed (Lax796640.Validation.network s)",
+          "startLine": 172,
+          "endLine": 174,
+          "doc": "Accepted records produce a network with no dangling or duplicate identities."
+        },
+        {
+          "id": "Lax796640.Validation.recorded_assumptions_exact",
+          "signature": "recorded_assumptions_exact : ∀ (s : Lax796640.Declarations.Snapshot),\n  Eq (Lax796640.Validation.validate s) Bool.true →\n    ∀ (c : Lax796640.Declarations.Claim),\n      List.instMembership.mem s.claims c →\n        ∀ (a : Nat),\n          Iff (List.instMembership.mem (Lax796640.Validation.assumptionsOf s c.theoremId) a)\n            (And (Lax796640.Dependencies.UsesAxiom s c.theoremId a)\n              (Eq (Lax796640.Validation.backgroundAxiom s a) Bool.false))",
+          "startLine": 176,
+          "endLine": 180,
+          "doc": "Every recorded assumption is an actual, non-background axiom dependency."
+        },
+        {
+          "id": "Lax796640.Validation.validate_exact",
+          "signature": "validate_exact : ∀ (s : Lax796640.Declarations.Snapshot),\n  Iff (Eq (Lax796640.Validation.validate s) Bool.true) (Lax796640.Validation.Valid s)",
+          "startLine": 169,
+          "endLine": 170,
+          "doc": "Exact agreement between the executable validator and its specification."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax796640Proofs.Certificates.certificate_exists",
+      "path": "proofs/Lax796640Proofs/Certificates.lean",
+      "conclusion": "Lax796640.Certificates.certificate_exists",
+      "assumptions": [],
+      "description": "Keep adding an enabled conclusion that is still missing. Each step consumes a\ndistinct statement, so the process reaches closure within the stated bound."
+    },
+    {
+      "id": "Lax796640Proofs.Certificates.check_exact",
+      "path": "proofs/Lax796640Proofs/Certificates.lean",
+      "conclusion": "Lax796640.Certificates.check_exact",
+      "assumptions": [],
+      "description": "Ordered witnesses justify every added statement. The final closure check then\ncontains every finite derivation, so no derivable statement is omitted."
+    },
+    {
+      "id": "Lax796640Proofs.Certificates.unproved_certificate",
+      "path": "proofs/Lax796640Proofs/Certificates.lean",
+      "conclusion": "Lax796640.Certificates.unproved_certificate",
+      "assumptions": [
+        "Lax796640.Certificates.check_exact"
+      ],
+      "description": "Exactness turns an omitted statement into a certificate of non-derivability\nfrom the available rules, without asserting that the statement is false."
+    },
+    {
+      "id": "Lax796640Proofs.Dependencies.axiomsUsed_exact",
+      "path": "proofs/Lax796640Proofs/Dependencies.lean",
+      "conclusion": "Lax796640.Dependencies.axiomsUsed_exact",
+      "assumptions": [
+        "Lax796640.Dependencies.reachable_exact"
+      ],
+      "description": "Filtering the exact reachability result by declaration kind gives exactly the\nused axioms, including an axiom's dependency on itself."
+    },
+    {
+      "id": "Lax796640Proofs.Dependencies.reachable_exact",
+      "path": "proofs/Lax796640Proofs/Dependencies.lean",
+      "conclusion": "Lax796640.Dependencies.reachable_exact",
+      "assumptions": [],
+      "description": "The finite bound saturates the reference graph. Every added reference extends\na path, and every finite path lies in the saturated set."
+    },
+    {
+      "id": "Lax796640Proofs.Pipeline.approval_requires_evidence",
+      "path": "proofs/Lax796640Proofs/Pipeline.lean",
+      "conclusion": "Lax796640.Pipeline.approval_requires_evidence",
+      "assumptions": [
+        "Lax796640.Validation.validate_exact"
+      ],
+      "description": "The controller invariant links every accepted receipt to this artifact and\nthis run. Approval additionally supplies the environment and validation checks."
+    },
+    {
+      "id": "Lax796640Proofs.Pipeline.failure_blocks_approval",
+      "path": "proofs/Lax796640Proofs/Pipeline.lean",
+      "conclusion": "Lax796640.Pipeline.failure_blocks_approval",
+      "assumptions": [],
+      "description": "Failure is recorded permanently; later successful receipts cannot clear it."
+    },
+    {
+      "id": "Lax796640Proofs.Pipeline.fresh_run_unapproved",
+      "path": "proofs/Lax796640Proofs/Pipeline.lean",
+      "conclusion": "Lax796640.Pipeline.fresh_run_unapproved",
+      "assumptions": [],
+      "description": "A fresh controller state has none of the receipts required for approval."
+    },
+    {
+      "id": "Lax796640Proofs.Production.classification_exact",
+      "path": "proofs/Lax796640Proofs/Production.lean",
+      "conclusion": "Lax796640.Production.classification_exact",
+      "assumptions": [
+        "Lax796640.Certificates.check_exact",
+        "Lax796640.Pipeline.approval_requires_evidence",
+        "Lax796640.Validation.accepted_network_wellFormed",
+        "Lax796640.Validation.validate_exact"
+      ],
+      "description": "Successful execution identifies the very inspected snapshot that passed the\ncontroller and validator. The certificate result is exact for that network,\nand the returned assumptions are precisely the supplied assumptions."
+    },
+    {
+      "id": "Lax796640Proofs.Production.production_rejects_failure",
+      "path": "proofs/Lax796640Proofs/Production.lean",
+      "conclusion": "Lax796640.Production.production_rejects_failure",
+      "assumptions": [
+        "Lax796640.Pipeline.failure_blocks_approval"
+      ],
+      "description": "The final entry point immediately rejects whenever the controller records a\nfailure, regardless of the proposed assumptions or certificate."
+    },
+    {
+      "id": "Lax796640Proofs.Production.production_sound",
+      "path": "proofs/Lax796640Proofs/Production.lean",
+      "conclusion": "Lax796640.Production.production_sound",
+      "assumptions": [
+        "Lax796640.Production.classification_exact",
+        "Lax796640.RelativeSoundness.derivation_sound",
+        "Lax796640.RelativeSoundness.validation_rules_sound",
+        "Lax796640.Validation.validate_exact"
+      ],
+      "description": "The unconditional entry point supplies no assumptions. Exact classification\ntherefore gives a finite derivation from sound rules for every proved label,\nunder the kernel contract for the actual approved snapshot."
+    },
+    {
+      "id": "Lax796640Proofs.ProofNetworks.closure_closed",
+      "path": "proofs/Lax796640Proofs/ProofNetworks.lean",
+      "conclusion": "Lax796640.ProofNetworks.closure_closed",
+      "assumptions": [],
+      "description": "If another round could add a statement, the strictly growing finite set would\nalready have exceeded the number of statements in the network."
+    },
+    {
+      "id": "Lax796640Proofs.ProofNetworks.closure_exact",
+      "path": "proofs/Lax796640Proofs/ProofNetworks.lean",
+      "conclusion": "Lax796640.ProofNetworks.closure_exact",
+      "assumptions": [
+        "Lax796640.ProofNetworks.closure_closed"
+      ],
+      "description": "Each round only adds valid rule conclusions. Conversely, the fixed point\ncontains the leaves and is closed under every rule in a finite derivation."
+    },
+    {
+      "id": "Lax796640Proofs.ProofNetworks.no_ungrounded_proof",
+      "path": "proofs/Lax796640Proofs/ProofNetworks.lean",
+      "conclusion": "Lax796640.ProofNetworks.no_ungrounded_proof",
+      "assumptions": [],
+      "description": "A finite derivation must have a leaf. With no assumptions and no rule without\npremises, even a cycle cannot supply one."
+    },
+    {
+      "id": "Lax796640Proofs.RelativeSoundness.certificate_sound",
+      "path": "proofs/Lax796640Proofs/RelativeSoundness.lean",
+      "conclusion": "Lax796640.RelativeSoundness.certificate_sound",
+      "assumptions": [
+        "Lax796640.Certificates.check_exact",
+        "Lax796640.RelativeSoundness.derivation_sound",
+        "Lax796640.RelativeSoundness.validation_rules_sound",
+        "Lax796640.Validation.accepted_network_wellFormed"
+      ],
+      "description": "The certificate checker supplies the same finite derivations without trusting\nthe program that produced the certificate."
+    },
+    {
+      "id": "Lax796640Proofs.RelativeSoundness.derivation_sound",
+      "path": "proofs/Lax796640Proofs/RelativeSoundness.lean",
+      "conclusion": "Lax796640.RelativeSoundness.derivation_sound",
+      "assumptions": [],
+      "description": "Induction on a finite derivation composes truth-preserving rules."
+    },
+    {
+      "id": "Lax796640Proofs.RelativeSoundness.established_sound",
+      "path": "proofs/Lax796640Proofs/RelativeSoundness.lean",
+      "conclusion": "Lax796640.RelativeSoundness.established_sound",
+      "assumptions": [
+        "Lax796640.ProofNetworks.closure_exact",
+        "Lax796640.RelativeSoundness.derivation_sound",
+        "Lax796640.RelativeSoundness.validation_rules_sound",
+        "Lax796640.Validation.accepted_network_wellFormed"
+      ],
+      "description": "The concrete closure algorithm produces finite derivations, whose rules are\nsound under the explicit kernel contract."
+    },
+    {
+      "id": "Lax796640Proofs.RelativeSoundness.validation_rules_sound",
+      "path": "proofs/Lax796640Proofs/RelativeSoundness.lean",
+      "conclusion": "Lax796640.RelativeSoundness.validation_rules_sound",
+      "assumptions": [
+        "Lax796640.Validation.recorded_assumptions_exact",
+        "Lax796640.Validation.validate_exact"
+      ],
+      "description": "Partition a theorem's actual axiom dependencies into background axioms and\nrecorded assumptions. The kernel contract establishes the theorem, and its\nsuccessful type comparison transfers that meaning to the claimed conclusion."
+    },
+    {
+      "id": "Lax796640Proofs.Stability.closure_idempotent",
+      "path": "proofs/Lax796640Proofs/Stability.lean",
+      "conclusion": "Lax796640.Stability.closure_idempotent",
+      "assumptions": [
+        "Lax796640.ProofNetworks.closure_exact",
+        "Lax796640.Stability.discharge_assumptions"
+      ],
+      "description": "An assumption in the first closure already has a derivation from the original\nassumptions. Substituting those derivations makes a second closure redundant."
+    },
+    {
+      "id": "Lax796640Proofs.Stability.discharge_assumptions",
+      "path": "proofs/Lax796640Proofs/Stability.lean",
+      "conclusion": "Lax796640.Stability.discharge_assumptions",
+      "assumptions": [],
+      "description": "Replace each assumption leaf with its supplied derivation."
+    },
+    {
+      "id": "Lax796640Proofs.Stability.extension_preserves",
+      "path": "proofs/Lax796640Proofs/Stability.lean",
+      "conclusion": "Lax796640.Stability.extension_preserves",
+      "assumptions": [],
+      "description": "Reuse the same finite derivation in the larger network."
+    },
+    {
+      "id": "Lax796640Proofs.Stability.renaming_exact",
+      "path": "proofs/Lax796640Proofs/Stability.lean",
+      "conclusion": "Lax796640.Stability.renaming_exact",
+      "assumptions": [],
+      "description": "Map the derivation in one direction. Injectivity permits each mapped rule and\nassumption to be recovered in the other direction."
+    },
+    {
+      "id": "Lax796640Proofs.Stability.rules_order_irrelevant",
+      "path": "proofs/Lax796640Proofs/Stability.lean",
+      "conclusion": "Lax796640.Stability.rules_order_irrelevant",
+      "assumptions": [
+        "Lax796640.Stability.extension_preserves"
+      ],
+      "description": "Rule membership is the only feature of the rule list used by derivations."
+    },
+    {
+      "id": "Lax796640Proofs.Validation.accepted_network_wellFormed",
+      "path": "proofs/Lax796640Proofs/Validation.lean",
+      "conclusion": "Lax796640.Validation.accepted_network_wellFormed",
+      "assumptions": [
+        "Lax796640.Validation.recorded_assumptions_exact",
+        "Lax796640.Validation.validate_exact"
+      ],
+      "description": "Validation supplies unique statement and proof identifiers. Every conclusion\nand recomputed assumption is an admitted concept statement in the table."
+    },
+    {
+      "id": "Lax796640Proofs.Validation.recorded_assumptions_exact",
+      "path": "proofs/Lax796640Proofs/Validation.lean",
+      "conclusion": "Lax796640.Validation.recorded_assumptions_exact",
+      "assumptions": [
+        "Lax796640.Dependencies.axiomsUsed_exact",
+        "Lax796640.Validation.validate_exact"
+      ],
+      "description": "The stored assumptions come from the actual dependency traversal, with exactly\nthe permitted background axioms removed."
+    },
+    {
+      "id": "Lax796640Proofs.Validation.validate_exact",
+      "path": "proofs/Lax796640Proofs/Validation.lean",
+      "conclusion": "Lax796640.Validation.validate_exact",
+      "assumptions": [
+        "Lax796640.Dependencies.axiomsUsed_exact"
+      ],
+      "description": "Unique table identifiers make lookups exact. The dependency collector is exact\nas well, so each Boolean check is equivalent to its declarative requirement."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "45ebfa7432e9bebbe92dd4ef8090822d6df1a71fd5bb8eec220cf9717f3fba10",
+    "sourceCommit": "618144236ebd7c45c3b9410dbde469dcb469f784",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax796640/Certificates.c",
+        "bytes": 31674,
+        "sha256": "58a79c5d51a31c29ba40b43d26f7a25ec38550528781e9e182766627b63060d8"
+      },
+      {
+        "path": "concepts/ir/Lax796640/Certificates.c.hash",
+        "bytes": 16,
+        "sha256": "9944f6a7fe5b08ce7a4636c25d744f76ab66862cf49f83a7ae5c0063e6cc45c1"
+      },
+      {
+        "path": "concepts/ir/Lax796640/Declarations.c",
+        "bytes": 243690,
+        "sha256": "5f2e3a0336764b3951d7b8367618cb331d8bb43259f7703ba7e560458d3a0ec9"
+      },
+      {
+        "path": "concepts/ir/Lax796640/Declarations.c.hash",
+        "bytes": 16,
+        "sha256": "d0bc5d46a1932a195a499965cf709c07af9961185c72e18f3ee2522d0eb23a75"
+      },
+      {
+        "path": "concepts/ir/Lax796640/Dependencies.c",
+        "bytes": 14233,
+        "sha256": "5793f87353e27124cf67949eed485d7f24279522b8c6ba47c3cad3e3aecbd9c8"
+      },
+      {
+        "path": "concepts/ir/Lax796640/Dependencies.c.hash",
+        "bytes": 16,
+        "sha256": "17cfe7ebbbea23148534029b59ebaf5b7e153f1d346a67918baa866a8327451f"
+      },
+      {
+        "path": "concepts/ir/Lax796640/Pipeline.c",
+        "bytes": 105522,
+        "sha256": "199784a6beca7a01aa0f37b95a6a511df9da867d8cf473626c6a5ead1a8fcdfc"
+      },
+      {
+        "path": "concepts/ir/Lax796640/Pipeline.c.hash",
+        "bytes": 16,
+        "sha256": "57886872127096430b80491a21691bd60678c9eb47ffbc63cdef947f6a67d3dd"
+      },
+      {
+        "path": "concepts/ir/Lax796640/Production.c",
+        "bytes": 29464,
+        "sha256": "017e082c3e34628ede3de266c845c74bc92cfc5615cfcea529c57376c178b33f"
+      },
+      {
+        "path": "concepts/ir/Lax796640/Production.c.hash",
+        "bytes": 16,
+        "sha256": "5c209644248424e7146e1dc54e121cfe44fbae25a37f064309c811c029e9239d"
+      },
+      {
+        "path": "concepts/ir/Lax796640/ProofNetworks.c",
+        "bytes": 66246,
+        "sha256": "d5a1d18e169b574119f3f948764e2e01d5fc9155f533838eff795268a1360bb9"
+      },
+      {
+        "path": "concepts/ir/Lax796640/ProofNetworks.c.hash",
+        "bytes": 16,
+        "sha256": "2d7999c94bb61bd2e8a3da815bf8ba394183b805d94b709cf35c873d0019ddac"
+      },
+      {
+        "path": "concepts/ir/Lax796640/RelativeSoundness.c",
+        "bytes": 1581,
+        "sha256": "1025a5ee970ec4ca5a5e06abbfe6998b8acb9091bdeeb763d89557a3ca2d41ef"
+      },
+      {
+        "path": "concepts/ir/Lax796640/RelativeSoundness.c.hash",
+        "bytes": 16,
+        "sha256": "15865ba92ec9e8c016a32916aff1e39743797e8d9ba547bb74c7771d7ac49a3c"
+      },
+      {
+        "path": "concepts/ir/Lax796640/Stability.c",
+        "bytes": 7599,
+        "sha256": "01d5a4469a224334093e066154126cf8221f318f3d4b36d45c2104947e940dcc"
+      },
+      {
+        "path": "concepts/ir/Lax796640/Stability.c.hash",
+        "bytes": 16,
+        "sha256": "c06cbc21dd1ffb47e08a427c1cd579ab5d33b8c89586a11c478b8c658bd6f538"
+      },
+      {
+        "path": "concepts/ir/Lax796640/Validation.c",
+        "bytes": 63597,
+        "sha256": "f0b2a32022b883c6a16a764539b74aaa7be3570d2751878b9388c8238c7c125e"
+      },
+      {
+        "path": "concepts/ir/Lax796640/Validation.c.hash",
+        "bytes": 16,
+        "sha256": "50453b06160ba272f8d17e6bf02a3c2839c3c1a94309937f04b5e57d6e36db2f"
+      },
+      {
+        "path": "concepts/ir/Lax796640.c",
+        "bytes": 3195,
+        "sha256": "3cf699789481734d7c819254f9fff8f8a61c292ca7833095f462138c5d53b2ee"
+      },
+      {
+        "path": "concepts/ir/Lax796640.c.hash",
+        "bytes": 16,
+        "sha256": "1ee3ba5c2c91ae893c4c22693171f8f4bc6b37e7fd745ce99e687d3b3a4378e4"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Certificates.ilean",
+        "bytes": 8706,
+        "sha256": "07fc1613d297eb74901c9140e55d8335a0664bb105e8bb3002a07b4e1ac38e76"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Certificates.ilean.hash",
+        "bytes": 16,
+        "sha256": "733322c08877515b6081ce90c58474afbac5d3cbb61a53ed476cac0297725af1"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Certificates.olean",
+        "bytes": 160824,
+        "sha256": "8dd4e767cfaf81848438101ad50c3c7ab9eb30a7a5ad4a93d3c60dafd024b605"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Certificates.olean.hash",
+        "bytes": 16,
+        "sha256": "f57b6e0b300b194d9d4bb092ced93c7e94edb045981979561aadd8b2f0e8df45"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Certificates.trace",
+        "bytes": 2127,
+        "sha256": "73c7faf17bb19f1450b9d9011919231e423ca89a6b3317e6b57a21119f8da49b"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Declarations.ilean",
+        "bytes": 11801,
+        "sha256": "20e16088d4e9c65861af43dc1ab658aa099b719974fdee75cdd27cae5ed12f3b"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Declarations.ilean.hash",
+        "bytes": 16,
+        "sha256": "46c35ad5e871f7a0fd6e9c965a7d0f0bc8dd019128ab88ff446ed697e9865e32"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Declarations.olean",
+        "bytes": 859904,
+        "sha256": "c03e4b4071b7ddb7198b1618fc706461a93143c3670a03d7a0ab422dc5be413b"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Declarations.olean.hash",
+        "bytes": 16,
+        "sha256": "6dc0ab295be85260e3701600e64af71c9ed2ef26be78c2287c71180dc0bcbac0"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Declarations.trace",
+        "bytes": 2127,
+        "sha256": "3d16ad28a05e858b73fd3b2140e9446e3c057fca4cccdc850becce07e42e72a4"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Dependencies.ilean",
+        "bytes": 8174,
+        "sha256": "7ba6c90b81b74d0995f29218e5c34621cdb06caa2efc926bc8a57a3e28e92509"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Dependencies.ilean.hash",
+        "bytes": 16,
+        "sha256": "6f6b8d0b44252d84aa99a197c11656fc96d04f363cd67c27cbc0af9bdff12930"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Dependencies.olean",
+        "bytes": 94616,
+        "sha256": "95ed721148c3f94a9ba277de59906a86adbfce203fd923bfac1117dbbdd9d4fe"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Dependencies.olean.hash",
+        "bytes": 16,
+        "sha256": "ed8f3a6fb9c9b53a81889299aaee3bff21b81b359ce60c41a7629091efeb9492"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Dependencies.trace",
+        "bytes": 2125,
+        "sha256": "2929e6f664e2fe165817c7a964cc1d92f414dc1222424f5561eb384fe5f7b66a"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Pipeline.ilean",
+        "bytes": 10578,
+        "sha256": "dd6a005c34f3423449e9b35c9efabb4b4544ca85842bc61928988e1eaa509ea9"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Pipeline.ilean.hash",
+        "bytes": 16,
+        "sha256": "2a00ff8097f7353cdebffff568b4636155e290f15aeb2cbad81636d81adb930d"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Pipeline.olean",
+        "bytes": 504384,
+        "sha256": "ad8bd746cf98442a2c44bd06dc40ee878958d2939924928734d665f04b367532"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Pipeline.olean.hash",
+        "bytes": 16,
+        "sha256": "9a3c1837e179362fe1fe6105463d0400bada39961ea8cad0d169886846158e0d"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Pipeline.trace",
+        "bytes": 2086,
+        "sha256": "df935abd43add9b84264415c975b435c973038e91938cac3d81407d93b71a858"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Production.ilean",
+        "bytes": 8454,
+        "sha256": "819bb281c9e7b036c79c47d53c8b1d54539a8ef251388470077042284fd91d0e"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Production.ilean.hash",
+        "bytes": 16,
+        "sha256": "167b86a85aad952aca1508af10ed2026c272c135ef4ab651e4211ffdfd48f939"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Production.olean",
+        "bytes": 133088,
+        "sha256": "76bfd1cd15136475dc67fdb2438924e3e3b7696570eb6ef34610df9550186a85"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Production.olean.hash",
+        "bytes": 16,
+        "sha256": "8664c954df2642524e18e745c4189d7a9756dfd9e117d7c8b064d3f9b8a51589"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Production.trace",
+        "bytes": 2263,
+        "sha256": "ac6d6d0dd2314ddf5e523b26471860aa780ec2d329708aac956b3e5aa5acf548"
+      },
+      {
+        "path": "concepts/lib/Lax796640/ProofNetworks.ilean",
+        "bytes": 8937,
+        "sha256": "af1685f8de77384662e6c03ed31750e5e00ae49535c706d4f7d7026c7624f8f1"
+      },
+      {
+        "path": "concepts/lib/Lax796640/ProofNetworks.ilean.hash",
+        "bytes": 16,
+        "sha256": "36dfd0e28983e3986bf4c60b3cef4ce3cd2bc59df8c14eaf63f938997f03dbef"
+      },
+      {
+        "path": "concepts/lib/Lax796640/ProofNetworks.olean",
+        "bytes": 291168,
+        "sha256": "bc401121c40871bf7be84334622d126ae0869a03d6f875ccc0c9aa1f28a952f4"
+      },
+      {
+        "path": "concepts/lib/Lax796640/ProofNetworks.olean.hash",
+        "bytes": 16,
+        "sha256": "f281d256054081447edec8f61b41342c94f9153b54fec46a80c69932f57a5b71"
+      },
+      {
+        "path": "concepts/lib/Lax796640/ProofNetworks.trace",
+        "bytes": 2132,
+        "sha256": "2118d88feeb097d59009122719104d25a86cb04e6bda48b49d0a43dbd1f81ec1"
+      },
+      {
+        "path": "concepts/lib/Lax796640/RelativeSoundness.ilean",
+        "bytes": 9103,
+        "sha256": "df84d0a4f13133df964439320f24552c9b10782d6e84fbc0ad9b0a5f41e22f8e"
+      },
+      {
+        "path": "concepts/lib/Lax796640/RelativeSoundness.ilean.hash",
+        "bytes": 16,
+        "sha256": "699e71f90fd6dbccc9c4cbc74cf87464731c2e1ee8468775c2ce361dd5ea31bd"
+      },
+      {
+        "path": "concepts/lib/Lax796640/RelativeSoundness.olean",
+        "bytes": 37440,
+        "sha256": "23a88f336e0b309e7fab43d41fc263262f2af61af52b68377757f963a81d03c4"
+      },
+      {
+        "path": "concepts/lib/Lax796640/RelativeSoundness.olean.hash",
+        "bytes": 16,
+        "sha256": "fd82c4931766c0fe58b821bac0e6e39b266bed164897226f0d59a2fbfd6272b8"
+      },
+      {
+        "path": "concepts/lib/Lax796640/RelativeSoundness.trace",
+        "bytes": 2306,
+        "sha256": "91b42a33d0bebb03085427fdf4440aa05c71c03ba443af3e28c26631876f68ad"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Stability.ilean",
+        "bytes": 6107,
+        "sha256": "b891fdd8607b1b619e295ce9f4544d3ce2d07a070fc43d9cfb0e1c8ae7ce364b"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Stability.ilean.hash",
+        "bytes": 16,
+        "sha256": "f12e7a39b68f01fc51b39a663977543f9ee5aecc3b7a0dafee9c9bc20db5a593"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Stability.olean",
+        "bytes": 39336,
+        "sha256": "a89824aeb904a179d39c825d2e5c062da87bb7de6741a011fd2165c189eb4ca3"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Stability.olean.hash",
+        "bytes": 16,
+        "sha256": "68d6bdec45de8bc481ae8e073412a65def3239a29465e06a0ce24b0c7de9c938"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Stability.trace",
+        "bytes": 2106,
+        "sha256": "8ceb610c8280e7c46029c4727643f0914346f0fbcbf5c6e0eb5eeb70d8a9dcfd"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Validation.ilean",
+        "bytes": 29051,
+        "sha256": "06ecaa25b960834231dfd8d24ba17c23e1cbc10e42c860d70b39c1d961405508"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Validation.ilean.hash",
+        "bytes": 16,
+        "sha256": "298f14d58c0d90e1a67ac0cc2282e8843c59b0645d9d3d10a349a1ba15b22f20"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Validation.olean",
+        "bytes": 238560,
+        "sha256": "fcea9f7d7e232d3b48a23a660b9973492b9bf518a47229bec4cc2c6cee6756c1"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Validation.olean.hash",
+        "bytes": 16,
+        "sha256": "ea90e181bd6f3b7ecf34872fb2c25ef35406a90cc229d0727b4ef3a1c0a73714"
+      },
+      {
+        "path": "concepts/lib/Lax796640/Validation.trace",
+        "bytes": 2270,
+        "sha256": "7c4794ca44a2473b6d8903ebf163e6031c94b35eaf8ee8057b0b788f97e53b2a"
+      },
+      {
+        "path": "concepts/lib/Lax796640.ilean",
+        "bytes": 479,
+        "sha256": "9c514c2935ab376f6b95bda1d5e32f449e153177ef18b08cebc0d7f03d5a5c3a"
+      },
+      {
+        "path": "concepts/lib/Lax796640.ilean.hash",
+        "bytes": 16,
+        "sha256": "84d11106a9b6ec38730ab667a1feae54c30fc43ec49e934e32956877b1dac06e"
+      },
+      {
+        "path": "concepts/lib/Lax796640.olean",
+        "bytes": 2432,
+        "sha256": "7c6c1c783cc4efa6eea619d177caab6303ecf036a3e4eb058a7d8fab5ba9288e"
+      },
+      {
+        "path": "concepts/lib/Lax796640.olean.hash",
+        "bytes": 16,
+        "sha256": "97a66044f843067c820e56623e73a6993c399849dc183dd55456a379de0e1043"
+      },
+      {
+        "path": "concepts/lib/Lax796640.trace",
+        "bytes": 3252,
+        "sha256": "fd17be78ab11494693abd9f04eac8c92148817fd13eef27b3a1502cb438d301a"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "3cf3099a8369e4847ab73fee83747beef531137c5e66cabd6085081470ccd0ab"
+      },
+      {
+        "path": "concepts/package/Lax796640/Certificates.lean",
+        "bytes": 3157,
+        "sha256": "644fdaa6f6c8035821fe02668b54acdf9309ea04889273914de31bc3d9e6e2c2"
+      },
+      {
+        "path": "concepts/package/Lax796640/Declarations.lean",
+        "bytes": 3724,
+        "sha256": "51185a9f397da697707b51b471a63e4c67530896a01f565425bb6f44fa3ee6f3"
+      },
+      {
+        "path": "concepts/package/Lax796640/Dependencies.lean",
+        "bytes": 3082,
+        "sha256": "16c539414598997c8637b5bb75e0fc7c750564f766c6e8068a85723312db3eb3"
+      },
+      {
+        "path": "concepts/package/Lax796640/Pipeline.lean",
+        "bytes": 4281,
+        "sha256": "7760f299489b06fb47bdd7de17714c4998b717cdb976bb7ebed9c344fe7ed324"
+      },
+      {
+        "path": "concepts/package/Lax796640/Production.lean",
+        "bytes": 3352,
+        "sha256": "64ffd66d36ff74ee6c58422def8b88eea3b74e64739f0b72acc45e085f1a5731"
+      },
+      {
+        "path": "concepts/package/Lax796640/ProofNetworks.lean",
+        "bytes": 3308,
+        "sha256": "e80e1fff3969c95f84916e9a4302b15755efa947211584621db88990796ea705"
+      },
+      {
+        "path": "concepts/package/Lax796640/RelativeSoundness.lean",
+        "bytes": 3773,
+        "sha256": "bb2f58a54062c0b10864946ec9f83414ea5140c1ad17f36d368c529049d5abe0"
+      },
+      {
+        "path": "concepts/package/Lax796640/Stability.lean",
+        "bytes": 2612,
+        "sha256": "8e7d185ed4ef856f7b633618acd1851bff265f876ffa468d9629be2494cee024"
+      },
+      {
+        "path": "concepts/package/Lax796640/Validation.lean",
+        "bytes": 8552,
+        "sha256": "b4fa3d88b96a9d5124611ab8b9cf53079e711b4e4f0934aaf151490509a5271d"
+      },
+      {
+        "path": "concepts/package/Lax796640.lean",
+        "bytes": 265,
+        "sha256": "e9fe02a9f9031a97f425d24f4496be368c2da7c45b2b62236f7b35794271475a"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/Certificates.c",
+        "bytes": 3519,
+        "sha256": "8238f0b36e851119731f02766c9e91187d0455e21691264b723536e5bb67f4f4"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/Certificates.c.hash",
+        "bytes": 16,
+        "sha256": "2f99cb5eb2d82ba01e0c34ace42e19496e666696ac9b5e8a63c23228e8e532dc"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/Common.c",
+        "bytes": 1794,
+        "sha256": "e385ee0a18da6aa1a5846e10618ac7d292681823cf47dacf16493317ac25e9ac"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/Common.c.hash",
+        "bytes": 16,
+        "sha256": "d83fce2e01538a8c22c1a25a9cf25a5b69dba58dae25c5f10cce58ad482ae5fd"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/Dependencies.c",
+        "bytes": 5183,
+        "sha256": "794e1123019081e7de9f75f506d54eb8f51fd87570aeb7e27521cef1972a813d"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/Dependencies.c.hash",
+        "bytes": 16,
+        "sha256": "2efe357e06ce66aced1713f4b2fc0528a0183d80abbd23b54a5e4090e14cbde6"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/FiniteSaturation.c",
+        "bytes": 1635,
+        "sha256": "0cd71b0d5066bd9918e6f9481f2224318e03b32fab56f93fd7cef49855682456"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/FiniteSaturation.c.hash",
+        "bytes": 16,
+        "sha256": "bff2b0f6ac3912382954ce7378f510fec7e3ab0c1084faebb830806ad84d2a27"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/Pipeline.c",
+        "bytes": 9204,
+        "sha256": "e7bb2db805274542df02b97ebdce1b6b077dcc6b8eb8944afdb9000267d93ff8"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/Pipeline.c.hash",
+        "bytes": 16,
+        "sha256": "b57cb3a7acb902c82ee626518df4d7de5cf4215dc6b7ccec97fe0986ec55f2ce"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/Production.c",
+        "bytes": 1597,
+        "sha256": "b422cb6a033ca17af2c671e88a5ed36dcd6e3dd1487bd925cc0da82e5b24c5e8"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/Production.c.hash",
+        "bytes": 16,
+        "sha256": "469d3bcfb04ad09b3d73dbfed5c182b9bb68ef3766c39308a4bce39a2b8c7c35"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/ProofNetworks.c",
+        "bytes": 5198,
+        "sha256": "d90ab1100242f62fe4be80a9f77499efa2c47641733ae1e9c0aa9a8c24b65ec9"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/ProofNetworks.c.hash",
+        "bytes": 16,
+        "sha256": "68e1d06bb409c63c82cf078ded3f3a757b471443aa483cfef5ed2342c911ac67"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/RelativeSoundness.c",
+        "bytes": 1632,
+        "sha256": "04f76b9c70f6c9bdf7665e287ec1829ec2be0ce94ff2e4f4b74bafd807abd2b1"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/RelativeSoundness.c.hash",
+        "bytes": 16,
+        "sha256": "d691e82a52773be58aa40f4becf259ee320f0123870cb44313c05b65bd6680ee"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/Stability.c",
+        "bytes": 1592,
+        "sha256": "367d35a09730df4c33855058adebfaaea5872c1b4eea92ab2c195bdbb39d9360"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/Stability.c.hash",
+        "bytes": 16,
+        "sha256": "662f5942553b773cab333ded4c0869c764c5f8867f1ddaeb50569e436d366293"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/Validation.c",
+        "bytes": 5331,
+        "sha256": "b0999e8d61a291b00428bb2d165d13f1dc5ac9a7daeb6b82340ba0d96aeb34c8"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs/Validation.c.hash",
+        "bytes": 16,
+        "sha256": "5247fd12a8468f246d94aa5c1b53549e65ef1b406783b7b3e9f496df06c01ed7"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs.c",
+        "bytes": 3744,
+        "sha256": "881afbab908a5c82a94f33cbb685766a15b6b94a609f6e3a705c58a1d1de03e1"
+      },
+      {
+        "path": "proofs/ir/Lax796640Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "ac5261f32e3bd6d38e0c5a5974fc6c9d0bcf4cb34aa893aaea44aac2da9e6f17"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Certificates.ilean",
+        "bytes": 21322,
+        "sha256": "3a3ebf12bd93acfc656556a9cdda9396a3b1c471f8af758533081a07128844d1"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Certificates.ilean.hash",
+        "bytes": 16,
+        "sha256": "78d867c12b24dcff7b7c96b297109becda72628bf7173902553d0cc7f0674dfd"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Certificates.olean",
+        "bytes": 254000,
+        "sha256": "05026132bcea486597e0b89bb85699dd7a73de13931251bba8e3c63813670a46"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Certificates.olean.hash",
+        "bytes": 16,
+        "sha256": "21199a9d10bbfbf115cde6a7926cfb1eabc47bcb562724cbec04ab9e7c55d20f"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Certificates.trace",
+        "bytes": 2372,
+        "sha256": "7e93b4d01285d497f12a90bc90f9b99dc79715950af886e658528cdf59bd4761"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Common.ilean",
+        "bytes": 7670,
+        "sha256": "45c3189071f1607ee2f419f28e00c555107ca357499f68756a012d563331ed33"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Common.ilean.hash",
+        "bytes": 16,
+        "sha256": "0ff6aac9a7728de2e17548755981ac6272b75f32643943d0592ab42df571a552"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Common.olean",
+        "bytes": 97648,
+        "sha256": "5a95df17c40d77f70a8c362a70c751aa142120936f7a0121075bebeb3f6378a7"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Common.olean.hash",
+        "bytes": 16,
+        "sha256": "38867f234744567aa422364c6263d2727d99dd3520f204b8a534057df38cbb29"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Common.trace",
+        "bytes": 2468,
+        "sha256": "6d44f41f7291b6b601b5b10e075a4c42f6f0ac6676922e1b81e375f49a4fbf7e"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Dependencies.ilean",
+        "bytes": 16254,
+        "sha256": "1a13d8b401267ad6825fb880673a3f94bf315812c830573638671f63a09b78a6"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Dependencies.ilean.hash",
+        "bytes": 16,
+        "sha256": "0ef3afe3a30e069900514984c4e03436239f8ba15fb32348a28daf027664cc81"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Dependencies.olean",
+        "bytes": 132672,
+        "sha256": "bb2c63aa43bc670d89dfc34a74f523659fd873f84561cfb7e42420a347145eee"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Dependencies.olean.hash",
+        "bytes": 16,
+        "sha256": "9af1903f2a963104ca97072fc2105de28e77f9e67cd7817d0694a24776c7701e"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Dependencies.trace",
+        "bytes": 2399,
+        "sha256": "53e1c1774dfaf09411247262ed361cf25f3c30ac252a763182ac88115abd5a66"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/FiniteSaturation.ilean",
+        "bytes": 2720,
+        "sha256": "d2e3a366f99e6a755e92abce58e4557142618fa10922a09d6444cc98f9b4c067"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/FiniteSaturation.ilean.hash",
+        "bytes": 16,
+        "sha256": "dca7de296e082dddc5ec51c5ed3b15d45c166fab3e209ca24217f0774eceabb0"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/FiniteSaturation.olean",
+        "bytes": 49312,
+        "sha256": "4b452d8088c6cf91e9e05f6508ab0aa556a2ffb5919e650a63a920025646e8db"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/FiniteSaturation.olean.hash",
+        "bytes": 16,
+        "sha256": "0d3113745ec5655c28369fcc2ab09a5f01d47f97402531d959a9ab3039d94fbd"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/FiniteSaturation.trace",
+        "bytes": 2416,
+        "sha256": "7f0fc81ed00b87f09ee59e0906fcb8b0542a9c18db48e6e6efe95051397696ae"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Pipeline.ilean",
+        "bytes": 10788,
+        "sha256": "9d2e07921c9267c00590f39aa83dcea0ba84b7b547350923ff4e0803ad432df4"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Pipeline.ilean.hash",
+        "bytes": 16,
+        "sha256": "ec2f0f5126a0b8bcc507ec30a05ff67e51ec60e7381a2f637799a72d75e804ff"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Pipeline.olean",
+        "bytes": 399056,
+        "sha256": "eaff3d8168b2c3fcd5df14caac7b0565b4288ba3a3f323a7efaca1bd576746a8"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Pipeline.olean.hash",
+        "bytes": 16,
+        "sha256": "db490afeacef0f489be9f36525b77af38ee9dc01fa64c127b3a43111b75e8560"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Pipeline.trace",
+        "bytes": 2329,
+        "sha256": "b454f450847c89f4d6edef4c71c43c806adaaf31753b309c9a5cc62fedf67041"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Production.ilean",
+        "bytes": 9513,
+        "sha256": "6ea627da48a3a6ebee78499e9d4338ebfcf66eb4aa5981950f0a1d79ac3bbe2c"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Production.ilean.hash",
+        "bytes": 16,
+        "sha256": "5b2f5c88196f2816c8e19f4769b62880ca4cf946663e8e7c720fc7c896a44154"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Production.olean",
+        "bytes": 74904,
+        "sha256": "3356a97fc6c4644e0db428a80db6e0a5ba8976c37a36b742b5a130d894e739cf"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Production.olean.hash",
+        "bytes": 16,
+        "sha256": "c5a6fbe5eae760ed84703c5b6002cad5c1926527598f754a3a4a698420421904"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Production.trace",
+        "bytes": 2347,
+        "sha256": "54ea324b26069dfe34d72b75431bcc11725cc4b0e0ef932832101e2343891a7c"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/ProofNetworks.ilean",
+        "bytes": 16694,
+        "sha256": "e415326f98d15e82cd34439be019281746feb4dbaeb3b0ff1efc6318ab0bd130"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/ProofNetworks.ilean.hash",
+        "bytes": 16,
+        "sha256": "bd832a8d3fce26dd9ab2e9499c59286a410d1128037d4b8f35f7ea71855083ab"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/ProofNetworks.olean",
+        "bytes": 147112,
+        "sha256": "a0d1fb2b3d8f9eca79589089fde7db5077fe43cdd3d100752b360f95dd39efcf"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/ProofNetworks.olean.hash",
+        "bytes": 16,
+        "sha256": "f1aebed52eaf95caa03dd5bf1e8a86b817695bf1d8f8b922c1700028fcdd0bd2"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/ProofNetworks.trace",
+        "bytes": 2408,
+        "sha256": "870afdeea3ee7d138ecc08baf8a1bf67aaf5da303c03b16c07e9ada6241285ed"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/RelativeSoundness.ilean",
+        "bytes": 10916,
+        "sha256": "41222de5955b805640dbe4b55cc1b9ff178c790b62385f0bf0c54b5a2ce17b6b"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/RelativeSoundness.ilean.hash",
+        "bytes": 16,
+        "sha256": "8f6f8194194b041bc8c37ddc61a56467d5f975cb5a19fa37b24fe5e910d7c1e8"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/RelativeSoundness.olean",
+        "bytes": 86736,
+        "sha256": "3459f67779900b4ca49d369bc5440da7bbafd5ab63d21375fcb9253ed8bd377b"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/RelativeSoundness.olean.hash",
+        "bytes": 16,
+        "sha256": "e8c3422f66bc20084ee5a42318edba7add7a4111ac123efedc4e6de1fb961bcb"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/RelativeSoundness.trace",
+        "bytes": 2417,
+        "sha256": "1a3f191560fde9a947565f9985823438b52f6e78d4f0d5f445e6c906b6cf4797"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Stability.ilean",
+        "bytes": 11902,
+        "sha256": "faef4d51deda9e4ccd9bfa56a03bd5bd9e6206979546d079783ec07774344fb8"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Stability.ilean.hash",
+        "bytes": 16,
+        "sha256": "457c2c9b3063fc8917c08c17be36e2e2425bc1ae9f45da6e36d9ac960404e64f"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Stability.olean",
+        "bytes": 67184,
+        "sha256": "87903dbe89bd8614c2a91211f7e43200b7b2ea288db6155aa30fa0ac1efa57d9"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Stability.olean.hash",
+        "bytes": 16,
+        "sha256": "4fab411ba1725c8ed9eb86210633987fd382878c58cdabe4e717288608ba2086"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Stability.trace",
+        "bytes": 2338,
+        "sha256": "14d9beb9c686ffce4fff5c253a06e3f535221f49bf05477e38452f821a2fe5a4"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Validation.ilean",
+        "bytes": 41619,
+        "sha256": "d9c5ee9d4fcb7879784a7a2a78f70e99f8ad070af2163864b97cdf73c1340b9b"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Validation.ilean.hash",
+        "bytes": 16,
+        "sha256": "47ee9952be77cde53fa78fb5a88ba161511c3b54b9a36e6659490f6f401b9be3"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Validation.olean",
+        "bytes": 527904,
+        "sha256": "448854390c9e811b7b0b93b9f208c7e6867c113fc86ed60f5ddd894a75c95c49"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Validation.olean.hash",
+        "bytes": 16,
+        "sha256": "0bfca540d92612827ecef083d1d0ee785acac60da77a70bce695536d87085396"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs/Validation.trace",
+        "bytes": 2347,
+        "sha256": "e23f6e82178570fb19dc2a0db20e934ecf2bc71535c095f7b12fd1549a40722a"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs.ilean",
+        "bytes": 588,
+        "sha256": "cd52739b2303195236df6133126a9b0e910ef88f13ace6b2b0e160e9f3903518"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "debacecd919804c1b24b6732b8f04cf4cf91d95b7ac0fbbcd59fc4f81a93e9d7"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs.olean",
+        "bytes": 2544,
+        "sha256": "081492e70b44eefa729858a9b53ce9b61eab94edc2dd2b67dfc5ae27b1a25a55"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "8389bf91482380428cc0c2cc5e969d6dd09d88078f4ec84734a85f01152b984f"
+      },
+      {
+        "path": "proofs/lib/Lax796640Proofs.trace",
+        "bytes": 3643,
+        "sha256": "bc1048a494173b2ba202f989f00c417f7bd3eeb24cea07dea909b2728504c72d"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "9dfd5d94ae714248f4de575ab4bff2605328fdeef12230ab03128f0aa85fb93b"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "40daf71fdcb38b59cc2ae88cfc43f39333dff30920dd907dc840873c42e1d413"
+      },
+      {
+        "path": "proofs/package/Lax796640Proofs/Certificates.lean",
+        "bytes": 7468,
+        "sha256": "cc3be823c25a602a1bce3961f1712e7ac15ec2e3004d66f498d687d19b525737"
+      },
+      {
+        "path": "proofs/package/Lax796640Proofs/Common.lean",
+        "bytes": 2156,
+        "sha256": "30fabc2b036ab25dbc8fcbeb463e2b107fd6bb74413f0cff95e31438333118ac"
+      },
+      {
+        "path": "proofs/package/Lax796640Proofs/Dependencies.lean",
+        "bytes": 4927,
+        "sha256": "d425a10b3f5291cce37bd5737209cfe120f2a694b00dea742bb08a72cd66a242"
+      },
+      {
+        "path": "proofs/package/Lax796640Proofs/FiniteSaturation.lean",
+        "bytes": 1263,
+        "sha256": "2d3320381198914226e2461146d5616214b8a408642dba0b69c5e5fd9fc45069"
+      },
+      {
+        "path": "proofs/package/Lax796640Proofs/Pipeline.lean",
+        "bytes": 3566,
+        "sha256": "3b01da3fe3bafe9016e91c590c72b809d8e68c84ddf1bb721b002127b21b8edc"
+      },
+      {
+        "path": "proofs/package/Lax796640Proofs/Production.lean",
+        "bytes": 4223,
+        "sha256": "5079d622f1f8da3f47e31634667af2380f792a354417bce4f22da46d1ea072c8"
+      },
+      {
+        "path": "proofs/package/Lax796640Proofs/ProofNetworks.lean",
+        "bytes": 5401,
+        "sha256": "a7e5b34368eb20b5dec6fe510307864df8c357be52b0179d51f3c59a0d075ec1"
+      },
+      {
+        "path": "proofs/package/Lax796640Proofs/RelativeSoundness.lean",
+        "bytes": 4646,
+        "sha256": "beeafdf05abcece9dbeb1acfd615592d967678446803e6e4590bb8ae3784bdc2"
+      },
+      {
+        "path": "proofs/package/Lax796640Proofs/Stability.lean",
+        "bytes": 4672,
+        "sha256": "af467d70d5e8fd435bfa3cb61191f07cfaba27ed02744ad85b7cd53c8cba3eb3"
+      },
+      {
+        "path": "proofs/package/Lax796640Proofs/Validation.lean",
+        "bytes": 11198,
+        "sha256": "206f06c99d72ba12c24bcd54d6356d1a3b67a991cf8e7605c3535b5d575707dd"
+      },
+      {
+        "path": "proofs/package/Lax796640Proofs.lean",
+        "bytes": 353,
+        "sha256": "b4d8bd1f61fdde84548f2dd464cf9e68f1831bf5bf9dd9cf4911c7763f7a4e4a"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:45ebfa7432e9bebbe92dd4ef8090822d6df1a71fd5bb8eec220cf9717f3fba10"
   }
 }
