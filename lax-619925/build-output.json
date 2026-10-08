@@ -4,5 +4,2226 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 189
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-619925",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "The commutativity problem for effective varieties of formal series, and applications",
+      "authors": [
+        {
+          "name": "Lorenzo Clemente",
+          "orcid": "0000-0003-0578-9103"
+        }
+      ],
+      "bibEntries": [],
+      "paper": {
+        "folder": "paper",
+        "main": "main.tex",
+        "engine": "pdflatex"
+      }
+    },
+    "abstract": "A *formal series* in noncommuting variables $\\Sigma$ over the rationals is a mapping $\\Sigma^* \\to \\mathbb{Q}$ from the free monoid on $\\Sigma$ to the rationals; it is *commutative* if the value on a word does not depend on the order of its letters. The *commutativity problem* for a class of series takes a finite presentation of a series in the class and asks whether it is commutative — a natural, nontrivial problem not previously considered from an algorithmic perspective.\n\nWe show that commutativity is decidable for every class of series forming an *effective prevariety*, a notion generalizing Reutenauer's varieties of formal series. This submission formalizes that meta-theorem and applies it to three families of automata — **Hadamard**, **shuffle**, and **infiltration** — each of which is proved to recognize an effective prevariety over $\\mathbb{Q}$, so that commutativity is decidable for the series they recognize. The three cases are treated by a single ideal-chain argument reducing series equality to ideal membership in a multivariate polynomial ring.\n\nThe one ingredient not available in mathlib is the decidability of ideal membership in $\\mathbb{Q}[x_1, \\dots, x_k]$ (a Gröbner-basis fact); it is proved here in its propositional form by classical logic, and the commutativity-decidability results for the three automaton classes follow from it.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax619925.CDA",
+      "path": "concepts/Lax619925/CDA.lean",
+      "title": "Multivariate constructible differentially algebraic power series",
+      "type": "theorem",
+      "description": "An *exponential multivariate power series* in `d` variables is a series\n`f = Σ_n f_n x^n / n!` (paper §6.4), identified with its coefficient sequence\n`f : ℕ^d → ℚ`.  It carries a binomial-convolution product and commuting partial\nderivatives `∂_{x_j} f = Σ_n f_{n+e_j} x^n / n!` (the shift in the `j`-th\ncoordinate).  A *CDA system* is a `k`-tuple of such series satisfying\n`∂_{x_j} f_i = p^{(j)}_i(f_1, …, f_k)`, the right-hand side a polynomial in the\nbinomial-convolution algebra.  The *solvability problem* asks whether, given the\nequations and an initial condition `f_i(0) = c_i`, a solution exists.  This is\ndecidable (paper §6.4): the CDA system is isomorphic to a shuffle system over\nthe `d`-letter alphabet, so a solution exists exactly when the companion shuffle\nseries are commutative, which is decidable.",
+      "imports": [
+        "Lax619925.Series",
+        "Lax619925.Shuffle"
+      ],
+      "mathlibImports": [
+        "Mathlib.Algebra.MvPolynomial.Basic",
+        "Mathlib.Data.Fin.Basic",
+        "Mathlib.Data.Finset.Basic",
+        "Mathlib.Data.Fintype.Basic",
+        "Mathlib.Data.Nat.Choose.Basic",
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Lax619925.Series\nimport Lax619925.Shuffle\nimport Mathlib.Data.Real.Basic\nimport Mathlib.Data.Fin.Basic\nimport Mathlib.Data.Fintype.Basic\nimport Mathlib.Data.Finset.Basic\nimport Mathlib.Data.Nat.Choose.Basic\nimport Mathlib.Algebra.MvPolynomial.Basic\n\n/-!\n---\ntitle: Multivariate constructible differentially algebraic power series\ntype: theorem\n---\nAn *exponential multivariate power series* in `d` variables is a series\n`f = Σ_n f_n x^n / n!` (paper §6.4), identified with its coefficient sequence\n`f : ℕ^d → ℚ`.  It carries a binomial-convolution product and commuting partial\nderivatives `∂_{x_j} f = Σ_n f_{n+e_j} x^n / n!` (the shift in the `j`-th\ncoordinate).  A *CDA system* is a `k`-tuple of such series satisfying\n`∂_{x_j} f_i = p^{(j)}_i(f_1, …, f_k)`, the right-hand side a polynomial in the\nbinomial-convolution algebra.  The *solvability problem* asks whether, given the\nequations and an initial condition `f_i(0) = c_i`, a solution exists.  This is\ndecidable (paper §6.4): the CDA system is isomorphic to a shuffle system over\nthe `d`-letter alphabet, so a solution exists exactly when the companion shuffle\nseries are commutative, which is decidable.\n-/\n\nnamespace Lax619925.CDA\n\nopen Lax619925.Series Lax619925.Shuffle\n\n/-- An exponential multivariate power series in `d` variables, identified with\n    its coefficient sequence (the series is `Σ_n f_n x^n / n!`). -/\nabbrev ExpPowerSeries (d : ℕ) := (Fin d → ℕ) → ℚ\n\n/-- The binomial-convolution product of two exponential power series:\n    `(expMul d f g) n = Σ_{m ≤ n} binom(n, m) f m · g (n - m)`, the product in the\n    exponential (binomial) algebra, where the sum is over the multi-indices\n    `m ≤ n` (coordinate-wise) and `binom(n, m) = ∏_i binom(n_i, m_i)` is the\n    multinomial coefficient. -/\nnoncomputable def expMul (d : ℕ) (f g : ExpPowerSeries d) : ExpPowerSeries d :=\n  fun n =>\n    (Finset.univ.pi (fun i => Finset.range (n i + 1))).sum fun m =>\n      let m' : Fin d → ℕ := fun i => m i (Finset.mem_univ i)\n      (Finset.univ : Finset (Fin d)).prod (fun i => Nat.choose (n i) (m' i)) * f m' * g (fun i => n i - m' i)\n\n/-- The partial derivative in the `j`-th coordinate:\n    `(expDeriv d j f) n = f (n + e_j)`.  In the exponential normalisation this is\n    the shift in the `j`-th coordinate; the partial derivatives commute. -/\ndef expDeriv (d : ℕ) (j : Fin d) (f : ExpPowerSeries d) : ExpPowerSeries d :=\n  fun n => f (fun i => n i + if i = j then 1 else 0)\n\n/-- The `n`-fold binomial-convolution power of an exponential power series:\n    `expPow d f 0` is the constant-1 series and `expPow d f (n+1) = expMul d (expPow d f n) f`. -/\nnoncomputable def expPow (d : ℕ) (f : ExpPowerSeries d) (n : ℕ) : ExpPowerSeries d :=\n  match n with\n  | 0 => fun idx => if idx = 0 then 1 else 0\n  | n + 1 => expMul d (expPow d f n) f\n\n/-- The evaluation of the polynomial `p` at the tuple of exponential power series\n    `fs`, in the binomial-convolution algebra: the variable `X_i` is mapped to\n    `fs i` and the multiplication is the binomial-convolution product. -/\nnoncomputable def evalCDA (d k : ℕ) (fs : Fin k → ExpPowerSeries d) (p : MvPolynomial (Fin k) ℚ) :\n    ExpPowerSeries d :=\n  p.support.sum fun m =>\n    p.coeff m • (Finset.univ : Finset (Fin k)).toList.foldr\n      (fun i acc => expMul d acc (expPow d (fs i) (m i)))\n      (fun idx => if idx = 0 then 1 else 0)\n\n/-- A `k`-tuple of exponential power series `f` *solves* the CDA system `(p, c)`\n    if it satisfies the initial condition `f_i(0) = c_i` and the differential\n    equations `∂_{x_j} f_i = p^{(j)}_i(f_1, …, f_k)` for all `i, j`, the\n    right-hand side a polynomial in the binomial-convolution algebra.  Here `0`\n    is the zero multi-index. -/\ndef SolvesCDA (d k : ℕ) (f : Fin k → ExpPowerSeries d)\n    (p : Fin k → Fin d → MvPolynomial (Fin k) ℚ) (c : Fin k → ℚ) : Prop :=\n  (∀ i, f i 0 = c i) ∧ ∀ i j, expDeriv d j (f i) = evalCDA d k f (p i j)\n\n/-- The CDA solvability problem is decidable (paper §6.4, theorem `decidability\n    of CDA solvability`): there is a procedure that, given the polynomial\n    equations `p` and the initial condition `c`, decides whether a power series\n    solution exists.  The decision reduces to the commutativity of the companion\n    shuffle series, which is decidable. -/\naxiom CDASolvability (d k : ℕ) (hd : 0 < d) (hk : 0 < k) :\n  ∃ dec : (Fin k → Fin d → MvPolynomial (Fin k) ℚ) → (Fin k → ℚ) → Bool,\n    ∀ p c, dec p c = true ↔ ∃ f : Fin k → ExpPowerSeries d, SolvesCDA d k f p c\n\nend Lax619925.CDA\n",
+      "statements": [
+        {
+          "id": "Lax619925.CDA.CDASolvability",
+          "signature": "CDASolvability : ∀ (d k : Nat),\n  instLTNat.lt 0 d →\n    instLTNat.lt 0 k →\n      Exists fun dec =>\n        ∀ (p : Fin k → Fin d → MvPolynomial (Fin k) Rat) (c : Fin k → Rat),\n          Iff (Eq (dec p c) Bool.true) (Exists fun f => Lax619925.CDA.SolvesCDA d k f p c)",
+          "startLine": 79,
+          "endLine": 86,
+          "doc": "The CDA solvability problem is decidable (paper §6.4, theorem `decidability\nof CDA solvability`): there is a procedure that, given the polynomial\nequations `p` and the initial condition `c`, decides whether a power series\nsolution exists.  The decision reduces to the commutativity of the companion\nshuffle series, which is decidable."
+        }
+      ]
+    },
+    {
+      "id": "Lax619925.Commutativity",
+      "path": "concepts/Lax619925/Commutativity.lean",
+      "title": "The commutativity problem",
+      "type": "theorem",
+      "description": "The commutativity problem asks whether a series is commutative, i.e. constant on\nwords with the same Parikh image.  The key observation (paper §3) is that\ncommutativity is characterised by two finite families of equations, *swap* and\n*rotate*, which makes it decidable for effective prevarieties (the meta-theorem).\nConversely, the zeroness problem reduces to commutativity: given `f`, one builds\na series `g` over a two-letter-enlarged alphabet, supported on words beginning\nwith the two fresh letters, such that `g` is commutative exactly when `f = 0`.",
+      "imports": [
+        "Lax619925.Prevariety",
+        "Lax619925.Series"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Fintype.Basic",
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Lax619925.Series\nimport Lax619925.Prevariety\nimport Mathlib.Data.Real.Basic\nimport Mathlib.Data.Fintype.Basic\n\n/-!\n---\ntitle: The commutativity problem\ntype: theorem\n---\nThe commutativity problem asks whether a series is commutative, i.e. constant on\nwords with the same Parikh image.  The key observation (paper §3) is that\ncommutativity is characterised by two finite families of equations, *swap* and\n*rotate*, which makes it decidable for effective prevarieties (the meta-theorem).\nConversely, the zeroness problem reduces to commutativity: given `f`, one builds\na series `g` over a two-letter-enlarged alphabet, supported on words beginning\nwith the two fresh letters, such that `g` is commutative exactly when `f = 0`.\n-/\n\nnamespace Lax619925.Commutativity\n\nopen Lax619925.Series Lax619925.Prevariety\n\n/-- The *swap* equation: for all letters `a, b`,\n    `leftDeriv a (leftDeriv b f) = leftDeriv b (leftDeriv a f)`.\n    It expresses that exchanging the first two letters of a word does not change\n    the coefficient. -/\ndef SatisfiesSwap (α : Type*) (f : Series α) : Prop :=\n  ∀ a b, leftDeriv α a (leftDeriv α b f) = leftDeriv α b (leftDeriv α a f)\n\n/-- The *rotate* equation: for all letters `a`,\n    `leftDeriv a f = rightDeriv a f`.\n    It expresses that moving the first letter to the end does not change the\n    coefficient. -/\ndef SatisfiesRotate (α : Type*) (f : Series α) : Prop :=\n  ∀ a, leftDeriv α a f = rightDeriv α a f\n\n/-- A series `g` is a *left anti-derivative* of the tuple of series `f` if\n    `leftDeriv a g = f a` for every letter `a`.  Once the value `g ε` is fixed,\n    left anti-derivatives are unique. -/\ndef IsLeftAntiDerivative (α : Type*) (g : Series α) (f : α → Series α) : Prop :=\n  ∀ a, leftDeriv α a g = f a\n\n/-- The alphabet `α` extended by two fresh letters `fresh0` and `fresh1`, modelling\n    the paper's enlarged alphabet `Γ = Σ ∪ {a, b}`. -/\ninductive Fresh2 (α : Type*) where\n  | letter : α → Fresh2 α\n  | fresh0 : Fresh2 α\n  | fresh1 : Fresh2 α\n\n/-- Lift a word over the extended alphabet back to a word over `α`, returning\n    `some` of the original word when no fresh letter occurs and `none` otherwise. -/\ndef liftWordOpt (α : Type*) (w : List (Fresh2 α)) : Option (List α) :=\n  match w with\n  | [] => some []\n  | s :: w' =>\n      match s with\n      | .letter a => (liftWordOpt α w').map (fun rest => a :: rest)\n      | .fresh0 | .fresh1 => none\n\n/-- The extension of a series over `α` to the extended alphabet `Fresh2 α`, by zero\n    on words containing one of the two fresh letters. -/\ndef extendSeries (α : Type*) (f : Series α) : Series (Fresh2 α) := fun w =>\n  match liftWordOpt α w with\n  | some rest => f rest\n  | none => 0\n\n/-- The series `g` over the extended alphabet associated to `f` in the paper's\n    equality-reduces-to-commutativity construction: `g` is zero except on words\n    beginning with the two fresh letters, where `g (fresh0 :: fresh1 :: rest) = f (rest)`\n    (with `f` extended by zero).  Hence `leftDeriv b (leftDeriv a g) = extendSeries f`\n    for `a = fresh0`, `b = fresh1`, while every other second left derivative vanishes;\n    in particular `g ε = g x = 0` for every letter `x`. -/\ndef antiDerivativeSeries (α : Type*) (f : Series α) : Series (Fresh2 α) := fun w =>\n  match w with\n  | .fresh0 :: .fresh1 :: rest => extendSeries α f rest\n  | _ => 0\n\n/-- A series is commutative if and only if it satisfies the swap and rotate equations\n    for all letters (paper §3, lemma `commutativity`).  Swaps and rotations generate\n    all commutatively equivalent words, so the two finite families of equations\n    characterise commutativity. -/\naxiom FiniteAxiomatisation (α : Type*) (f : Series α) :\n  IsCommutative α f ↔ SatisfiesSwap α f ∧ SatisfiesRotate α f\n\n/-- The commutativity problem is decidable for effective prevarieties of series\n    (paper §3, theorem `commutativity for effective prevarieties`): over a finite\n    alphabet, there is a procedure that, given a presentation `r`, decides whether\n    `sem r` is commutative — it returns `true` exactly when `sem r` is commutative.\n    By the finite axiomatisation this reduces to finitely many equality tests on\n    presentations, decided by the prevariety's `decEq`. -/\naxiom EffectivePrevarietyCommutativityDecidable (α : Type*) [Fintype α]\n    (P : EffectivePrevariety α) :\n  ∃ d : P.Rep → Bool, ∀ r, d r = true ↔ IsCommutative α (P.sem r)\n\n/-- The series `antiDerivativeSeries f` is commutative if and only if `f = 0`\n    (paper §3, lemma `equality reduces to commutativity`).  If `f ≠ 0` with\n    `f (w) ≠ 0` for some word `w`, then `g (fresh0 · fresh1 · w) = f (w) ≠ 0` while\n    `g (fresh1 · fresh0 · w) = 0`, and the two words are commutatively equivalent,\n    so `g` is not commutative; conversely `f = 0` forces `g = 0`. -/\naxiom AntiDerivativeCommutativeIffZero (α : Type*) (f : Series α) :\n  IsCommutative (Fresh2 α) (antiDerivativeSeries α f) ↔ f = 0\n\nend Lax619925.Commutativity\n",
+      "statements": [
+        {
+          "id": "Lax619925.Commutativity.AntiDerivativeCommutativeIffZero",
+          "signature": "AntiDerivativeCommutativeIffZero : ∀ (α : Type u_1) (f : Lax619925.Series.Series α),\n  Iff\n    (Lax619925.Series.IsCommutative (Lax619925.Commutativity.Fresh2 α)\n      (Lax619925.Commutativity.antiDerivativeSeries α f))\n    (Eq f 0)",
+          "startLine": 96,
+          "endLine": 102,
+          "doc": "The series `antiDerivativeSeries f` is commutative if and only if `f = 0`\n(paper §3, lemma `equality reduces to commutativity`).  If `f ≠ 0` with\n`f (w) ≠ 0` for some word `w`, then `g (fresh0 · fresh1 · w) = f (w) ≠ 0` while\n`g (fresh1 · fresh0 · w) = 0`, and the two words are commutatively equivalent,\nso `g` is not commutative; conversely `f = 0` forces `g = 0`."
+        },
+        {
+          "id": "Lax619925.Commutativity.EffectivePrevarietyCommutativityDecidable",
+          "signature": "EffectivePrevarietyCommutativityDecidable : ∀ (α : Type u_1) [Fintype α] (P : Lax619925.Prevariety.EffectivePrevariety α),\n  Exists fun d => ∀ (r : P.Rep), Iff (Eq (d r) Bool.true) (Lax619925.Series.IsCommutative α (P.sem r))",
+          "startLine": 86,
+          "endLine": 94,
+          "doc": "The commutativity problem is decidable for effective prevarieties of series\n(paper §3, theorem `commutativity for effective prevarieties`): over a finite\nalphabet, there is a procedure that, given a presentation `r`, decides whether\n`sem r` is commutative — it returns `true` exactly when `sem r` is commutative.\nBy the finite axiomatisation this reduces to finitely many equality tests on\npresentations, decided by the prevariety's `decEq`."
+        },
+        {
+          "id": "Lax619925.Commutativity.FiniteAxiomatisation",
+          "signature": "FiniteAxiomatisation : ∀ (α : Type u_1) (f : Lax619925.Series.Series α),\n  Iff (Lax619925.Series.IsCommutative α f)\n    (And (Lax619925.Commutativity.SatisfiesSwap α f) (Lax619925.Commutativity.SatisfiesRotate α f))",
+          "startLine": 79,
+          "endLine": 84,
+          "doc": "A series is commutative if and only if it satisfies the swap and rotate equations\nfor all letters (paper §3, lemma `commutativity`).  Swaps and rotations generate\nall commutatively equivalent words, so the two finite families of equations\ncharacterise commutativity."
+        }
+      ]
+    },
+    {
+      "id": "Lax619925.Hadamard",
+      "path": "concepts/Lax619925/Hadamard.lean",
+      "title": "Hadamard automata and Hadamard-finite series",
+      "type": "theorem",
+      "description": "A series is *Hadamard-finite* if it lies in the Hadamard algebra generated by a\nfinite tuple of series that is closed under left derivatives (paper §5): the\nHadamard product is the pointwise product of the underlying functions, so the\nHadamard algebra is just the (pointwise) ring of series.  Equivalently (the\ncoincidence), it is recognised by a *Hadamard automaton* `(k, F, Δ)`: a\nconfiguration space `ℚ[X_1, …, X_k]`, a final-weight functional `F`, and a\ntransition `Δ_a` that extends to an endomorphism of the configuration space.\nThe Hadamard-finite series form an effective prevariety, so equality and the\ncommutativity problem are decidable for them; the equality decision reduces to\nideal membership in the configuration polynomial ring (the ideal-membership statement).",
+      "imports": [
+        "Lax619925.Commutativity",
+        "Lax619925.Prevariety",
+        "Lax619925.Series"
+      ],
+      "mathlibImports": [
+        "Mathlib.Algebra.Algebra.Basic",
+        "Mathlib.Algebra.MvPolynomial.Basic",
+        "Mathlib.Algebra.MvPolynomial.Eval",
+        "Mathlib.Data.Fin.Basic",
+        "Mathlib.Data.Finset.Basic",
+        "Mathlib.Data.Fintype.Basic",
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Lax619925.Series\nimport Lax619925.Prevariety\nimport Lax619925.Commutativity\nimport Mathlib.Data.Real.Basic\nimport Mathlib.Data.Fin.Basic\nimport Mathlib.Data.Fintype.Basic\nimport Mathlib.Data.Finset.Basic\nimport Mathlib.Algebra.MvPolynomial.Basic\nimport Mathlib.Algebra.MvPolynomial.Eval\nimport Mathlib.Algebra.Algebra.Basic\n\n/-!\n---\ntitle: Hadamard automata and Hadamard-finite series\ntype: theorem\n---\nA series is *Hadamard-finite* if it lies in the Hadamard algebra generated by a\nfinite tuple of series that is closed under left derivatives (paper §5): the\nHadamard product is the pointwise product of the underlying functions, so the\nHadamard algebra is just the (pointwise) ring of series.  Equivalently (the\ncoincidence), it is recognised by a *Hadamard automaton* `(k, F, Δ)`: a\nconfiguration space `ℚ[X_1, …, X_k]`, a final-weight functional `F`, and a\ntransition `Δ_a` that extends to an endomorphism of the configuration space.\nThe Hadamard-finite series form an effective prevariety, so equality and the\ncommutativity problem are decidable for them; the equality decision reduces to\nideal membership in the configuration polynomial ring (the ideal-membership statement).\n-/\n\nnamespace Lax619925.Hadamard\n\nopen Lax619925.Series Lax619925.Prevariety Lax619925.Commutativity\n\n/-- The Hadamard product of two series, defined element-wise:\n    `(hadamard f g) w = f w * g w`.  It is the pointwise product of the\n    underlying functions, hence associative, commutative, and distributive over\n    addition, with identity the constant-1 series. -/\ndef hadamard (α : Type*) (f g : Series α) : Series α := fun w => f w * g w\n\n/-- The Hadamard-algebra evaluation of the polynomial `p` at the series `fs`:\n    `hadamardEval fs p = Σ_m p m · ∏_i (fs i)^{m i}`, the interpretation of `p` in\n    the (pointwise) ring of series, where the variable `X_i` is mapped to `fs i` and\n    the multiplication is the Hadamard (pointwise) product. -/\ndef hadamardEval (α : Type*) (k : ℕ) (fs : Fin k → Series α) (p : MvPolynomial (Fin k) ℚ) :\n    Series α :=\n  fun w => p.support.sum fun m => p.coeff m * ∏ i : Fin k, (fs i) w ^ (m i)\n\n/-- A series is *Hadamard-finite* (working definition, paper §5) if it is a Hadamard\n    polynomial in a finite tuple of series `fs` that is closed under left\n    derivatives: `f = p(fs)` for some polynomial `p`, and `leftDeriv a (fs i)` is\n    again a Hadamard polynomial in `fs` for every letter `a` and index `i`.  Here\n    `p(fs)` is the evaluation of `p` in the (pointwise) ring of series, i.e. the\n    Hadamard algebra. -/\ndef IsHadamardFinite (α : Type*) (f : Series α) : Prop :=\n  ∃ k : ℕ, ∃ fs : Fin k → Series α, ∃ p : MvPolynomial (Fin k) ℚ,\n    f = hadamardEval α k fs p ∧\n    ∀ a : α, ∀ i : Fin k, ∃ q : MvPolynomial (Fin k) ℚ,\n      leftDeriv α a (fs i) = hadamardEval α k fs q\n\n/-- A *Hadamard automaton* over `α`: a dimension `k ≥ 1` (the number of\n    nonterminals `X_1, …, X_k`), a final-weight functional `F`, and a transition\n    `Δ` assigning to each letter `a` and nonterminal `X_i` a polynomial `Δ a i` in\n    the nonterminals.  The configuration space is the polynomial ring\n    `ℚ[X_1, …, X_k] = MvPolynomial (Fin k) ℚ`. -/\nstructure HadamardAutomaton (α : Type*) where\n  dim : ℕ\n  hdim : 0 < dim\n  F : Fin dim → ℚ\n  Δ : α → Fin dim → MvPolynomial (Fin dim) ℚ\n\n/-- The word extension of the transition: `Δ_w` is the endomorphism of the\n    configuration space obtained by composing the letter endomorphisms\n    `aeval (Δ a)` along the word, right-to-left.  `Δ_ε` is the identity and\n    `Δ_{a·w} = Δ_w ∘ Δ_a`. -/\nnoncomputable def HadamardAutomaton.Mword {α : Type*} (A : HadamardAutomaton α) (w : List α) :\n    MvPolynomial (Fin A.dim) ℚ → MvPolynomial (Fin A.dim) ℚ :=\n  w.foldr (fun a φ => fun β => φ (MvPolynomial.aeval (A.Δ a) β)) id\n\n/-- The series recognised by the automaton at a configuration `cfg`:\n    `⟦A⟧_cfg (w) = F(Δ_w cfg)`, the final-weight functional applied to the\n    configuration reached after reading `w`. -/\nnoncomputable def HadamardAutomaton.sem {α : Type*} (A : HadamardAutomaton α)\n    (cfg : MvPolynomial (Fin A.dim) ℚ) : Series α :=\n  fun w => MvPolynomial.eval (fun i => A.F i) (A.Mword w cfg)\n\n/-- The series recognised by the automaton: the semantics at the initial\n    configuration `X_0` (the first nonterminal). -/\nnoncomputable def HadamardAutomaton.recognised {α : Type*} (A : HadamardAutomaton α) :\n    Series α :=\n  A.sem (MvPolynomial.X (Fin.mk 0 A.hdim))\n\n/-- A series is *Hadamard-recognisable* if it is recognised by some Hadamard automaton. -/\ndef IsHadamardRecognisable (α : Type*) (f : Series α) : Prop :=\n  ∃ A : HadamardAutomaton α, A.recognised = f\n\n/-- A series is Hadamard-finite if and only if it is Hadamard-recognisable\n    (paper §5, the coincidence lemma). -/\naxiom HadamardCoincidence (α : Type*) (f : Series α) :\n  IsHadamardFinite α f ↔ IsHadamardRecognisable α f\n\n/-- The class of Hadamard-finite series is closed under addition, scalar\n    multiplication, the Hadamard product, and right derivatives (paper §5, the\n    closure lemma).  These four parts hold over any alphabet. -/\naxiom HadamardClosure (α : Type*) :\n  (∀ (f g : Series α), IsHadamardFinite α f → IsHadamardFinite α g → IsHadamardFinite α (f + g)) ∧\n  (∀ (c : ℚ) (f : Series α), IsHadamardFinite α f → IsHadamardFinite α (c • f)) ∧\n  (∀ (f g : Series α), IsHadamardFinite α f → IsHadamardFinite α g → IsHadamardFinite α (hadamard α f g)) ∧\n  (∀ (a : α) (f : Series α), IsHadamardFinite α f → IsHadamardFinite α (rightDeriv α a f))\n\n/-- The class of Hadamard-finite series over a *finite* alphabet is closed under left\n    anti-derivatives (paper §5): if `g` is a left anti-derivative of a tuple `f` of\n    Hadamard-finite series, then `g` is Hadamard-finite.  The finiteness of the\n    alphabet is essential — the witnessing generator tuple is extended by one series\n    per letter, so it is finite only when the alphabet is. -/\naxiom HadamardAntiDerivativeClosure (α : Type*) [Fintype α] :\n  ∀ (g : Series α) (f : α → Series α), IsLeftAntiDerivative α g f →\n      (∀ a, IsHadamardFinite α (f a)) → IsHadamardFinite α g\n\n/-- The class of Hadamard-finite series is an effective prevariety over a finite\n    alphabet (paper §5, theorem): there is an effective prevariety whose image is\n    exactly the Hadamard-finite series, with presentations given by Hadamard\n    automata. -/\naxiom HadamardEffectivePrevariety (α : Type*) [Fintype α] :\n  ∃ P : EffectivePrevariety α, ∀ f, IsHadamardFinite α f ↔ ∃ r : P.Rep, P.sem r = f\n\n/-- The equality (zeroness) problem is decidable for Hadamard automata over a finite\n    alphabet (paper §5): there is a procedure that, given a Hadamard automaton,\n    decides whether the series it recognises is the zero series.  The decision\n    reduces to ideal membership in the configuration polynomial ring, the open\n    leaf. -/\naxiom HadamardEqualityDecidable (α : Type*) [Fintype α] :\n  ∃ d : HadamardAutomaton α → Bool, ∀ A, d A = true ↔ A.recognised = 0\n\n/-- In particular, the commutativity problem is decidable for Hadamard-finite series\n    over a finite alphabet (paper §5): there is a procedure that, given a Hadamard\n    automaton, decides whether the series it recognises is commutative.  This is the\n    meta-theorem applied to the effective prevariety of Hadamard-finite series. -/\naxiom HadamardCommutativityDecidable (α : Type*) [Fintype α] :\n  ∃ d : HadamardAutomaton α → Bool, ∀ A, d A = true ↔ IsCommutative α (A.recognised)\n\nend Lax619925.Hadamard\n",
+      "statements": [
+        {
+          "id": "Lax619925.Hadamard.HadamardAntiDerivativeClosure",
+          "signature": "HadamardAntiDerivativeClosure : ∀ (α : Type u_1) [Fintype α] (g : Lax619925.Series.Series α) (f : α → Lax619925.Series.Series α),\n  Lax619925.Commutativity.IsLeftAntiDerivative α g f →\n    (∀ (a : α), Lax619925.Hadamard.IsHadamardFinite α (f a)) → Lax619925.Hadamard.IsHadamardFinite α g",
+          "startLine": 109,
+          "endLine": 116,
+          "doc": "The class of Hadamard-finite series over a *finite* alphabet is closed under left\nanti-derivatives (paper §5): if `g` is a left anti-derivative of a tuple `f` of\nHadamard-finite series, then `g` is Hadamard-finite.  The finiteness of the\nalphabet is essential — the witnessing generator tuple is extended by one series\nper letter, so it is finite only when the alphabet is."
+        },
+        {
+          "id": "Lax619925.Hadamard.HadamardClosure",
+          "signature": "HadamardClosure : ∀ (α : Type u_1),\n  And\n    (∀ (f g : Lax619925.Series.Series α),\n      Lax619925.Hadamard.IsHadamardFinite α f →\n        Lax619925.Hadamard.IsHadamardFinite α g → Lax619925.Hadamard.IsHadamardFinite α (instHAdd.hAdd f g))\n    (And\n      (∀ (c : Rat) (f : Lax619925.Series.Series α),\n        Lax619925.Hadamard.IsHadamardFinite α f → Lax619925.Hadamard.IsHadamardFinite α (instHSMul.hSMul c f))\n      (And\n        (∀ (f g : Lax619925.Series.Series α),\n          Lax619925.Hadamard.IsHadamardFinite α f →\n            Lax619925.Hadamard.IsHadamardFinite α g →\n              Lax619925.Hadamard.IsHadamardFinite α (Lax619925.Hadamard.hadamard α f g))\n        (∀ (a : α) (f : Lax619925.Series.Series α),\n          Lax619925.Hadamard.IsHadamardFinite α f →\n            Lax619925.Hadamard.IsHadamardFinite α (Lax619925.Series.rightDeriv α a f))))",
+          "startLine": 100,
+          "endLine": 107,
+          "doc": "The class of Hadamard-finite series is closed under addition, scalar\nmultiplication, the Hadamard product, and right derivatives (paper §5, the\nclosure lemma).  These four parts hold over any alphabet."
+        },
+        {
+          "id": "Lax619925.Hadamard.HadamardCoincidence",
+          "signature": "HadamardCoincidence : ∀ (α : Type u_1) (f : Lax619925.Series.Series α),\n  Iff (Lax619925.Hadamard.IsHadamardFinite α f) (Lax619925.Hadamard.IsHadamardRecognisable α f)",
+          "startLine": 95,
+          "endLine": 98,
+          "doc": "A series is Hadamard-finite if and only if it is Hadamard-recognisable\n(paper §5, the coincidence lemma)."
+        },
+        {
+          "id": "Lax619925.Hadamard.HadamardCommutativityDecidable",
+          "signature": "HadamardCommutativityDecidable : ∀ (α : Type u_1) [Fintype α],\n  Exists fun d =>\n    ∀ (A : Lax619925.Hadamard.HadamardAutomaton α),\n      Iff (Eq (d A) Bool.true) (Lax619925.Series.IsCommutative α A.recognised)",
+          "startLine": 133,
+          "endLine": 138,
+          "doc": "In particular, the commutativity problem is decidable for Hadamard-finite series\nover a finite alphabet (paper §5): there is a procedure that, given a Hadamard\nautomaton, decides whether the series it recognises is commutative.  This is the\nmeta-theorem applied to the effective prevariety of Hadamard-finite series."
+        },
+        {
+          "id": "Lax619925.Hadamard.HadamardEffectivePrevariety",
+          "signature": "HadamardEffectivePrevariety : ∀ (α : Type u_1) [Fintype α],\n  Exists fun P =>\n    ∀ (f : Lax619925.Series.Series α), Iff (Lax619925.Hadamard.IsHadamardFinite α f) (Exists fun r => Eq (P.sem r) f)",
+          "startLine": 118,
+          "endLine": 123,
+          "doc": "The class of Hadamard-finite series is an effective prevariety over a finite\nalphabet (paper §5, theorem): there is an effective prevariety whose image is\nexactly the Hadamard-finite series, with presentations given by Hadamard\nautomata."
+        },
+        {
+          "id": "Lax619925.Hadamard.HadamardEqualityDecidable",
+          "signature": "HadamardEqualityDecidable : ∀ (α : Type u_1) [Fintype α],\n  Exists fun d => ∀ (A : Lax619925.Hadamard.HadamardAutomaton α), Iff (Eq (d A) Bool.true) (Eq A.recognised 0)",
+          "startLine": 125,
+          "endLine": 131,
+          "doc": "The equality (zeroness) problem is decidable for Hadamard automata over a finite\nalphabet (paper §5): there is a procedure that, given a Hadamard automaton,\ndecides whether the series it recognises is the zero series.  The decision\nreduces to ideal membership in the configuration polynomial ring, the open\nleaf."
+        }
+      ]
+    },
+    {
+      "id": "Lax619925.IdealMembership",
+      "path": "concepts/Lax619925/IdealMembership.lean",
+      "title": "Ideal membership in multivariate polynomials",
+      "type": "theorem",
+      "description": "The ideal-membership statement on which the paper's unified ideal-chain\nargument rests.  It says that ideal membership in `MvPolynomial (Fin k) ℚ`\nis decidable in the propositional sense: for every finite set of generators\n`gens`, there exists a `Bool`-valued function `dec` such that `dec p = true`\nexactly when `p` lies in the ideal `gens` generates — the same shape as the\nother `*EqualityDecidable` statements.  It is proven in the proofs package by\na classical argument: excluded middle supplies the characteristic function of\nthe ideal.  The constructive Gröbner-basis decision procedure (Buchberger's\nalgorithm) — the Gröbner-basis fact mathlib does not yet provide, its\n`MvPolynomial.Groebner` file implementing division only — is the algorithmic\ncontent of the paper's decidability claims and is out of scope for this\nsubmission.  The paper's unified ideal-chain argument (the chain `I_n` of\nideals stabilising by Hilbert's basis theorem) reduces the equality problem\nfor the Hadamard, shuffle, and infiltration automata to this statement.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Algebra.MvPolynomial.Basic",
+        "Mathlib.Data.Fin.Basic",
+        "Mathlib.Data.Finset.Basic",
+        "Mathlib.Data.Fintype.Basic",
+        "Mathlib.Data.Real.Basic",
+        "Mathlib.RingTheory.Ideal.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.Real.Basic\nimport Mathlib.Data.Fin.Basic\nimport Mathlib.Data.Fintype.Basic\nimport Mathlib.Data.Finset.Basic\nimport Mathlib.Algebra.MvPolynomial.Basic\nimport Mathlib.RingTheory.Ideal.Basic\n\n/-!\n---\ntitle: Ideal membership in multivariate polynomials\ntype: theorem\n---\nThe ideal-membership statement on which the paper's unified ideal-chain\nargument rests.  It says that ideal membership in `MvPolynomial (Fin k) ℚ`\nis decidable in the propositional sense: for every finite set of generators\n`gens`, there exists a `Bool`-valued function `dec` such that `dec p = true`\nexactly when `p` lies in the ideal `gens` generates — the same shape as the\nother `*EqualityDecidable` statements.  It is proven in the proofs package by\na classical argument: excluded middle supplies the characteristic function of\nthe ideal.  The constructive Gröbner-basis decision procedure (Buchberger's\nalgorithm) — the Gröbner-basis fact mathlib does not yet provide, its\n`MvPolynomial.Groebner` file implementing division only — is the algorithmic\ncontent of the paper's decidability claims and is out of scope for this\nsubmission.  The paper's unified ideal-chain argument (the chain `I_n` of\nideals stabilising by Hilbert's basis theorem) reduces the equality problem\nfor the Hadamard, shuffle, and infiltration automata to this statement.\n-/\n\nnamespace Lax619925.IdealMembership\n\n/-- Ideal membership in the multivariate polynomial ring over `ℚ` is decidable:\n    given a finite set of generators, there is a decision procedure `dec` such\n    that `dec p = true` iff `p` lies in the ideal the generators span.  Proven\n    in the proofs package by a classical argument (excluded middle supplies the\n    characteristic function); the constructive Gröbner-basis procedure is out\n    of scope. -/\naxiom IdealMembershipDecidable (k : ℕ) (gens : Finset (MvPolynomial (Fin k) ℚ)) :\n  ∃ dec : MvPolynomial (Fin k) ℚ → Bool, ∀ p, dec p = true ↔ p ∈ Ideal.span ↑gens\n\nend Lax619925.IdealMembership\n",
+      "statements": [
+        {
+          "id": "Lax619925.IdealMembership.IdealMembershipDecidable",
+          "signature": "IdealMembershipDecidable : ∀ (k : Nat) (gens : Finset (MvPolynomial (Fin k) Rat)),\n  Exists fun dec =>\n    ∀ (p : MvPolynomial (Fin k) Rat),\n      Iff (Eq (dec p) Bool.true) (SetLike.instMembership.mem (Ideal.span (Finset.instSetLike.coe gens)) p)",
+          "startLine": 31,
+          "endLine": 38,
+          "doc": "Ideal membership in the multivariate polynomial ring over `ℚ` is decidable:\ngiven a finite set of generators, there is a decision procedure `dec` such\nthat `dec p = true` iff `p` lies in the ideal the generators span.  Proven\nin the proofs package by a classical argument (excluded middle supplies the\ncharacteristic function); the constructive Gröbner-basis procedure is out\nof scope."
+        }
+      ]
+    },
+    {
+      "id": "Lax619925.Infiltration",
+      "path": "concepts/Lax619925/Infiltration.lean",
+      "title": "Infiltration automata and infiltration-finite series",
+      "type": "theorem",
+      "description": "A series is *infiltration-finite* if it belongs to a finitely generated\ndifferential infiltration algebra (paper §7): it is an infiltration polynomial in\na finite tuple of series that is closed under left derivatives.  Equivalently (the\ncoincidence), it is recognised by an *infiltration automaton* `(k, F, Δ)`: a\nconfiguration space `ℚ[X_1, …, X_k]`, a final-weight functional `F`, and a\ntransition `Δ_a` that extends to an *infiltration* of the configuration space\n(the paper's infiltration-algebra structure, §7).  By the fundamental relationship\nan infiltration `Δ` is `S − id` for the endomorphism `S = id + Δ`, so the extension\nis computed by substituting `X_i ↦ X_i + Δ_a X_i` and subtracting the identity.\nThe infiltration-finite series form an effective prevariety, so equality and the\ncommutativity problem are decidable for them; the equality decision reduces to\nideal membership in the configuration polynomial ring (the ideal-membership\nstatement), via the same ideal-chain argument as for the Hadamard and shuffle\nautomata.",
+      "imports": [
+        "Lax619925.Commutativity",
+        "Lax619925.Prevariety",
+        "Lax619925.Series"
+      ],
+      "mathlibImports": [
+        "Mathlib.Algebra.MvPolynomial.Basic",
+        "Mathlib.Algebra.MvPolynomial.Eval",
+        "Mathlib.Data.Fin.Basic",
+        "Mathlib.Data.Finset.Basic",
+        "Mathlib.Data.Finsupp.Basic",
+        "Mathlib.Data.Fintype.Basic",
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Lax619925.Series\nimport Lax619925.Prevariety\nimport Lax619925.Commutativity\nimport Mathlib.Data.Real.Basic\nimport Mathlib.Data.Fin.Basic\nimport Mathlib.Data.Fintype.Basic\nimport Mathlib.Data.Finset.Basic\nimport Mathlib.Data.Finsupp.Basic\nimport Mathlib.Algebra.MvPolynomial.Basic\nimport Mathlib.Algebra.MvPolynomial.Eval\n\n/-!\n---\ntitle: Infiltration automata and infiltration-finite series\ntype: theorem\n---\nA series is *infiltration-finite* if it belongs to a finitely generated\ndifferential infiltration algebra (paper §7): it is an infiltration polynomial in\na finite tuple of series that is closed under left derivatives.  Equivalently (the\ncoincidence), it is recognised by an *infiltration automaton* `(k, F, Δ)`: a\nconfiguration space `ℚ[X_1, …, X_k]`, a final-weight functional `F`, and a\ntransition `Δ_a` that extends to an *infiltration* of the configuration space\n(the paper's infiltration-algebra structure, §7).  By the fundamental relationship\nan infiltration `Δ` is `S − id` for the endomorphism `S = id + Δ`, so the extension\nis computed by substituting `X_i ↦ X_i + Δ_a X_i` and subtracting the identity.\nThe infiltration-finite series form an effective prevariety, so equality and the\ncommutativity problem are decidable for them; the equality decision reduces to\nideal membership in the configuration polynomial ring (the ideal-membership\nstatement), via the same ideal-chain argument as for the Hadamard and shuffle\nautomata.\n-/\n\nnamespace Lax619925.Infiltration\n\nopen Lax619925.Series Lax619925.Prevariety Lax619925.Commutativity\n\n/-- The recursive core of the infiltration product, defined by primitive recursion on\n    the word: `(f ↑ g) ε = f ε · g ε` and\n    `(f ↑ g) (a·w) = ((leftDeriv a f) ↑ g) w + (f ↑ (leftDeriv a g)) w\n     + ((leftDeriv a f) ↑ (leftDeriv a g)) w`.  The recursion measure is the word\n    length (the series arguments change at each step). -/\nnoncomputable def infiltrationRec (α : Type*) (f g : Series α) (w : List α) : ℚ :=\n  match w with\n  | [] => f [] * g []\n  | a :: w' => infiltrationRec α (leftDeriv α a f) g w'\n    + infiltrationRec α f (leftDeriv α a g) w'\n    + infiltrationRec α (leftDeriv α a f) (leftDeriv α a g) w'\n  termination_by w.length\n\n/-- The infiltration product of two series, characterised by the base case\n    `(f ↑ g) ε = f ε · g ε` and the step rule\n    `leftDeriv a (f ↑ g) = (leftDeriv a f) ↑ g + f ↑ (leftDeriv a g)\n     + (leftDeriv a f) ↑ (leftDeriv a g)`.  It is the synchronising-interleaving\n    analogue of the shuffle product (the extra last term allows the two series to\n    consume the letter jointly). -/\nnoncomputable def infiltration (α : Type*) (f g : Series α) : Series α :=\n  fun w => infiltrationRec α f g w\n\n/-- The unit of the infiltration product: the delta series, `1` on the empty word and\n    `0` elsewhere.  Unlike the constant-`1` series (the unit of the pointwise product),\n    the delta series is the unit of the *infiltration* product. -/\ndef infiltrationUnit (α : Type*) : Series α := fun w => if w = [] then 1 else 0\n\n/-- The `n`-fold iterated infiltration power of `f`: `infiltrationPow α f 0 =\n    infiltrationUnit α` (the infiltration unit) and `infiltrationPow α f (n+1) = f ↑\n    infiltrationPow α f n`.  This is the infiltration analogue of the pointwise power\n    `f ^ n` used in `hadamardEval`. -/\nnoncomputable def infiltrationPow (α : Type*) (f : Series α) (n : ℕ) : Series α :=\n  match n with\n  | 0 => infiltrationUnit α\n  | n + 1 => infiltration α f (infiltrationPow α f n)\n\n/-- The infiltration product of the iterated infiltration powers\n    `fs 0 ↑^[d 0] ⋯ fs (k-1) ↑^[d (k-1)]`, where `↑` is the infiltration product and\n    `↑^[n]` is the iterated infiltration power (`infiltrationPow`).  This is the\n    infiltration analogue of the pointwise monomial product `∏ i, (fs i) ^ (d i)` used in\n    `hadamardEval`; it is the infiltration fold of the commutative-associative infiltration\n    operation over all indices (the zero-exponent terms contribute the infiltration unit,\n    which is the identity).  It is computed as a right-fold over the index list, so that\n    the definition does not depend on the `Std.Commutative`/`Std.Associative` instances\n    (which the axiom-free concept package cannot carry); the proof package shows it equals\n    the corresponding `Finset.fold` (`infiltrationProd_eq_fold`). -/\nnoncomputable def infiltrationProd (α : Type*) (k : ℕ) (fs : Fin k → Series α) (d : Fin k →₀ ℕ) : Series α :=\n  (((Finset.univ : Finset (Fin k)).toList).map (fun i => infiltrationPow α (fs i) (d i))).foldr\n    (fun x acc => infiltration α x acc) (infiltrationUnit α)\n\n/-- The evaluation of the polynomial `p` in the *infiltration* algebra, sending `X_i` to\n    `fs i`: `infiltrationEval α k fs p = ∑ d ∈ p.support, p.coeff d · (fs 0 ↑^[d 0] ⋯\n    fs (k-1) ↑^[d (k-1)])`, where `↑` is the infiltration product and `↑^[n]` is the\n    iterated infiltration power.  This is the infiltration analogue of `hadamardEval`\n    (which evaluates in the pointwise ring); because the infiltration ring cannot be a\n    `CommRing` instance on `Series α` (which already carries the pointwise ring), it is\n    defined directly as the sum over the polynomial's support of the coefficients times\n    the infiltration product of the iterated powers. -/\nnoncomputable def infiltrationEval (α : Type*) (k : ℕ) (fs : Fin k → Series α)\n    (p : MvPolynomial (Fin k) ℚ) : Series α :=\n  p.support.sum fun m => p.coeff m • infiltrationProd α k fs m\n\n/-- An *infiltration automaton* over `α`: a dimension `k ≥ 1` (the number of\n    nonterminals `X_1, …, X_k`), a final-weight functional `F`, and a transition\n    `Δ` assigning to each letter `a` and nonterminal `X_i` a polynomial `Δ a i` in\n    the nonterminals.  The configuration space is the polynomial ring\n    `ℚ[X_1, …, X_k] = MvPolynomial (Fin k) ℚ`. -/\nstructure InfiltrationAutomaton (α : Type*) where\n  dim : ℕ\n  hdim : 0 < dim\n  F : Fin dim → ℚ\n  Δ : α → Fin dim → MvPolynomial (Fin dim) ℚ\n\n/-- The word extension of the transition: `Δ_w` is the map of the configuration\n    space obtained by composing the letter infiltrations along the word,\n    right-to-left.  Each letter infiltration `Δ_a` is `S_a − id`, where `S_a` is\n    the endomorphism substituting `X_i ↦ X_i + Δ_a X_i` (the fundamental\n    relationship).  The composition law is unchanged from the Hadamard case:\n    `Δ_ε` is the identity and `Δ_{a·w} = Δ_w ∘ Δ_a`. -/\nnoncomputable def InfiltrationAutomaton.Mword {α : Type*} (A : InfiltrationAutomaton α)\n    (w : List α) : MvPolynomial (Fin A.dim) ℚ → MvPolynomial (Fin A.dim) ℚ :=\n  w.foldr (fun a φ => fun β =>\n    φ (MvPolynomial.aeval (fun i => MvPolynomial.X i + A.Δ a i) β - β)) id\n\n/-- The series recognised by the automaton at a configuration `cfg`:\n    `⟦A⟧_cfg (w) = F(Δ_w cfg)`, the final-weight functional applied to the\n    configuration reached after reading `w`. -/\nnoncomputable def InfiltrationAutomaton.sem {α : Type*} (A : InfiltrationAutomaton α)\n    (cfg : MvPolynomial (Fin A.dim) ℚ) : Series α :=\n  fun w => MvPolynomial.eval (fun i => A.F i) (A.Mword w cfg)\n\n/-- The series recognised by the automaton: the semantics at the initial\n    configuration `X_0` (the first nonterminal). -/\nnoncomputable def InfiltrationAutomaton.recognised {α : Type*}\n    (A : InfiltrationAutomaton α) : Series α :=\n  A.sem (MvPolynomial.X (Fin.mk 0 A.hdim))\n\n/-- A series is *infiltration-finite* (working definition, paper §7) if it belongs to a\n    finitely generated differential infiltration algebra: it is an infiltration polynomial\n    in a finite tuple of series `fs` that is closed under left derivatives, i.e.\n    `f = infiltrationEval k fs p` for some polynomial `p`, and `leftDeriv a (fs i)` is\n    again an infiltration polynomial in `fs` for every letter `a` and index `i`.  Here\n    `infiltrationEval k fs` is the evaluation in the infiltration algebra generated by\n    `fs`. -/\ndef IsInfiltrationFinite (α : Type*) (f : Series α) : Prop :=\n  ∃ k : ℕ, ∃ fs : Fin k → Series α, ∃ p : MvPolynomial (Fin k) ℚ,\n    f = infiltrationEval α k fs p ∧\n    ∀ a : α, ∀ i : Fin k, ∃ q : MvPolynomial (Fin k) ℚ,\n      leftDeriv α a (fs i) = infiltrationEval α k fs q\n\n/-- A series is *infiltration-recognisable* if it is recognised by some infiltration\n    automaton. -/\ndef IsInfiltrationRecognisable (α : Type*) (f : Series α) : Prop :=\n  ∃ A : InfiltrationAutomaton α, A.recognised = f\n\n/-- A series is infiltration-finite if and only if it is infiltration-recognisable\n    (paper §7, the coincidence lemma): the finitely generated differential infiltration\n    algebras are exactly the languages of infiltration automata. -/\naxiom InfiltrationCoincidence (α : Type*) (f : Series α) :\n  IsInfiltrationFinite α f ↔ IsInfiltrationRecognisable α f\n\n/-- The class of infiltration-finite series is closed under addition, scalar\n    multiplication, the infiltration product, and right derivatives (paper §7, the\n    closure lemma).  These four parts hold over any alphabet. -/\naxiom InfiltrationClosure (α : Type*) :\n  (∀ (f g : Series α), IsInfiltrationFinite α f → IsInfiltrationFinite α g → IsInfiltrationFinite α (f + g)) ∧\n  (∀ (c : ℚ) (f : Series α), IsInfiltrationFinite α f → IsInfiltrationFinite α (c • f)) ∧\n  (∀ (f g : Series α), IsInfiltrationFinite α f → IsInfiltrationFinite α g → IsInfiltrationFinite α (infiltration α f g)) ∧\n  (∀ (a : α) (f : Series α), IsInfiltrationFinite α f → IsInfiltrationFinite α (rightDeriv α a f))\n\n/-- The class of infiltration-finite series over a *finite* alphabet is closed under\n    left anti-derivatives (paper §7): if `g` is a left anti-derivative of a tuple\n    `f` of infiltration-finite series, then `g` is infiltration-finite.  The\n    finiteness of the alphabet is essential — the witnessing generator set is\n    extended by one series per letter, so it is finite only when the alphabet is. -/\naxiom InfiltrationAntiDerivativeClosure (α : Type*) [Fintype α] :\n  ∀ (g : Series α) (f : α → Series α), IsLeftAntiDerivative α g f →\n      (∀ a, IsInfiltrationFinite α (f a)) → IsInfiltrationFinite α g\n\n/-- The class of infiltration-finite series is an effective prevariety over a finite\n    alphabet (paper §7, theorem): there is an effective prevariety whose image is\n    exactly the infiltration-finite series, with presentations given by infiltration\n    automata. -/\naxiom InfiltrationEffectivePrevariety (α : Type*) [Fintype α] :\n  ∃ P : EffectivePrevariety α, ∀ f, IsInfiltrationFinite α f ↔ ∃ r : P.Rep, P.sem r = f\n\n/-- The equality (zeroness) problem is decidable for infiltration automata over a\n    finite alphabet (paper §7): there is a procedure that, given an infiltration\n    automaton, decides whether the series it recognises is the zero series.  The\n    decision reduces to ideal membership in the configuration polynomial ring, the\n    ideal-membership statement. -/\naxiom InfiltrationEqualityDecidable (α : Type*) [Fintype α] :\n  ∃ d : InfiltrationAutomaton α → Bool, ∀ A, d A = true ↔ A.recognised = 0\n\n/-- In particular, the commutativity problem is decidable for infiltration-finite\n    series over a finite alphabet (paper §7): there is a procedure that, given an\n    infiltration automaton, decides whether the series it recognises is commutative.\n    This is the meta-theorem applied to the effective prevariety of\n    infiltration-finite series. -/\naxiom InfiltrationCommutativityDecidable (α : Type*) [Fintype α] :\n  ∃ d : InfiltrationAutomaton α → Bool, ∀ A, d A = true ↔ IsCommutative α (A.recognised)\n\nend Lax619925.Infiltration\n",
+      "statements": [
+        {
+          "id": "Lax619925.Infiltration.InfiltrationAntiDerivativeClosure",
+          "signature": "InfiltrationAntiDerivativeClosure : ∀ (α : Type u_1) [Fintype α] (g : Lax619925.Series.Series α) (f : α → Lax619925.Series.Series α),\n  Lax619925.Commutativity.IsLeftAntiDerivative α g f →\n    (∀ (a : α), Lax619925.Infiltration.IsInfiltrationFinite α (f a)) → Lax619925.Infiltration.IsInfiltrationFinite α g",
+          "startLine": 167,
+          "endLine": 174,
+          "doc": "The class of infiltration-finite series over a *finite* alphabet is closed under\nleft anti-derivatives (paper §7): if `g` is a left anti-derivative of a tuple\n`f` of infiltration-finite series, then `g` is infiltration-finite.  The\nfiniteness of the alphabet is essential — the witnessing generator set is\nextended by one series per letter, so it is finite only when the alphabet is."
+        },
+        {
+          "id": "Lax619925.Infiltration.InfiltrationClosure",
+          "signature": "InfiltrationClosure : ∀ (α : Type u_1),\n  And\n    (∀ (f g : Lax619925.Series.Series α),\n      Lax619925.Infiltration.IsInfiltrationFinite α f →\n        Lax619925.Infiltration.IsInfiltrationFinite α g →\n          Lax619925.Infiltration.IsInfiltrationFinite α (instHAdd.hAdd f g))\n    (And\n      (∀ (c : Rat) (f : Lax619925.Series.Series α),\n        Lax619925.Infiltration.IsInfiltrationFinite α f →\n          Lax619925.Infiltration.IsInfiltrationFinite α (instHSMul.hSMul c f))\n      (And\n        (∀ (f g : Lax619925.Series.Series α),\n          Lax619925.Infiltration.IsInfiltrationFinite α f →\n            Lax619925.Infiltration.IsInfiltrationFinite α g →\n              Lax619925.Infiltration.IsInfiltrationFinite α (Lax619925.Infiltration.infiltration α f g))\n        (∀ (a : α) (f : Lax619925.Series.Series α),\n          Lax619925.Infiltration.IsInfiltrationFinite α f →\n            Lax619925.Infiltration.IsInfiltrationFinite α (Lax619925.Series.rightDeriv α a f))))",
+          "startLine": 158,
+          "endLine": 165,
+          "doc": "The class of infiltration-finite series is closed under addition, scalar\nmultiplication, the infiltration product, and right derivatives (paper §7, the\nclosure lemma).  These four parts hold over any alphabet."
+        },
+        {
+          "id": "Lax619925.Infiltration.InfiltrationCoincidence",
+          "signature": "InfiltrationCoincidence : ∀ (α : Type u_1) (f : Lax619925.Series.Series α),\n  Iff (Lax619925.Infiltration.IsInfiltrationFinite α f) (Lax619925.Infiltration.IsInfiltrationRecognisable α f)",
+          "startLine": 152,
+          "endLine": 156,
+          "doc": "A series is infiltration-finite if and only if it is infiltration-recognisable\n(paper §7, the coincidence lemma): the finitely generated differential infiltration\nalgebras are exactly the languages of infiltration automata."
+        },
+        {
+          "id": "Lax619925.Infiltration.InfiltrationCommutativityDecidable",
+          "signature": "InfiltrationCommutativityDecidable : ∀ (α : Type u_1) [Fintype α],\n  Exists fun d =>\n    ∀ (A : Lax619925.Infiltration.InfiltrationAutomaton α),\n      Iff (Eq (d A) Bool.true) (Lax619925.Series.IsCommutative α A.recognised)",
+          "startLine": 191,
+          "endLine": 197,
+          "doc": "In particular, the commutativity problem is decidable for infiltration-finite\nseries over a finite alphabet (paper §7): there is a procedure that, given an\ninfiltration automaton, decides whether the series it recognises is commutative.\nThis is the meta-theorem applied to the effective prevariety of\ninfiltration-finite series."
+        },
+        {
+          "id": "Lax619925.Infiltration.InfiltrationEffectivePrevariety",
+          "signature": "InfiltrationEffectivePrevariety : ∀ (α : Type u_1) [Fintype α],\n  Exists fun P =>\n    ∀ (f : Lax619925.Series.Series α),\n      Iff (Lax619925.Infiltration.IsInfiltrationFinite α f) (Exists fun r => Eq (P.sem r) f)",
+          "startLine": 176,
+          "endLine": 181,
+          "doc": "The class of infiltration-finite series is an effective prevariety over a finite\nalphabet (paper §7, theorem): there is an effective prevariety whose image is\nexactly the infiltration-finite series, with presentations given by infiltration\nautomata."
+        },
+        {
+          "id": "Lax619925.Infiltration.InfiltrationEqualityDecidable",
+          "signature": "InfiltrationEqualityDecidable : ∀ (α : Type u_1) [Fintype α],\n  Exists fun d => ∀ (A : Lax619925.Infiltration.InfiltrationAutomaton α), Iff (Eq (d A) Bool.true) (Eq A.recognised 0)",
+          "startLine": 183,
+          "endLine": 189,
+          "doc": "The equality (zeroness) problem is decidable for infiltration automata over a\nfinite alphabet (paper §7): there is a procedure that, given an infiltration\nautomaton, decides whether the series it recognises is the zero series.  The\ndecision reduces to ideal membership in the configuration polynomial ring, the\nideal-membership statement."
+        }
+      ]
+    },
+    {
+      "id": "Lax619925.PolynomialAutomata",
+      "path": "concepts/Lax619925/PolynomialAutomata.lean",
+      "title": "Polynomial automata and Hadamard automata",
+      "type": "theorem",
+      "description": "A *polynomial automaton* (paper appendix) is a weighted automaton whose\nconfiguration space is the vector space `ℚ^k` and whose letter actions are\npolynomial maps.  It is the dual of the Hadamard automaton: here the\nconfiguration is a *point* and the final weight is a *polynomial*, whereas the\nHadamard automaton's configuration is a *polynomial* and its final weight is a\n*point*.  The main result (paper appendix) is that a series is recognisable by a\npolynomial automaton if and only if its reversal is Hadamard-recognisable: the\nduality swaps the configuration and the final weight, and the reversal accounts\nfor the order in which the transitions are composed.",
+      "imports": [
+        "Lax619925.Hadamard",
+        "Lax619925.Series"
+      ],
+      "mathlibImports": [
+        "Mathlib.Algebra.MvPolynomial.Basic",
+        "Mathlib.Algebra.MvPolynomial.Eval",
+        "Mathlib.Data.Fin.Basic",
+        "Mathlib.Data.Fintype.Basic",
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Lax619925.Series\nimport Lax619925.Hadamard\nimport Mathlib.Data.Real.Basic\nimport Mathlib.Data.Fin.Basic\nimport Mathlib.Data.Fintype.Basic\nimport Mathlib.Algebra.MvPolynomial.Basic\nimport Mathlib.Algebra.MvPolynomial.Eval\n\n/-!\n---\ntitle: Polynomial automata and Hadamard automata\ntype: theorem\n---\nA *polynomial automaton* (paper appendix) is a weighted automaton whose\nconfiguration space is the vector space `ℚ^k` and whose letter actions are\npolynomial maps.  It is the dual of the Hadamard automaton: here the\nconfiguration is a *point* and the final weight is a *polynomial*, whereas the\nHadamard automaton's configuration is a *polynomial* and its final weight is a\n*point*.  The main result (paper appendix) is that a series is recognisable by a\npolynomial automaton if and only if its reversal is Hadamard-recognisable: the\nduality swaps the configuration and the final weight, and the reversal accounts\nfor the order in which the transitions are composed.\n-/\n\nnamespace Lax619925.PolynomialAutomata\n\nopen Lax619925.Series Lax619925.Hadamard\n\n/-- A *polynomial automaton* over `α`: a dimension `k ≥ 1`, an initial\n    configuration `qI : ℚ^k`, a final polynomial `F : ℚ[X_1, …, X_k]`, and a\n    transition `Δ` assigning to each letter `a` a polynomial map\n    `Δ_a : ℚ^k → ℚ^k` (a `k`-tuple of polynomials).  The configuration space is\n    the vector space `ℚ^k`, and the letter action is `q · a = Δ_a(q)` (evaluate\n    the transition polynomials at the point `q`). -/\nstructure PolynomialAutomaton (α : Type*) where\n  dim : ℕ\n  hdim : 0 < dim\n  qI : Fin dim → ℚ\n  F : MvPolynomial (Fin dim) ℚ\n  Δ : α → Fin dim → MvPolynomial (Fin dim) ℚ\n\n/-- The action of a letter `a` on a configuration `q`: `q · a = Δ_a(q)`,\n    evaluate the transition polynomials at the point `q`. -/\nnoncomputable def PolynomialAutomaton.action {α : Type*} (A : PolynomialAutomaton α)\n    (q : Fin A.dim → ℚ) (a : α) : Fin A.dim → ℚ :=\n  fun i => MvPolynomial.eval q (A.Δ a i)\n\n/-- The action of a word `w` on a configuration `q`: `q · w`, the letter actions\n    iterated left-to-right. -/\nnoncomputable def PolynomialAutomaton.wordAction {α : Type*} (A : PolynomialAutomaton α)\n    (q : Fin A.dim → ℚ) (w : List α) : Fin A.dim → ℚ :=\n  w.foldl (fun q a => A.action q a) q\n\n/-- The series recognised by the automaton at a configuration `q`:\n    `⟦A⟧_q (w) = F(q · w)`, the final polynomial `F` evaluated at the point\n    `q · w` reached after reading `w`. -/\nnoncomputable def PolynomialAutomaton.sem {α : Type*} (A : PolynomialAutomaton α)\n    (q : Fin A.dim → ℚ) : Series α :=\n  fun w => MvPolynomial.eval (A.wordAction q w) A.F\n\n/-- The series recognised by the automaton: the semantics at the initial\n    configuration `qI`. -/\nnoncomputable def PolynomialAutomaton.recognised {α : Type*} (A : PolynomialAutomaton α) : Series α :=\n  A.sem A.qI\n\n/-- A series is *polynomial-recognisable* if it is recognised by some polynomial\n    automaton. -/\ndef IsPolynomialRecognisable (α : Type*) (f : Series α) : Prop :=\n  ∃ A : PolynomialAutomaton α, A.recognised = f\n\n/-- A series is recognisable by a polynomial automaton if and only if its\n    reversal is Hadamard-recognisable (paper appendix).  The duality swaps the\n    configuration (point ↔ polynomial) and the final weight (polynomial ↔\n    point), and the reversal accounts for the order of composition of the\n    transitions. -/\naxiom PolynomialHadamardEquivalence (α : Type*) (f : Series α) :\n  IsPolynomialRecognisable α f ↔ IsHadamardRecognisable α (reversal α f)\n\nend Lax619925.PolynomialAutomata\n",
+      "statements": [
+        {
+          "id": "Lax619925.PolynomialAutomata.PolynomialHadamardEquivalence",
+          "signature": "PolynomialHadamardEquivalence : ∀ (α : Type u_1) (f : Lax619925.Series.Series α),\n  Iff (Lax619925.PolynomialAutomata.IsPolynomialRecognisable α f)\n    (Lax619925.Hadamard.IsHadamardRecognisable α (Lax619925.Series.reversal α f))",
+          "startLine": 71,
+          "endLine": 77,
+          "doc": "A series is recognisable by a polynomial automaton if and only if its\nreversal is Hadamard-recognisable (paper appendix).  The duality swaps the\nconfiguration (point ↔ polynomial) and the final weight (polynomial ↔\npoint), and the reversal accounts for the order of composition of the\ntransitions."
+        }
+      ]
+    },
+    {
+      "id": "Lax619925.Polyrec",
+      "path": "concepts/Lax619925/Polyrec.lean",
+      "title": "Multivariate polynomial recursive sequences",
+      "type": "theorem",
+      "description": "A *multivariate polynomial recursive sequence* (polyrec sequence) in `d` variables\nis a `k`-tuple of sequences `f : ℕ^d → ℚ` satisfying polynomial equations\n`shift_j f_i = p^{(j)}_i(f_1, …, f_k)` (paper §5.4), where `shift_j` is the shift\nin the `j`-th coordinate and `p^{(j)}_i` are polynomials evaluated pointwise in the\nsequences.  The *consistency problem* asks whether, given the equations and an\ninitial condition `f_i(0) = c_i`, a solution exists.  This is decidable (paper\n§5.4, theorem `polyrec consistency`): the polyrec system is isomorphic to a\nHadamard system over the `d`-letter alphabet, so a solution exists exactly when\nthe companion Hadamard series are commutative, which is decidable.",
+      "imports": [
+        "Lax619925.Hadamard",
+        "Lax619925.Series"
+      ],
+      "mathlibImports": [
+        "Mathlib.Algebra.MvPolynomial.Basic",
+        "Mathlib.Data.Fin.Basic",
+        "Mathlib.Data.Finset.Basic",
+        "Mathlib.Data.Fintype.Basic",
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Lax619925.Series\nimport Lax619925.Hadamard\nimport Mathlib.Data.Real.Basic\nimport Mathlib.Data.Fin.Basic\nimport Mathlib.Data.Fintype.Basic\nimport Mathlib.Data.Finset.Basic\nimport Mathlib.Algebra.MvPolynomial.Basic\n\n/-!\n---\ntitle: Multivariate polynomial recursive sequences\ntype: theorem\n---\nA *multivariate polynomial recursive sequence* (polyrec sequence) in `d` variables\nis a `k`-tuple of sequences `f : ℕ^d → ℚ` satisfying polynomial equations\n`shift_j f_i = p^{(j)}_i(f_1, …, f_k)` (paper §5.4), where `shift_j` is the shift\nin the `j`-th coordinate and `p^{(j)}_i` are polynomials evaluated pointwise in the\nsequences.  The *consistency problem* asks whether, given the equations and an\ninitial condition `f_i(0) = c_i`, a solution exists.  This is decidable (paper\n§5.4, theorem `polyrec consistency`): the polyrec system is isomorphic to a\nHadamard system over the `d`-letter alphabet, so a solution exists exactly when\nthe companion Hadamard series are commutative, which is decidable.\n-/\n\nnamespace Lax619925.Polyrec\n\nopen Lax619925.Series Lax619925.Hadamard\n\n/-- A multivariate sequence in `d` variables: a function `ℕ^d → ℚ`, represented\n    as a function on the multi-index type `Fin d → ℕ`. -/\nabbrev Seq (d : ℕ) := (Fin d → ℕ) → ℚ\n\n/-- The shift of a multivariate sequence in the `j`-th coordinate:\n    `(shift d j f) n = f (n + e_j)`, where `e_j` is the `j`-th unit vector.\n    The shifts in different coordinates commute. -/\ndef shift (d : ℕ) (j : Fin d) (f : Seq d) : Seq d :=\n  fun n => f (fun i => n i + if i = j then 1 else 0)\n\n/-- The pointwise (Hadamard-algebra) evaluation of the polynomial `p` at the tuple\n    of sequences `fs`: `evalSeq d k fs p n = Σ_m p.coeff m · ∏_i (fs i n)^{m i}`,\n    the interpretation of `p` in the pointwise ring of sequences, where the\n    variable `X_i` is mapped to `fs i` and the multiplication is pointwise. -/\ndef evalSeq (d k : ℕ) (fs : Fin k → Seq d) (p : MvPolynomial (Fin k) ℚ) : Seq d :=\n  fun n => p.support.sum fun m => p.coeff m * ∏ i : Fin k, (fs i) n ^ (m i)\n\n/-- A `k`-tuple of multivariate sequences `f` *solves* the polyrec system\n    `(p, c)` if it satisfies the initial condition `f_i(0) = c_i` and the\n    polynomial equations `shift_j f_i = p^{(j)}_i(f_1, …, f_k)` for all `i, j`,\n    where `p^{(j)}_i` is evaluated pointwise in the sequences (the Hadamard\n    algebra).  Here `0` is the zero multi-index, the origin of `ℕ^d`. -/\ndef SolvesPolyrec (d k : ℕ) (f : Fin k → Seq d)\n    (p : Fin k → Fin d → MvPolynomial (Fin k) ℚ) (c : Fin k → ℚ) : Prop :=\n  (∀ i, f i 0 = c i) ∧ ∀ i j, shift d j (f i) = evalSeq d k f (p i j)\n\n/-- The polyrec consistency problem is decidable (paper §5.4, theorem\n    `polyrec consistency`): there is a procedure that, given the polynomial\n    equations `p` and the initial condition `c`, decides whether a solution\n    exists.  The decision reduces to the commutativity of the companion Hadamard\n    series, which is decidable. -/\naxiom PolyrecConsistency (d k : ℕ) (hd : 0 < d) (hk : 0 < k) :\n  ∃ dec : (Fin k → Fin d → MvPolynomial (Fin k) ℚ) → (Fin k → ℚ) → Bool,\n    ∀ p c, dec p c = true ↔ ∃ f : Fin k → Seq d, SolvesPolyrec d k f p c\n\nend Lax619925.Polyrec\n",
+      "statements": [
+        {
+          "id": "Lax619925.Polyrec.PolyrecConsistency",
+          "signature": "PolyrecConsistency : ∀ (d k : Nat),\n  instLTNat.lt 0 d →\n    instLTNat.lt 0 k →\n      Exists fun dec =>\n        ∀ (p : Fin k → Fin d → MvPolynomial (Fin k) Rat) (c : Fin k → Rat),\n          Iff (Eq (dec p c) Bool.true) (Exists fun f => Lax619925.Polyrec.SolvesPolyrec d k f p c)",
+          "startLine": 55,
+          "endLine": 62,
+          "doc": "The polyrec consistency problem is decidable (paper §5.4, theorem\n`polyrec consistency`): there is a procedure that, given the polynomial\nequations `p` and the initial condition `c`, decides whether a solution\nexists.  The decision reduces to the commutativity of the companion Hadamard\nseries, which is decidable."
+        }
+      ]
+    },
+    {
+      "id": "Lax619925.Prevariety",
+      "path": "concepts/Lax619925/Prevariety.lean",
+      "title": "Prevarieties and effective prevarieties of series",
+      "type": "definition",
+      "description": "A *prevariety* of series over an alphabet `α` is a `ℚ`-subspace of the series\nclosed under the left and right derivatives (paper §2.3, conditions (V.1) and\n(V.2)).  An *effective prevariety* is a prevariety whose elements admit finite\npresentations (a type `Rep` with a semantics map) such that the closure\noperations are carried out algorithmically on presentations and the equality\nproblem is decidable (paper §2.3, conditions (1)–(3)).  These are definitions\nonly; the decidability results built on them live in the `Commutativity` module.",
+      "imports": [
+        "Lax619925.Series"
+      ],
+      "mathlibImports": [
+        "Mathlib.Algebra.Module.Basic",
+        "Mathlib.Algebra.Module.Pi",
+        "Mathlib.Algebra.Module.Submodule.Basic",
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Lax619925.Series\nimport Mathlib.Data.Real.Basic\nimport Mathlib.Algebra.Module.Basic\nimport Mathlib.Algebra.Module.Pi\nimport Mathlib.Algebra.Module.Submodule.Basic\n\nuniverse u\n\n/-!\n---\ntitle: Prevarieties and effective prevarieties of series\ntype: definition\n---\nA *prevariety* of series over an alphabet `α` is a `ℚ`-subspace of the series\nclosed under the left and right derivatives (paper §2.3, conditions (V.1) and\n(V.2)).  An *effective prevariety* is a prevariety whose elements admit finite\npresentations (a type `Rep` with a semantics map) such that the closure\noperations are carried out algorithmically on presentations and the equality\nproblem is decidable (paper §2.3, conditions (1)–(3)).  These are definitions\nonly; the decidability results built on them live in the `Commutativity` module.\n-/\n\nnamespace Lax619925.Prevariety\n\nopen Lax619925.Series\n\n-- the type and the module carrying it have the same name on purpose\nset_option linter.dupNamespace false in\n/-- A prevariety of series over `α`: a `ℚ`-subspace of `Series α` (the field\n    `carrier`) that is closed under the left and right derivatives. -/\nstructure Prevariety (α : Type*) where\n  carrier : Submodule ℚ (Series α)\n  closedLeftDeriv : ∀ {f : Series α} (_hf : f ∈ carrier), ∀ a, leftDeriv α a f ∈ carrier\n  closedRightDeriv : ∀ {f : Series α} (_hf : f ∈ carrier), ∀ a, rightDeriv α a f ∈ carrier\n\n/-- Coercion from a prevariety to its underlying `ℚ`-submodule. -/\ninstance (α : Type*) : Coe (Prevariety α) (Submodule ℚ (Series α)) where\n  coe P := P.carrier\n\n/-- Membership in a prevariety: `f ∈ P` means that `f` belongs to the underlying\n    `ℚ`-subspace of `P`. -/\ninstance (α : Type*) : Membership (Series α) (Prevariety α) where\n  mem P f := f ∈ P.carrier\n\n/-- An effective prevariety of series over `α`: a prevariety given by a type `Rep`\n    of finite presentations with a semantics map `sem`, in which the vector-space\n    operations and the left and right derivatives are computed by operations on\n    presentations (the `sem_*` fields record their correctness), and on which the\n    equality problem is decidable.  The fields `prevariety` and `mem` record that\n    the image of the semantics is a prevariety. -/\nstructure EffectivePrevariety (α : Type u) where\n  Rep : Type u\n  sem : Rep → Series α\n  prevariety : Prevariety α\n  mem : ∀ r, sem r ∈ prevariety\n  zero : Rep\n  add : Rep → Rep → Rep\n  smul : ℚ → Rep → Rep\n  derivL : α → Rep → Rep\n  derivR : α → Rep → Rep\n  sem_zero : sem zero = 0\n  sem_add : ∀ r s, sem (add r s) = sem r + sem s\n  sem_smul : ∀ c r, sem (smul c r) = c • sem r\n  sem_derivL : ∀ a r, sem (derivL a r) = leftDeriv α a (sem r)\n  sem_derivR : ∀ a r, sem (derivR a r) = rightDeriv α a (sem r)\n  decEq : ∀ r s, Decidable (sem r = sem s)\n\nend Lax619925.Prevariety\n",
+      "statements": []
+    },
+    {
+      "id": "Lax619925.Recognisable",
+      "path": "concepts/Lax619925/Recognisable.lean",
+      "title": "Linearly-finite and recognisable series",
+      "type": "theorem",
+      "description": "A series is *linearly finite* if it lies in a finitely generated `ℚ`-space of\nseries closed under left derivatives; it is *recognisable* if it is recognised by\na linear representation `(k, x, y, M)`, i.e. `f (w) = x · M(w) · y`.  The two\nnotions coincide (a classical result).  The class of recognisable series is an\neffective prevariety — equality is decidable by linear algebra — and hence the\ncommutativity problem is decidable for it (paper §4).  This is the only chain in\nthe proof network that does not depend on the ideal-membership statement.",
+      "imports": [
+        "Lax619925.Commutativity",
+        "Lax619925.Prevariety",
+        "Lax619925.Series"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Fin.Basic",
+        "Mathlib.Data.Finset.Basic",
+        "Mathlib.Data.Fintype.Basic",
+        "Mathlib.Data.Matrix.Basic",
+        "Mathlib.Data.Real.Basic",
+        "Mathlib.LinearAlgebra.Span.Basic"
+      ],
+      "sourceText": "import Lax619925.Series\nimport Lax619925.Prevariety\nimport Lax619925.Commutativity\nimport Mathlib.Data.Real.Basic\nimport Mathlib.Data.Fin.Basic\nimport Mathlib.Data.Fintype.Basic\nimport Mathlib.Data.Finset.Basic\nimport Mathlib.Data.Matrix.Basic\nimport Mathlib.LinearAlgebra.Span.Basic\n\n/-!\n---\ntitle: Linearly-finite and recognisable series\ntype: theorem\n---\nA series is *linearly finite* if it lies in a finitely generated `ℚ`-space of\nseries closed under left derivatives; it is *recognisable* if it is recognised by\na linear representation `(k, x, y, M)`, i.e. `f (w) = x · M(w) · y`.  The two\nnotions coincide (a classical result).  The class of recognisable series is an\neffective prevariety — equality is decidable by linear algebra — and hence the\ncommutativity problem is decidable for it (paper §4).  This is the only chain in\nthe proof network that does not depend on the ideal-membership statement.\n-/\n\nnamespace Lax619925.Recognisable\n\nopen Lax619925.Series Lax619925.Prevariety Lax619925.Commutativity\n\n/-- A linear representation over `α`: a dimension `k`, a row vector `init` of\n    initial weights, a column vector `final` of final weights, and a transition\n    function `M` assigning to each letter a `k × k` matrix.  The transition function\n    extends homomorphically to words by `M(ε) = 1` and `M(a·w) = M(a) · M(w)` (the\n    definition `Mword`), and the series recognised is `f (w) = x · M(w) · y` (the\n    definition `sem`).  Both are computed from the four core fields. -/\nstructure LinearRepresentation (α : Type*) where\n  dim : ℕ\n  init : Fin dim → ℚ\n  final : Fin dim → ℚ\n  M : α → Matrix (Fin dim) (Fin dim) ℚ\n\n/-- The word product `M(w)`: `M(ε) = 1` and `M(a·w) = M(a) · M(w)`, the transition\n    matrices composed right-to-left along the word. -/\ndef LinearRepresentation.Mword {α : Type*} (r : LinearRepresentation α) (w : List α) :\n    Matrix (Fin r.dim) (Fin r.dim) ℚ :=\n  w.foldr (fun a A => r.M a * A) 1\n\n/-- The series recognised by the representation: `f (w) = x · M(w) · y`, the dot\n    product of the initial vector with the word product applied to the final vector. -/\ndef LinearRepresentation.sem {α : Type*} (r : LinearRepresentation α) (w : List α) : ℚ :=\n  dotProduct r.init (Matrix.mulVec (r.Mword w) r.final)\n\n/-- A series is *recognisable* if it is recognised by some linear representation. -/\ndef IsRecognisable (α : Type*) (f : Series α) : Prop :=\n  ∃ r : LinearRepresentation α, r.sem = f\n\n/-- A series is *linearly finite* if it belongs to a finitely generated `ℚ`-space of\n    series (the span of a finite set of generators `G`) that is closed under left\n    derivatives: `f ∈ span G` and `leftDeriv a g ∈ span G` for all `a` and `g ∈ G`. -/\ndef IsLinearlyFinite (α : Type*) (f : Series α) : Prop :=\n  ∃ G : Finset (Series α), f ∈ Submodule.span ℚ G ∧ ∀ a, ∀ g ∈ G, leftDeriv α a g ∈ Submodule.span ℚ G\n\n/-- A series is recognisable if and only if it is linearly finite\n    (paper §4, the classical coincidence lemma). -/\naxiom RecognisableLinearlyFinite (α : Type*) (f : Series α) :\n  IsRecognisable α f ↔ IsLinearlyFinite α f\n\n/-- The class of linearly finite series is closed under scalar product, addition,\n    and left derivatives (paper §4, lemma `recognisable closure properties`).  The\n    closure is effective: each operation is witnessed by an explicit finite set of\n    generators.  These three parts hold over any alphabet. -/\naxiom LinearlyFiniteClosure (α : Type*) :\n  (∀ (f g : Series α), IsLinearlyFinite α f → IsLinearlyFinite α g → IsLinearlyFinite α (f + g)) ∧\n  (∀ (c : ℚ) (f : Series α), IsLinearlyFinite α f → IsLinearlyFinite α (c • f)) ∧\n  (∀ (a : α) (f : Series α), IsLinearlyFinite α f → IsLinearlyFinite α (leftDeriv α a f))\n\n/-- The class of linearly finite series over a *finite* alphabet is closed under left\n    anti-derivatives (paper §4, lemma `recognisable closure properties`): if `g` is a\n    left anti-derivative of a tuple `f` of linearly finite series, then `g` is linearly\n    finite.  The finiteness of the alphabet is essential — the witnessing generator set\n    is `{g} ∪ ⋃ₐ Gₐ`, one finite set `Gₐ` per letter, so it is finite only when the\n    alphabet is. -/\naxiom LinearlyFiniteAntiDerivativeClosure (α : Type*) [Fintype α] :\n  ∀ (g : Series α) (f : α → Series α), IsLeftAntiDerivative α g f →\n      (∀ a, IsLinearlyFinite α (f a)) → IsLinearlyFinite α g\n\n/-- If `f` is recognisable, then its reversal is recognisable (paper §4): the\n    transposed representation `(k, yᵀ, xᵀ, Mᵀ)` recognises `reversal f`. -/\naxiom RecognisableReversal (α : Type*) (f : Series α) (hf : IsRecognisable α f) :\n  IsRecognisable α (reversal α f)\n\n/-- If `f` is recognisable, then its right derivative is recognisable\n    (paper §4, corollary `recognisable derive right`), by double reversal:\n    `rightDeriv a f = reversal (leftDeriv a (reversal f))`. -/\naxiom RecognisableRightDeriv (α : Type*) (a : α) (f : Series α) (hf : IsRecognisable α f) :\n  IsRecognisable α (rightDeriv α a f)\n\n/-- The equality (zeroness) problem is decidable for recognisable series over a finite\n    alphabet (paper §4): there is a procedure that, given a linear representation,\n    decides whether the series it recognises is the zero series.  It checks, by linear\n    algebra, that the initial vector annihilates the subspace reachable from the final\n    vector.  This is condition (3) in the definition of effective prevariety. -/\naxiom RecognisableEqualityDecidable (α : Type*) [Fintype α] :\n  ∃ d : LinearRepresentation α → Bool, ∀ r, d r = true ↔ r.sem = 0\n\n/-- The class of recognisable (= linearly finite) series is an effective prevariety\n    (paper §4, theorem): there is an effective prevariety whose image is exactly the\n    recognisable series, with presentations given by linear representations. -/\naxiom RecognisableEffectivePrevariety (α : Type*) [Fintype α] :\n  ∃ P : EffectivePrevariety α, ∀ f, IsRecognisable α f ↔ ∃ r : P.Rep, P.sem r = f\n\n/-- In particular, the commutativity problem is decidable for recognisable series over\n    a finite alphabet (paper §4): there is a procedure that, given a linear\n    representation, decides whether the series it recognises is commutative.  This is\n    the meta-theorem applied to the effective prevariety of recognisable series. -/\naxiom RecognisableCommutativityDecidable (α : Type*) [Fintype α] :\n  ∃ d : LinearRepresentation α → Bool, ∀ r, d r = true ↔ IsCommutative α (r.sem)\n\nend Lax619925.Recognisable\n",
+      "statements": [
+        {
+          "id": "Lax619925.Recognisable.LinearlyFiniteAntiDerivativeClosure",
+          "signature": "LinearlyFiniteAntiDerivativeClosure : ∀ (α : Type u_1) [Fintype α] (g : Lax619925.Series.Series α) (f : α → Lax619925.Series.Series α),\n  Lax619925.Commutativity.IsLeftAntiDerivative α g f →\n    (∀ (a : α), Lax619925.Recognisable.IsLinearlyFinite α (f a)) → Lax619925.Recognisable.IsLinearlyFinite α g",
+          "startLine": 76,
+          "endLine": 84,
+          "doc": "The class of linearly finite series over a *finite* alphabet is closed under left\nanti-derivatives (paper §4, lemma `recognisable closure properties`): if `g` is a\nleft anti-derivative of a tuple `f` of linearly finite series, then `g` is linearly\nfinite.  The finiteness of the alphabet is essential — the witnessing generator set\nis `{g} ∪ ⋃ₐ Gₐ`, one finite set `Gₐ` per letter, so it is finite only when the\nalphabet is."
+        },
+        {
+          "id": "Lax619925.Recognisable.LinearlyFiniteClosure",
+          "signature": "LinearlyFiniteClosure : ∀ (α : Type u_1),\n  And\n    (∀ (f g : Lax619925.Series.Series α),\n      Lax619925.Recognisable.IsLinearlyFinite α f →\n        Lax619925.Recognisable.IsLinearlyFinite α g → Lax619925.Recognisable.IsLinearlyFinite α (instHAdd.hAdd f g))\n    (And\n      (∀ (c : Rat) (f : Lax619925.Series.Series α),\n        Lax619925.Recognisable.IsLinearlyFinite α f → Lax619925.Recognisable.IsLinearlyFinite α (instHSMul.hSMul c f))\n      (∀ (a : α) (f : Lax619925.Series.Series α),\n        Lax619925.Recognisable.IsLinearlyFinite α f →\n          Lax619925.Recognisable.IsLinearlyFinite α (Lax619925.Series.leftDeriv α a f)))",
+          "startLine": 67,
+          "endLine": 74,
+          "doc": "The class of linearly finite series is closed under scalar product, addition,\nand left derivatives (paper §4, lemma `recognisable closure properties`).  The\nclosure is effective: each operation is witnessed by an explicit finite set of\ngenerators.  These three parts hold over any alphabet."
+        },
+        {
+          "id": "Lax619925.Recognisable.RecognisableCommutativityDecidable",
+          "signature": "RecognisableCommutativityDecidable : ∀ (α : Type u_1) [Fintype α],\n  Exists fun d =>\n    ∀ (r : Lax619925.Recognisable.LinearRepresentation α),\n      Iff (Eq (d r) Bool.true) (Lax619925.Series.IsCommutative α r.sem)",
+          "startLine": 111,
+          "endLine": 116,
+          "doc": "In particular, the commutativity problem is decidable for recognisable series over\na finite alphabet (paper §4): there is a procedure that, given a linear\nrepresentation, decides whether the series it recognises is commutative.  This is\nthe meta-theorem applied to the effective prevariety of recognisable series."
+        },
+        {
+          "id": "Lax619925.Recognisable.RecognisableEffectivePrevariety",
+          "signature": "RecognisableEffectivePrevariety : ∀ (α : Type u_1) [Fintype α],\n  Exists fun P =>\n    ∀ (f : Lax619925.Series.Series α), Iff (Lax619925.Recognisable.IsRecognisable α f) (Exists fun r => Eq (P.sem r) f)",
+          "startLine": 105,
+          "endLine": 109,
+          "doc": "The class of recognisable (= linearly finite) series is an effective prevariety\n(paper §4, theorem): there is an effective prevariety whose image is exactly the\nrecognisable series, with presentations given by linear representations."
+        },
+        {
+          "id": "Lax619925.Recognisable.RecognisableEqualityDecidable",
+          "signature": "RecognisableEqualityDecidable : ∀ (α : Type u_1) [Fintype α],\n  Exists fun d => ∀ (r : Lax619925.Recognisable.LinearRepresentation α), Iff (Eq (d r) Bool.true) (Eq r.sem 0)",
+          "startLine": 97,
+          "endLine": 103,
+          "doc": "The equality (zeroness) problem is decidable for recognisable series over a finite\nalphabet (paper §4): there is a procedure that, given a linear representation,\ndecides whether the series it recognises is the zero series.  It checks, by linear\nalgebra, that the initial vector annihilates the subspace reachable from the final\nvector.  This is condition (3) in the definition of effective prevariety."
+        },
+        {
+          "id": "Lax619925.Recognisable.RecognisableLinearlyFinite",
+          "signature": "RecognisableLinearlyFinite : ∀ (α : Type u_1) (f : Lax619925.Series.Series α),\n  Iff (Lax619925.Recognisable.IsRecognisable α f) (Lax619925.Recognisable.IsLinearlyFinite α f)",
+          "startLine": 62,
+          "endLine": 65,
+          "doc": "A series is recognisable if and only if it is linearly finite\n(paper §4, the classical coincidence lemma)."
+        },
+        {
+          "id": "Lax619925.Recognisable.RecognisableReversal",
+          "signature": "RecognisableReversal : ∀ (α : Type u_1) (f : Lax619925.Series.Series α),\n  Lax619925.Recognisable.IsRecognisable α f → Lax619925.Recognisable.IsRecognisable α (Lax619925.Series.reversal α f)",
+          "startLine": 86,
+          "endLine": 89,
+          "doc": "If `f` is recognisable, then its reversal is recognisable (paper §4): the\ntransposed representation `(k, yᵀ, xᵀ, Mᵀ)` recognises `reversal f`."
+        },
+        {
+          "id": "Lax619925.Recognisable.RecognisableRightDeriv",
+          "signature": "RecognisableRightDeriv : ∀ (α : Type u_1) (a : α) (f : Lax619925.Series.Series α),\n  Lax619925.Recognisable.IsRecognisable α f →\n    Lax619925.Recognisable.IsRecognisable α (Lax619925.Series.rightDeriv α a f)",
+          "startLine": 91,
+          "endLine": 95,
+          "doc": "If `f` is recognisable, then its right derivative is recognisable\n(paper §4, corollary `recognisable derive right`), by double reversal:\n`rightDeriv a f = reversal (leftDeriv a (reversal f))`."
+        }
+      ]
+    },
+    {
+      "id": "Lax619925.Series",
+      "path": "concepts/Lax619925/Series.lean",
+      "title": "Formal power series",
+      "type": "definition",
+      "description": "Formal power series over an alphabet `α` are functions from words `List α` to\nthe rationals.  They carry the pointwise vector-space structure, the left and\nright derivatives (the series analogues of language quotients), the reversal,\nthe support, and the Parikh image.  A series is *commutative* when it is\nconstant on words with the same Parikh image.  This module records the basic\ndefinitions of §2 of the paper together with the elementary facts about\nderivatives and reversal that the later sections use.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.Finite.Defs",
+        "Mathlib.Data.List.Basic",
+        "Mathlib.Data.Multiset.Basic",
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.Real.Basic\nimport Mathlib.Data.List.Basic\nimport Mathlib.Data.Finite.Defs\nimport Mathlib.Data.Multiset.Basic\n\n/-!\n---\ntitle: Formal power series\ntype: definition\n---\nFormal power series over an alphabet `α` are functions from words `List α` to\nthe rationals.  They carry the pointwise vector-space structure, the left and\nright derivatives (the series analogues of language quotients), the reversal,\nthe support, and the Parikh image.  A series is *commutative* when it is\nconstant on words with the same Parikh image.  This module records the basic\ndefinitions of §2 of the paper together with the elementary facts about\nderivatives and reversal that the later sections use.\n-/\n\nnamespace Lax619925.Series\n\n-- the type and the module carrying it have the same name on purpose\nset_option linter.dupNamespace false in\n/-- A formal power series over the alphabet `α`: a function from words to `ℚ`. -/\nabbrev Series (α : Type*) := List α → ℚ\n\n/-- The left derivative with respect to the letter `a`:\n    `(leftDeriv a f) w = f (a :: w)`, i.e. the coefficient of `a · w` in `f`. -/\ndef leftDeriv (α : Type*) (a : α) (f : Series α) : Series α := fun w => f (a :: w)\n\n/-- The right derivative with respect to the letter `a`:\n    `(rightDeriv a f) w = f (w ++ [a])`, i.e. the coefficient of `w · a` in `f`. -/\ndef rightDeriv (α : Type*) (a : α) (f : Series α) : Series α := fun w => f (w ++ [a])\n\n/-- The left derivative with respect to a word `w`, extended homomorphically:\n    `(leftDerivWord w f) v = f (w ++ v)`.  This agrees with the paper's recursive\n    definition `δ^L_ε f = f` and `δ^L_{a·w} f = δ^L_w (δ^L_a f)`. -/\ndef leftDerivWord (α : Type*) (w : List α) (f : Series α) : Series α := fun v => f (w ++ v)\n\n/-- The right derivative with respect to a word `w`, extended homomorphically:\n    `(rightDerivWord w f) v = f (v ++ w.reverse)`.  This agrees with the paper's\n    recursive definition `δ^R_ε f = f` and `δ^R_{w·a} f = δ^R_a (δ^R_w f)`, which\n    appends the letters of `w` in reversed order. -/\ndef rightDerivWord (α : Type*) (w : List α) (f : Series α) : Series α := fun v => f (v ++ w.reverse)\n\n/-- The reversal of a series: `(reversal f) w = f (w.reverse)`. -/\ndef reversal (α : Type*) (f : Series α) : Series α := fun w => f w.reverse\n\n/-- The support of a series: the set of words on which it is nonzero. -/\ndef support (α : Type*) (f : Series α) : Set (List α) := {w | f w ≠ 0}\n\n/-- A series is a *polynomial* if its support is finite. -/\ndef IsPolynomial (α : Type*) (f : Series α) : Prop := (support α f).Finite\n\n/-- The Parikh image (commutative image) of a word: the function counting, for each\n    letter, its number of occurrences in the word.  The paper indexes this vector by a\n    fixed ordering of the alphabet; the function form is equivalent and needs no order.\n    Counting occurrences requires decidable equality on the alphabet. -/\ndef parikh (α : Type*) [DecidableEq α] (w : List α) : α → ℕ := fun a => w.count a\n\n/-- Two words are *commutatively equivalent* if they have the same multiset of letters,\n    i.e. one is obtained from the other by permuting the positions of the letters.\n    (Equivalently, when the alphabet has decidable equality, they have the same Parikh\n    image.) -/\ndef CommutativelyEquivalent (α : Type*) (u v : List α) : Prop :=\n  Multiset.ofList u = Multiset.ofList v\n\n/-- A series is *commutative* (échangeable) if it takes the same value on all\n    commutatively equivalent words. -/\ndef IsCommutative (α : Type*) (f : Series α) : Prop :=\n  ∀ u v, CommutativelyEquivalent α u v → f u = f v\n\n/-- Left and right derivatives commute: for all letters `a, b`,\n    `leftDeriv a ∘ rightDeriv b = rightDeriv b ∘ leftDeriv a`.\n    (Paper, §2, lemma `leftRightComm`.)  Both sides send a series `f` to the series\n    `w ↦ f (a :: w ++ [b])`. -/\naxiom LeftRightDerivativesCommute (α : Type*) (a b : α) :\n  leftDeriv α a ∘ rightDeriv α b = rightDeriv α b ∘ leftDeriv α a\n\n/-- Reversal is an involution on series. -/\naxiom ReversalInvolution (α : Type*) (f : Series α) : reversal α (reversal α f) = f\n\n/-- Reversal interchanges left and right derivatives:\n    `reversal (leftDeriv a f) = rightDeriv a (reversal f)`.\n    Composing with the involution gives the paper's double-reversal identity\n    `rightDeriv a f = reversal (leftDeriv a (reversal f))` used in §4. -/\naxiom ReversalSwapsDerivatives (α : Type*) (a : α) (f : Series α) :\n  reversal α (leftDeriv α a f) = rightDeriv α a (reversal α f)\n\nend Lax619925.Series\n",
+      "statements": [
+        {
+          "id": "Lax619925.Series.LeftRightDerivativesCommute",
+          "signature": "LeftRightDerivativesCommute : ∀ (α : Type u_1) (a b : α),\n  Eq (Function.comp (Lax619925.Series.leftDeriv α a) (Lax619925.Series.rightDeriv α b))\n    (Function.comp (Lax619925.Series.rightDeriv α b) (Lax619925.Series.leftDeriv α a))",
+          "startLine": 73,
+          "endLine": 78,
+          "doc": "Left and right derivatives commute: for all letters `a, b`,\n`leftDeriv a ∘ rightDeriv b = rightDeriv b ∘ leftDeriv a`.\n(Paper, §2, lemma `leftRightComm`.)  Both sides send a series `f` to the series\n`w ↦ f (a :: w ++ [b])`."
+        },
+        {
+          "id": "Lax619925.Series.ReversalInvolution",
+          "signature": "ReversalInvolution : ∀ (α : Type u_1) (f : Lax619925.Series.Series α), Eq (Lax619925.Series.reversal α (Lax619925.Series.reversal α f)) f",
+          "startLine": 80,
+          "endLine": 81,
+          "doc": "Reversal is an involution on series."
+        },
+        {
+          "id": "Lax619925.Series.ReversalSwapsDerivatives",
+          "signature": "ReversalSwapsDerivatives : ∀ (α : Type u_1) (a : α) (f : Lax619925.Series.Series α),\n  Eq (Lax619925.Series.reversal α (Lax619925.Series.leftDeriv α a f))\n    (Lax619925.Series.rightDeriv α a (Lax619925.Series.reversal α f))",
+          "startLine": 83,
+          "endLine": 88,
+          "doc": "Reversal interchanges left and right derivatives:\n`reversal (leftDeriv a f) = rightDeriv a (reversal f)`.\nComposing with the involution gives the paper's double-reversal identity\n`rightDeriv a f = reversal (leftDeriv a (reversal f))` used in §4."
+        }
+      ]
+    },
+    {
+      "id": "Lax619925.Shuffle",
+      "path": "concepts/Lax619925/Shuffle.lean",
+      "title": "Shuffle automata and shuffle-finite series",
+      "type": "theorem",
+      "description": "A series is *shuffle-finite* if it belongs to a finitely generated differential\nshuffle algebra (paper §6.2.2): it is a shuffle polynomial in a finite tuple of\nseries that is closed under left derivatives.  Equivalently (the coincidence),\nit is recognised by a *shuffle automaton* `(k, F, Δ)`: a configuration space\n`ℚ[X_1, …, X_k]`, a final-weight functional `F`, and a transition `Δ_a` that\nextends to a *derivation* of the configuration space (the paper's differential-\nalgebra structure, §6).  The shuffle-finite series form an effective prevariety,\nso equality and the commutativity problem are decidable for them; the equality\ndecision reduces to ideal membership in the configuration polynomial ring (the\nideal-membership statement), via the same ideal-chain argument as for the Hadamard and\ninfiltration automata.",
+      "imports": [
+        "Lax619925.Commutativity",
+        "Lax619925.Prevariety",
+        "Lax619925.Series"
+      ],
+      "mathlibImports": [
+        "Mathlib.Algebra.MvPolynomial.Basic",
+        "Mathlib.Algebra.MvPolynomial.Eval",
+        "Mathlib.Data.Fin.Basic",
+        "Mathlib.Data.Finset.Basic",
+        "Mathlib.Data.Finsupp.Basic",
+        "Mathlib.Data.Fintype.Basic",
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Lax619925.Series\nimport Lax619925.Prevariety\nimport Lax619925.Commutativity\nimport Mathlib.Data.Real.Basic\nimport Mathlib.Data.Fin.Basic\nimport Mathlib.Data.Fintype.Basic\nimport Mathlib.Data.Finset.Basic\nimport Mathlib.Data.Finsupp.Basic\nimport Mathlib.Algebra.MvPolynomial.Basic\nimport Mathlib.Algebra.MvPolynomial.Eval\n\n/-!\n---\ntitle: Shuffle automata and shuffle-finite series\ntype: theorem\n---\nA series is *shuffle-finite* if it belongs to a finitely generated differential\nshuffle algebra (paper §6.2.2): it is a shuffle polynomial in a finite tuple of\nseries that is closed under left derivatives.  Equivalently (the coincidence),\nit is recognised by a *shuffle automaton* `(k, F, Δ)`: a configuration space\n`ℚ[X_1, …, X_k]`, a final-weight functional `F`, and a transition `Δ_a` that\nextends to a *derivation* of the configuration space (the paper's differential-\nalgebra structure, §6).  The shuffle-finite series form an effective prevariety,\nso equality and the commutativity problem are decidable for them; the equality\ndecision reduces to ideal membership in the configuration polynomial ring (the\nideal-membership statement), via the same ideal-chain argument as for the Hadamard and\ninfiltration automata.\n-/\n\nnamespace Lax619925.Shuffle\n\nopen Lax619925.Series Lax619925.Prevariety Lax619925.Commutativity\n\n/-- The recursive core of the shuffle product, defined by primitive recursion on the\n    word: `(f ⧢ g) ε = f ε · g ε` and\n    `(f ⧢ g) (a·w) = ((leftDeriv a f) ⧢ g) w + (f ⧢ (leftDeriv a g)) w`, the Leibniz\n    rule.  This is the unique series satisfying the characterisation.  The recursion\n    measure is the word length (the series arguments `f`, `g` change at each step, so\n    structural recursion on the word alone does not apply). -/\nnoncomputable def shuffleRec (α : Type*) (f g : Series α) (w : List α) : ℚ :=\n  match w with\n  | [] => f [] * g []\n  | a :: w' => shuffleRec α (leftDeriv α a f) g w' + shuffleRec α f (leftDeriv α a g) w'\n  termination_by w.length\n\n/-- The shuffle product of two series, characterised by the Leibniz rule\n    `leftDeriv a (f ⧢ g) = (leftDeriv a f) ⧢ g + f ⧢ (leftDeriv a g)` and the\n    initial condition `(f ⧢ g) ε = f ε · g ε`.  Equivalently,\n    `(f ⧢ g) w = Σ_{u·v = w} f u · g v`, the sum over all interleavings of `u`\n    and `v` that yield `w`. -/\nnoncomputable def shuffle (α : Type*) (f g : Series α) : Series α :=\n  fun w => shuffleRec α f g w\n\n/-- The unit of the shuffle product: the delta series, `1` on the empty word and `0`\n    elsewhere.  Unlike the constant-`1` series (the unit of the pointwise product), the\n    delta series is the unit of the *shuffle* product. -/\ndef shuffleUnit (α : Type*) : Series α := fun w => if w = [] then 1 else 0\n\n/-- The `n`-fold iterated shuffle power of `f`: `shufflePow α f 0 = shuffleUnit α` (the\n    shuffle unit) and `shufflePow α f (n+1) = f ⧢ shufflePow α f n`.  This is the shuffle\n    analogue of the pointwise power `f ^ n` used in `hadamardEval`. -/\nnoncomputable def shufflePow (α : Type*) (f : Series α) (n : ℕ) : Series α :=\n  match n with\n  | 0 => shuffleUnit α\n  | n + 1 => shuffle α f (shufflePow α f n)\n\n/-- The shuffle product of the iterated shuffle powers `fs 0 ⧢^[d 0] ⧢ ⋯ ⧢ fs (k-1) ⧢^[d (k-1)]`,\n    where `⧢` is the shuffle product and `⧢^[n]` is the iterated shuffle power\n    (`shufflePow`).  This is the shuffle analogue of the pointwise monomial product\n    `∏ i, (fs i) ^ (d i)` used in `hadamardEval`; it is the shuffle fold of the\n    commutative-associative shuffle operation over all indices (the zero-exponent terms\n    contribute the shuffle unit, which is the identity).  It is computed as a right-fold\n    over the index list, so that the definition does not depend on the `Std.Commutative`/\n    `Std.Associative` instances (which the axiom-free concept package cannot carry); the\n    proof package shows it equals the corresponding `Finset.fold` (`shuffleProd_eq_fold`). -/\nnoncomputable def shuffleProd (α : Type*) (k : ℕ) (fs : Fin k → Series α) (d : Fin k →₀ ℕ) : Series α :=\n  (((Finset.univ : Finset (Fin k)).toList).map (fun i => shufflePow α (fs i) (d i))).foldr\n    (fun x acc => shuffle α x acc) (shuffleUnit α)\n\n/-- The evaluation of the polynomial `p` in the *shuffle* algebra, sending `X_i` to\n    `fs i`: `shuffleEval α k fs p = ∑ d ∈ p.support, p.coeff d · (fs 0 ⧢^[d 0] ⧢ ⋯ ⧢\n    fs (k-1) ⧢^[d (k-1)])`, where `⧢` is the shuffle product and `⧢^[n]` is the iterated\n    shuffle power.  This is the shuffle analogue of `hadamardEval` (which evaluates in the\n    pointwise ring); because the shuffle ring cannot be a `CommRing` instance on `Series α`\n    (which already carries the pointwise ring), it is defined directly as the sum over the\n    polynomial's support of the coefficients times the shuffle product of the iterated\n    powers. -/\nnoncomputable def shuffleEval (α : Type*) (k : ℕ) (fs : Fin k → Series α)\n    (p : MvPolynomial (Fin k) ℚ) : Series α :=\n  p.support.sum fun m => p.coeff m • shuffleProd α k fs m\n\n/-- The unique derivation of the polynomial ring `MvPolynomial σ R` sending the\n    variable `X i` to `φ i`, defined by the Leibniz rule on monomials:\n    `δ_φ(X^m) = Σ_i m_i · X^{m - e_i} · φ i`.  This is the extension of the\n    letter transition `Δ_a` (a map on the variables) to a derivation of the whole\n    configuration space. -/\nnoncomputable def derivationExt {σ : Type*} [Fintype σ] {R : Type*} [CommRing R]\n    (φ : σ → MvPolynomial σ R) : MvPolynomial σ R → MvPolynomial σ R :=\n  fun p => p.support.sum fun m =>\n    p.coeff m • (∑ i : σ, ((m i : R) • MvPolynomial.monomial (m - Finsupp.single i 1) 1) * φ i)\n\n/-- A *shuffle automaton* over `α`: a dimension `k ≥ 1` (the number of\n    nonterminals `X_1, …, X_k`), a final-weight functional `F`, and a transition\n    `Δ` assigning to each letter `a` and nonterminal `X_i` a polynomial `Δ a i` in\n    the nonterminals.  The configuration space is the polynomial ring\n    `ℚ[X_1, …, X_k] = MvPolynomial (Fin k) ℚ`. -/\nstructure ShuffleAutomaton (α : Type*) where\n  dim : ℕ\n  hdim : 0 < dim\n  F : Fin dim → ℚ\n  Δ : α → Fin dim → MvPolynomial (Fin dim) ℚ\n\n/-- The word extension of the transition: `Δ_w` is the map of the configuration\n    space obtained by composing the letter derivations `derivationExt (Δ a)` along\n    the word, right-to-left.  The law is unchanged from the Hadamard case:\n    `Δ_ε` is the identity and `Δ_{a·w} = Δ_w ∘ Δ_a`; the only difference is that\n    each `Δ_a` is now a derivation rather than an endomorphism. -/\nnoncomputable def ShuffleAutomaton.Mword {α : Type*} (A : ShuffleAutomaton α) (w : List α) :\n    MvPolynomial (Fin A.dim) ℚ → MvPolynomial (Fin A.dim) ℚ :=\n  w.foldr (fun a φ => fun β => φ (derivationExt (A.Δ a) β)) id\n\n/-- The series recognised by the automaton at a configuration `cfg`:\n    `⟦A⟧_cfg (w) = F(Δ_w cfg)`, the final-weight functional applied to the\n    configuration reached after reading `w`. -/\nnoncomputable def ShuffleAutomaton.sem {α : Type*} (A : ShuffleAutomaton α)\n    (cfg : MvPolynomial (Fin A.dim) ℚ) : Series α :=\n  fun w => MvPolynomial.eval (fun i => A.F i) (A.Mword w cfg)\n\n/-- The series recognised by the automaton: the semantics at the initial\n    configuration `X_0` (the first nonterminal). -/\nnoncomputable def ShuffleAutomaton.recognised {α : Type*} (A : ShuffleAutomaton α) :\n    Series α :=\n  A.sem (MvPolynomial.X (Fin.mk 0 A.hdim))\n\n/-- A series is *shuffle-finite* (working definition, paper §6.2.2) if it belongs to a\n    finitely generated differential shuffle algebra: it is a shuffle polynomial in a\n    finite tuple of series `fs` that is closed under left derivatives, i.e.\n    `f = shuffleEval k fs p` for some polynomial `p`, and `leftDeriv a (fs i)` is again a\n    shuffle polynomial in `fs` for every letter `a` and index `i`.  Here `shuffleEval k fs`\n    is the evaluation in the shuffle algebra generated by `fs`. -/\ndef IsShuffleFinite (α : Type*) (f : Series α) : Prop :=\n  ∃ k : ℕ, ∃ fs : Fin k → Series α, ∃ p : MvPolynomial (Fin k) ℚ,\n    f = shuffleEval α k fs p ∧\n    ∀ a : α, ∀ i : Fin k, ∃ q : MvPolynomial (Fin k) ℚ,\n      leftDeriv α a (fs i) = shuffleEval α k fs q\n\n/-- A series is *shuffle-recognisable* if it is recognised by some shuffle automaton. -/\ndef IsShuffleRecognisable (α : Type*) (f : Series α) : Prop :=\n  ∃ A : ShuffleAutomaton α, A.recognised = f\n\n/-- A series is shuffle-finite if and only if it is shuffle-recognisable\n    (paper §6, the coincidence lemma): the finitely generated differential shuffle\n    algebras are exactly the languages of shuffle automata. -/\naxiom ShuffleCoincidence (α : Type*) (f : Series α) :\n  IsShuffleFinite α f ↔ IsShuffleRecognisable α f\n\n/-- The class of shuffle-finite series is closed under addition, scalar\n    multiplication, the shuffle product, and right derivatives (paper §6, the\n    closure lemma).  These four parts hold over any alphabet. -/\naxiom ShuffleClosure (α : Type*) :\n  (∀ (f g : Series α), IsShuffleFinite α f → IsShuffleFinite α g → IsShuffleFinite α (f + g)) ∧\n  (∀ (c : ℚ) (f : Series α), IsShuffleFinite α f → IsShuffleFinite α (c • f)) ∧\n  (∀ (f g : Series α), IsShuffleFinite α f → IsShuffleFinite α g → IsShuffleFinite α (shuffle α f g)) ∧\n  (∀ (a : α) (f : Series α), IsShuffleFinite α f → IsShuffleFinite α (rightDeriv α a f))\n\n/-- The class of shuffle-finite series over a *finite* alphabet is closed under left\n    anti-derivatives (paper §6): if `g` is a left anti-derivative of a tuple `f` of\n    shuffle-finite series, then `g` is shuffle-finite.  The finiteness of the\n    alphabet is essential — the witnessing generator set is extended by one series\n    per letter, so it is finite only when the alphabet is. -/\naxiom ShuffleAntiDerivativeClosure (α : Type*) [Fintype α] :\n  ∀ (g : Series α) (f : α → Series α), IsLeftAntiDerivative α g f →\n      (∀ a, IsShuffleFinite α (f a)) → IsShuffleFinite α g\n\n/-- The class of shuffle-finite series is an effective prevariety over a finite\n    alphabet (paper §6, theorem): there is an effective prevariety whose image is\n    exactly the shuffle-finite series, with presentations given by shuffle\n    automata. -/\naxiom ShuffleEffectivePrevariety (α : Type*) [Fintype α] :\n  ∃ P : EffectivePrevariety α, ∀ f, IsShuffleFinite α f ↔ ∃ r : P.Rep, P.sem r = f\n\n/-- The equality (zeroness) problem is decidable for shuffle automata over a finite\n    alphabet (paper §6): there is a procedure that, given a shuffle automaton,\n    decides whether the series it recognises is the zero series.  The decision\n    reduces to ideal membership in the configuration polynomial ring, the open\n    leaf. -/\naxiom ShuffleEqualityDecidable (α : Type*) [Fintype α] :\n  ∃ d : ShuffleAutomaton α → Bool, ∀ A, d A = true ↔ A.recognised = 0\n\n/-- In particular, the commutativity problem is decidable for shuffle-finite series\n    over a finite alphabet (paper §6): there is a procedure that, given a shuffle\n    automaton, decides whether the series it recognises is commutative.  This is the\n    meta-theorem applied to the effective prevariety of shuffle-finite series. -/\naxiom ShuffleCommutativityDecidable (α : Type*) [Fintype α] :\n  ∃ d : ShuffleAutomaton α → Bool, ∀ A, d A = true ↔ IsCommutative α (A.recognised)\n\nend Lax619925.Shuffle\n",
+      "statements": [
+        {
+          "id": "Lax619925.Shuffle.ShuffleAntiDerivativeClosure",
+          "signature": "ShuffleAntiDerivativeClosure : ∀ (α : Type u_1) [Fintype α] (g : Lax619925.Series.Series α) (f : α → Lax619925.Series.Series α),\n  Lax619925.Commutativity.IsLeftAntiDerivative α g f →\n    (∀ (a : α), Lax619925.Shuffle.IsShuffleFinite α (f a)) → Lax619925.Shuffle.IsShuffleFinite α g",
+          "startLine": 166,
+          "endLine": 173,
+          "doc": "The class of shuffle-finite series over a *finite* alphabet is closed under left\nanti-derivatives (paper §6): if `g` is a left anti-derivative of a tuple `f` of\nshuffle-finite series, then `g` is shuffle-finite.  The finiteness of the\nalphabet is essential — the witnessing generator set is extended by one series\nper letter, so it is finite only when the alphabet is."
+        },
+        {
+          "id": "Lax619925.Shuffle.ShuffleClosure",
+          "signature": "ShuffleClosure : ∀ (α : Type u_1),\n  And\n    (∀ (f g : Lax619925.Series.Series α),\n      Lax619925.Shuffle.IsShuffleFinite α f →\n        Lax619925.Shuffle.IsShuffleFinite α g → Lax619925.Shuffle.IsShuffleFinite α (instHAdd.hAdd f g))\n    (And\n      (∀ (c : Rat) (f : Lax619925.Series.Series α),\n        Lax619925.Shuffle.IsShuffleFinite α f → Lax619925.Shuffle.IsShuffleFinite α (instHSMul.hSMul c f))\n      (And\n        (∀ (f g : Lax619925.Series.Series α),\n          Lax619925.Shuffle.IsShuffleFinite α f →\n            Lax619925.Shuffle.IsShuffleFinite α g →\n              Lax619925.Shuffle.IsShuffleFinite α (Lax619925.Shuffle.shuffle α f g))\n        (∀ (a : α) (f : Lax619925.Series.Series α),\n          Lax619925.Shuffle.IsShuffleFinite α f →\n            Lax619925.Shuffle.IsShuffleFinite α (Lax619925.Series.rightDeriv α a f))))",
+          "startLine": 157,
+          "endLine": 164,
+          "doc": "The class of shuffle-finite series is closed under addition, scalar\nmultiplication, the shuffle product, and right derivatives (paper §6, the\nclosure lemma).  These four parts hold over any alphabet."
+        },
+        {
+          "id": "Lax619925.Shuffle.ShuffleCoincidence",
+          "signature": "ShuffleCoincidence : ∀ (α : Type u_1) (f : Lax619925.Series.Series α),\n  Iff (Lax619925.Shuffle.IsShuffleFinite α f) (Lax619925.Shuffle.IsShuffleRecognisable α f)",
+          "startLine": 151,
+          "endLine": 155,
+          "doc": "A series is shuffle-finite if and only if it is shuffle-recognisable\n(paper §6, the coincidence lemma): the finitely generated differential shuffle\nalgebras are exactly the languages of shuffle automata."
+        },
+        {
+          "id": "Lax619925.Shuffle.ShuffleCommutativityDecidable",
+          "signature": "ShuffleCommutativityDecidable : ∀ (α : Type u_1) [Fintype α],\n  Exists fun d =>\n    ∀ (A : Lax619925.Shuffle.ShuffleAutomaton α),\n      Iff (Eq (d A) Bool.true) (Lax619925.Series.IsCommutative α A.recognised)",
+          "startLine": 190,
+          "endLine": 195,
+          "doc": "In particular, the commutativity problem is decidable for shuffle-finite series\nover a finite alphabet (paper §6): there is a procedure that, given a shuffle\nautomaton, decides whether the series it recognises is commutative.  This is the\nmeta-theorem applied to the effective prevariety of shuffle-finite series."
+        },
+        {
+          "id": "Lax619925.Shuffle.ShuffleEffectivePrevariety",
+          "signature": "ShuffleEffectivePrevariety : ∀ (α : Type u_1) [Fintype α],\n  Exists fun P =>\n    ∀ (f : Lax619925.Series.Series α), Iff (Lax619925.Shuffle.IsShuffleFinite α f) (Exists fun r => Eq (P.sem r) f)",
+          "startLine": 175,
+          "endLine": 180,
+          "doc": "The class of shuffle-finite series is an effective prevariety over a finite\nalphabet (paper §6, theorem): there is an effective prevariety whose image is\nexactly the shuffle-finite series, with presentations given by shuffle\nautomata."
+        },
+        {
+          "id": "Lax619925.Shuffle.ShuffleEqualityDecidable",
+          "signature": "ShuffleEqualityDecidable : ∀ (α : Type u_1) [Fintype α],\n  Exists fun d => ∀ (A : Lax619925.Shuffle.ShuffleAutomaton α), Iff (Eq (d A) Bool.true) (Eq A.recognised 0)",
+          "startLine": 182,
+          "endLine": 188,
+          "doc": "The equality (zeroness) problem is decidable for shuffle automata over a finite\nalphabet (paper §6): there is a procedure that, given a shuffle automaton,\ndecides whether the series it recognises is the zero series.  The decision\nreduces to ideal membership in the configuration polynomial ring, the open\nleaf."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax619925Proofs.CDA.CDASolvability",
+      "path": "proofs/Lax619925Proofs/CDA.lean",
+      "conclusion": "Lax619925.CDA.CDASolvability",
+      "assumptions": [
+        "Lax619925.Shuffle.ShuffleCommutativityDecidable"
+      ],
+      "description": "The CDA solvability problem is decidable (paper §6.4): the decision reduces to\nchecking that all components of the companion shuffle automaton's recognised series\nare commutative, each decided by `ShuffleCommutativityDecidable` (the meta-theorem\napplied to the effective prevariety of shuffle-finite series)."
+    },
+    {
+      "id": "Lax619925Proofs.Commutativity.AntiDerivativeCommutativeIffZero",
+      "path": "proofs/Lax619925Proofs/Commutativity.lean",
+      "conclusion": "Lax619925.Commutativity.AntiDerivativeCommutativeIffZero",
+      "assumptions": [],
+      "description": "The paper's reduction of the equality problem to commutativity.  `g` is supported only\non words beginning `fresh0 · fresh1`, where `g (fresh0 · fresh1 · w) = f w`.  If `g` is\ncommutative, then `f w = g (fresh0 · fresh1 · w) = g (fresh1 · fresh0 · w) = 0` (the two\nwords are commutatively equivalent), so `f = 0`.  Conversely `f = 0` forces `g = 0`, which\nis commutative."
+    },
+    {
+      "id": "Lax619925Proofs.Commutativity.EffectivePrevarietyCommutativityDecidable",
+      "path": "proofs/Lax619925Proofs/Commutativity.lean",
+      "conclusion": "Lax619925.Commutativity.EffectivePrevarietyCommutativityDecidable",
+      "assumptions": [],
+      "description": "The commutativity problem is decidable for effective prevarieties (paper §3, the\nmeta-theorem).  By the finite axiomatisation, `sem r` is commutative exactly when it\nsatisfies the swap and the rotate equations.  Each of those is a finite family of\nequalities between presentations (the alphabet is finite), and each equality is decided\nby the prevariety's `decEq`.  A single boolean procedure therefore decides commutativity."
+    },
+    {
+      "id": "Lax619925Proofs.Commutativity.FiniteAxiomatisation",
+      "path": "proofs/Lax619925Proofs/Commutativity.lean",
+      "conclusion": "Lax619925.Commutativity.FiniteAxiomatisation",
+      "assumptions": [],
+      "description": "The characterisation of commutativity (paper §3, lemma `commutativity`): a series is\ncommutative if and only if it satisfies the swap and the rotate equations.  The forward\ndirection is immediate — the swap and rotate equations are exactly the commutative\nequivalence of words differing by a transposition or a rotation.  The backward direction\nuses that swaps and rotations connect any two words with the same multiset of letters, so\nsatisfying the two finite families of equations forces the series to be constant on\ncommutatively equivalent words."
+    },
+    {
+      "id": "Lax619925Proofs.Hadamard.HadamardAntiDerivativeClosure",
+      "path": "proofs/Lax619925Proofs/Hadamard.lean",
+      "conclusion": "Lax619925.Hadamard.HadamardAntiDerivativeClosure",
+      "assumptions": [],
+      "description": "The Hadamard anti-derivative closure (paper §5): over a finite alphabet, if `g` is a left\nanti-derivative of a tuple `f` of Hadamard-finite series (`leftDeriv a g = f a` for all `a`),\nthen `g` is Hadamard-finite.  The witnessing tuple for `g` is `g` itself followed by the\nconcatenation of the witnessing tuples of the `f a`'s: `g` is trivially a Hadamard polynomial\nin a tuple containing it (its own variable), and the tuple is closed under left derivatives\nbecause `leftDeriv a g = f a` is a Hadamard polynomial in the (closed) witnessing tuple for\n`f a`, and each `f a`'s witnessing tuple is itself closed.  The finiteness of the alphabet is\nwhat makes the combined tuple finite."
+    },
+    {
+      "id": "Lax619925Proofs.Hadamard.HadamardClosure",
+      "path": "proofs/Lax619925Proofs/Hadamard.lean",
+      "conclusion": "Lax619925.Hadamard.HadamardClosure",
+      "assumptions": [],
+      "description": "The Hadamard closure theorem (paper §5): the Hadamard-finite series are closed under\naddition, scalar multiplication, the Hadamard product, and right derivatives.  Addition,\nscalar multiplication, and the Hadamard product follow by concatenating the witnessing\ntuples (the Hadamard algebra is the pointwise ring, so the evaluation is a `ℚ`-algebra\nhomomorphism); the right derivative is handled by the coincidence together with the\nright-derivative automaton (the final weights pre-composed with the letter endomorphism)."
+    },
+    {
+      "id": "Lax619925Proofs.Hadamard.HadamardCoincidence",
+      "path": "proofs/Lax619925Proofs/Hadamard.lean",
+      "conclusion": "Lax619925.Hadamard.HadamardCoincidence",
+      "assumptions": [],
+      "description": "The Hadamard coincidence theorem (paper §5): a series is Hadamard-finite if and\nonly if it is Hadamard-recognisable.  The \"recognisable implies finite\" direction\nreads off the generator tuple `A.sem (X_i)`; the \"finite implies recognisable\"\ndirection extends the witnessing tuple by the series itself and builds the\nautomaton from the closure under left derivatives."
+    },
+    {
+      "id": "Lax619925Proofs.Hadamard.HadamardCommutativityDecidable",
+      "path": "proofs/Lax619925Proofs/Hadamard.lean",
+      "conclusion": "Lax619925.Hadamard.HadamardCommutativityDecidable",
+      "assumptions": [
+        "Lax619925.Commutativity.EffectivePrevarietyCommutativityDecidable",
+        "Lax619925.IdealMembership.IdealMembershipDecidable"
+      ],
+      "description": "The commutativity problem is decidable for Hadamard-finite series over a finite\nalphabet (paper §5).  This is the meta-theorem\n(`EffectivePrevarietyCommutativityDecidable`) applied to\n`hadamardEffectivePrevariety`, the effective prevariety of Hadamard-finite\nseries: its boolean decider on a presentation `A` decides\n`IsCommutative (hadamardEffectivePrevariety.sem A)`, and since\n`hadamardEffectivePrevariety.sem A = A.recognised`, it decides\n`IsCommutative (A.recognised)`."
+    },
+    {
+      "id": "Lax619925Proofs.Hadamard.HadamardEffectivePrevariety",
+      "path": "proofs/Lax619925Proofs/Hadamard.lean",
+      "conclusion": "Lax619925.Hadamard.HadamardEffectivePrevariety",
+      "assumptions": [
+        "Lax619925.IdealMembership.IdealMembershipDecidable"
+      ],
+      "description": "The Hadamard-finite series form an effective prevariety over a finite alphabet\n(paper §5, theorem): the effective prevariety `hadamardEffectivePrevariety` has\npresentations given by Hadamard automata, and its image is exactly the\nHadamard-finite series (by the coincidence, `HadamardCoincidence`)."
+    },
+    {
+      "id": "Lax619925Proofs.Hadamard.HadamardEqualityDecidable",
+      "path": "proofs/Lax619925Proofs/Hadamard.lean",
+      "conclusion": "Lax619925.Hadamard.HadamardEqualityDecidable",
+      "assumptions": [
+        "Lax619925.IdealMembership.IdealMembershipDecidable"
+      ],
+      "description": "The equality (zeroness) problem is decidable for Hadamard automata over a finite\nalphabet (paper §5).  The orbit-ideal chain `I_n` stabilises by Hilbert's basis\ntheorem (`orbitIdeal_stabilises`), and the stabilised ideal is a bi-ideal, so the\nzeroness of the recognised series is characterised by the finite statement\n`∀ p ∈ orbitSet A N, p ∈ K A` (`zeroness_iff_orbitSet`).  The kernel `K A` is\nfinitely generated (`gensKer`, by Noetherianity), so this finite statement is a\nbatch of ideal-membership queries `p ∈ span ↑(gensKer A)`, each decided by\n`IdealMembershipDecidable`; the decision `d` is the Boolean \"and\" of these\nqueries over the (finite) orbit set."
+    },
+    {
+      "id": "Lax619925Proofs.IdealMembership.IdealMembershipDecidable",
+      "path": "proofs/Lax619925Proofs/IdealMembership.lean",
+      "conclusion": "Lax619925.IdealMembership.IdealMembershipDecidable",
+      "assumptions": [],
+      "description": "Ideal membership in `MvPolynomial (Fin k) ℚ` is decidable in the propositional\nsense: there is a `Bool`-valued function `dec` with `dec p = true` exactly\nwhen `p` lies in the ideal generated by `gens`.  The proof is classical —\nexcluded middle supplies the characteristic function\n`if p ∈ span ↑gens then true else false` — and not the constructive\nGröbner-basis decision procedure (Buchberger's algorithm), which mathlib does\nnot yet provide and which is out of scope for this submission.  This statement\nis the propositional shadow of the paper's effective-decidability claim; the\nthree automaton equality theorems reduce to it via the ideal-chain argument."
+    },
+    {
+      "id": "Lax619925Proofs.Infiltration.InfiltrationAntiDerivativeClosure",
+      "path": "proofs/Lax619925Proofs/Infiltration.lean",
+      "conclusion": "Lax619925.Infiltration.InfiltrationAntiDerivativeClosure",
+      "assumptions": [],
+      "description": "The infiltration anti-derivative closure (paper §7): over a finite alphabet, if `g` is a left\nanti-derivative of a tuple `f` of infiltration-finite series (`leftDeriv a g = f a` for all\n`a`), then `g` is infiltration-finite.  The witnessing tuple for `g` is `g` itself followed by\nthe concatenation of the witnessing tuples of the `f a`'s: `g` is trivially an infiltration\npolynomial in a tuple containing it (its own variable), and the tuple is closed under left\nderivatives because `leftDeriv a g = f a` is an infiltration polynomial in the (closed)\nwitnessing tuple for `f a`, and each `f a`'s witnessing tuple is itself closed.  The finiteness\nof the alphabet is what makes the combined tuple finite.  The proof proceeds entirely at the\nsemantic level (infiltration polynomials in a tuple closed under left derivatives)."
+    },
+    {
+      "id": "Lax619925Proofs.Infiltration.InfiltrationClosure",
+      "path": "proofs/Lax619925Proofs/Infiltration.lean",
+      "conclusion": "Lax619925.Infiltration.InfiltrationClosure",
+      "assumptions": [],
+      "description": "The infiltration closure theorem (paper §7): the infiltration-finite series are closed\nunder addition, scalar multiplication, the infiltration product, and right derivatives.\nAddition, scalar multiplication, and the infiltration product follow by concatenating the\nwitnessing tuples (the infiltration algebra is not the pointwise ring, so the evaluation is\nan infiltration-algebra homomorphism; the tuple is extended and the polynomial embedded at\nthe front or back, and the closure under left derivatives is preserved by the concatenation).\nThe right derivative is handled at the semantic level: the letter endomorphism `S_a = id + Δ_a`\nis `ℚ`-linear but not a ring homomorphism, so the right derivative cannot be read off an\nautomaton with the same transitions (unlike the Hadamard case); instead the witnessing tuple is\nextended to the \"augmented\" tuple `(fs, fun i => fs i + rightDeriv a (fs i))`, and the right\nderivative of the evaluation is the evaluation of `embedBack p − embedFront p` in the extended\ntuple.  The class is stated in terms of the semantic definition `IsInfiltrationFinite`; the proof\nproceeds at the semantic level, working directly with the witnessing tuples."
+    },
+    {
+      "id": "Lax619925Proofs.Infiltration.InfiltrationCoincidence",
+      "path": "proofs/Lax619925Proofs/Infiltration.lean",
+      "conclusion": "Lax619925.Infiltration.InfiltrationCoincidence",
+      "assumptions": [],
+      "description": "The infiltration coincidence theorem (paper §7): a series is infiltration-finite (an\ninfiltration polynomial in a finite tuple of series closed under the left derivatives) if\nand only if it is recognised by an infiltration automaton.  The \"finite implies recognisable\"\ndirection extends the witnessing tuple by the series itself and builds the automaton from the\nclosure under left derivatives; the \"recognisable implies finite\" direction reads off the\ngenerator tuple `A.sem (X_i)`, closed under left derivatives by the derivation property."
+    },
+    {
+      "id": "Lax619925Proofs.Infiltration.InfiltrationCommutativityDecidable",
+      "path": "proofs/Lax619925Proofs/Infiltration.lean",
+      "conclusion": "Lax619925.Infiltration.InfiltrationCommutativityDecidable",
+      "assumptions": [
+        "Lax619925.Commutativity.EffectivePrevarietyCommutativityDecidable",
+        "Lax619925.IdealMembership.IdealMembershipDecidable"
+      ],
+      "description": "The commutativity problem is decidable for infiltration-finite series over a finite\nalphabet (paper §7).  This is the meta-theorem\n(`EffectivePrevarietyCommutativityDecidable`) applied to\n`infiltrationEffectivePrevariety`, the effective prevariety of infiltration-finite\nseries: its boolean decider on a presentation `A` decides\n`IsCommutative (infiltrationEffectivePrevariety.sem A)`, and since\n`infiltrationEffectivePrevariety.sem A = A.recognised`, it decides\n`IsCommutative (A.recognised)`."
+    },
+    {
+      "id": "Lax619925Proofs.Infiltration.InfiltrationEffectivePrevariety",
+      "path": "proofs/Lax619925Proofs/Infiltration.lean",
+      "conclusion": "Lax619925.Infiltration.InfiltrationEffectivePrevariety",
+      "assumptions": [
+        "Lax619925.IdealMembership.IdealMembershipDecidable"
+      ],
+      "description": "The infiltration-finite series form an effective prevariety over a finite alphabet\n(paper §7, theorem): the effective prevariety `infiltrationEffectivePrevariety` has\npresentations given by infiltration automata, and its image is exactly the\ninfiltration-finite series (by the coincidence, `InfiltrationCoincidence`)."
+    },
+    {
+      "id": "Lax619925Proofs.Infiltration.InfiltrationEqualityDecidable",
+      "path": "proofs/Lax619925Proofs/Infiltration.lean",
+      "conclusion": "Lax619925.Infiltration.InfiltrationEqualityDecidable",
+      "assumptions": [
+        "Lax619925.IdealMembership.IdealMembershipDecidable"
+      ],
+      "description": "The equality (zeroness) problem is decidable for infiltration automata over a finite\nalphabet (paper §7).  As in the Hadamard and shuffle cases, the orbit-ideal chain `I_n`\nstabilises by Hilbert's basis theorem (`orbitIdeal_stabilises`), and the stabilised\nideal is a bi-ideal, so the zeroness of the recognised series is characterised by the\nfinite statement `∀ p ∈ orbitSet A N, p ∈ K A` (`zeroness_iff_orbitSet`).  The only\ndifference from the other two classes is the transition invariance\n(`orbitIdeal_image`): the letter map is an *infiltration* `Δₐ = Sₐ − id` (ℚ-linear,\nneither a ring hom nor a derivation), so instead of `Ideal.map_span` (Hadamard) or the\nLeibniz rule (shuffle) one decomposes `p` as a finite `R`-linear combination of\norbit-set elements and applies the infiltration product rule\n`Δₐ(p·q) = Δₐ p·q + Sₐ p·Δₐ q` termwise.  The kernel `K A` is finitely generated\n(`gensKer`, by Noetherianity), so this finite statement is a batch of ideal-membership\nqueries `p ∈ span ↑(gensKer A)`, each decided by\n`IdealMembershipDecidable`; the decision `d` is the Boolean \"and\" of these queries over\nthe (finite) orbit set."
+    },
+    {
+      "id": "Lax619925Proofs.PolynomialAutomata.PolynomialHadamardEquivalence",
+      "path": "proofs/Lax619925Proofs/PolynomialAutomata.lean",
+      "conclusion": "Lax619925.PolynomialAutomata.PolynomialHadamardEquivalence",
+      "assumptions": [
+        "Lax619925.Hadamard.HadamardCoincidence",
+        "Lax619925.Series.ReversalInvolution"
+      ],
+      "description": "A series is recognisable by a polynomial automaton iff its reversal is\nHadamard-finite (paper appendix).  Only-if: the component series\n`g_i(w) = π_i(q_I · w^R)` generate a Hadamard algebra closed under left\nderivatives containing `f^R = F(g_1, …, g_k)`.  If: from a left-derivative-\nclosed Hadamard algebra `ℚ{g_1, …, g_k}` containing `f^R = F(g_1, …, g_k)`,\nrebuild the polynomial automaton with initial state `(g_1(ε), …, g_k(ε))`\nand transitions given by the left-derivative polynomials; an induction on the\nword shows `g_i(w) = π_i(q_I · w^R)`, hence `f = ⟦B⟧`."
+    },
+    {
+      "id": "Lax619925Proofs.Polyrec.PolyrecConsistency",
+      "path": "proofs/Lax619925Proofs/Polyrec.lean",
+      "conclusion": "Lax619925.Polyrec.PolyrecConsistency",
+      "assumptions": [
+        "Lax619925.Hadamard.HadamardCoincidence",
+        "Lax619925.Hadamard.HadamardCommutativityDecidable"
+      ],
+      "description": "The polyrec consistency problem is decidable (paper §5.4): the decision reduces to\nchecking that all components of the companion Hadamard automaton's recognised series\nare commutative, each decided by `HadamardCommutativityDecidable` (the meta-theorem\napplied to the effective prevariety of Hadamard-finite series)."
+    },
+    {
+      "id": "Lax619925Proofs.Recognisable.LinearlyFiniteAntiDerivativeClosure",
+      "path": "proofs/Lax619925Proofs/Recognisable.lean",
+      "conclusion": "Lax619925.Recognisable.LinearlyFiniteAntiDerivativeClosure",
+      "assumptions": [],
+      "description": "If `g` is a left anti-derivative of the tuple `f` (`leftDeriv a g = f a` for every letter\n`a`) and each `f a` is linearly finite, then `g` is linearly finite.  The witness is\n`{g} ∪ ⋃ₐ Gₐ`, where `Gₐ` is a finite generator set for `f a`; the union is finite because\n`α` is a `Fintype`.  Every generator of the witness maps under a left derivative either to\n`f a` (if it is `g`) or into the span of its own `Gₐ` (if it comes from some `G_b`), and\nboth of those lie in the span of the whole witness."
+    },
+    {
+      "id": "Lax619925Proofs.Recognisable.LinearlyFiniteClosure",
+      "path": "proofs/Lax619925Proofs/Recognisable.lean",
+      "conclusion": "Lax619925.Recognisable.LinearlyFiniteClosure",
+      "assumptions": [],
+      "description": "The class of linearly finite series is closed under addition, scalar multiplication, and\nleft derivatives (paper §4).  Each operation is witnessed by an explicit finite generator\nset: addition uses `G ∪ H`, while scalar multiplication and left derivatives reuse the\noriginal generators."
+    },
+    {
+      "id": "Lax619925Proofs.Recognisable.RecognisableCommutativityDecidable",
+      "path": "proofs/Lax619925Proofs/Recognisable.lean",
+      "conclusion": "Lax619925.Recognisable.RecognisableCommutativityDecidable",
+      "assumptions": [
+        "Lax619925.Commutativity.EffectivePrevarietyCommutativityDecidable",
+        "Lax619925.Series.ReversalInvolution",
+        "Lax619925.Series.ReversalSwapsDerivatives"
+      ],
+      "description": "The commutativity problem is decidable for recognisable series over a finite alphabet\n(paper §4).  This is the meta-theorem (`EffectivePrevarietyCommutativityDecidable`)\napplied to `recPrevariety`, the effective prevariety of recognisable series: its boolean\ndecider on a presentation `r` decides `IsCommutative (recPrevariety.sem r)`, and since\n`recPrevariety.sem r = r.sem`, it decides `IsCommutative (r.sem)`."
+    },
+    {
+      "id": "Lax619925Proofs.Recognisable.RecognisableEffectivePrevariety",
+      "path": "proofs/Lax619925Proofs/Recognisable.lean",
+      "conclusion": "Lax619925.Recognisable.RecognisableEffectivePrevariety",
+      "assumptions": [
+        "Lax619925.Series.ReversalInvolution",
+        "Lax619925.Series.ReversalSwapsDerivatives"
+      ],
+      "description": "The class of recognisable (= linearly finite) series is an effective prevariety\n(paper §4, theorem).  The presentations are linear representations, so the image of the\nsemantics of `recPrevariety` is exactly the recognisable series; the closure and\ndecidability content is carried by the construction of `recPrevariety`."
+    },
+    {
+      "id": "Lax619925Proofs.Recognisable.RecognisableEqualityDecidable",
+      "path": "proofs/Lax619925Proofs/Recognisable.lean",
+      "conclusion": "Lax619925.Recognisable.RecognisableEqualityDecidable",
+      "assumptions": [],
+      "description": "The equality (zeroness) problem is decidable for recognisable series over a finite\nalphabet (paper §4).  The decider `decZero` reads, as a `Bool`, the linear-algebra\ncondition that the initial vector annihilates the subspace reachable from the final\nvector: `r.sem = 0` iff that annihilation holds (`semZero_iff_annihilatesReachable`),\nand the annihilation condition is decidable (it lives in the finite-dimensional space\n`Fin r.dim → ℚ`), so `r.sem = 0` is."
+    },
+    {
+      "id": "Lax619925Proofs.Recognisable.RecognisableLinearlyFinite",
+      "path": "proofs/Lax619925Proofs/Recognisable.lean",
+      "conclusion": "Lax619925.Recognisable.RecognisableLinearlyFinite",
+      "assumptions": [],
+      "description": "The classical coincidence lemma (paper §4): a series is recognisable if and only if it\nis linearly finite.  The forward direction (`LF_of_recognisable`) takes the\nfinite-dimensional range of the representation's `semLin` map as the finite generator\nspace; the reverse direction (`recognisable_of_linearly_finite`) builds a representation\nfrom a left-derivative-closed finite generator space, reading off the matrices, initial\nvector, and final vector from a basis of that space."
+    },
+    {
+      "id": "Lax619925Proofs.Recognisable.RecognisableReversal",
+      "path": "proofs/Lax619925Proofs/Recognisable.lean",
+      "conclusion": "Lax619925.Recognisable.RecognisableReversal",
+      "assumptions": [],
+      "description": "The transposed representation `(k, y, x, Mᵀ)` recognises `reversal f`: on a word\n`w` it computes `y · (M(w.reverse))ᵀ · x`, which equals `x · M(w.reverse) · y = f (w.reverse)`\nby the bilinear-form identity."
+    },
+    {
+      "id": "Lax619925Proofs.Recognisable.RecognisableRightDeriv",
+      "path": "proofs/Lax619925Proofs/Recognisable.lean",
+      "conclusion": "Lax619925.Recognisable.RecognisableRightDeriv",
+      "assumptions": [
+        "Lax619925.Series.ReversalInvolution",
+        "Lax619925.Series.ReversalSwapsDerivatives"
+      ],
+      "description": "By the paper's double-reversal identity `rightDeriv a f = reversal (leftDeriv a (reversal f))`:\n`reversal f` is recognisable (transposition), so is `leftDeriv a (reversal f)` (left-derivative\nclosure), so is its reversal — hence `rightDeriv a f` is recognisable."
+    },
+    {
+      "id": "Lax619925Proofs.Series.LeftRightDerivativesCommute",
+      "path": "proofs/Lax619925Proofs/Series.lean",
+      "conclusion": "Lax619925.Series.LeftRightDerivativesCommute",
+      "assumptions": [],
+      "description": "Both compositions send a series `f` to the series `w ↦ f (a :: w ++ [b])`:\nthe left derivative reads the coefficient of `a · w`, and the right derivative\nappends `b`, so the order in which the two letters are applied is irrelevant."
+    },
+    {
+      "id": "Lax619925Proofs.Series.ReversalInvolution",
+      "path": "proofs/Lax619925Proofs/Series.lean",
+      "conclusion": "Lax619925.Series.ReversalInvolution",
+      "assumptions": [],
+      "description": "Reversing a word twice gives the word back, so reversing a series twice is the\nidentity."
+    },
+    {
+      "id": "Lax619925Proofs.Series.ReversalSwapsDerivatives",
+      "path": "proofs/Lax619925Proofs/Series.lean",
+      "conclusion": "Lax619925.Series.ReversalSwapsDerivatives",
+      "assumptions": [],
+      "description": "Reversal interchanges the left and right derivatives: the coefficient of\n`a · w` in `f`, read off `reversal f`, is the coefficient of `w · a`, and\n`(w ++ [a]).reverse = a :: w.reverse`."
+    },
+    {
+      "id": "Lax619925Proofs.Shuffle.ShuffleAntiDerivativeClosure",
+      "path": "proofs/Lax619925Proofs/Shuffle.lean",
+      "conclusion": "Lax619925.Shuffle.ShuffleAntiDerivativeClosure",
+      "assumptions": [],
+      "description": "The shuffle anti-derivative closure (paper §6): over a finite alphabet, if `g` is a left\nanti-derivative of a tuple `f` of shuffle-finite series (`leftDeriv a g = f a` for all `a`),\nthen `g` is shuffle-finite.  The witnessing tuple for `g` is `g` itself followed by the\nconcatenation of the witnessing tuples of the `f a`'s: `g` is trivially a shuffle polynomial\nin a tuple containing it (its own variable), and the tuple is closed under left derivatives\nbecause `leftDeriv a g = f a` is a shuffle polynomial in the (closed) witnessing tuple for\n`f a`, and each `f a`'s witnessing tuple is itself closed.  The finiteness of the alphabet is\nwhat makes the combined tuple finite.  The proof proceeds entirely at the semantic level\n(shuffle polynomials in a tuple closed under left derivatives)."
+    },
+    {
+      "id": "Lax619925Proofs.Shuffle.ShuffleClosure",
+      "path": "proofs/Lax619925Proofs/Shuffle.lean",
+      "conclusion": "Lax619925.Shuffle.ShuffleClosure",
+      "assumptions": [
+        "Lax619925.Series.LeftRightDerivativesCommute"
+      ],
+      "description": "The shuffle closure theorem (paper §6): the shuffle-finite series are closed under\naddition, scalar multiplication, the shuffle product, and right derivatives.  The proof\nproceeds at the semantic level (shuffle polynomials in a tuple closed under left\nderivatives), where the shuffle-algebra evaluation makes the first three parts immediate\nand the right derivative is the extended tuple `(fs, rightDeriv a fs)`."
+    },
+    {
+      "id": "Lax619925Proofs.Shuffle.ShuffleCoincidence",
+      "path": "proofs/Lax619925Proofs/Shuffle.lean",
+      "conclusion": "Lax619925.Shuffle.ShuffleCoincidence",
+      "assumptions": [],
+      "description": "The shuffle coincidence theorem (paper §6): a series is shuffle-finite (a shuffle\npolynomial in a finite tuple of series closed under the left derivatives) if and only\nif it is recognised by a shuffle automaton.  The \"finite implies recognisable\"\ndirection extends the witnessing tuple by the series itself and builds the automaton\nfrom the closure under left derivatives; the \"recognisable implies finite\" direction\nreads off the generator tuple `A.sem (X_i)`, closed under left derivatives by the\nderivation property."
+    },
+    {
+      "id": "Lax619925Proofs.Shuffle.ShuffleCommutativityDecidable",
+      "path": "proofs/Lax619925Proofs/Shuffle.lean",
+      "conclusion": "Lax619925.Shuffle.ShuffleCommutativityDecidable",
+      "assumptions": [
+        "Lax619925.Commutativity.EffectivePrevarietyCommutativityDecidable",
+        "Lax619925.IdealMembership.IdealMembershipDecidable",
+        "Lax619925.Series.LeftRightDerivativesCommute"
+      ],
+      "description": "The commutativity problem is decidable for shuffle-finite series over a finite\nalphabet (paper §6).  This is the meta-theorem\n(`EffectivePrevarietyCommutativityDecidable`) applied to\n`shuffleEffectivePrevariety`, the effective prevariety of shuffle-finite\nseries: its boolean decider on a presentation `A` decides\n`IsCommutative (shuffleEffectivePrevariety.sem A)`, and since\n`shuffleEffectivePrevariety.sem A = A.recognised`, it decides\n`IsCommutative (A.recognised)`."
+    },
+    {
+      "id": "Lax619925Proofs.Shuffle.ShuffleEffectivePrevariety",
+      "path": "proofs/Lax619925Proofs/Shuffle.lean",
+      "conclusion": "Lax619925.Shuffle.ShuffleEffectivePrevariety",
+      "assumptions": [
+        "Lax619925.IdealMembership.IdealMembershipDecidable",
+        "Lax619925.Series.LeftRightDerivativesCommute"
+      ],
+      "description": "The shuffle-finite series form an effective prevariety over a finite alphabet\n(paper §6, theorem): the effective prevariety `shuffleEffectivePrevariety` has\npresentations given by shuffle automata, and its image is exactly the\nshuffle-finite series (by the coincidence, `ShuffleCoincidence`)."
+    },
+    {
+      "id": "Lax619925Proofs.Shuffle.ShuffleEqualityDecidable",
+      "path": "proofs/Lax619925Proofs/Shuffle.lean",
+      "conclusion": "Lax619925.Shuffle.ShuffleEqualityDecidable",
+      "assumptions": [
+        "Lax619925.IdealMembership.IdealMembershipDecidable"
+      ],
+      "description": "The equality (zeroness) problem is decidable for shuffle automata over a finite\nalphabet (paper §6).  As in the Hadamard case, the orbit-ideal chain `I_n`\nstabilises by Hilbert's basis theorem (`orbitIdeal_stabilises`), and the stabilised\nideal is a bi-ideal, so the zeroness of the recognised series is characterised by\nthe finite statement `∀ p ∈ orbitSet A N, p ∈ K A` (`zeroness_iff_orbitSet`).  The\nonly difference from the Hadamard case is the transition invariance\n(`orbitIdeal_image`): the letter map is a *derivation* (ℚ-linear, not a ring hom),\nso instead of `Ideal.map_span` one decomposes `p` as a finite `R`-linear combination\nof orbit-set elements and applies the Leibniz rule termwise.  The kernel `K A` is\nfinitely generated (`gensKer`, by Noetherianity), so this finite statement is a\nbatch of ideal-membership queries `p ∈ span ↑(gensKer A)`, each decided by\n`IdealMembershipDecidable`; the decision `d` is the Boolean \"and\" of these\nqueries over the (finite) orbit set."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "50153d9c7460120ef50ef33a71955fb5f2c613cca1750a994d2dda45f8baa668",
+    "sourceCommit": "71df21e4640f91dea5759e637fd68e21f03895df",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax619925/CDA.c",
+        "bytes": 5643,
+        "sha256": "4834712d44c8d3f39112c3b7ee08d7281feedcb6db92bcb8ef8f7ffcd6358422"
+      },
+      {
+        "path": "concepts/ir/Lax619925/CDA.c.hash",
+        "bytes": 16,
+        "sha256": "cb3db58684eee347dc5aa598042578a7d528292eeedcfa7ab7181dd962ea2a32"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Commutativity.c",
+        "bytes": 16015,
+        "sha256": "95382ca48f2918516d6b18191375dbd97366b062612a3c4a3086cdbd2c560f83"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Commutativity.c.hash",
+        "bytes": 16,
+        "sha256": "77abac67080e046dca5c5436c11fe3925bfab288c572f0a1f2ed4913fbc49777"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Hadamard.c",
+        "bytes": 17796,
+        "sha256": "7945cd83427aab74775a762b10b09d19aff17a13767c6ff284918a2db424a7a5"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Hadamard.c.hash",
+        "bytes": 16,
+        "sha256": "303891029943a4a46d0ec361cea1ed0da328ca350f03cb48e76249c94ad05880"
+      },
+      {
+        "path": "concepts/ir/Lax619925/IdealMembership.c",
+        "bytes": 2591,
+        "sha256": "ef6f8f86af40da00206a6909d4f8e6979973c2aa7224b661132afce3f72ccf0d"
+      },
+      {
+        "path": "concepts/ir/Lax619925/IdealMembership.c.hash",
+        "bytes": 16,
+        "sha256": "d5bb25c8776e62619e63b8cd4faa67e06154e3c96c61ceff4c4d6ac9da25c24e"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Infiltration.c",
+        "bytes": 8858,
+        "sha256": "9857c59b310be2a91bbf66b0a7c85200256229a1ffd1c40b7ae753ab55795594"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Infiltration.c.hash",
+        "bytes": 16,
+        "sha256": "9df97035602498c7192d679ea09b88400e4edfa97dd0ab9a47e4f76b87f9f7e0"
+      },
+      {
+        "path": "concepts/ir/Lax619925/PolynomialAutomata.c",
+        "bytes": 2808,
+        "sha256": "2d67e4f70c3cabaf0398781c36af4806d15b3cbf7ddddac905ed12d13df13960"
+      },
+      {
+        "path": "concepts/ir/Lax619925/PolynomialAutomata.c.hash",
+        "bytes": 16,
+        "sha256": "8b73ca9f040a2e3e6a485a22c64489344a6dc2e1814868ed5bb8caff55daa4c3"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Polyrec.c",
+        "bytes": 9586,
+        "sha256": "5dbe4bbcbe6df3f76bd7f25aa8be1ee060cb177cdb0c4d2dadd98f61627fb190"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Polyrec.c.hash",
+        "bytes": 16,
+        "sha256": "cb92e4f99b2365516a52b2fee72c2541b2269cbac7329bef3f56ed30b5d744e1"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Prevariety.c",
+        "bytes": 3905,
+        "sha256": "2854b90e8a83b76e41c61da233b4c29279fd427f7aff34eda0b98a9bf2846356"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Prevariety.c.hash",
+        "bytes": 16,
+        "sha256": "bf342cc11ef0878fd2b95e25ee0e3ca557e0412f3a8ec4c6af8d5bb2ede2b06f"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Recognisable.c",
+        "bytes": 37497,
+        "sha256": "f98f734d3ef01f631090b2f2b06ad3c26187e991cb4005da9372284c0bc81e1a"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Recognisable.c.hash",
+        "bytes": 16,
+        "sha256": "acf5f0a3bc10837e89932e05cdaa39d909f56c1f5d892db9806073f4cb85fc88"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Series.c",
+        "bytes": 8865,
+        "sha256": "2cf898953791102c56bd5d7d192da399647e5e0c6522330a09d3b4c40d5d67bc"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Series.c.hash",
+        "bytes": 16,
+        "sha256": "92ea7bdd0780d5c8114d0e709839b351d3c2b39a31c2327136d10bdaa623084a"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Shuffle.c",
+        "bytes": 8558,
+        "sha256": "092c03173c94846fc1ad8b2f04add2ea69d00cf41aaec74326d537012fa5fdf4"
+      },
+      {
+        "path": "concepts/ir/Lax619925/Shuffle.c.hash",
+        "bytes": 16,
+        "sha256": "92958311fc8979070ce2daa01af8f4eed115b5d158bcf4cb5686df9980679202"
+      },
+      {
+        "path": "concepts/ir/Lax619925.c",
+        "bytes": 3621,
+        "sha256": "7f58456c6143a4de0403f76c8d4a79689f7f736db026c8f7e2a95bcd390d4097"
+      },
+      {
+        "path": "concepts/ir/Lax619925.c.hash",
+        "bytes": 16,
+        "sha256": "b49ed6a5a0829b1513fa3500fe1a2e2f0c9b6f2143da279abf88b7a916f5b0cf"
+      },
+      {
+        "path": "concepts/lib/Lax619925/CDA.ilean",
+        "bytes": 6234,
+        "sha256": "3c3fca16daca16ea3102d4b90c201bf49fadeab45f7b363d13f5dad2779ab13e"
+      },
+      {
+        "path": "concepts/lib/Lax619925/CDA.ilean.hash",
+        "bytes": 16,
+        "sha256": "32342d0181790a16172a5656584bd3df43558254eee932e2463220dfe804cb5a"
+      },
+      {
+        "path": "concepts/lib/Lax619925/CDA.olean",
+        "bytes": 56592,
+        "sha256": "b6c7293e4271406f0167b95c56e9454ea95cf8a3b125ef8d69963f1853e20719"
+      },
+      {
+        "path": "concepts/lib/Lax619925/CDA.olean.hash",
+        "bytes": 16,
+        "sha256": "3eb0cb5342989bb2fa100a1b8e3896d8eeafa8c810a49acabe652a6c71bd0dfb"
+      },
+      {
+        "path": "concepts/lib/Lax619925/CDA.trace",
+        "bytes": 3186,
+        "sha256": "1f477e762ee9c75dddd31e3298752a8dd0d6e1aea2c09fa9b949f5c11268c773"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Commutativity.ilean",
+        "bytes": 7700,
+        "sha256": "7cac04b9b1a627a37368debac255ac0e15eb259ebce3ed868456d9e2fd4d417e"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Commutativity.ilean.hash",
+        "bytes": 16,
+        "sha256": "abdf428cf500ca6dc14dea4f1b525a3b5a3812de93c031de32b5c510ce7416ff"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Commutativity.olean",
+        "bytes": 135456,
+        "sha256": "96d7b597026bbec6ee3f70504a4c5d7ed40b82733a757633b72c8a8cc4e35ff4"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Commutativity.olean.hash",
+        "bytes": 16,
+        "sha256": "fc0c9a1e03bc8d60744d5d3b7fb1b4b7c1b27de76b7addeaba1be87adb63c01d"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Commutativity.trace",
+        "bytes": 2583,
+        "sha256": "6fd11585dbe6e239a8a9a6190b202060840ac76245e7ec857f6a14dfc9815dc4"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Hadamard.ilean",
+        "bytes": 12924,
+        "sha256": "8ca4cd737e5a91c1339aed2d7e20c8f94fb7763ae5290bbe5544c66294f04a8d"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Hadamard.ilean.hash",
+        "bytes": 16,
+        "sha256": "edc9d6b0795f2ab61ee64f365fe677bc4c0f2b99702e7a94badbc65e03d36e8f"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Hadamard.olean",
+        "bytes": 133552,
+        "sha256": "241869cc32a2f1bcd1bb50a245e45a629102584c71d1f78d1ba5f024a04dcf0e"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Hadamard.olean.hash",
+        "bytes": 16,
+        "sha256": "03a7ab9ecc674b8146fa9056a5067ccb93beff6c882574dbf43c6e6729d2b118"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Hadamard.trace",
+        "bytes": 3558,
+        "sha256": "839dffcf69c530cbbefef87ceffee3f26f5e297e9a55fdc7f41e69f98aa21c10"
+      },
+      {
+        "path": "concepts/lib/Lax619925/IdealMembership.ilean",
+        "bytes": 2131,
+        "sha256": "2a994a2a4a3b011120a8e728b0f7901800943aa168ea6c91a0b5ab573ee2d2f1"
+      },
+      {
+        "path": "concepts/lib/Lax619925/IdealMembership.ilean.hash",
+        "bytes": 16,
+        "sha256": "207751d13c7855359ecda63a3035de6834030468996b7c64b1f32e18ee99b2f9"
+      },
+      {
+        "path": "concepts/lib/Lax619925/IdealMembership.olean",
+        "bytes": 14048,
+        "sha256": "27e202a32f40db24cd8538c953c5f3b27267c629ae3b265d52f69a2ee24b4a8c"
+      },
+      {
+        "path": "concepts/lib/Lax619925/IdealMembership.olean.hash",
+        "bytes": 16,
+        "sha256": "8ee2aef322be2f02ca741361374eb9b3f884fabfbc2aa09934c3deeb2f5eb751"
+      },
+      {
+        "path": "concepts/lib/Lax619925/IdealMembership.trace",
+        "bytes": 2987,
+        "sha256": "5ab5891cc72d7caf72c9f684a53b5ec7cb6a0bba2614a127d54e1492c15a5b00"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Infiltration.ilean",
+        "bytes": 17562,
+        "sha256": "09eba295bea3bea8b2fc392fa5935608167d545d3a4aaf7567c8f42594621817"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Infiltration.ilean.hash",
+        "bytes": 16,
+        "sha256": "0d7d644dda8ffac38198ff154aa57f236e464f1a6f9e1261c282c48972f4e8ae"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Infiltration.olean",
+        "bytes": 254672,
+        "sha256": "b220637e57cd7ac20259b43197ac5b8ac6a6d6fb4793568ee3a5573bbbc1a8d7"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Infiltration.olean.hash",
+        "bytes": 16,
+        "sha256": "54fc8318d70eec8d25631c18f998899456300a484bdaa2a6886f2cd35df0fe2a"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Infiltration.trace",
+        "bytes": 3587,
+        "sha256": "bb38f129d09f8cdac8d8b5fe81bc0b40c6b93b8ebaa0c3974c89eef6646b8c26"
+      },
+      {
+        "path": "concepts/lib/Lax619925/PolynomialAutomata.ilean",
+        "bytes": 7360,
+        "sha256": "0f4c13b775e8b5f8905780bff507ebe85a8c191a1e4b08845977840d9daf89a2"
+      },
+      {
+        "path": "concepts/lib/Lax619925/PolynomialAutomata.ilean.hash",
+        "bytes": 16,
+        "sha256": "fd43853e5188030ee0e8dab84149d494cd0802e62e4084298ae6aaf16fc7dd90"
+      },
+      {
+        "path": "concepts/lib/Lax619925/PolynomialAutomata.olean",
+        "bytes": 78136,
+        "sha256": "df8afbb07ab3874d71e046cd1efa90a92c1685de91dbf347e30726fcf691eee5"
+      },
+      {
+        "path": "concepts/lib/Lax619925/PolynomialAutomata.olean.hash",
+        "bytes": 16,
+        "sha256": "9f515553e1b43b794e8f7eea8f4297502fee36be1d5ba17d3ec233e447eb7dc8"
+      },
+      {
+        "path": "concepts/lib/Lax619925/PolynomialAutomata.trace",
+        "bytes": 3138,
+        "sha256": "8792994396342d9c4b78460552416c18d91fb9992156345676d5dfe8d20b8ace"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Polyrec.ilean",
+        "bytes": 4225,
+        "sha256": "77d15d09eea65b682136ad5999c99b29a3db2c9e31c7585d2d62aba4ebc1c4b1"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Polyrec.ilean.hash",
+        "bytes": 16,
+        "sha256": "cb9e35cf814d919207831528f8f3ea93d11de4ad3648604952b6fe7a17358fe6"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Polyrec.olean",
+        "bytes": 50568,
+        "sha256": "fdd24d78acde649022b28526b139be972003ef0a177c7f14154e7ad51f152cdd"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Polyrec.olean.hash",
+        "bytes": 16,
+        "sha256": "91e8770b0dbd75dc7812faeb00aa6ed7678c06c44918ce67bf442d8975538c08"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Polyrec.trace",
+        "bytes": 3045,
+        "sha256": "be7a7533589fd82c2f2dac57c4b6becbd86cbc491d121e8effb46f36d601a92c"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Prevariety.ilean",
+        "bytes": 6368,
+        "sha256": "82f4e0c554dcba642dc0ecd605fec3584d84cb4a804c3d8b8e8331b545c54a8d"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Prevariety.ilean.hash",
+        "bytes": 16,
+        "sha256": "cb7590d1a6896d1ca5c425a758f5584fe8d7cb60e2f28cba628b76459478a5a0"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Prevariety.olean",
+        "bytes": 242472,
+        "sha256": "e5f718f7bd667aaec42c2c5e33ec770481abc5093a2ce80cbb55587cb4401594"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Prevariety.olean.hash",
+        "bytes": 16,
+        "sha256": "d916b32d0737006eb4fb9ca6e2dee5729b297b4fa648501cba24b8a8b112dbad"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Prevariety.trace",
+        "bytes": 2779,
+        "sha256": "c4da9fe4fba2fe219a0bafdd0c54b3df5df6a0c93a7f4e0c6dbc9ddf2a04a3e9"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Recognisable.ilean",
+        "bytes": 11991,
+        "sha256": "524c1c8b9aed94780e17107f6a8db44161feca3916f9e6ae7ef5e1be9f936e17"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Recognisable.ilean.hash",
+        "bytes": 16,
+        "sha256": "5b1cf103c0af38c5dc1f8b12b10a96177c0209a471d405e7c18f5dd29e76331b"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Recognisable.olean",
+        "bytes": 168720,
+        "sha256": "b454709b1adf61b2eb0f22118e61419e5bddef4dacebba28aeea4573950430ab"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Recognisable.olean.hash",
+        "bytes": 16,
+        "sha256": "f970f02300aabfa71eb5cc680d0ef656566c55513d306510998ba059fdd0e626"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Recognisable.trace",
+        "bytes": 3402,
+        "sha256": "3d931aa70560ace58bc9ce9c298ca91f5b0723240c6116faeafdae58fee923ac"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Series.ilean",
+        "bytes": 5937,
+        "sha256": "47b08c830d80446d4deda646435e626abedd11799dbe8d0a1ede3d5ca097637e"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Series.ilean.hash",
+        "bytes": 16,
+        "sha256": "1089625b8867ae9acb35a6e774119d66c195c9f98ec39551bc94f1bd3603b44c"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Series.olean",
+        "bytes": 47712,
+        "sha256": "9853b49fac1611e64d045e8a3aab27484d7fa08e71cefda6dcc26520dc0a1dad"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Series.olean.hash",
+        "bytes": 16,
+        "sha256": "78d7a47dcd778636ccbf455f9fce5ddbdc725b820619589a8f95ac56f34f4289"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Series.trace",
+        "bytes": 2572,
+        "sha256": "5190b048e5713849d0c14c467c832de2f318962f8dbf8ca6a7927e7b08e10307"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Shuffle.ilean",
+        "bytes": 16222,
+        "sha256": "d26ea20d329725ec36bccffad5e9092eed211f3adc656888b4b2504de19081a3"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Shuffle.ilean.hash",
+        "bytes": 16,
+        "sha256": "7f49803b13ea9c40f681e21b6e3d0b99bf9aa5dd833de7546ea6aa23c55d622d"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Shuffle.olean",
+        "bytes": 254584,
+        "sha256": "3552f349592af0db19f9bed57108b7b67418026baab0260b91b1079645ae4c68"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Shuffle.olean.hash",
+        "bytes": 16,
+        "sha256": "cc5e82f42b318f42083822549a4b8b5e66439645585bc1b0ec91a04f41d1e763"
+      },
+      {
+        "path": "concepts/lib/Lax619925/Shuffle.trace",
+        "bytes": 3552,
+        "sha256": "82294f12d8cd1b139a5aa715a9e41884eb13161ad845d8e411590415bb576483"
+      },
+      {
+        "path": "concepts/lib/Lax619925.ilean",
+        "bytes": 553,
+        "sha256": "07aeaae28d24717d7ed3929c30d84d1b84c0c7b8a34d394df2e2e9e6c7e78c35"
+      },
+      {
+        "path": "concepts/lib/Lax619925.ilean.hash",
+        "bytes": 16,
+        "sha256": "179fa1e5e233ae29da53d4a263aedd4edfd0a3ad3c7efaed9c08b0375f101da1"
+      },
+      {
+        "path": "concepts/lib/Lax619925.olean",
+        "bytes": 2624,
+        "sha256": "9db18b7ba40b00a6911ca47f3ed8f388ae375d83b2cd7275aa342d3dce9f310b"
+      },
+      {
+        "path": "concepts/lib/Lax619925.olean.hash",
+        "bytes": 16,
+        "sha256": "d9683fa5bcf7db5efc890a3331ba8d28aaddebd80a12e0d21033ed7fdd83eb9f"
+      },
+      {
+        "path": "concepts/lib/Lax619925.trace",
+        "bytes": 3520,
+        "sha256": "4df3ff20fef1dac043ada1a6bc36b0943622ae2c39451a21b24078cd9a21ac67"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "76b2a6a7ffb68ca6376c9c801630bc2e0f048d3b468db080e8f6be6e69ff8d7b"
+      },
+      {
+        "path": "concepts/package/Lax619925/CDA.lean",
+        "bytes": 4601,
+        "sha256": "b902d1904d3ad789fe22b2b7fbca4167b06e810b879e0107d62364ab3a972c48"
+      },
+      {
+        "path": "concepts/package/Lax619925/Commutativity.lean",
+        "bytes": 5029,
+        "sha256": "1c675155ce26703838e42da5cf68e8c7c0d5158dfec4271748cf7457456cab06"
+      },
+      {
+        "path": "concepts/package/Lax619925/Hadamard.lean",
+        "bytes": 7718,
+        "sha256": "b3463f782f190467e56cc684d3e5176ef9364cec161c0872af6d20e6195a9cce"
+      },
+      {
+        "path": "concepts/package/Lax619925/IdealMembership.lean",
+        "bytes": 2016,
+        "sha256": "c830a9f3c49da10de051f58ab8b60b5498cce499bff892465aca5e21f47acd88"
+      },
+      {
+        "path": "concepts/package/Lax619925/Infiltration.lean",
+        "bytes": 11857,
+        "sha256": "dc794a012c1299b2d45403c4cb4ddf15dc9e901d5558826ac20462f0f7ff974e"
+      },
+      {
+        "path": "concepts/package/Lax619925/PolynomialAutomata.lean",
+        "bytes": 3642,
+        "sha256": "bd6d4f49ab1ee55276540c382cc2b58ee2e4bcf6c06737267aa3daedc7b0a5d3"
+      },
+      {
+        "path": "concepts/package/Lax619925/Polyrec.lean",
+        "bytes": 3272,
+        "sha256": "53e1cf7c731172898f8c17f58ffba91de90256c57230f8daf441797b741665a2"
+      },
+      {
+        "path": "concepts/package/Lax619925/Prevariety.lean",
+        "bytes": 2878,
+        "sha256": "8af00720d74f119b4f498cc3fc1f457c46050cf9bd7848da3f41eb94e8844afb"
+      },
+      {
+        "path": "concepts/package/Lax619925/Recognisable.lean",
+        "bytes": 6636,
+        "sha256": "fed0548a7a3c17d1f18a33203d569c028c7fa60c9f58e4ab6cbf52fbdd682ff7"
+      },
+      {
+        "path": "concepts/package/Lax619925/Series.lean",
+        "bytes": 4585,
+        "sha256": "0512c962917affe918aaf73bfea2ffda39f412b5ea97344b0264a5e54d9cf8c2"
+      },
+      {
+        "path": "concepts/package/Lax619925/Shuffle.lean",
+        "bytes": 11584,
+        "sha256": "081bafc7a5b573cff40bb11ac81820c988de928176ef57d61741f5da44bbd25b"
+      },
+      {
+        "path": "concepts/package/Lax619925.lean",
+        "bytes": 309,
+        "sha256": "38ec982c2bd39711d6694363c605b05814002e11ee7ac9614a2aeb09f947c4de"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "paper/.latexmkrc",
+        "bytes": 275,
+        "sha256": "bc4ada5e2d3b9343d36a2ce83ef208df7701cddcd2c7d9e12d48b13c5f4a921d"
+      },
+      {
+        "path": "paper/01_introduction.tex",
+        "bytes": 19881,
+        "sha256": "ec6cfb8d2f725b37388bb5f54615a7a520a06ba6c4608dad2f40f0522ea755dc"
+      },
+      {
+        "path": "paper/02_preliminaries.tex",
+        "bytes": 10260,
+        "sha256": "2abc8e0985c8c52ead72a1dacc612a16802d061852933ebb16e682f69113e39e"
+      },
+      {
+        "path": "paper/03_commutativity.tex",
+        "bytes": 5798,
+        "sha256": "71d638fe991fc7f1dc426ca1ef9c8606f223b73a02ca848c1f7c7f0d33ac2f0c"
+      },
+      {
+        "path": "paper/04_rational.tex",
+        "bytes": 12651,
+        "sha256": "d89ab8d1d45c85654a3e821a4c78a406fa0acd215fb155762b54a85d22389fe0"
+      },
+      {
+        "path": "paper/05_Hadamard.tex",
+        "bytes": 57332,
+        "sha256": "9e1f07c8a5202923c253aa79b3daba51317212cf348b92715a2b0e42520efbaf"
+      },
+      {
+        "path": "paper/06_shuffle.tex",
+        "bytes": 47901,
+        "sha256": "263244b9b15781c8c1eb6324a0fd2f60b636a0248b7eec8d364fbf95f175c92f"
+      },
+      {
+        "path": "paper/07_infiltration.tex",
+        "bytes": 43824,
+        "sha256": "be25e97b50e69d2d47affd0687f340de25a13bac6f32115d950729e1c7d10f9f"
+      },
+      {
+        "path": "paper/acmart.cls",
+        "bytes": 121725,
+        "sha256": "c8fbf6a083bd6a25b6b7ef0c026411f8d0ad7f253fa3b7b0b4817a9d81840618"
+      },
+      {
+        "path": "paper/appendix.tex",
+        "bytes": 8667,
+        "sha256": "d316005000c4b8931adbc95ec00c256b93e34e096976c61bac3c7d1a9f53a261"
+      },
+      {
+        "path": "paper/books.bib",
+        "bytes": 12184,
+        "sha256": "77dd9c78a9717e0d9e386284b5cb7f4f6b2af3e212b882723b75509a3b968f4f"
+      },
+      {
+        "path": "paper/comment.cut",
+        "bytes": 153,
+        "sha256": "e760cd9216b962da8853d0422c8c6f2e8d040576ba08def6dc1bc8b64a1aac16"
+      },
+      {
+        "path": "paper/extra.bib",
+        "bytes": 217,
+        "sha256": "a8900976bc9a305668c41dcbdbaeb506c697830b488dfa7afcd30263fbf51278"
+      },
+      {
+        "path": "paper/macros.tex",
+        "bytes": 12981,
+        "sha256": "f0389f9f627b24c2e3c579aff99c417512c56689afbb5a5fc1945a74ae1f564e"
+      },
+      {
+        "path": "paper/main.bbl",
+        "bytes": 122209,
+        "sha256": "78e893ba42de3d7900d81ad3e0704afeda2dcf242e8d4c6e2573cbf91cf29e6c"
+      },
+      {
+        "path": "paper/main.bcf",
+        "bytes": 128954,
+        "sha256": "75cfab3472d89ab1b006254d2e7dfeff5e5efe9ca711c040f0ddbb5854033835"
+      },
+      {
+        "path": "paper/main.blg",
+        "bytes": 8277,
+        "sha256": "8d12af41283347e585565ad01941136633b02298b6c483ba84171df5382261a0"
+      },
+      {
+        "path": "paper/main.tex",
+        "bytes": 6120,
+        "sha256": "a388c6d1f4ba8f7175633343419650dfb4322b71d014798d63d705a689ff6d07"
+      },
+      {
+        "path": "paper/master.bib",
+        "bytes": 12567041,
+        "sha256": "ee31309f852c87eaa3eb91495d74ea0efc3de6ebd400d852186d9152f422531e"
+      },
+      {
+        "path": "paper/packages.tex",
+        "bytes": 1929,
+        "sha256": "793723653ebc780bd9dc6bb75a18ffb162a96d569667f6c3253b1896d799e008"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/CDA.c",
+        "bytes": 71106,
+        "sha256": "2951422e404738b062757381c684b0fb54163569f64425a135a0fd9b8f8a1b73"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/CDA.c.hash",
+        "bytes": 16,
+        "sha256": "399a6dc4fa6121d2e071559a7f88ed5adac10610cf17e6638078b3b544ea494e"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/Commutativity.c",
+        "bytes": 23421,
+        "sha256": "8c21421ff2e33c2a6fbd4f5b7ead1a72d7b62a60501475458637664e819b3ff7"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/Commutativity.c.hash",
+        "bytes": 16,
+        "sha256": "16333f3dcca9a4ecb3060a29f283f7f7435a250a374bee85bf8b0f4b6c317c15"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/Hadamard.c",
+        "bytes": 7163,
+        "sha256": "34a93f23438241143dc16cebb51be5b74b90cece5aa4607ebb881a9bf84fa6fc"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/Hadamard.c.hash",
+        "bytes": 16,
+        "sha256": "98842d07608165f669519701523ebeea9b41fa47b2af7bb5e75eccd4581e14ef"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/IdealMembership.c",
+        "bytes": 2819,
+        "sha256": "a6c7c61136178df8f26c5af628d0f60875ff5ca3c31b30cdaf9afa08b1da65c5"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/IdealMembership.c.hash",
+        "bytes": 16,
+        "sha256": "2ea63b7fbef9c40aed2310dc0d7569c93b2d37b80ce9cbbdb142f4a9d3861dd1"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/Infiltration.c",
+        "bytes": 9743,
+        "sha256": "9ab7d88931877239caf15ac8dbfb6f8f89cb703591299c6b89fd6cb5bc42d6b8"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/Infiltration.c.hash",
+        "bytes": 16,
+        "sha256": "428eb4e74f1a16a53806d4149601bfbb0dec508f6e9ddef9d505f9aa23b65435"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/PolynomialAutomata.c",
+        "bytes": 3559,
+        "sha256": "7cf8d2c82e02d518e35d76a60a394b678cdd098ebe91589dcf0b8148a8f8a2fa"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/PolynomialAutomata.c.hash",
+        "bytes": 16,
+        "sha256": "47eb7c1353bf2388dddcc4b7bbe452c6852f08d75a67be5f75e4e19bd8577c94"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/Polyrec.c",
+        "bytes": 13287,
+        "sha256": "e02f4380625b254ed6f1e2eac96d3b0c9c1fc2d3a47099b2c86ab2428579b8f3"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/Polyrec.c.hash",
+        "bytes": 16,
+        "sha256": "1ca5dd0151f1e9be070dbe5fb0934cf173c030f190bc93817af5207e70092095"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/Recognisable.c",
+        "bytes": 18044,
+        "sha256": "562975d392c40ef4185d2456a48246e4209db0168e511c22ab1b484c366514fc"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/Recognisable.c.hash",
+        "bytes": 16,
+        "sha256": "1a16124e806ab3c8849324ceb82d5e174c435f0d3efce063031ffbfa103daada"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/Series.c",
+        "bytes": 1800,
+        "sha256": "9e15b34ffbe34e3278c0f71bf6a8d92fe38efe39963426c04918551cd539e67e"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/Series.c.hash",
+        "bytes": 16,
+        "sha256": "f4fcdb0f095b880a312562545a96095bc0c1c62f87a881a5e08478c132d52ac1"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/Shuffle.c",
+        "bytes": 43603,
+        "sha256": "9af188f56451d4f2ae45eddfbea8488b7c7cea48b38d6f2e5d41792bffe69e8b"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs/Shuffle.c.hash",
+        "bytes": 16,
+        "sha256": "32712dbe6c87b0accae995e07acce1e137865662bcf33d818ecaa6471132a4fd"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs.c",
+        "bytes": 3708,
+        "sha256": "db99082804ec9f178e371ca68cbef439234f3a59d5c092c2f99aff562028652f"
+      },
+      {
+        "path": "proofs/ir/Lax619925Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "ac302b9f0fad19b1eb80d29274045a05d67cc54cd89a8bb89b1f2d8e7820fb78"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/CDA.ilean",
+        "bytes": 177716,
+        "sha256": "d35808e7457fde26c57e54c5395aa4ecd3d91855ac1f3fa94bd0d4ac02bedc68"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/CDA.ilean.hash",
+        "bytes": 16,
+        "sha256": "6cc78b8df2e8942253fe4acead0f963299d081ad4e4e74f83843058aeedb6ebe"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/CDA.olean",
+        "bytes": 1414664,
+        "sha256": "22e633198b94b0ca169dcceca6690b0a29b0e5432546f6987a7ac56e813f4019"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/CDA.olean.hash",
+        "bytes": 16,
+        "sha256": "eb38fec7fcfa39ce29c93252e6d999b7c5587b1d14adf6afeb95703828209883"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/CDA.trace",
+        "bytes": 10092,
+        "sha256": "497983812a2dba3b5cd7c3404750c43af32d80a5044c9011cec7850188cdd937"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Commutativity.ilean",
+        "bytes": 74166,
+        "sha256": "549f740a6f6e5ab5755a38e815b30f222b4c4ef9d53b123002c46818ed7c2e3c"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Commutativity.ilean.hash",
+        "bytes": 16,
+        "sha256": "67307d1b856acaf8d8d10d9d80c954717b55fd41b7d9ddcd54af3713a1c8df80"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Commutativity.olean",
+        "bytes": 722824,
+        "sha256": "5a52e0606fc5033741d4536321a355fcb9565e61c14e63165b85f19c76f8c06b"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Commutativity.olean.hash",
+        "bytes": 16,
+        "sha256": "3f2c6925174a727d61a0a7d96d2ea750cda5ed264790afb03efc8b06328284bc"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Commutativity.trace",
+        "bytes": 3795,
+        "sha256": "ea3b5aa416bd18de5fec5d4d938d2363dfe8be086080be5f264a749330f6b4ef"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Hadamard.ilean",
+        "bytes": 175044,
+        "sha256": "ad1fec7ad9462593729ceda96f6e4e688aef2328e32f20ff0fb538a9a94d3b24"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Hadamard.ilean.hash",
+        "bytes": 16,
+        "sha256": "6318d910c1535deefd5f0119903498839131a9cef9bf6621f3e3e2e4dabd201d"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Hadamard.olean",
+        "bytes": 1472232,
+        "sha256": "8a597bfadc560c77cdab016f6d8cd34aed19a9cd850528c09e8f3de953b56c00"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Hadamard.olean.hash",
+        "bytes": 16,
+        "sha256": "afbb5341bf8fdda4bf7999616bd9bb7038454c48fe14e286deae33b521c6a1ae"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Hadamard.trace",
+        "bytes": 7133,
+        "sha256": "ffa2277a7d0745aea89a3494245aa31f60661b574c261e9d74f17a76c53cb992"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/IdealMembership.ilean",
+        "bytes": 2743,
+        "sha256": "42b9f4fed4a14d3c332374ea5a3bb3a113520b3a9521c32f4c4dec4dcd7de6b7"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/IdealMembership.ilean.hash",
+        "bytes": 16,
+        "sha256": "79d18b3c83d154e595383e0281a92b8c61d0687bcccea624725cbfcb2e8e013b"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/IdealMembership.olean",
+        "bytes": 26024,
+        "sha256": "d83d0c3aeeb94ce0167e6f25bfbcc80d09282728c7838b81c7e054cf1440d625"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/IdealMembership.olean.hash",
+        "bytes": 16,
+        "sha256": "18fbe99be7a164c5e85282b6e479dbb012988a44e998217cde52cb61101e651a"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/IdealMembership.trace",
+        "bytes": 3209,
+        "sha256": "33c71a76c09adbcdecb0d2bcbfdd665ceaedd3fe70c43e76b3fd33618fd01321"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Infiltration.ilean",
+        "bytes": 552168,
+        "sha256": "4380f963f6a155cd2e0929529259d6db029a2a539706e54da7b18aa362500786"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Infiltration.ilean.hash",
+        "bytes": 16,
+        "sha256": "a743040d0ca0a0821ce4c572aa29311e83e34394bd68b232524900b21e0b2455"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Infiltration.olean",
+        "bytes": 3011240,
+        "sha256": "f89d463c19cc74223e536f53f252bfd496fa241a43563c6cfe90f0eb60096e81"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Infiltration.olean.hash",
+        "bytes": 16,
+        "sha256": "c5bc2cbb491340b49dc717a4c9fa2fccf6020ff06df4a55544203e777d600a61"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Infiltration.trace",
+        "bytes": 22175,
+        "sha256": "2fc2759206398b8e2ea0a68f3c912a6fae8d7a4ef235d5ee1885c243eb5e08ff"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/PolynomialAutomata.ilean",
+        "bytes": 28482,
+        "sha256": "d1c4d2495384d5c925e750f856238602cab4ad9c66a98fc0a958fd6aa1fffe9d"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/PolynomialAutomata.ilean.hash",
+        "bytes": 16,
+        "sha256": "6f54d094818d6cbb0409872f9319f56f443c1fc25c801ce228d7a4389c7a8adc"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/PolynomialAutomata.olean",
+        "bytes": 170776,
+        "sha256": "a63c3638631981b7efe52832f785b2f54b25f271843ae1b0b5e70ecdf8dbe1bd"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/PolynomialAutomata.olean.hash",
+        "bytes": 16,
+        "sha256": "b116b882b43bb0886f65291ede3852333bc188ebd63ec00c4f81e71164274382"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/PolynomialAutomata.trace",
+        "bytes": 3722,
+        "sha256": "cec05d44721907b598fe2c23c22692a019a54478944d39dea460cea0428a8146"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Polyrec.ilean",
+        "bytes": 56435,
+        "sha256": "364bb78aa0c981a6278305112f9b98f8c15d65ee247df5c2924cf5abddce08c3"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Polyrec.ilean.hash",
+        "bytes": 16,
+        "sha256": "bad070e34ee0f8cd6c3bc60978d9eb766f28118fc13ca180d9665b9e98915dd1"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Polyrec.olean",
+        "bytes": 271616,
+        "sha256": "b4f774003b6bd6028e4beb5bdf7241b832aa09c319062e5c3e4cc2c7d6997a3f"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Polyrec.olean.hash",
+        "bytes": 16,
+        "sha256": "107cc95d30eb88354ca11a957233940d471cc1d3ba3b3e9b4c9def8c794a8804"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Polyrec.trace",
+        "bytes": 4392,
+        "sha256": "87f417ce92431d79ba0dbb664a4024af3e60b3018ec322bcb1fac06972fb857f"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Recognisable.ilean",
+        "bytes": 101903,
+        "sha256": "d37c6b9e24bfe4a4b3a5de3a3c445039e5de093bf043aef36a5bfd54f2692548"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Recognisable.ilean.hash",
+        "bytes": 16,
+        "sha256": "c3a7408af79fbad8d577eabe79d4433243681455f602c020ba9d0fe5f3c371e2"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Recognisable.olean",
+        "bytes": 621760,
+        "sha256": "68a7587e73e1c8d416401649b351a0786163d6a92c858a271106aac8b9cd11b8"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Recognisable.olean.hash",
+        "bytes": 16,
+        "sha256": "cb9a5da5894f477e44a994e3945a9ab25d838e465f8500f2bfd2c3314f4d5487"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Recognisable.trace",
+        "bytes": 6731,
+        "sha256": "beec35b6bea03f77e85f0b2675d6f5b1db220481e94f5f7fdf206f82dea10199"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Series.ilean",
+        "bytes": 2764,
+        "sha256": "e061e962f78f3ff26c4d1dcd4497c39673b91ed6982f87454956e03cd0d0723e"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Series.ilean.hash",
+        "bytes": 16,
+        "sha256": "410d5085f6684a26e0be05f29fb625e7cfcb036253e9478d58e2114f6c7fb36e"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Series.olean",
+        "bytes": 22520,
+        "sha256": "66b48e9b508c3f1dcce64f6d743527c6bef3cb00fd97cb9759244b54bc265ca8"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Series.olean.hash",
+        "bytes": 16,
+        "sha256": "e3928994f89e53f62254320db55ce4dc57e653da828504ceba2f1feded627c1c"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Series.trace",
+        "bytes": 2472,
+        "sha256": "e2b5e6f52365774dc42992cdbaf1f441586d1ae94189ec845af7ad463ac31198"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Shuffle.ilean",
+        "bytes": 473909,
+        "sha256": "a76c55298014bdfd5497526aae63b882ca9d21d935547bbbffcda5a7fcd49e63"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Shuffle.ilean.hash",
+        "bytes": 16,
+        "sha256": "cd61b19d945ea94d2ece45c7e973b3fd87c29bb591cc316dfd332613a63ed2cd"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Shuffle.olean",
+        "bytes": 3061136,
+        "sha256": "9d3af4a3035d6f8192d7b564b1e523ee27db2bbe2257843bdaaf5f623fcc1355"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Shuffle.olean.hash",
+        "bytes": 16,
+        "sha256": "1bec5865bf90b0fb09a9e802fa92e780d653b79da624cdabb81154b9f6f801ec"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs/Shuffle.trace",
+        "bytes": 19230,
+        "sha256": "9ed441848731db3976ce8f398210f4887beb3d6f40d0783e2d7572c405f58d69"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs.ilean",
+        "bytes": 576,
+        "sha256": "20df4bbeb309338a36ec9451fc89f9c8b8b9fd144c14b9ef6ed9d7320531acf9"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "281307920df95d0cff13ddcb350efac69e4dd5d343e9563eedb7b73fd8c1d9b9"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs.olean",
+        "bytes": 2512,
+        "sha256": "a22bb42d1aa23645ac0fab7b2eea528ca6042a6acbc2758bc7a0f7bd28f4a0e0"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "1aab95f4779847b655531792e95fdd6af1b1d95ea541706d5e9643dd3095b19b"
+      },
+      {
+        "path": "proofs/lib/Lax619925Proofs.trace",
+        "bytes": 3612,
+        "sha256": "8795642760ab190087a1a9547b5b9565cf2866aa3fb18dbc6e8d04db5dbdfa04"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "997ae64323567258211dd8cb5d28ae5994efead3db57197d4bb401d9b955a9f8"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "c341f0fc47c3aa491428921c61ddc0a87ab7daa7b47f6efc949498a13435d491"
+      },
+      {
+        "path": "proofs/package/Lax619925Proofs/CDA.lean",
+        "bytes": 59546,
+        "sha256": "62ea527e99d1b79c27c49203349f2f6a085c026a743f77f56421955e0a2b1ed8"
+      },
+      {
+        "path": "proofs/package/Lax619925Proofs/Commutativity.lean",
+        "bytes": 22735,
+        "sha256": "25061f8d167c3a9a461096c86acd836f51f646068f58fce79379cf475cd18e6f"
+      },
+      {
+        "path": "proofs/package/Lax619925Proofs/Hadamard.lean",
+        "bytes": 66334,
+        "sha256": "4a343fce55167c21c42c16ba60d547a59612c7f43148a9c14e168932123f0568"
+      },
+      {
+        "path": "proofs/package/Lax619925Proofs/IdealMembership.lean",
+        "bytes": 1539,
+        "sha256": "b4e73ec8a67faacf4bb6ad27b0f098631a09016c69dc598318d446b1330cc7f3"
+      },
+      {
+        "path": "proofs/package/Lax619925Proofs/Infiltration.lean",
+        "bytes": 174290,
+        "sha256": "63b61454d95e8cbcd0bdb6ee01cdb19c527c94a68220a26f5192dfdcbd052894"
+      },
+      {
+        "path": "proofs/package/Lax619925Proofs/PolynomialAutomata.lean",
+        "bytes": 9446,
+        "sha256": "5b0e8b4ead5696f97981f993a16eba147837ec99d2a82e5fbd8c6bef641d8ec2"
+      },
+      {
+        "path": "proofs/package/Lax619925Proofs/Polyrec.lean",
+        "bytes": 15950,
+        "sha256": "627546fa8f54b2ffbae50197ace4b6e4b5b47492b218ec9c817a8b6b20b91c83"
+      },
+      {
+        "path": "proofs/package/Lax619925Proofs/Recognisable.lean",
+        "bytes": 34048,
+        "sha256": "39c02f3e6d2f4307fcba4d7251007703bc2bb11fdcee48e610834a0127cc6a8e"
+      },
+      {
+        "path": "proofs/package/Lax619925Proofs/Series.lean",
+        "bytes": 1446,
+        "sha256": "47d6d294a4414bc9d6919557d5221d7c512f1b9faae21b55137fd166be06e725"
+      },
+      {
+        "path": "proofs/package/Lax619925Proofs/Shuffle.lean",
+        "bytes": 171774,
+        "sha256": "68faad1cb4a0f447ed03de96e8982b7acf14ea498c12a9765b2ca0453464d931"
+      },
+      {
+        "path": "proofs/package/Lax619925Proofs.lean",
+        "bytes": 341,
+        "sha256": "aba491e3c2e18e15efa23f97482971771e250043ef89f8f066da3fa2b7f611e7"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:50153d9c7460120ef50ef33a71955fb5f2c613cca1750a994d2dda45f8baa668"
+  },
+  "paper": {
+    "folder": "paper",
+    "main": "main.tex",
+    "engine": "pdflatex",
+    "pdf": {
+      "digest": "de70a9f1244ca3b5fd470233c4e0df96e24488c87ebd47c4a67eabf06986246a",
+      "bytes": 764599,
+      "pages": 41,
+      "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:de70a9f1244ca3b5fd470233c4e0df96e24488c87ebd47c4a67eabf06986246a"
+    },
+    "pageSizes": [
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ],
+      [
+        612,
+        792
+      ]
+    ],
+    "marks": [
+      {
+        "id": "Lax619925.Series",
+        "kind": "concept",
+        "begin": {
+          "page": 8,
+          "x": 110.16,
+          "y": 335.57,
+          "mode": "v"
+        },
+        "end": {
+          "page": 9,
+          "x": 185.16,
+          "y": 557.64,
+          "mode": "h"
+        }
+      },
+      {
+        "id": "Lax619925.Prevariety",
+        "kind": "concept",
+        "begin": {
+          "page": 9,
+          "x": 185.16,
+          "y": 557.64,
+          "mode": "h"
+        },
+        "end": {
+          "page": 9,
+          "x": 501.84,
+          "y": 293.98,
+          "mode": "h"
+        }
+      },
+      {
+        "id": "Lax619925.Commutativity",
+        "kind": "concept",
+        "begin": {
+          "page": 9,
+          "x": 73.44,
+          "y": 261.65,
+          "mode": "v"
+        },
+        "end": {
+          "page": 10,
+          "x": 158.65,
+          "y": 139.05,
+          "mode": "h"
+        }
+      },
+      {
+        "id": "Lax619925.Recognisable",
+        "kind": "concept",
+        "begin": {
+          "page": 11,
+          "x": 73.44,
+          "y": 681.44,
+          "mode": "v"
+        },
+        "end": {
+          "page": 12,
+          "x": 365.34,
+          "y": 355.93,
+          "mode": "h"
+        }
+      },
+      {
+        "id": "Lax619925.Hadamard",
+        "kind": "concept",
+        "begin": {
+          "page": 13,
+          "x": 73.44,
+          "y": 275.27,
+          "mode": "v"
+        },
+        "end": {
+          "page": 18,
+          "x": 110.16,
+          "y": 301.25,
+          "mode": "v"
+        }
+      },
+      {
+        "id": "Lax619925.Polyrec",
+        "kind": "concept",
+        "begin": {
+          "page": 18,
+          "x": 110.16,
+          "y": 273.94,
+          "mode": "v"
+        },
+        "end": {
+          "page": 23,
+          "x": 73.44,
+          "y": 622.12,
+          "mode": "v"
+        }
+      },
+      {
+        "id": "Lax619925.Shuffle",
+        "kind": "concept",
+        "begin": {
+          "page": 24,
+          "x": 110.16,
+          "y": 141.82,
+          "mode": "v"
+        },
+        "end": {
+          "page": 27,
+          "x": 73.44,
+          "y": 629.64,
+          "mode": "v"
+        }
+      },
+      {
+        "id": "Lax619925.CDA",
+        "kind": "concept",
+        "begin": {
+          "page": 27,
+          "x": 73.44,
+          "y": 596.91,
+          "mode": "v"
+        },
+        "end": {
+          "page": 31,
+          "x": 73.44,
+          "y": 266.19,
+          "mode": "v"
+        }
+      },
+      {
+        "id": "Lax619925.Infiltration",
+        "kind": "concept",
+        "begin": {
+          "page": 34,
+          "x": 110.16,
+          "y": 273.17,
+          "mode": "v"
+        },
+        "end": {
+          "page": 39,
+          "x": 73.44,
+          "y": 422.99,
+          "mode": "v"
+        }
+      },
+      {
+        "id": "Lax619925.IdealMembership",
+        "kind": "concept",
+        "begin": {
+          "page": 37,
+          "x": 441.15,
+          "y": 244.2,
+          "mode": "h"
+        },
+        "end": {
+          "page": 37,
+          "x": 474.96,
+          "y": 230.51,
+          "mode": "h"
+        }
+      },
+      {
+        "id": "Lax619925.PolynomialAutomata",
+        "kind": "concept",
+        "begin": {
+          "page": 39,
+          "x": 73.44,
+          "y": 341.04,
+          "mode": "v"
+        },
+        "end": {
+          "page": 41,
+          "x": 73.44,
+          "y": 562.01,
+          "mode": "v"
+        }
+      }
+    ]
   }
 }
