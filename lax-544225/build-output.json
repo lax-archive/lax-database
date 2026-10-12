@@ -4,5 +4,2684 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 193
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-544225",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "Relaxing Global Classifier Robustness on Semimetric Spaces",
+      "authors": [
+        {
+          "name": "Clemens Kuske",
+          "github": "clemenskuske"
+        },
+        {
+          "name": "Codex (OpenAI)"
+        }
+      ],
+      "bibEntries": [
+        "@unpublished{aleksandrovVoellinger2027relaxing,\n  title = {Relaxing Global Classifier Robustness on Semimetric Spaces},\n  author = {Aleksandrov, Andrei and Völlinger, Kim},\n  year = {2027},\n  note = {Supplied FSEN 2027 manuscript, received 10 October 2026}\n}\n",
+        "@software{aleksandrovVoellinger2026robustnessproofs,\n  title = {Rocq and Python examples for semimetric robustness},\n  author = {Aleksandrov, Andrei and Völlinger, Kim},\n  year = {2026},\n  url = {https://github.com/verinncoq/mueps-robustness-proofs},\n  note = {Reference commit d0d81caa28f9ffd166ffd245510c99b0db1c2962}\n}\n"
+      ],
+      "unlisted": true
+    },
+    "abstract": "We formalize the mathematical statements of Andrei Aleksandrov and Kim\nVöllinger's *Relaxing Global Classifier Robustness on Semimetric Spaces*.\nA classifier is (μ,ε)-robust when every input lies within μ of a same-label\npoint whose closed ε-ball has a constant label.\n\nThe concept package includes the covering characterization, the general and\nfinite-order existence criteria, the precision obstruction Δδμ+Δ, the\nnoncompositional counterexamples, and the transfer theorem for closed\noverlapping decompositions. It also specifies the canonical single-NaN binary\nfloating-point model, its absolute and squared embedded distances, and the sum\nand synchronized maximum constructions on vectors and padded lists.\n\nThe public results follow the paper’s structure: five theorems, three\ncorollaries, Proposition 1’s constructions, and the two counterexamples of\nLemma 1. Equivalences are presented once; their directional arguments and other\nsupporting facts are separate proof lemmas. All 16 public results are proved in\nLean, reusing intermediate covering, existence, precision and construction\nresults. The complete package passes LAX validation and kernel replay.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax544225.Balls",
+      "path": "concepts/Lax544225/Balls.lean",
+      "title": "Closed balls and neighborhoods",
+      "type": "definition",
+      "description": "The closed ball B(x,r) consists of inputs at distance at most r from x. The r-neighborhood of a set is the union of balls centered in that set (Definition 7, p. 5).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Closed inequalities are essential: an input at distance exactly ε must have the same label. Ball membership uses d(y,x), matching the paper."
+        }
+      ],
+      "imports": [
+        "Lax544225.Semimetric"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Set.Lattice"
+      ],
+      "sourceText": "import Lax544225.Semimetric\nimport Mathlib.Data.Set.Lattice\n\n/-!\n---\ntitle: Closed balls and neighborhoods\ntype: definition\n---\nThe closed ball B(x,r) consists of inputs at distance at most r from x. The r-neighborhood of a set is the union of balls centered in that set (Definition 7, p. 5).\n\n# Formalization notes\n\nClosed inequalities are essential: an input at distance exactly ε must have the same label. Ball membership uses d(y,x), matching the paper.\n-/\n\nuniverse u\n\nnamespace Lax544225.Balls\n\nopen scoped NNReal\n\nopen Semimetric\n/-- The closed ball centered at x with radius r. -/\ndef ball {S : Type u} (d : Distance S) (x : S) (r : ℝ≥0) : Set S :=\n  {y | d y x ≤ r}\n\n/-- The union of closed r-balls with centers in A. -/\ndef neighborhood {S : Type u} (d : Distance S) (A : Set S) (r : ℝ≥0) : Set S :=\n  {y | ∃ x ∈ A, y ∈ ball d x r}\n\nend Lax544225.Balls\n",
+      "statements": []
+    },
+    {
+      "id": "Lax544225.BinaryFloats",
+      "path": "concepts/Lax544225/BinaryFloats.lean",
+      "title": "Canonical binary floats and their embedding",
+      "type": "definition",
+      "description": "A binary format has p fractional mantissa bits and an exponent interval. Its canonical finite values are supplemented by signed zeros, signed infinities, and one NaN. The real embedding φ separates the special values as in Proposition 1 (p. 8).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "This is the paper’s single-NaN abstraction, matching the supplied Flocq BinarySingleNaN examples, not the full set of IEEE NaN payloads. A finite mantissa is stored as the integer k with m=k·2^(−p); normality means k≥2^p. The independent order puts −∞ first, then negative finite values, −0, +0, positive finite values, +∞, and NaN. It is not defined by φ. The two distances are the absolute and squared differences of φ."
+        }
+      ],
+      "imports": [
+        "Lax544225.OrderedSemimetric"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Int.Cast.Lemmas",
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Lax544225.OrderedSemimetric\nimport Mathlib.Data.Real.Basic\nimport Mathlib.Data.Int.Cast.Lemmas\n\n/-!\n---\ntitle: Canonical binary floats and their embedding\ntype: definition\n---\nA binary format has p fractional mantissa bits and an exponent interval. Its canonical finite values are supplemented by signed zeros, signed infinities, and one NaN. The real embedding φ separates the special values as in Proposition 1 (p. 8).\n\n# Formalization notes\n\nThis is the paper’s single-NaN abstraction, matching the supplied Flocq BinarySingleNaN examples, not the full set of IEEE NaN payloads. A finite mantissa is stored as the integer k with m=k·2^(−p); normality means k≥2^p. The independent order puts −∞ first, then negative finite values, −0, +0, positive finite values, +∞, and NaN. It is not defined by φ. The two distances are the absolute and squared differences of φ.\n-/\n\nuniverse u\n\nnamespace Lax544225.BinaryFloats\n\nopen scoped NNReal\n\n/-- The precision and nonempty exponent interval of a binary format. -/\nstructure Format where\n  /-- Number of fractional bits in the significand. -/\n  precision : ℕ\n  /-- Least allowed exponent. -/\n  minExponent : ℤ\n  /-- Greatest allowed exponent. -/\n  maxExponent : ℤ\n  /-- The exponent interval is nonempty. -/\n  exponent_le : minExponent ≤ maxExponent\n\n/-- Canonical data for a nonzero finite number in a format. -/\nstructure FiniteValue (F : Format) where\n  /-- Sign bit: 0 is positive and 1 is negative. -/\n  sign : Fin 2\n  /-- The exponent of the value. -/\n  exponent : ℤ\n  /-- The integer significand before scaling by 2^(−p). -/\n  mantissa : ℕ\n  /-- The exponent is allowed by the format. -/\n  exponent_mem : F.minExponent ≤ exponent ∧ exponent ≤ F.maxExponent\n  /-- The significand is nonzero and less than 2^(p+1). -/\n  mantissa_mem : 0 < mantissa ∧ mantissa < 2 ^ (F.precision + 1)\n  /-- A significand below the normal range occurs only at the minimum exponent. -/\n  canonical : 2 ^ F.precision ≤ mantissa ∨ exponent = F.minExponent\n\n/-- Canonical finite data and the four signed special values together with one NaN. -/\ninductive Value (F : Format)\n  /-- A nonzero finite floating-point value. -/\n  | finite : FiniteValue F → Value F\n  /-- A signed zero. -/\n  | zero : Fin 2 → Value F\n  /-- A signed infinity. -/\n  | infinity : Fin 2 → Value F\n  /-- The single, greatest NaN value. -/\n  | nan : Value F\n\n/-- The exact ordinary real value of canonical finite data. -/\nnoncomputable def finiteReal {F : Format} (f : FiniteValue F) : ℝ :=\n  (-1 : ℝ) ^ f.sign.val * (2 : ℝ) ^ f.exponent *\n    ((f.mantissa : ℝ) * (2 : ℝ) ^ (-(F.precision : ℤ)))\n\n/-- The real embedding including separated signed zeros and bounded special values. -/\nnoncomputable def phi (F : Format) : Value F → ℝ\n  | .finite f => finiteReal f\n  | .zero s => if s.val = 0 then 0 else -(2 : ℝ) ^ (F.minExponent - (F.precision : ℤ) - 1)\n  | .infinity s => if s.val = 0 then (2 : ℝ) ^ (F.maxExponent + 1)\n    else -(2 : ℝ) ^ (F.maxExponent + 1)\n  | .nan => (2 : ℝ) ^ (F.maxExponent + 1) + 1\n\n/-- The position of each sign and special-value category in the total order. -/\ndef category {F : Format} : Value F → ℕ\n  | .finite f => if f.sign.val = 0 then 4 else 1\n  | .zero s => if s.val = 0 then 3 else 2\n  | .infinity s => if s.val = 0 then 5 else 0\n  | .nan => 6\n\n/-- The ordinary finite value used to order members within a finite category. -/\nnoncomputable def withinCategory {F : Format} : Value F → ℝ\n  | .finite f => finiteReal f\n  | _ => 0\n\n/-- IEEE category order with one positive NaN and exact comparison of finite values. -/\ndef ieeeLe (F : Format) (x y : Value F) : Prop :=\n  category x < category y ∨\n    (category x = category y ∧ withinCategory x ≤ withinCategory y)\n\n/-- Absolute embedded distance d₁. -/\nnoncomputable def absDistance (F : Format) (x y : Value F) : ℝ≥0 :=\n  Real.toNNReal (|phi F x - phi F y|)\n\n/-- Squared embedded distance d₂. -/\nnoncomputable def squareDistance (F : Format) (x y : Value F) : ℝ≥0 :=\n  Real.toNNReal ((phi F x - phi F y) ^ 2)\n\nend Lax544225.BinaryFloats\n",
+      "statements": []
+    },
+    {
+      "id": "Lax544225.Boundary",
+      "path": "concepts/Lax544225/Boundary.lean",
+      "title": "Successors and cut boundaries",
+      "type": "definition",
+      "description": "In a total order, y is the immediate successor of x when x<y and no point lies strictly between them. The boundary of a subset consists of its points adjacent to a point outside it. The complement boundary is the boundary of the complement (Section 5.2, p. 10).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The boundary covering condition restricts the μ-ball to the side containing its center, and uses ε-balls centered in the boundary on the opposite side. This preserves the two distinct boundaries in Theorem 3."
+        }
+      ],
+      "imports": [
+        "Lax544225.Covering"
+      ],
+      "mathlibImports": [
+        "Mathlib.Order.Interval.Set.Basic"
+      ],
+      "sourceText": "import Lax544225.Covering\nimport Mathlib.Order.Interval.Set.Basic\n\n/-!\n---\ntitle: Successors and cut boundaries\ntype: definition\n---\nIn a total order, y is the immediate successor of x when x<y and no point lies strictly between them. The boundary of a subset consists of its points adjacent to a point outside it. The complement boundary is the boundary of the complement (Section 5.2, p. 10).\n\n# Formalization notes\n\nThe boundary covering condition restricts the μ-ball to the side containing its center, and uses ε-balls centered in the boundary on the opposite side. This preserves the two distinct boundaries in Theorem 3.\n-/\n\nuniverse u\n\nnamespace Lax544225.Boundary\n\nopen scoped NNReal\n\nopen Semimetric Balls\n/-- Consecutive points in a linear order. -/\ndef Successor {S : Type u} [LinearOrder S] (x y : S) : Prop :=\n  x < y ∧ ¬ ∃ z, x < z ∧ z < y\n\n/-- Points of A adjacent to its complement in the ambient order. -/\ndef boundary {S : Type u} [LinearOrder S] (A : Set S) : Set S :=\n  {x | x ∈ A ∧ ∃ y ∈ Aᶜ, Successor x y ∨ Successor y x}\n\n/-- Every nontrivial cut has a side-restricted μ-ball covered by the opposite boundary. -/\ndef EveryCutBoundaryCovered {S : Type u} [LinearOrder S] (d : Distance S)\n    (μ ε : ℝ≥0) : Prop :=\n  ∀ A : Set S, A.Nonempty → Aᶜ.Nonempty →\n    ∃ x, (x ∈ A ∧ ball d x μ ∩ A ⊆ neighborhood d (boundary Aᶜ) ε) ∨\n      (x ∈ Aᶜ ∧ ball d x μ ∩ Aᶜ ⊆ neighborhood d (boundary A) ε)\n\nend Lax544225.Boundary\n",
+      "statements": []
+    },
+    {
+      "id": "Lax544225.BoundaryCoveringCharacterization",
+      "path": "concepts/Lax544225/BoundaryCoveringCharacterization.lean",
+      "title": "Theorem 3 — Boundary covering characterization",
+      "type": "theorem",
+      "description": "In a finite totally ordered semimetric space, covering every proper cut is equivalent to covering its within-side μ-ball from the opposite boundary (Theorem 3, p. 10).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Both directions are stated together as in the paper. Their separate arguments\nremain supporting lemmas in the proof package."
+        }
+      ],
+      "imports": [
+        "Lax544225.Boundary",
+        "Lax544225.OrderedSemimetric"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.Boundary\nimport Lax544225.OrderedSemimetric\n\n/-!\n---\ntitle: Theorem 3 — Boundary covering characterization\ntype: theorem\n---\nIn a finite totally ordered semimetric space, covering every proper cut is equivalent to covering its within-side μ-ball from the opposite boundary (Theorem 3, p. 10).\n\n# Formalization notes\n\nBoth directions are stated together as in the paper. Their separate arguments\nremain supporting lemmas in the proof package.\n-/\n\nuniverse u\n\nnamespace Lax544225.BoundaryCoveringCharacterization\n\nopen scoped NNReal\nopen Semimetric OrderedSemimetric Covering Boundary\n\n/-- In a finite totally ordered semimetric space, covering every proper cut is equivalent to covering its within-side μ-ball from the opposite boundary (Theorem 3, p. 10). -/\naxiom statement {S : Type u} [Finite S] [LinearOrder S] (d : Distance S)\n    (hd : IsOrdered d (· ≤ ·)) (μ ε : ℝ≥0) (hε : 0 < ε) :\n    EveryCutCovered d μ ε ↔ EveryCutBoundaryCovered d μ ε\n\nend Lax544225.BoundaryCoveringCharacterization\n",
+      "statements": [
+        {
+          "id": "Lax544225.BoundaryCoveringCharacterization.statement",
+          "signature": "statement : ∀ {S : Type u} [Finite S] [inst : LinearOrder S] (d : Lax544225.Semimetric.Distance S),\n  (Lax544225.OrderedSemimetric.IsOrdered d fun x1 x2 => instDistribLatticeOfLinearOrder.toSemilatticeInf.le x1 x2) →\n    ∀ (μ ε : NNReal),\n      NNReal.instPartialOrder.lt 0 ε →\n        Iff (Lax544225.Covering.EveryCutCovered d μ ε) (Lax544225.Boundary.EveryCutBoundaryCovered d μ ε)",
+          "startLine": 24,
+          "endLine": 27,
+          "doc": "In a finite totally ordered semimetric space, covering every proper cut is equivalent to covering its within-side μ-ball from the opposite boundary (Theorem 3, p. 10)."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225.BoundaryExistence",
+      "path": "concepts/Lax544225/BoundaryExistence.lean",
+      "title": "Corollary 1 — Boundary criterion for triviality",
+      "type": "corollary",
+      "description": "In a finite totally ordered semimetric space, only-trivial robustness is equivalent to opposite-boundary covering of every nonempty proper cut (Corollary 1, pp. 10–11).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Both directions are stated together as in the paper. Their separate arguments\nremain supporting lemmas in the proof package."
+        }
+      ],
+      "imports": [
+        "Lax544225.Boundary",
+        "Lax544225.OrderedSemimetric",
+        "Lax544225.PartitionRobustness"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.Boundary\nimport Lax544225.PartitionRobustness\nimport Lax544225.OrderedSemimetric\n\n/-!\n---\ntitle: Corollary 1 — Boundary criterion for triviality\ntype: corollary\n---\nIn a finite totally ordered semimetric space, only-trivial robustness is equivalent to opposite-boundary covering of every nonempty proper cut (Corollary 1, pp. 10–11).\n\n# Formalization notes\n\nBoth directions are stated together as in the paper. Their separate arguments\nremain supporting lemmas in the proof package.\n-/\n\nuniverse u\n\nnamespace Lax544225.BoundaryExistence\n\nopen scoped NNReal\nopen Semimetric OrderedSemimetric PartitionRobustness Boundary\n\n/-- In a finite totally ordered semimetric space, only-trivial robustness is equivalent to opposite-boundary covering of every nonempty proper cut (Corollary 1, pp. 10–11). -/\naxiom statement {S : Type u} [Finite S] [LinearOrder S] (d : Distance S)\n    (hd : IsOrdered d (· ≤ ·)) (μ ε : ℝ≥0) (hε : 0 < ε) :\n    OnlyTrivial d μ ε ↔ EveryCutBoundaryCovered d μ ε\n\nend Lax544225.BoundaryExistence\n",
+      "statements": [
+        {
+          "id": "Lax544225.BoundaryExistence.statement",
+          "signature": "statement : ∀ {S : Type u} [Finite S] [inst : LinearOrder S] (d : Lax544225.Semimetric.Distance S),\n  (Lax544225.OrderedSemimetric.IsOrdered d fun x1 x2 => instDistribLatticeOfLinearOrder.toSemilatticeInf.le x1 x2) →\n    ∀ (μ ε : NNReal),\n      NNReal.instPartialOrder.lt 0 ε →\n        Iff (Lax544225.PartitionRobustness.OnlyTrivial d μ ε) (Lax544225.Boundary.EveryCutBoundaryCovered d μ ε)",
+          "startLine": 25,
+          "endLine": 28,
+          "doc": "In a finite totally ordered semimetric space, only-trivial robustness is equivalent to opposite-boundary covering of every nonempty proper cut (Corollary 1, pp. 10–11)."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225.Classifier",
+      "path": "concepts/Lax544225/Classifier.lean",
+      "title": "Classifiers",
+      "type": "definition",
+      "description": "A classifier on S with n classes is a total surjective function from S to the n labels (Definition 1, p. 3).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Fin n labels the classes from 0 to n−1; adding 1 recovers the paper’s labels 1 to n. Surjectivity is retained. Existence of a classifier on a nonempty carrier implies n > 0."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.Fin.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.Fin.Basic\n\n/-!\n---\ntitle: Classifiers\ntype: definition\n---\nA classifier on S with n classes is a total surjective function from S to the n labels (Definition 1, p. 3).\n\n# Formalization notes\n\nFin n labels the classes from 0 to n−1; adding 1 recovers the paper’s labels 1 to n. Surjectivity is retained. Existence of a classifier on a nonempty carrier implies n > 0.\n-/\n\nuniverse u\n\nnamespace Lax544225.Classifier\n\n/-- A total classifier in which every label occurs. -/\nstructure Classifier (S : Type u) (n : ℕ) where\n  /-- The label assigned to each input. -/\n  label : S → Fin n\n  /-- Every class has a representative. -/\n  surjective : Function.Surjective label\n\nend Lax544225.Classifier\n",
+      "statements": []
+    },
+    {
+      "id": "Lax544225.ClassifierRobustness",
+      "path": "concepts/Lax544225/ClassifierRobustness.lean",
+      "title": "Local and relaxed classifier robustness",
+      "type": "definition",
+      "description": "Local ε-robustness means that the ε-ball of an input has its label. Global ε-robustness requires this at every input. Relaxed (μ,ε)-robustness requires every input to have a same-label, locally ε-robust point within distance μ (Definitions 3–4, pp. 3–4).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Radii are nonnegative reals. The predicates also make sense at ε=0; the paper’s results below explicitly require ε>0. The same-label requirement is present even when μ>ε."
+        }
+      ],
+      "imports": [
+        "Lax544225.Balls",
+        "Lax544225.Classifier"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.Classifier\nimport Lax544225.Balls\n\n/-!\n---\ntitle: Local and relaxed classifier robustness\ntype: definition\n---\nLocal ε-robustness means that the ε-ball of an input has its label. Global ε-robustness requires this at every input. Relaxed (μ,ε)-robustness requires every input to have a same-label, locally ε-robust point within distance μ (Definitions 3–4, pp. 3–4).\n\n# Formalization notes\n\nRadii are nonnegative reals. The predicates also make sense at ε=0; the paper’s results below explicitly require ε>0. The same-label requirement is present even when μ>ε.\n-/\n\nuniverse u\n\nnamespace Lax544225.ClassifierRobustness\n\nopen scoped NNReal\n\nopen Classifier Semimetric\n/-- Local robustness of the classifier at x. -/\ndef LocallyRobust {S : Type u} {n : ℕ} (d : Distance S)\n    (c : Classifier S n) (ε : ℝ≥0) (x : S) : Prop :=\n  ∀ y, d y x ≤ ε → c.label y = c.label x\n\n/-- Local robustness at every input. -/\ndef GloballyRobust {S : Type u} {n : ℕ} (d : Distance S)\n    (c : Classifier S n) (ε : ℝ≥0) : Prop :=\n  ∀ x, LocallyRobust d c ε x\n\n/-- Coverage of each input by a same-label locally robust input. -/\ndef RelaxedRobust {S : Type u} {n : ℕ} (d : Distance S)\n    (c : Classifier S n) (μ ε : ℝ≥0) : Prop :=\n  ∀ x, ∃ x', d x x' ≤ μ ∧ c.label x = c.label x' ∧ LocallyRobust d c ε x'\n\nend Lax544225.ClassifierRobustness\n",
+      "statements": []
+    },
+    {
+      "id": "Lax544225.Covering",
+      "path": "concepts/Lax544225/Covering.lean",
+      "title": "Covering obstructions",
+      "type": "definition",
+      "description": "The partition covering condition says that the μ-ball of a point in a part is not covered by ε-balls centered outside that part. The global cut obstruction requires every nonempty proper subset to have a point on one side whose μ-ball is covered from the other side (Theorems 1–2, pp. 6, 9).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "A proper nonempty subset has both itself and its complement nonempty. Neither the empty cut nor the whole carrier is tested. These predicates describe the covering conditions independently of robustness."
+        }
+      ],
+      "imports": [
+        "Lax544225.Balls"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.Balls\n\n/-!\n---\ntitle: Covering obstructions\ntype: definition\n---\nThe partition covering condition says that the μ-ball of a point in a part is not covered by ε-balls centered outside that part. The global cut obstruction requires every nonempty proper subset to have a point on one side whose μ-ball is covered from the other side (Theorems 1–2, pp. 6, 9).\n\n# Formalization notes\n\nA proper nonempty subset has both itself and its complement nonempty. Neither the empty cut nor the whole carrier is tested. These predicates describe the covering conditions independently of robustness.\n-/\n\nuniverse u\n\nnamespace Lax544225.Covering\n\nopen scoped NNReal\n\nopen Semimetric Balls\n/-- No μ-ball centered in a part is covered by ε-balls from its complement. -/\ndef Uncovered {S : Type u} (d : Distance S) (P : Set (Set S)) (μ ε : ℝ≥0) : Prop :=\n  ∀ A ∈ P, ∀ x ∈ A, ¬ ball d x μ ⊆ neighborhood d Aᶜ ε\n\n/-- Every nontrivial cut admits an opposite-side covering obstruction. -/\ndef EveryCutCovered {S : Type u} (d : Distance S) (μ ε : ℝ≥0) : Prop :=\n  ∀ A : Set S, A.Nonempty → Aᶜ.Nonempty →\n    ∃ x, (x ∈ A ∧ ball d x μ ⊆ neighborhood d Aᶜ ε) ∨\n      (x ∈ Aᶜ ∧ ball d x μ ⊆ neighborhood d A ε)\n\nend Lax544225.Covering\n",
+      "statements": []
+    },
+    {
+      "id": "Lax544225.CoveringCharacterization",
+      "path": "concepts/Lax544225/CoveringCharacterization.lean",
+      "title": "Theorem 1 — Covering characterization of robustness",
+      "type": "theorem",
+      "description": "A finite partition is (μ,ε)-robust exactly when no μ-ball centered in a part is covered by ε-balls from its complement (Theorem 1, p. 6).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Both directions are stated together as in the paper. Their separate arguments\nremain supporting lemmas in the proof package."
+        }
+      ],
+      "imports": [
+        "Lax544225.Covering",
+        "Lax544225.PartitionRobustness"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.PartitionRobustness\nimport Lax544225.Covering\n\n/-!\n---\ntitle: Theorem 1 — Covering characterization of robustness\ntype: theorem\n---\nA finite partition is (μ,ε)-robust exactly when no μ-ball centered in a part is covered by ε-balls from its complement (Theorem 1, p. 6).\n\n# Formalization notes\n\nBoth directions are stated together as in the paper. Their separate arguments\nremain supporting lemmas in the proof package.\n-/\n\nuniverse u\n\nnamespace Lax544225.CoveringCharacterization\n\nopen scoped NNReal\nopen Semimetric Partitions PartitionRobustness Covering\n\n/-- A finite partition is (μ,ε)-robust exactly when no μ-ball centered in a part is covered by ε-balls from its complement (Theorem 1, p. 6). -/\naxiom statement {S : Type u} (d : Distance S) (hd : IsSemimetric d) (P : Set (Set S))\n    (hP : IsPartition P) (μ ε : ℝ≥0) (hε : 0 < ε) :\n    Robust d P μ ε ↔ Uncovered d P μ ε\n\nend Lax544225.CoveringCharacterization\n",
+      "statements": [
+        {
+          "id": "Lax544225.CoveringCharacterization.statement",
+          "signature": "statement : ∀ {S : Type u} (d : Lax544225.Semimetric.Distance S),\n  Lax544225.Semimetric.IsSemimetric d →\n    ∀ (P : Set (Set S)),\n      Lax544225.Partitions.IsPartition P →\n        ∀ (μ ε : NNReal),\n          NNReal.instPartialOrder.lt 0 ε →\n            Iff (Lax544225.PartitionRobustness.Robust d P μ ε) (Lax544225.Covering.Uncovered d P μ ε)",
+          "startLine": 24,
+          "endLine": 27,
+          "doc": "A finite partition is (μ,ε)-robust exactly when no μ-ball centered in a part is covered by ε-balls from its complement (Theorem 1, p. 6)."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225.Decomposition",
+      "path": "concepts/Lax544225/Decomposition.lean",
+      "title": "Closed overlapping decompositions",
+      "type": "definition",
+      "description": "A (μ,ε)-decomposition is a finite family of nonempty subsets whose members contain every μ-ball centered in them and which connect every pair of inputs through a finite chain of overlapping members (Definition 11, p. 13).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The definition depends only on μ; ε appears in the applications. ReflTransGen encodes a finite chain, including a chain consisting of a single member. Membership of each endpoint member and each link is explicit. Finiteness concerns the family, not the sizes of its members."
+        }
+      ],
+      "imports": [
+        "Lax544225.Balls"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Set.Finite.Basic",
+        "Mathlib.Logic.Relation"
+      ],
+      "sourceText": "import Lax544225.Balls\nimport Mathlib.Logic.Relation\nimport Mathlib.Data.Set.Finite.Basic\n\n/-!\n---\ntitle: Closed overlapping decompositions\ntype: definition\n---\nA (μ,ε)-decomposition is a finite family of nonempty subsets whose members contain every μ-ball centered in them and which connect every pair of inputs through a finite chain of overlapping members (Definition 11, p. 13).\n\n# Formalization notes\n\nThe definition depends only on μ; ε appears in the applications. ReflTransGen encodes a finite chain, including a chain consisting of a single member. Membership of each endpoint member and each link is explicit. Finiteness concerns the family, not the sizes of its members.\n-/\n\nuniverse u\n\nnamespace Lax544225.Decomposition\n\nopen scoped NNReal\n\nopen Semimetric Balls\n/-- A finite family of nonempty μ-closed pieces connected by overlaps. -/\ndef IsDecomposition {S : Type u} (d : Distance S) (D : Set (Set S)) (μ : ℝ≥0) : Prop :=\n  D.Finite ∧ (∀ A ∈ D, A.Nonempty) ∧\n    (∀ A ∈ D, ∀ x ∈ A, ball d x μ ⊆ A) ∧\n    (∀ x y, ∃ A ∈ D, ∃ B ∈ D, x ∈ A ∧ y ∈ B ∧\n      Relation.ReflTransGen (fun C E => C ∈ D ∧ E ∈ D ∧ (C ∩ E).Nonempty) A B)\n\nend Lax544225.Decomposition\n",
+      "statements": []
+    },
+    {
+      "id": "Lax544225.DecompositionObstruction",
+      "path": "concepts/Lax544225/DecompositionObstruction.lean",
+      "title": "Theorem 5 — Decomposition transfers triviality",
+      "type": "theorem",
+      "description": "If a semimetric space has a (μ,ε)-decomposition and each induced subspace admits only trivial (μ,ε)-robust partitions, then the whole space admits only trivial (μ,ε)-robust partitions (Theorem 5, pp. 13–14).",
+      "imports": [
+        "Lax544225.Decomposition",
+        "Lax544225.PartitionRobustness"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.Decomposition\nimport Lax544225.PartitionRobustness\n\n/-!\n---\ntitle: Theorem 5 — Decomposition transfers triviality\ntype: theorem\n---\nIf a semimetric space has a (μ,ε)-decomposition and each induced subspace admits only trivial (μ,ε)-robust partitions, then the whole space admits only trivial (μ,ε)-robust partitions (Theorem 5, pp. 13–14).\n\n-/\n\nuniverse u\n\nnamespace Lax544225.DecompositionObstruction\n\nopen scoped NNReal\n\nopen Semimetric Decomposition PartitionRobustness\n\n/-- If a semimetric space has a (μ,ε)-decomposition and each induced subspace admits only trivial (μ,ε)-robust partitions, then the whole space admits only trivial (μ,ε)-robust partitions (Theorem 5, pp. 13–14). -/\naxiom statement {S : Type u} (d : Distance S) (hd : IsSemimetric d) (D : Set (Set S))\n    (μ ε : ℝ≥0) (hε : 0 < ε) (hD : IsDecomposition d D μ)\n    (hlocal : ∀ A ∈ D, OnlyTrivial (restrict d A) μ ε) : OnlyTrivial d μ ε\n\nend Lax544225.DecompositionObstruction\n",
+      "statements": [
+        {
+          "id": "Lax544225.DecompositionObstruction.statement",
+          "signature": "statement : ∀ {S : Type u} (d : Lax544225.Semimetric.Distance S),\n  Lax544225.Semimetric.IsSemimetric d →\n    ∀ (D : Set (Set S)) (μ ε : NNReal),\n      NNReal.instPartialOrder.lt 0 ε →\n        Lax544225.Decomposition.IsDecomposition d D μ →\n          (∀ (A : Set S),\n              Set.instMembership.mem D A →\n                Lax544225.PartitionRobustness.OnlyTrivial (Lax544225.Semimetric.restrict d A) μ ε) →\n            Lax544225.PartitionRobustness.OnlyTrivial d μ ε",
+          "startLine": 21,
+          "endLine": 24,
+          "doc": "If a semimetric space has a (μ,ε)-decomposition and each induced subspace admits only trivial (μ,ε)-robust partitions, then the whole space admits only trivial (μ,ε)-robust partitions (Theorem 5, pp. 13–14)."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225.FloatAbsoluteSpace",
+      "path": "concepts/Lax544225/FloatAbsoluteSpace.lean",
+      "title": "Proposition 1.1 — Absolute float distance",
+      "type": "proposition",
+      "description": "The absolute difference of φ gives an ordered semimetric space on canonical binary floats with their IEEE category order (Proposition 1.1, p. 8).",
+      "imports": [
+        "Lax544225.BinaryFloats"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.BinaryFloats\n\n/-!\n---\ntitle: Proposition 1.1 — Absolute float distance\ntype: proposition\n---\nThe absolute difference of φ gives an ordered semimetric space on canonical binary floats with their IEEE category order (Proposition 1.1, p. 8).\n\n-/\n\nuniverse u\n\nnamespace Lax544225.FloatAbsoluteSpace\n\nopen BinaryFloats OrderedSemimetric\n\n/-- The absolute difference of φ gives an ordered semimetric space on canonical binary floats with their IEEE category order (Proposition 1.1, p. 8). -/\naxiom statement (F : Format) : IsOrdered (absDistance F) (ieeeLe F)\n\nend Lax544225.FloatAbsoluteSpace\n",
+      "statements": [
+        {
+          "id": "Lax544225.FloatAbsoluteSpace.statement",
+          "signature": "statement : ∀ (F : Lax544225.BinaryFloats.Format),\n  Lax544225.OrderedSemimetric.IsOrdered (Lax544225.BinaryFloats.absDistance F) (Lax544225.BinaryFloats.ieeeLe F)",
+          "startLine": 18,
+          "endLine": 19,
+          "doc": "The absolute difference of φ gives an ordered semimetric space on canonical binary floats with their IEEE category order (Proposition 1.1, p. 8)."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225.FloatSquaredSpace",
+      "path": "concepts/Lax544225/FloatSquaredSpace.lean",
+      "title": "Proposition 1.2 — Squared float distance",
+      "type": "proposition",
+      "description": "The squared difference of φ gives an ordered semimetric space on canonical binary floats with their IEEE category order (Proposition 1.2, p. 8).",
+      "imports": [
+        "Lax544225.BinaryFloats"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.BinaryFloats\n\n/-!\n---\ntitle: Proposition 1.2 — Squared float distance\ntype: proposition\n---\nThe squared difference of φ gives an ordered semimetric space on canonical binary floats with their IEEE category order (Proposition 1.2, p. 8).\n\n-/\n\nuniverse u\n\nnamespace Lax544225.FloatSquaredSpace\n\nopen BinaryFloats OrderedSemimetric\n\n/-- The squared difference of φ gives an ordered semimetric space on canonical binary floats with their IEEE category order (Proposition 1.2, p. 8). -/\naxiom statement (F : Format) : IsOrdered (squareDistance F) (ieeeLe F)\n\nend Lax544225.FloatSquaredSpace\n",
+      "statements": [
+        {
+          "id": "Lax544225.FloatSquaredSpace.statement",
+          "signature": "statement : ∀ (F : Lax544225.BinaryFloats.Format),\n  Lax544225.OrderedSemimetric.IsOrdered (Lax544225.BinaryFloats.squareDistance F) (Lax544225.BinaryFloats.ieeeLe F)",
+          "startLine": 18,
+          "endLine": 19,
+          "doc": "The squared difference of φ gives an ordered semimetric space on canonical binary floats with their IEEE category order (Proposition 1.2, p. 8)."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225.GeneralExistence",
+      "path": "concepts/Lax544225/GeneralExistence.lean",
+      "title": "Theorem 2 — General existence criterion",
+      "type": "theorem",
+      "description": "The trivial partition is the only robust partition exactly when every nonempty proper cut admits a covering point on one side from ε-balls centered on the other side (Theorem 2, p. 9).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Both directions are stated together as in the paper. Their separate arguments\nremain supporting lemmas in the proof package."
+        }
+      ],
+      "imports": [
+        "Lax544225.Covering",
+        "Lax544225.PartitionRobustness"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.PartitionRobustness\nimport Lax544225.Covering\n\n/-!\n---\ntitle: Theorem 2 — General existence criterion\ntype: theorem\n---\nThe trivial partition is the only robust partition exactly when every nonempty proper cut admits a covering point on one side from ε-balls centered on the other side (Theorem 2, p. 9).\n\n# Formalization notes\n\nBoth directions are stated together as in the paper. Their separate arguments\nremain supporting lemmas in the proof package.\n-/\n\nuniverse u\n\nnamespace Lax544225.GeneralExistence\n\nopen scoped NNReal\nopen Semimetric PartitionRobustness Covering\n\n/-- The trivial partition is the only robust partition exactly when every nonempty proper cut admits a covering point on one side from ε-balls centered on the other side (Theorem 2, p. 9). -/\naxiom statement {S : Type u} (d : Distance S) (hd : IsSemimetric d)\n    (μ ε : ℝ≥0) (hε : 0 < ε) :\n    OnlyTrivial d μ ε ↔ EveryCutCovered d μ ε\n\nend Lax544225.GeneralExistence\n",
+      "statements": [
+        {
+          "id": "Lax544225.GeneralExistence.statement",
+          "signature": "statement : ∀ {S : Type u} (d : Lax544225.Semimetric.Distance S),\n  Lax544225.Semimetric.IsSemimetric d →\n    ∀ (μ ε : NNReal),\n      NNReal.instPartialOrder.lt 0 ε →\n        Iff (Lax544225.PartitionRobustness.OnlyTrivial d μ ε) (Lax544225.Covering.EveryCutCovered d μ ε)",
+          "startLine": 24,
+          "endLine": 27,
+          "doc": "The trivial partition is the only robust partition exactly when every nonempty proper cut admits a covering point on one side from ε-balls centered on the other side (Theorem 2, p. 9)."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225.ListSpaces",
+      "path": "concepts/Lax544225/ListSpaces.lean",
+      "title": "Padded list distances",
+      "type": "definition",
+      "description": "For finite lists, distances compare coordinates through the longer length, padding missing entries by a chosen point. A distance penalty of 1 is added for different lengths. Orders compare only equal-length lists, using the product or synchronized relation (Proposition 1.5, p. 8).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The floating-point instance chooses NaN as padding. Without the length penalty, appending NaN would give distance zero between different lists. The list maximum construction uses an additive base distance just as the fixed-length construction does."
+        }
+      ],
+      "imports": [
+        "Lax544225.ProductSpaces"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.List.GetD"
+      ],
+      "sourceText": "import Lax544225.ProductSpaces\nimport Mathlib.Data.List.GetD\n\n/-!\n---\ntitle: Padded list distances\ntype: definition\n---\nFor finite lists, distances compare coordinates through the longer length, padding missing entries by a chosen point. A distance penalty of 1 is added for different lengths. Orders compare only equal-length lists, using the product or synchronized relation (Proposition 1.5, p. 8).\n\n# Formalization notes\n\nThe floating-point instance chooses NaN as padding. Without the length penalty, appending NaN would give distance zero between different lists. The list maximum construction uses an additive base distance just as the fixed-length construction does.\n-/\n\nuniverse u\n\nnamespace Lax544225.ListSpaces\n\nopen scoped NNReal\n\nopen Semimetric\nopen scoped BigOperators\n/-- Equal-length lists ordered coordinatewise; other lengths are incomparable. -/\ndef listLe {S : Type u} (le : S → S → Prop) (pad : S) (f g : List S) : Prop :=\n  f.length = g.length ∧ ∀ i < f.length, le (f.getD i pad) (g.getD i pad)\n\n/-- Equal-length coordinatewise order with equal base distances across coordinates. -/\ndef synchronizedListLe {S : Type u} (d : Distance S) (le : S → S → Prop)\n    (pad : S) (f g : List S) : Prop :=\n  listLe le pad f g ∧ ∀ i < f.length, ∀ j < f.length,\n    d (f.getD i pad) (g.getD i pad) = d (f.getD j pad) (g.getD j pad)\n\n/-- A positive penalty that distinguishes different list lengths. -/\ndef lengthPenalty {S : Type u} (f g : List S) : ℝ≥0 :=\n  if f.length = g.length then 0 else 1\n\n/-- Sum of padded coordinate distances, plus the length penalty. -/\nnoncomputable def sumDistance {S : Type u} (d : Distance S) (pad : S) : Distance (List S) :=\n  fun f g => lengthPenalty f g +\n    ∑ i ∈ Finset.range (max f.length g.length), d (f.getD i pad) (g.getD i pad)\n\n/-- Maximum padded coordinate distance, plus the length penalty. -/\nnoncomputable def maxDistance {S : Type u} (d : Distance S) (pad : S) : Distance (List S) :=\n  fun f g => lengthPenalty f g +\n    (Finset.range (max f.length g.length)).sup (fun i => d (f.getD i pad) (g.getD i pad))\n\nend Lax544225.ListSpaces\n",
+      "statements": []
+    },
+    {
+      "id": "Lax544225.MaximumListSpace",
+      "path": "concepts/Lax544225/MaximumListSpace.lean",
+      "title": "Proposition 1.5 — Padded synchronized maximum lists",
+      "type": "proposition",
+      "description": "The padded maximum distance with the unit length penalty and synchronized equal-length order form an ordered semimetric space when the base is additive on chains (Proposition 1.5, p. 8).",
+      "imports": [
+        "Lax544225.ListSpaces"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.ListSpaces\n\n/-!\n---\ntitle: Proposition 1.5 — Padded synchronized maximum lists\ntype: proposition\n---\nThe padded maximum distance with the unit length penalty and synchronized equal-length order form an ordered semimetric space when the base is additive on chains (Proposition 1.5, p. 8).\n\n-/\n\nuniverse u\n\nnamespace Lax544225.MaximumListSpace\n\nopen Semimetric OrderedSemimetric ListSpaces\n\n/-- The padded maximum distance with the unit length penalty and synchronized equal-length order form an ordered semimetric space when the base is additive on chains (Proposition 1.5, p. 8). -/\naxiom statement {S : Type u} (d : Distance S) (le : S → S → Prop)\n    (hd : IsOrdered d le) (hadd : Additive d le) (pad : S) :\n    IsOrdered (maxDistance d pad) (synchronizedListLe d le pad)\n\nend Lax544225.MaximumListSpace\n",
+      "statements": [
+        {
+          "id": "Lax544225.MaximumListSpace.statement",
+          "signature": "statement : ∀ {S : Type u} (d : Lax544225.Semimetric.Distance S) (le : S → S → Prop),\n  Lax544225.OrderedSemimetric.IsOrdered d le →\n    Lax544225.OrderedSemimetric.Additive d le →\n      ∀ (pad : S),\n        Lax544225.OrderedSemimetric.IsOrdered (Lax544225.ListSpaces.maxDistance d pad)\n          (Lax544225.ListSpaces.synchronizedListLe d le pad)",
+          "startLine": 18,
+          "endLine": 21,
+          "doc": "The padded maximum distance with the unit length penalty and synchronized equal-length order form an ordered semimetric space when the base is additive on chains (Proposition 1.5, p. 8)."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225.MaximumProductSpace",
+      "path": "concepts/Lax544225/MaximumProductSpace.lean",
+      "title": "Proposition 1.4 — Synchronized maximum products",
+      "type": "proposition",
+      "description": "The maximum distance and synchronized order on finite tuples form an ordered semimetric space whenever the base is ordered semimetric and additive on chains (Proposition 1.4, p. 8).",
+      "imports": [
+        "Lax544225.ProductSpaces"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.ProductSpaces\n\n/-!\n---\ntitle: Proposition 1.4 — Synchronized maximum products\ntype: proposition\n---\nThe maximum distance and synchronized order on finite tuples form an ordered semimetric space whenever the base is ordered semimetric and additive on chains (Proposition 1.4, p. 8).\n\n-/\n\nuniverse u\n\nnamespace Lax544225.MaximumProductSpace\n\nopen Semimetric OrderedSemimetric ProductSpaces\n\n/-- The maximum distance and synchronized order on finite tuples form an ordered semimetric space whenever the base is ordered semimetric and additive on chains (Proposition 1.4, p. 8). -/\naxiom statement {S : Type u} (d : Distance S) (le : S → S → Prop)\n    (hd : IsOrdered d le) (hadd : Additive d le) (n : ℕ) :\n    IsOrdered (maxDistance d n) (synchronizedLe d le n)\n\nend Lax544225.MaximumProductSpace\n",
+      "statements": [
+        {
+          "id": "Lax544225.MaximumProductSpace.statement",
+          "signature": "statement : ∀ {S : Type u} (d : Lax544225.Semimetric.Distance S) (le : S → S → Prop),\n  Lax544225.OrderedSemimetric.IsOrdered d le →\n    Lax544225.OrderedSemimetric.Additive d le →\n      ∀ (n : Nat),\n        Lax544225.OrderedSemimetric.IsOrdered (Lax544225.ProductSpaces.maxDistance d n)\n          (Lax544225.ProductSpaces.synchronizedLe d le n)",
+          "startLine": 18,
+          "endLine": 21,
+          "doc": "The maximum distance and synchronized order on finite tuples form an ordered semimetric space whenever the base is ordered semimetric and additive on chains (Proposition 1.4, p. 8)."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225.OrderedSemimetric",
+      "path": "concepts/Lax544225/OrderedSemimetric.lean",
+      "title": "Ordered semimetric spaces",
+      "type": "definition",
+      "description": "An ordered semimetric space has a partial order with d(a,b)+d(b,c)≤d(a,c) whenever a≤b≤c (Definition 9, p. 7). An additive ordered distance satisfies equality on these chains.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The order is an explicit non-strict relation. IsPartialOrder provides reflexivity, transitivity, and antisymmetry. The reverse triangle inequality is imposed only on ordered chains. Additivity is an additional property needed for synchronized maximum distances."
+        }
+      ],
+      "imports": [
+        "Lax544225.Semimetric"
+      ],
+      "mathlibImports": [
+        "Mathlib.Order.Defs.PartialOrder"
+      ],
+      "sourceText": "import Lax544225.Semimetric\nimport Mathlib.Order.Defs.PartialOrder\n\n/-!\n---\ntitle: Ordered semimetric spaces\ntype: definition\n---\nAn ordered semimetric space has a partial order with d(a,b)+d(b,c)≤d(a,c) whenever a≤b≤c (Definition 9, p. 7). An additive ordered distance satisfies equality on these chains.\n\n# Formalization notes\n\nThe order is an explicit non-strict relation. IsPartialOrder provides reflexivity, transitivity, and antisymmetry. The reverse triangle inequality is imposed only on ordered chains. Additivity is an additional property needed for synchronized maximum distances.\n-/\n\nuniverse u\n\nnamespace Lax544225.OrderedSemimetric\n\nopen Semimetric\n/-- The semimetric, partial-order, and ordered-chain distance laws. -/\ndef IsOrdered {S : Type u} (d : Distance S) (le : S → S → Prop) : Prop :=\n  IsSemimetric d ∧ IsPartialOrder S le ∧\n    (∀ a b c, le a b → le b c → d a b + d b c ≤ d a c)\n\n/-- Exact additivity of distance along the given ordered chains. -/\ndef Additive {S : Type u} (d : Distance S) (le : S → S → Prop) : Prop :=\n  ∀ a b c, le a b → le b c → d a c = d a b + d b c\n\nend Lax544225.OrderedSemimetric\n",
+      "statements": []
+    },
+    {
+      "id": "Lax544225.PartialOrderPrecisionBound",
+      "path": "concepts/Lax544225/PartialOrderPrecisionBound.lean",
+      "title": "Corollary 3 — Precision bound on ordered pieces",
+      "type": "corollary",
+      "description": "In a finite partially ordered semimetric space, a (μ,ε)-decomposition into totally ordered pieces admits only trivial robust partitions if ε≥Δᵢδᵢμ+Δᵢ for every piece (Corollary 3, p. 14).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "For the finite family, bounding every piece is equivalent to bounding the maximum in the paper. Each piece uses its inherited order and interval cardinalities within that piece. Singleton pieces have Δᵢ=δᵢ=0 and automatically satisfy the bound, resolving the paper’s unspecified case without adding a size assumption."
+        }
+      ],
+      "imports": [
+        "Lax544225.Decomposition",
+        "Lax544225.OrderedSemimetric",
+        "Lax544225.PartitionRobustness",
+        "Lax544225.PrecisionGaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.Decomposition\nimport Lax544225.PartitionRobustness\nimport Lax544225.PrecisionGaps\nimport Lax544225.OrderedSemimetric\n\n/-!\n---\ntitle: Corollary 3 — Precision bound on ordered pieces\ntype: corollary\n---\nIn a finite partially ordered semimetric space, a (μ,ε)-decomposition into totally ordered pieces admits only trivial robust partitions if ε≥Δᵢδᵢμ+Δᵢ for every piece (Corollary 3, p. 14).\n\n# Formalization notes\n\nFor the finite family, bounding every piece is equivalent to bounding the maximum in the paper. Each piece uses its inherited order and interval cardinalities within that piece. Singleton pieces have Δᵢ=δᵢ=0 and automatically satisfy the bound, resolving the paper’s unspecified case without adding a size assumption.\n-/\n\nuniverse u\n\nnamespace Lax544225.PartialOrderPrecisionBound\n\nopen scoped NNReal\n\nopen Semimetric OrderedSemimetric Decomposition PartitionRobustness PrecisionGaps\n\n/-- In a finite partially ordered semimetric space, a (μ,ε)-decomposition into totally ordered pieces admits only trivial robust partitions if ε≥Δᵢδᵢμ+Δᵢ for every piece (Corollary 3, p. 14). -/\naxiom statement {S : Type u} [Finite S] [PartialOrder S] (d : Distance S)\n    (hd : IsOrdered d (· ≤ ·)) (D : Set (Set S)) (μ ε : ℝ≥0) (hε : 0 < ε)\n    (hD : IsDecomposition d D μ)\n    (hchain : ∀ A ∈ D, ∀ x ∈ A, ∀ y ∈ A, x ≤ y ∨ y ≤ x)\n    (hbound : ∀ A ∈ D, threshold (restrict d A) μ ≤ ε) : OnlyTrivial d μ ε\n\nend Lax544225.PartialOrderPrecisionBound\n",
+      "statements": [
+        {
+          "id": "Lax544225.PartialOrderPrecisionBound.statement",
+          "signature": "statement : ∀ {S : Type u} [Finite S] [inst : PartialOrder S] (d : Lax544225.Semimetric.Distance S),\n  (Lax544225.OrderedSemimetric.IsOrdered d fun x1 x2 => inst.le x1 x2) →\n    ∀ (D : Set (Set S)) (μ ε : NNReal),\n      NNReal.instPartialOrder.lt 0 ε →\n        Lax544225.Decomposition.IsDecomposition d D μ →\n          (∀ (A : Set S),\n              Set.instMembership.mem D A →\n                ∀ (x : S),\n                  Set.instMembership.mem A x → ∀ (y : S), Set.instMembership.mem A y → Or (inst.le x y) (inst.le y x)) →\n            (∀ (A : Set S),\n                Set.instMembership.mem D A →\n                  NNReal.instPartialOrder.le (Lax544225.PrecisionGaps.threshold (Lax544225.Semimetric.restrict d A) μ)\n                    ε) →\n              Lax544225.PartitionRobustness.OnlyTrivial d μ ε",
+          "startLine": 26,
+          "endLine": 31,
+          "doc": "In a finite partially ordered semimetric space, a (μ,ε)-decomposition into totally ordered pieces admits only trivial robust partitions if ε≥Δᵢδᵢμ+Δᵢ for every piece (Corollary 3, p. 14)."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225.PartitionRobustness",
+      "path": "concepts/Lax544225/PartitionRobustness.lean",
+      "title": "Robust and separated partitions",
+      "type": "definition",
+      "description": "A partition is (μ,ε)-robust when each input x has a nearby center x′ whose ε-ball and x lie in one part (Definition 8, p. 5). A partition is ε-separated when points in distinct parts are more than ε apart.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Partition validity is a separate hypothesis, not built into the robustness predicate. Triviality of every robust partition quantifies over finite valid partitions. Separation uses a strict inequality because balls are closed."
+        }
+      ],
+      "imports": [
+        "Lax544225.Balls",
+        "Lax544225.Partitions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.Partitions\nimport Lax544225.Balls\n\n/-!\n---\ntitle: Robust and separated partitions\ntype: definition\n---\nA partition is (μ,ε)-robust when each input x has a nearby center x′ whose ε-ball and x lie in one part (Definition 8, p. 5). A partition is ε-separated when points in distinct parts are more than ε apart.\n\n# Formalization notes\n\nPartition validity is a separate hypothesis, not built into the robustness predicate. Triviality of every robust partition quantifies over finite valid partitions. Separation uses a strict inequality because balls are closed.\n-/\n\nuniverse u\n\nnamespace Lax544225.PartitionRobustness\n\nopen scoped NNReal\n\nopen Semimetric Partitions Balls\n/-- Coverage by monochromatic balls whose centers are μ-close to the input. -/\ndef Robust {S : Type u} (d : Distance S) (P : Set (Set S)) (μ ε : ℝ≥0) : Prop :=\n  ∀ x, ∃ x', x' ∈ ball d x μ ∧ ∃ A ∈ P, x ∈ A ∧ ball d x' ε ⊆ A\n\n/-- Distinct parts are separated by distance strictly greater than ε. -/\ndef Separated {S : Type u} (d : Distance S) (P : Set (Set S)) (ε : ℝ≥0) : Prop :=\n  ∀ A ∈ P, ∀ B ∈ P, A ≠ B → ∀ x ∈ A, ∀ y ∈ B, ε < d x y\n\n/-- Every robust finite partition of the carrier has only the whole carrier as a part. -/\ndef OnlyTrivial {S : Type u} (d : Distance S) (μ ε : ℝ≥0) : Prop :=\n  ∀ P, IsPartition P → Robust d P μ ε → IsTrivial P\n\nend Lax544225.PartitionRobustness\n",
+      "statements": []
+    },
+    {
+      "id": "Lax544225.Partitions",
+      "path": "concepts/Lax544225/Partitions.lean",
+      "title": "Finite partitions and classifier fibers",
+      "type": "definition",
+      "description": "A partition is a finite collection of nonempty pairwise disjoint subsets covering S. The trivial partition has the single part S. A classifier induces the collection of its label fibers (Definitions 5–6, p. 5).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The family is a set of sets, so enumeration and duplicate parts are absent. Unique membership expresses covering and pairwise disjointness together. Finite families are required even when S is infinite."
+        }
+      ],
+      "imports": [
+        "Lax544225.Classifier"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Set.Finite.Basic"
+      ],
+      "sourceText": "import Lax544225.Classifier\nimport Mathlib.Data.Set.Finite.Basic\n\n/-!\n---\ntitle: Finite partitions and classifier fibers\ntype: definition\n---\nA partition is a finite collection of nonempty pairwise disjoint subsets covering S. The trivial partition has the single part S. A classifier induces the collection of its label fibers (Definitions 5–6, p. 5).\n\n# Formalization notes\n\nThe family is a set of sets, so enumeration and duplicate parts are absent. Unique membership expresses covering and pairwise disjointness together. Finite families are required even when S is infinite.\n-/\n\nuniverse u\n\nnamespace Lax544225.Partitions\n\nopen Classifier\n/-- A finite partition into nonempty parts with unique membership for every input. -/\ndef IsPartition {S : Type u} (P : Set (Set S)) : Prop :=\n  P.Finite ∧ (∀ A ∈ P, A.Nonempty) ∧ (∀ x, ∃! A, A ∈ P ∧ x ∈ A)\n\n/-- The partition consisting of the whole carrier as its only part. -/\ndef IsTrivial {S : Type u} (P : Set (Set S)) : Prop := P = {Set.univ}\n\n/-- The part assigned a particular classifier label. -/\ndef fiber {S : Type u} {n : ℕ} (c : Classifier S n) (i : Fin n) : Set S :=\n  {x | c.label x = i}\n\n/-- The collection of all label fibers. -/\ndef induced {S : Type u} {n : ℕ} (c : Classifier S n) : Set (Set S) :=\n  Set.range (fiber c)\n\nend Lax544225.Partitions\n",
+      "statements": []
+    },
+    {
+      "id": "Lax544225.PrecisionGaps",
+      "path": "concepts/Lax544225/PrecisionGaps.lean",
+      "title": "Precision gap measures",
+      "type": "definition",
+      "description": "For a finite linearly ordered semimetric space with at least two points, Δ is the maximum of d(x,y)/(|[x,y]|−1), and δ is the maximum of the reciprocal ratio (Definition 10, pp. 11–12).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The formulas are defined for partial orders and used only on finite totally ordered carriers or pieces. The interval uses the ambient order of that carrier or piece. Natural cardinalities are cast into ℝ≥0 before division. Suprema of the finite ratio sets are their maxima. On a singleton the ratio sets are empty and Δ=δ=0, extending the paper’s undefined singleton case so decomposition pieces of size one need no arbitrary parameters. Δ equals the largest adjacent gap only for an additive distance; no such equality is presumed for general semimetrics."
+        }
+      ],
+      "imports": [
+        "Lax544225.Semimetric"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.NNReal.Defs",
+        "Mathlib.Data.Set.Card",
+        "Mathlib.Order.Interval.Set.Basic"
+      ],
+      "sourceText": "import Lax544225.Semimetric\nimport Mathlib.Data.Set.Card\nimport Mathlib.Data.NNReal.Defs\nimport Mathlib.Order.Interval.Set.Basic\n\n/-!\n---\ntitle: Precision gap measures\ntype: definition\n---\nFor a finite linearly ordered semimetric space with at least two points, Δ is the maximum of d(x,y)/(|[x,y]|−1), and δ is the maximum of the reciprocal ratio (Definition 10, pp. 11–12).\n\n# Formalization notes\n\nThe formulas are defined for partial orders and used only on finite totally ordered carriers or pieces. The interval uses the ambient order of that carrier or piece. Natural cardinalities are cast into ℝ≥0 before division. Suprema of the finite ratio sets are their maxima. On a singleton the ratio sets are empty and Δ=δ=0, extending the paper’s undefined singleton case so decomposition pieces of size one need no arbitrary parameters. Δ equals the largest adjacent gap only for an additive distance; no such equality is presumed for general semimetrics.\n-/\n\nuniverse u\n\nnamespace Lax544225.PrecisionGaps\n\nopen scoped NNReal\n\nopen Semimetric\n/-- The number of consecutive steps between the endpoints of a closed interval. -/\nnoncomputable def steps {S : Type u} [PartialOrder S] (x y : S) : ℕ :=\n  (Set.Icc x y).ncard - 1\n\n/-- The largest average distance per ordered step. -/\nnoncomputable def deltaUpper {S : Type u} [PartialOrder S] (d : Distance S) : ℝ≥0 :=\n  sSup {r | ∃ x y, x < y ∧ r = d x y / (steps x y : ℝ≥0)}\n\n/-- The largest number of ordered steps per unit distance. -/\nnoncomputable def deltaInverse {S : Type u} [PartialOrder S] (d : Distance S) : ℝ≥0 :=\n  sSup {r | ∃ x y, x < y ∧ r = (steps x y : ℝ≥0) / d x y}\n\n/-- The paper’s precision-dependent obstruction threshold Δδμ+Δ. -/\nnoncomputable def threshold {S : Type u} [PartialOrder S] (d : Distance S)\n    (μ : ℝ≥0) : ℝ≥0 := deltaUpper d * deltaInverse d * μ + deltaUpper d\n\nend Lax544225.PrecisionGaps\n",
+      "statements": []
+    },
+    {
+      "id": "Lax544225.PrecisionObstruction",
+      "path": "concepts/Lax544225/PrecisionObstruction.lean",
+      "title": "Corollary 2 — Precision obstruction",
+      "type": "corollary",
+      "description": "In a finite totally ordered semimetric space, ε≥Δδμ+Δ forces every (μ,ε)-robust partition to be trivial (Corollary 2, p. 12).",
+      "imports": [
+        "Lax544225.OrderedSemimetric",
+        "Lax544225.PartitionRobustness",
+        "Lax544225.PrecisionGaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.PartitionRobustness\nimport Lax544225.PrecisionGaps\nimport Lax544225.OrderedSemimetric\n\n/-!\n---\ntitle: Corollary 2 — Precision obstruction\ntype: corollary\n---\nIn a finite totally ordered semimetric space, ε≥Δδμ+Δ forces every (μ,ε)-robust partition to be trivial (Corollary 2, p. 12).\n\n-/\n\nuniverse u\n\nnamespace Lax544225.PrecisionObstruction\n\nopen scoped NNReal\n\nopen Semimetric OrderedSemimetric PartitionRobustness PrecisionGaps\n\n/-- In a finite totally ordered semimetric space, ε≥Δδμ+Δ forces every (μ,ε)-robust partition to be trivial (Corollary 2, p. 12). -/\naxiom statement {S : Type u} [Finite S] [LinearOrder S] (d : Distance S)\n    (hd : IsOrdered d (· ≤ ·)) (μ ε : ℝ≥0) (hε : 0 < ε)\n    (hbound : threshold d μ ≤ ε) : OnlyTrivial d μ ε\n\nend Lax544225.PrecisionObstruction\n",
+      "statements": [
+        {
+          "id": "Lax544225.PrecisionObstruction.statement",
+          "signature": "statement : ∀ {S : Type u} [Finite S] [inst : LinearOrder S] (d : Lax544225.Semimetric.Distance S),\n  (Lax544225.OrderedSemimetric.IsOrdered d fun x1 x2 => instDistribLatticeOfLinearOrder.toSemilatticeInf.le x1 x2) →\n    ∀ (μ ε : NNReal),\n      NNReal.instPartialOrder.lt 0 ε →\n        NNReal.instPartialOrder.le (Lax544225.PrecisionGaps.threshold d μ) ε →\n          Lax544225.PartitionRobustness.OnlyTrivial d μ ε",
+          "startLine": 22,
+          "endLine": 25,
+          "doc": "In a finite totally ordered semimetric space, ε≥Δδμ+Δ forces every (μ,ε)-robust partition to be trivial (Corollary 2, p. 12)."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225.ProductSpaces",
+      "path": "concepts/Lax544225/ProductSpaces.lean",
+      "title": "Sum and synchronized maximum product distances",
+      "type": "definition",
+      "description": "On n-tuples, the sum distance uses the product partial order. The maximum distance uses the synchronized subrelation of that order: every coordinate changes by the same base distance. The maximum construction requires the base distance to be additive on chains (Proposition 1.3–1.4, p. 8).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Coordinates are Fin n; n=0 gives the singleton empty tuple. The maximum of no coordinate distances is 0. Non-strict relations include equality, as required of a partial order; the paper’s strict notation denotes their strict part."
+        }
+      ],
+      "imports": [
+        "Lax544225.OrderedSemimetric"
+      ],
+      "mathlibImports": [
+        "Mathlib.Algebra.Order.BigOperators.Group.Finset",
+        "Mathlib.Data.Finset.Lattice.Fold"
+      ],
+      "sourceText": "import Lax544225.OrderedSemimetric\nimport Mathlib.Algebra.Order.BigOperators.Group.Finset\nimport Mathlib.Data.Finset.Lattice.Fold\n\n/-!\n---\ntitle: Sum and synchronized maximum product distances\ntype: definition\n---\nOn n-tuples, the sum distance uses the product partial order. The maximum distance uses the synchronized subrelation of that order: every coordinate changes by the same base distance. The maximum construction requires the base distance to be additive on chains (Proposition 1.3–1.4, p. 8).\n\n# Formalization notes\n\nCoordinates are Fin n; n=0 gives the singleton empty tuple. The maximum of no coordinate distances is 0. Non-strict relations include equality, as required of a partial order; the paper’s strict notation denotes their strict part.\n-/\n\nuniverse u\n\nnamespace Lax544225.ProductSpaces\n\nopen Semimetric\nopen scoped BigOperators\n/-- Coordinatewise order on finite tuples. -/\ndef productLe {S : Type u} (le : S → S → Prop) (n : ℕ) (f g : Fin n → S) : Prop :=\n  ∀ i, le (f i) (g i)\n\n/-- Coordinatewise order restricted to equal distances in every coordinate. -/\ndef synchronizedLe {S : Type u} (d : Distance S) (le : S → S → Prop) (n : ℕ)\n    (f g : Fin n → S) : Prop :=\n  productLe le n f g ∧ ∀ i j, d (f i) (g i) = d (f j) (g j)\n\n/-- Sum of the base distances between corresponding coordinates. -/\nnoncomputable def sumDistance {S : Type u} (d : Distance S) (n : ℕ) : Distance (Fin n → S) :=\n  fun f g => ∑ i, d (f i) (g i)\n\n/-- Maximum of the base distances between corresponding coordinates. -/\nnoncomputable def maxDistance {S : Type u} (d : Distance S) (n : ℕ) : Distance (Fin n → S) :=\n  fun f g => Finset.univ.sup (fun i => d (f i) (g i))\n\nend Lax544225.ProductSpaces\n",
+      "statements": []
+    },
+    {
+      "id": "Lax544225.RestrictionCounterexample",
+      "path": "concepts/Lax544225/RestrictionCounterexample.lean",
+      "title": "Lemma 1.1 — Restriction counterexample",
+      "type": "lemma",
+      "description": "There is a four-point semimetric space with a nontrivial (1,1)-robust partition and a nonempty proper subset on which only the trivial partition is robust, although no global part contains that subset (Lemma 1.1, p. 13).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "This is an existential counterexample, not a universally quantified false implication. The paper’s witness is the line {0,1,2,3}, partitioned into {0,1} and {2,3}, with A={1,2}."
+        }
+      ],
+      "imports": [
+        "Lax544225.PartitionRobustness"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.PartitionRobustness\n\n/-!\n---\ntitle: Lemma 1.1 — Restriction counterexample\ntype: lemma\n---\nThere is a four-point semimetric space with a nontrivial (1,1)-robust partition and a nonempty proper subset on which only the trivial partition is robust, although no global part contains that subset (Lemma 1.1, p. 13).\n\n# Formalization notes\n\nThis is an existential counterexample, not a universally quantified false implication. The paper’s witness is the line {0,1,2,3}, partitioned into {0,1} and {2,3}, with A={1,2}.\n-/\n\nuniverse u\n\nnamespace Lax544225.RestrictionCounterexample\n\nopen Semimetric Partitions PartitionRobustness\n\n/-- There is a four-point semimetric space with a nontrivial (1,1)-robust partition and a nonempty proper subset on which only the trivial partition is robust, although no global part contains that subset (Lemma 1.1, p. 13). -/\naxiom statement : ∃ (d : Distance (Fin 4)) (P : Set (Set (Fin 4))) (A : Set (Fin 4)),\n    IsSemimetric d ∧ IsPartition P ∧ Robust d P 1 1 ∧\n    A.Nonempty ∧ Aᶜ.Nonempty ∧ OnlyTrivial (restrict d A) 1 1 ∧\n    ¬ ∃ B ∈ P, A ⊆ B\n\nend Lax544225.RestrictionCounterexample\n",
+      "statements": [
+        {
+          "id": "Lax544225.RestrictionCounterexample.statement",
+          "signature": "statement : Exists fun d =>\n  Exists fun P =>\n    Exists fun A =>\n      And (Lax544225.Semimetric.IsSemimetric d)\n        (And (Lax544225.Partitions.IsPartition P)\n          (And (Lax544225.PartitionRobustness.Robust d P 1 1)\n            (And A.Nonempty\n              (And (Set.instCompl.compl A).Nonempty\n                (And (Lax544225.PartitionRobustness.OnlyTrivial (Lax544225.Semimetric.restrict d A) 1 1)\n                  (Not (Exists fun B => And (Set.instMembership.mem P B) (Set.instLE.le A B))))))))",
+          "startLine": 21,
+          "endLine": 25,
+          "doc": "There is a four-point semimetric space with a nontrivial (1,1)-robust partition and a nonempty proper subset on which only the trivial partition is robust, although no global part contains that subset (Lemma 1.1, p. 13)."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225.Semimetric",
+      "path": "concepts/Lax544225/Semimetric.lean",
+      "title": "Semimetric spaces",
+      "type": "definition",
+      "description": "A semimetric space is a nonempty set equipped with a symmetric, nonnegative real distance that is zero exactly on equal inputs. No triangle inequality is imposed (Definition 2, p. 3).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The codomain ℝ≥0 supplies nonnegativity. The carrier is a type; nonemptiness is part of the predicate. Subspaces carry the restriction of the same distance."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.NNReal.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.NNReal.Basic\n\n/-!\n---\ntitle: Semimetric spaces\ntype: definition\n---\nA semimetric space is a nonempty set equipped with a symmetric, nonnegative real distance that is zero exactly on equal inputs. No triangle inequality is imposed (Definition 2, p. 3).\n\n# Formalization notes\n\nThe codomain ℝ≥0 supplies nonnegativity. The carrier is a type; nonemptiness is part of the predicate. Subspaces carry the restriction of the same distance.\n-/\n\nuniverse u\n\nnamespace Lax544225.Semimetric\n\nopen scoped NNReal\n\n/-- A nonnegative real-valued distance on a carrier. -/\nabbrev Distance (S : Type u) := S → S → ℝ≥0\n\n/-- The defining properties of a semimetric space, including a nonempty carrier. -/\ndef IsSemimetric {S : Type u} (d : Distance S) : Prop :=\n  Nonempty S ∧ (∀ x y, d x y = 0 ↔ x = y) ∧ (∀ x y, d x y = d y x)\n\n/-- The distance inherited by a subset. -/\ndef restrict {S : Type u} (d : Distance S) (A : Set S) : Distance A :=\n  fun x y => d x.val y.val\n\nend Lax544225.Semimetric\n",
+      "statements": []
+    },
+    {
+      "id": "Lax544225.SuccessorCovering",
+      "path": "concepts/Lax544225/SuccessorCovering.lean",
+      "title": "Theorem 4 — Successor covering at the precision bound",
+      "type": "theorem",
+      "description": "In a finite totally ordered semimetric space, ε≥Δδμ+Δ implies B(x,μ)⊆B(y,ε) whenever y is the immediate successor of x (Theorem 4, p. 12).",
+      "imports": [
+        "Lax544225.Boundary",
+        "Lax544225.OrderedSemimetric",
+        "Lax544225.PrecisionGaps"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.Boundary\nimport Lax544225.PrecisionGaps\nimport Lax544225.OrderedSemimetric\n\n/-!\n---\ntitle: Theorem 4 — Successor covering at the precision bound\ntype: theorem\n---\nIn a finite totally ordered semimetric space, ε≥Δδμ+Δ implies B(x,μ)⊆B(y,ε) whenever y is the immediate successor of x (Theorem 4, p. 12).\n\n-/\n\nuniverse u\n\nnamespace Lax544225.SuccessorCovering\n\nopen scoped NNReal\n\nopen Semimetric OrderedSemimetric Balls Boundary PrecisionGaps\n\n/-- In a finite totally ordered semimetric space, ε≥Δδμ+Δ implies B(x,μ)⊆B(y,ε) whenever y is the immediate successor of x (Theorem 4, p. 12). -/\naxiom statement {S : Type u} [Finite S] [LinearOrder S] (d : Distance S)\n    (hd : IsOrdered d (· ≤ ·)) (μ ε : ℝ≥0) (hε : 0 < ε)\n    (hbound : threshold d μ ≤ ε) (x y : S) (hxy : Successor x y) :\n    ball d x μ ⊆ ball d y ε\n\nend Lax544225.SuccessorCovering\n",
+      "statements": [
+        {
+          "id": "Lax544225.SuccessorCovering.statement",
+          "signature": "statement : ∀ {S : Type u} [Finite S] [inst : LinearOrder S] (d : Lax544225.Semimetric.Distance S),\n  (Lax544225.OrderedSemimetric.IsOrdered d fun x1 x2 => instDistribLatticeOfLinearOrder.toSemilatticeInf.le x1 x2) →\n    ∀ (μ ε : NNReal),\n      NNReal.instPartialOrder.lt 0 ε →\n        NNReal.instPartialOrder.le (Lax544225.PrecisionGaps.threshold d μ) ε →\n          ∀ (x y : S),\n            Lax544225.Boundary.Successor x y → Set.instLE.le (Lax544225.Balls.ball d x μ) (Lax544225.Balls.ball d y ε)",
+          "startLine": 22,
+          "endLine": 26,
+          "doc": "In a finite totally ordered semimetric space, ε≥Δδμ+Δ implies B(x,μ)⊆B(y,ε) whenever y is the immediate successor of x (Theorem 4, p. 12)."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225.SumListSpace",
+      "path": "concepts/Lax544225/SumListSpace.lean",
+      "title": "Proposition 1.5 — Padded sum lists",
+      "type": "proposition",
+      "description": "The padded sum distance with the unit length penalty and equal-length coordinatewise order form an ordered semimetric space (Proposition 1.5, p. 8).",
+      "imports": [
+        "Lax544225.ListSpaces"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.ListSpaces\n\n/-!\n---\ntitle: Proposition 1.5 — Padded sum lists\ntype: proposition\n---\nThe padded sum distance with the unit length penalty and equal-length coordinatewise order form an ordered semimetric space (Proposition 1.5, p. 8).\n\n-/\n\nuniverse u\n\nnamespace Lax544225.SumListSpace\n\nopen Semimetric OrderedSemimetric ListSpaces\n\n/-- The padded sum distance with the unit length penalty and equal-length coordinatewise order form an ordered semimetric space (Proposition 1.5, p. 8). -/\naxiom statement {S : Type u} (d : Distance S) (le : S → S → Prop) (hd : IsOrdered d le)\n    (pad : S) : IsOrdered (sumDistance d pad) (listLe le pad)\n\nend Lax544225.SumListSpace\n",
+      "statements": [
+        {
+          "id": "Lax544225.SumListSpace.statement",
+          "signature": "statement : ∀ {S : Type u} (d : Lax544225.Semimetric.Distance S) (le : S → S → Prop),\n  Lax544225.OrderedSemimetric.IsOrdered d le →\n    ∀ (pad : S),\n      Lax544225.OrderedSemimetric.IsOrdered (Lax544225.ListSpaces.sumDistance d pad)\n        (Lax544225.ListSpaces.listLe le pad)",
+          "startLine": 18,
+          "endLine": 20,
+          "doc": "The padded sum distance with the unit length penalty and equal-length coordinatewise order form an ordered semimetric space (Proposition 1.5, p. 8)."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225.SumProductSpace",
+      "path": "concepts/Lax544225/SumProductSpace.lean",
+      "title": "Proposition 1.3 — Sum products",
+      "type": "proposition",
+      "description": "The sum distance and coordinatewise order on finite tuples form an ordered semimetric space whenever the base is one (Proposition 1.3, p. 8).",
+      "imports": [
+        "Lax544225.ProductSpaces"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.ProductSpaces\n\n/-!\n---\ntitle: Proposition 1.3 — Sum products\ntype: proposition\n---\nThe sum distance and coordinatewise order on finite tuples form an ordered semimetric space whenever the base is one (Proposition 1.3, p. 8).\n\n-/\n\nuniverse u\n\nnamespace Lax544225.SumProductSpace\n\nopen Semimetric OrderedSemimetric ProductSpaces\n\n/-- The sum distance and coordinatewise order on finite tuples form an ordered semimetric space whenever the base is one (Proposition 1.3, p. 8). -/\naxiom statement {S : Type u} (d : Distance S) (le : S → S → Prop)\n    (hd : IsOrdered d le) (n : ℕ) : IsOrdered (sumDistance d n) (productLe le n)\n\nend Lax544225.SumProductSpace\n",
+      "statements": [
+        {
+          "id": "Lax544225.SumProductSpace.statement",
+          "signature": "statement : ∀ {S : Type u} (d : Lax544225.Semimetric.Distance S) (le : S → S → Prop),\n  Lax544225.OrderedSemimetric.IsOrdered d le →\n    ∀ (n : Nat),\n      Lax544225.OrderedSemimetric.IsOrdered (Lax544225.ProductSpaces.sumDistance d n)\n        (Lax544225.ProductSpaces.productLe le n)",
+          "startLine": 18,
+          "endLine": 20,
+          "doc": "The sum distance and coordinatewise order on finite tuples form an ordered semimetric space whenever the base is one (Proposition 1.3, p. 8)."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225.UnionCounterexample",
+      "path": "concepts/Lax544225/UnionCounterexample.lean",
+      "title": "Lemma 1.2 — Union counterexample",
+      "type": "lemma",
+      "description": "Two nonempty proper overlapping subsets can each admit only trivial (1,1)-robust partitions while their union is a four-point space admitting a nontrivial (1,1)-robust partition (Lemma 1.2, p. 13).",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The paper’s witness is the line {0,1,2,3} with A={0,1,2}, B={1,2,3}, and the two-part partition {{0,1},{2,3}}. The conjunction describes this single counterexample witness."
+        }
+      ],
+      "imports": [
+        "Lax544225.PartitionRobustness"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax544225.PartitionRobustness\n\n/-!\n---\ntitle: Lemma 1.2 — Union counterexample\ntype: lemma\n---\nTwo nonempty proper overlapping subsets can each admit only trivial (1,1)-robust partitions while their union is a four-point space admitting a nontrivial (1,1)-robust partition (Lemma 1.2, p. 13).\n\n# Formalization notes\n\nThe paper’s witness is the line {0,1,2,3} with A={0,1,2}, B={1,2,3}, and the two-part partition {{0,1},{2,3}}. The conjunction describes this single counterexample witness.\n-/\n\nuniverse u\n\nnamespace Lax544225.UnionCounterexample\n\nopen Semimetric Partitions PartitionRobustness\n\n/-- Two nonempty proper overlapping subsets can each admit only trivial (1,1)-robust partitions while their union is a four-point space admitting a nontrivial (1,1)-robust partition (Lemma 1.2, p. 13). -/\naxiom statement : ∃ (d : Distance (Fin 4)) (A B : Set (Fin 4)) (P : Set (Set (Fin 4))),\n    IsSemimetric d ∧ Aᶜ.Nonempty ∧ Bᶜ.Nonempty ∧ (A ∩ B).Nonempty ∧\n    A ∪ B = Set.univ ∧ OnlyTrivial (restrict d A) 1 1 ∧\n    OnlyTrivial (restrict d B) 1 1 ∧ IsPartition P ∧ Robust d P 1 1 ∧ ¬ IsTrivial P\n\nend Lax544225.UnionCounterexample\n",
+      "statements": [
+        {
+          "id": "Lax544225.UnionCounterexample.statement",
+          "signature": "statement : Exists fun d =>\n  Exists fun A =>\n    Exists fun B =>\n      Exists fun P =>\n        And (Lax544225.Semimetric.IsSemimetric d)\n          (And (Set.instCompl.compl A).Nonempty\n            (And (Set.instCompl.compl B).Nonempty\n              (And (Set.instInter.inter A B).Nonempty\n                (And (Eq (Set.instUnion.union A B) Set.univ)\n                  (And (Lax544225.PartitionRobustness.OnlyTrivial (Lax544225.Semimetric.restrict d A) 1 1)\n                    (And (Lax544225.PartitionRobustness.OnlyTrivial (Lax544225.Semimetric.restrict d B) 1 1)\n                      (And (Lax544225.Partitions.IsPartition P)\n                        (And (Lax544225.PartitionRobustness.Robust d P 1 1)\n                          (Not (Lax544225.Partitions.IsTrivial P))))))))))",
+          "startLine": 21,
+          "endLine": 25,
+          "doc": "Two nonempty proper overlapping subsets can each admit only trivial (1,1)-robust partitions while their union is a four-point space admitting a nontrivial (1,1)-robust partition (Lemma 1.2, p. 13)."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax544225Proofs.Counterexamples.restrictionCounterexample",
+      "path": "proofs/Lax544225Proofs/Counterexamples.lean",
+      "conclusion": "Lax544225.RestrictionCounterexample.statement",
+      "assumptions": [],
+      "description": "The four-point line has a robust two-part partition, while its middle pair is\nlocally trivial and crosses both global parts.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Use ordinary integer distance on {0,1,2,3} and the cut at 2. Centers 0 and 3\nwitness robustness. In the restricted middle pair, every unit ball contains 1,\nso the common-ball lemma forces triviality. The pair is in neither global part."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Lemma 1.1 of Aleksandrov and Völlinger, *Relaxing Global Classifier Robustness\non Semimetric Spaces*, supplied FSEN 2027 manuscript, p. 13."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225Proofs.Counterexamples.unionCounterexample",
+      "path": "proofs/Lax544225Proofs/Counterexamples.lean",
+      "conclusion": "Lax544225.UnionCounterexample.statement",
+      "assumptions": [],
+      "description": "The overlapping triples of the four-point line are locally trivial, although\ntheir union has a nontrivial robust partition.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Reuse the four-point line and split. Every unit ball in {0,1,2} contains 1,\nand every unit ball in {1,2,3} contains 2. Apply the common-ball lemma on each\ntriple and verify their overlap and union directly."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Lemma 1.2 of Aleksandrov and Völlinger, *Relaxing Global Classifier Robustness\non Semimetric Spaces*, supplied FSEN 2027 manuscript, p. 13."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225Proofs.Decomposition.decompositionObstruction",
+      "path": "proofs/Lax544225Proofs/Decomposition.lean",
+      "conclusion": "Lax544225.DecompositionObstruction.statement",
+      "assumptions": [],
+      "description": "Local triviality propagates through a closed overlap decomposition.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Intersect a robust partition with a μ-closed piece and discard empty traces.\nThe traces form a robust partition of the induced subspace, hence are trivial.\nEach piece is therefore monochromatic. A finite overlap chain propagates its\npart to any input, forcing that part to be the whole carrier."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Theorem 5 of Aleksandrov and Völlinger, *Relaxing Global Classifier Robustness\non Semimetric Spaces*, supplied FSEN 2027 manuscript, pp. 13–14."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225Proofs.Decomposition.partialOrderPrecisionBound",
+      "path": "proofs/Lax544225Proofs/Decomposition.lean",
+      "conclusion": "Lax544225.PartialOrderPrecisionBound.statement",
+      "assumptions": [
+        "Lax544225.DecompositionObstruction.statement",
+        "Lax544225.PrecisionObstruction.statement"
+      ],
+      "description": "Precision bounds on totally ordered decomposition pieces imply global triviality.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Give each piece its inherited linear order, preserving the interval steps in\nits precision measures. Apply the total-order precision obstruction on each\npiece, then use the closed overlap decomposition theorem."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Corollary 3 of Aleksandrov and Völlinger, *Relaxing Global Classifier Robustness\non Semimetric Spaces*, supplied FSEN 2027 manuscript, p. 14."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225Proofs.FloatEmbedding.floatAbsoluteSpace",
+      "path": "proofs/Lax544225Proofs/FloatEmbedding.lean",
+      "conclusion": "Lax544225.FloatAbsoluteSpace.statement",
+      "assumptions": [],
+      "description": "Absolute embedded distance forms an ordered semimetric.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Injectivity of φ gives distance-zero separation, and absolute differences are\nsymmetric. Reuse the proved IEEE linear order and scalar chain additivity,\nwhose equality implies the required antitriangle inequality."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Proposition 1.1 of the source paper."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225Proofs.FloatEmbedding.floatSquaredSpace",
+      "path": "proofs/Lax544225Proofs/FloatEmbedding.lean",
+      "conclusion": "Lax544225.FloatSquaredSpace.statement",
+      "assumptions": [],
+      "description": "Squared embedded distance forms an ordered semimetric.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Injectivity of φ gives distance-zero separation; reversing a difference leaves\nits square unchanged. Along an increasing embedded chain, expanding the total\nsquare adds twice the nonnegative product of the adjacent increments."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Proposition 1.2 of the source paper and the squared-distance construction in\n`flocq_ordered_spaces/semimetrics.v` of verinncoq/mueps-robustness-proofs."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225Proofs.MainResults.boundaryCoveringCharacterization",
+      "path": "proofs/Lax544225Proofs/MainResults.lean",
+      "conclusion": "Lax544225.BoundaryCoveringCharacterization.statement",
+      "assumptions": [],
+      "description": "Theorem 3: cut covering is equivalent to covering from opposite boundaries.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Combine the two supporting implications. Between a covered within-side point\nand an opposite-side center, choose a consecutive boundary crossing. The ordered\nantitriangle law bounds distance to that boundary. To recover whole-ball\ncoverage, opposite-side points cover themselves with their own ε-balls."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Theorem 3 of Aleksandrov and Völlinger, *Relaxing Global Classifier Robustness\non Semimetric Spaces*, supplied FSEN 2027 manuscript, p. 10."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225Proofs.MainResults.boundaryExistence",
+      "path": "proofs/Lax544225Proofs/MainResults.lean",
+      "conclusion": "Lax544225.BoundaryExistence.statement",
+      "assumptions": [
+        "Lax544225.BoundaryCoveringCharacterization.statement",
+        "Lax544225.GeneralExistence.statement"
+      ],
+      "description": "Corollary 1: only-trivial robustness is equivalent to opposite-boundary covering.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Combine the two supporting compositions of Theorem 2 with Theorem 3. The\ngeneral existence criterion converts triviality to cut covering, and the\nboundary characterization converts cut covering to boundary covering."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Corollary 1 of Aleksandrov and Völlinger, *Relaxing Global Classifier Robustness\non Semimetric Spaces*, supplied FSEN 2027 manuscript, pp. 10–11."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225Proofs.MainResults.coveringCharacterization",
+      "path": "proofs/Lax544225Proofs/MainResults.lean",
+      "conclusion": "Lax544225.CoveringCharacterization.statement",
+      "assumptions": [],
+      "description": "Theorem 1: robustness is equivalent to failure of opposite-part coverage.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Combine the two supporting implications. A robust center avoids the\nε-neighborhood of the complement of its part. Conversely, an uncovered μ-ball\nsupplies a center whose ε-ball stays within the selected part."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Theorem 1 of Aleksandrov and Völlinger, *Relaxing Global Classifier Robustness\non Semimetric Spaces*, supplied FSEN 2027 manuscript, p. 6."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225Proofs.MainResults.generalExistence",
+      "path": "proofs/Lax544225Proofs/MainResults.lean",
+      "conclusion": "Lax544225.GeneralExistence.statement",
+      "assumptions": [
+        "Lax544225.CoveringCharacterization.statement"
+      ],
+      "description": "Theorem 2: only-trivial robustness is equivalent to coverage of every proper cut.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Combine the two cut arguments, using Theorem 1. An uncovered proper cut and its\ncomplement give a nontrivial robust partition. In the converse direction, a\nproper part of a robust partition contradicts coverage of that cut."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Theorem 2 of Aleksandrov and Völlinger, *Relaxing Global Classifier Robustness\non Semimetric Spaces*, supplied FSEN 2027 manuscript, p. 9."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225Proofs.maximumListSpace",
+      "path": "proofs/Lax544225Proofs/Lists.lean",
+      "conclusion": "Lax544225.MaximumListSpace.statement",
+      "assumptions": [
+        "Lax544225.MaximumProductSpace.statement"
+      ],
+      "description": "Padded synchronized maxima with a length penalty form an ordered semimetric space.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Use the synchronized maximum-product result on the padded coordinate vectors.\nThe length penalty and tuple separation distinguish lists. Equal-length\ncomparison transfers the synchronized partial order, including its transitivity,\nand the chain distance bound from the corresponding tuple construction."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Proposition 1.5 of Aleksandrov and Völlinger's supplied FSEN 2027 manuscript;\nthe padded length-penalty construction is also present in the cited Rocq reference."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225Proofs.maximumProductSpace",
+      "path": "proofs/Lax544225Proofs/Products.lean",
+      "conclusion": "Lax544225.MaximumProductSpace.statement",
+      "assumptions": [],
+      "description": "Synchronized finite maxima preserve the ordered semimetric laws.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "A maximum vanishes exactly when every coordinate distance vanishes. Exact\nbase additivity makes synchronization transitive. On a nonempty synchronized\nproduct the maximum equals any coordinate distance, giving exact chain\nadditivity; the empty product has distance zero."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Proposition 1.4 of Aleksandrov and Völlinger's supplied FSEN 2027 manuscript;\nthe synchronized construction is also described in the cited Rocq reference."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225Proofs.OrderedBounds.precisionObstruction",
+      "path": "proofs/Lax544225Proofs/OrderedBounds.lean",
+      "conclusion": "Lax544225.PrecisionObstruction.statement",
+      "assumptions": [
+        "Lax544225.GeneralExistence.statement",
+        "Lax544225.SuccessorCovering.statement"
+      ],
+      "description": "The precision threshold excludes every nontrivial robust partition.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Each proper cut has a consecutive crossing pair. SuccessorCovering places the\nball at the lower point inside an epsilon-ball centered across the cut. Apply the\nprevious general cut-covering obstruction."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Aleksandrov and Völlinger, Corollary 2."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225Proofs.OrderedBounds.successorCovering",
+      "path": "proofs/Lax544225Proofs/OrderedBounds.lean",
+      "conclusion": "Lax544225.SuccessorCovering.statement",
+      "assumptions": [],
+      "description": "The precision threshold covers a ball from the next ordered point.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Use the finite ratio suprema to bound distance by Delta times interval steps and\nsteps by delta times distance. A successor adds exactly one interval step. On the\nother side of the successor, the ordered antitriangle inequality gives monotonicity."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Aleksandrov and Völlinger, Theorem 4."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225Proofs.sumListSpace",
+      "path": "proofs/Lax544225Proofs/Lists.lean",
+      "conclusion": "Lax544225.SumListSpace.statement",
+      "assumptions": [
+        "Lax544225.SumProductSpace.statement"
+      ],
+      "description": "Padded finite sums with a length penalty form an ordered semimetric space.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Transfer the tuple semimetric and partial-order laws through padded coordinate\nvectors. A vanishing length penalty forces equal lengths, and tuple separation\nthen forces list equality. On comparable lists the penalty is zero and all\nlengths coincide, so the sum-product antitriangle result applies directly."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Proposition 1.5 of Aleksandrov and Völlinger's supplied FSEN 2027 manuscript."
+        }
+      ]
+    },
+    {
+      "id": "Lax544225Proofs.sumProductSpace",
+      "path": "proofs/Lax544225Proofs/Products.lean",
+      "conclusion": "Lax544225.SumProductSpace.statement",
+      "assumptions": [],
+      "description": "Finite sums preserve the ordered semimetric laws.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "Zero sums force coordinate equality; symmetry and the antitriangle law follow\ncoordinatewise. The empty product is included by the same finite-sum laws."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "Proposition 1.3 of Aleksandrov and Völlinger's supplied FSEN 2027 manuscript."
+        }
+      ]
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "d442411fb54a6304c2877fa1efc2823aeef2a667ff33c2c0e0e7087b0044ce64",
+    "sourceCommit": "45d77c4b7b0138e0d4456ee341cd6b33be4773bf",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax544225/Balls.c",
+        "bytes": 1559,
+        "sha256": "ee9ef582b5079a0a80e2c17ba6ba733775b8578f1b5bcb10b44a3cf507e7a491"
+      },
+      {
+        "path": "concepts/ir/Lax544225/Balls.c.hash",
+        "bytes": 16,
+        "sha256": "5f4025c2bb241c9939775ac53c3e3816438e7283b00c5179ce61c77547027e6d"
+      },
+      {
+        "path": "concepts/ir/Lax544225/BinaryFloats.c",
+        "bytes": 14135,
+        "sha256": "d577345d22fda412d9c9d8ec88adc157e3bf2b445fb4cb70569adae06c02b9af"
+      },
+      {
+        "path": "concepts/ir/Lax544225/BinaryFloats.c.hash",
+        "bytes": 16,
+        "sha256": "1700c65f336218c4aef390a4dec39b81855d4a9e72f4615473e40dc77ff915f8"
+      },
+      {
+        "path": "concepts/ir/Lax544225/Boundary.c",
+        "bytes": 1583,
+        "sha256": "b3dafcde00d9fcab4f87bff67973f5b8319a3e1f2169558d919f22e7eef4810a"
+      },
+      {
+        "path": "concepts/ir/Lax544225/Boundary.c.hash",
+        "bytes": 16,
+        "sha256": "0e6813cd9fb20f60740413d8422ea61ad979720750585f42c941f622b4a3d29d"
+      },
+      {
+        "path": "concepts/ir/Lax544225/BoundaryCoveringCharacterization.c",
+        "bytes": 1620,
+        "sha256": "3fbe82ee7c4d697b898f46cf25e6c14fe5146707932b3b5ac2c17e77813861fc"
+      },
+      {
+        "path": "concepts/ir/Lax544225/BoundaryCoveringCharacterization.c.hash",
+        "bytes": 16,
+        "sha256": "ac74608e37c93d53a8bd51a3ee6470ed28098196067c404fe9c046f3d0834e49"
+      },
+      {
+        "path": "concepts/ir/Lax544225/BoundaryExistence.c",
+        "bytes": 1848,
+        "sha256": "71c8203fc6059f938017367644865005973dafd21a2f47fe8060e28929fb4411"
+      },
+      {
+        "path": "concepts/ir/Lax544225/BoundaryExistence.c.hash",
+        "bytes": 16,
+        "sha256": "e1d98fa4b52747b112b07e49cb111c7d6fa1e09c3b55afc35f5bf543add67c31"
+      },
+      {
+        "path": "concepts/ir/Lax544225/Classifier.c",
+        "bytes": 1332,
+        "sha256": "3b9d3d8cdd87dd73ecd6b36d6a893ffa023527cf4299c118f6a5b7c7f53301e9"
+      },
+      {
+        "path": "concepts/ir/Lax544225/Classifier.c.hash",
+        "bytes": 16,
+        "sha256": "a05b5f2825d0dd002826ad7cc81302a426cc6c86d49e8c9e35df84ac71c886f1"
+      },
+      {
+        "path": "concepts/ir/Lax544225/ClassifierRobustness.c",
+        "bytes": 1566,
+        "sha256": "e0ac5ace6929b508306debad9f59a019cb9279118be2198a966c32d0d15d2bc9"
+      },
+      {
+        "path": "concepts/ir/Lax544225/ClassifierRobustness.c.hash",
+        "bytes": 16,
+        "sha256": "0653c96ca9878fa553df1d4b1718552669182b2d39ed1e6172fed7684719ec69"
+      },
+      {
+        "path": "concepts/ir/Lax544225/Covering.c",
+        "bytes": 1311,
+        "sha256": "f707d92bf00e81434a7f88fc8b0da5e7be524eda2a749a355ee5990942547c86"
+      },
+      {
+        "path": "concepts/ir/Lax544225/Covering.c.hash",
+        "bytes": 16,
+        "sha256": "ee546fceec366992fc49bfa7d4c29520464a6d5dbadc1156302f21a46e1d08ea"
+      },
+      {
+        "path": "concepts/ir/Lax544225/CoveringCharacterization.c",
+        "bytes": 1610,
+        "sha256": "a92268a8a3af2c9d6791fac903d77ae3179a01556080b95ef8fad8c38f35071c"
+      },
+      {
+        "path": "concepts/ir/Lax544225/CoveringCharacterization.c.hash",
+        "bytes": 16,
+        "sha256": "b0e48d6ea7c84f0b99b0c8a929c49db3af223a6f4b8460be5d65e5a0e83a25f1"
+      },
+      {
+        "path": "concepts/ir/Lax544225/Decomposition.c",
+        "bytes": 1808,
+        "sha256": "0496f6899910e2c8dba39421ddfeed3d64879783ed6e9ddd6ce2aed407297074"
+      },
+      {
+        "path": "concepts/ir/Lax544225/Decomposition.c.hash",
+        "bytes": 16,
+        "sha256": "f2e4b10e6f9d828bf86c2d919a6fac10605def6d134f45482503516a11308577"
+      },
+      {
+        "path": "concepts/ir/Lax544225/DecompositionObstruction.c",
+        "bytes": 1625,
+        "sha256": "6be225801de4bd8878778664de2951fe20738f9c9eb1ed38cddb3e288f38bfe9"
+      },
+      {
+        "path": "concepts/ir/Lax544225/DecompositionObstruction.c.hash",
+        "bytes": 16,
+        "sha256": "4b2ac2b9271392efebaa46a49349bd5630c42c92621f1555669076c02a07e898"
+      },
+      {
+        "path": "concepts/ir/Lax544225/FloatAbsoluteSpace.c",
+        "bytes": 1352,
+        "sha256": "3120b325e35949e36c4a1739ab63c821237f3786a554c48eef2c36b56a62368e"
+      },
+      {
+        "path": "concepts/ir/Lax544225/FloatAbsoluteSpace.c.hash",
+        "bytes": 16,
+        "sha256": "27198c0e6b13805191a2919082911c5398acbe92a744fd3ff965e4bc1d00970e"
+      },
+      {
+        "path": "concepts/ir/Lax544225/FloatSquaredSpace.c",
+        "bytes": 1350,
+        "sha256": "ab09f92138ed36e83e15c665ed06cebe530fcbec853a4e93495a92836a44d10f"
+      },
+      {
+        "path": "concepts/ir/Lax544225/FloatSquaredSpace.c.hash",
+        "bytes": 16,
+        "sha256": "65b7156e1cfd63614373b89fc0e189e0ad0be8ef4a31c045b6cdf915c3de25b8"
+      },
+      {
+        "path": "concepts/ir/Lax544225/GeneralExistence.c",
+        "bytes": 1594,
+        "sha256": "0485576e46a19a90696b6fd190285981aa60dfc9ff33a4516c41c0259bdb287d"
+      },
+      {
+        "path": "concepts/ir/Lax544225/GeneralExistence.c.hash",
+        "bytes": 16,
+        "sha256": "434c8de5c119534123fb9d5bcd6c07ca7ca3391660f9379a6d993187081ebbde"
+      },
+      {
+        "path": "concepts/ir/Lax544225/ListSpaces.c",
+        "bytes": 3998,
+        "sha256": "ad6cefd9c7d27674d3bdedd50cdc4420bb527df611394074c40b2f353ef4dc77"
+      },
+      {
+        "path": "concepts/ir/Lax544225/ListSpaces.c.hash",
+        "bytes": 16,
+        "sha256": "1c77b80c76e71a0fb47b3290eb1d69a6a10b75f20a362985bc5ee75f81bca53b"
+      },
+      {
+        "path": "concepts/ir/Lax544225/MaximumListSpace.c",
+        "bytes": 1342,
+        "sha256": "c8abbebfaff2009c63f5f89b8c36302e76cf7d4265f7a7000beb898055d73089"
+      },
+      {
+        "path": "concepts/ir/Lax544225/MaximumListSpace.c.hash",
+        "bytes": 16,
+        "sha256": "193a0eb7f4fbec9435bfdf7c1daaa1c0ae893f645c2a09866f79d0d7d310dfd6"
+      },
+      {
+        "path": "concepts/ir/Lax544225/MaximumProductSpace.c",
+        "bytes": 1357,
+        "sha256": "a0c22f6b7d49dc4cbaf483b2f1ffc64f1b1cb815843370293977815fb1d653e1"
+      },
+      {
+        "path": "concepts/ir/Lax544225/MaximumProductSpace.c.hash",
+        "bytes": 16,
+        "sha256": "0877cca86787ba52112d2bd6b59821d8691befbb196147caab13d9ccb0e15de3"
+      },
+      {
+        "path": "concepts/ir/Lax544225/OrderedSemimetric.c",
+        "bytes": 1604,
+        "sha256": "0107df23a32b0a0de488cb3362b306c3566261395bb0eaa77d54508e4190786c"
+      },
+      {
+        "path": "concepts/ir/Lax544225/OrderedSemimetric.c.hash",
+        "bytes": 16,
+        "sha256": "e47c5264155fdc15c4bb9cd262997f6d2e208023c5f255f6bfdc2aea7b6e997f"
+      },
+      {
+        "path": "concepts/ir/Lax544225/PartialOrderPrecisionBound.c",
+        "bytes": 2121,
+        "sha256": "6934bfb2b8abd2e2f075c52c112881e67f8d83b13441b098f1d343ed258563b3"
+      },
+      {
+        "path": "concepts/ir/Lax544225/PartialOrderPrecisionBound.c.hash",
+        "bytes": 16,
+        "sha256": "c73337a4e0f751848a8bfe1b315abcf92d30ca8c068ceafe80e7e39c38f3d129"
+      },
+      {
+        "path": "concepts/ir/Lax544225/PartitionRobustness.c",
+        "bytes": 1564,
+        "sha256": "91477ed193effe2b6a317926da9662465a6e8d59d706781936d6f1baa51e3fbd"
+      },
+      {
+        "path": "concepts/ir/Lax544225/PartitionRobustness.c.hash",
+        "bytes": 16,
+        "sha256": "388fc20fee5346d27a0d0a332358fef4eca304de57e892c7c507151f236fc78c"
+      },
+      {
+        "path": "concepts/ir/Lax544225/Partitions.c",
+        "bytes": 1584,
+        "sha256": "5d39212e940c7ad997a8c02f52a72295a432d8868751cd9b0ff7920f26b8231b"
+      },
+      {
+        "path": "concepts/ir/Lax544225/Partitions.c.hash",
+        "bytes": 16,
+        "sha256": "97bbbef92643443e17cea4b30a705cf05e47169e7d375a2a42ac5638b17f6a55"
+      },
+      {
+        "path": "concepts/ir/Lax544225/PrecisionGaps.c",
+        "bytes": 2068,
+        "sha256": "4c54043779363f002415bd0d2c0e3749be25ef7ee6dd1d581140a394e882ecb0"
+      },
+      {
+        "path": "concepts/ir/Lax544225/PrecisionGaps.c.hash",
+        "bytes": 16,
+        "sha256": "b5d5d6b55cdae9215aaae2ae55969fa34394b7549d1a514cc413b68e879c2835"
+      },
+      {
+        "path": "concepts/ir/Lax544225/PrecisionObstruction.c",
+        "bytes": 1869,
+        "sha256": "54b0bf8e1c1921fe72b7d66ef3490ba22268e55d97415156115ac20e19a8d1e1"
+      },
+      {
+        "path": "concepts/ir/Lax544225/PrecisionObstruction.c.hash",
+        "bytes": 16,
+        "sha256": "1dce1102b4d750724fbb5a05309dc870e61d632a2b392549f127aec6f3764beb"
+      },
+      {
+        "path": "concepts/ir/Lax544225/ProductSpaces.c",
+        "bytes": 1928,
+        "sha256": "90e9f4b79e8bd5350ead83a205594634cb880a986234dfc39ccc5a28755fe2e6"
+      },
+      {
+        "path": "concepts/ir/Lax544225/ProductSpaces.c.hash",
+        "bytes": 16,
+        "sha256": "df782bd2bed41d3d71d40bf78d55778ba1ae2bfef52f81777cfd8b776d858121"
+      },
+      {
+        "path": "concepts/ir/Lax544225/RestrictionCounterexample.c",
+        "bytes": 1387,
+        "sha256": "c4ef77e4978dcc90986b0197a5bc31db779f45d039e2b101b7bf5d2385b8b9ab"
+      },
+      {
+        "path": "concepts/ir/Lax544225/RestrictionCounterexample.c.hash",
+        "bytes": 16,
+        "sha256": "61b74a516033e11593308af4c8ddac91371dee663fbd34b5e41c3b58f2001334"
+      },
+      {
+        "path": "concepts/ir/Lax544225/Semimetric.c",
+        "bytes": 2126,
+        "sha256": "f21a81e0f7b15d0c6b9e0bc2c9e04875137d5cabcdf4524a55fb8c927762a41e"
+      },
+      {
+        "path": "concepts/ir/Lax544225/Semimetric.c.hash",
+        "bytes": 16,
+        "sha256": "b6d16daadac71575768e0e4899cece0473de8382cb5406234e5f3b0657447abd"
+      },
+      {
+        "path": "concepts/ir/Lax544225/SuccessorCovering.c",
+        "bytes": 1830,
+        "sha256": "09f3fd46138ea587721a8db8f02f88844e61873a8fae0f18ab756e847ed08a98"
+      },
+      {
+        "path": "concepts/ir/Lax544225/SuccessorCovering.c.hash",
+        "bytes": 16,
+        "sha256": "37d836d8d43e4955b7278983e8a68a78a4c096937312fb78437be6077ae7b9f4"
+      },
+      {
+        "path": "concepts/ir/Lax544225/SumListSpace.c",
+        "bytes": 1334,
+        "sha256": "48befb0c57292d5b23465bf0c97b6cda6681ea4f5eea666324efb57a3276b370"
+      },
+      {
+        "path": "concepts/ir/Lax544225/SumListSpace.c.hash",
+        "bytes": 16,
+        "sha256": "442d00a23523ae4ef55539d8981a947e5b978bc3e7603f959ebd69b2736edcfc"
+      },
+      {
+        "path": "concepts/ir/Lax544225/SumProductSpace.c",
+        "bytes": 1349,
+        "sha256": "e7a648bc906262dd947ee701dd140cfeca0b87f0e0c4b472234e2c5fab356c3a"
+      },
+      {
+        "path": "concepts/ir/Lax544225/SumProductSpace.c.hash",
+        "bytes": 16,
+        "sha256": "29d1cc2bb76d9e44d6509eb26d7b29c8f27902b684e114591d64ea5f20dde0ca"
+      },
+      {
+        "path": "concepts/ir/Lax544225/UnionCounterexample.c",
+        "bytes": 1375,
+        "sha256": "de3ddbfa23575ada3982f8d56866001a2085aff50ac0be57446a3912d552a648"
+      },
+      {
+        "path": "concepts/ir/Lax544225/UnionCounterexample.c.hash",
+        "bytes": 16,
+        "sha256": "af6a62c900eec9f4d529ab70d7eaa64e60ff4c0ddd823a8b2975be513d32ea7d"
+      },
+      {
+        "path": "concepts/ir/Lax544225.c",
+        "bytes": 8562,
+        "sha256": "c7e631c4a33ef501c039677b759766aa320105ac3872f2052159dadb16762147"
+      },
+      {
+        "path": "concepts/ir/Lax544225.c.hash",
+        "bytes": 16,
+        "sha256": "fc72a9a81c0405dd7e8b0266128e1ffc604b23e9c7183394925a44a3c61f9e40"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Balls.ilean",
+        "bytes": 1132,
+        "sha256": "81967a67f9e9f8e81764753f6f9436a61d5e1cdd1445fa7b7e94e52da46dfefd"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Balls.ilean.hash",
+        "bytes": 16,
+        "sha256": "f8236a6acab76ab6a53badb9ea3a5f54916c6631ae9fc2d73ec74bdfa671090e"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Balls.olean",
+        "bytes": 10824,
+        "sha256": "460174064c2e794e0a6300187c38cab548685fe06dfdde867188a3f42f0c43ad"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Balls.olean.hash",
+        "bytes": 16,
+        "sha256": "d4e35ac8b9573988c553e1dafd2920669f29aeed230653f1ece13aae9e790559"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Balls.trace",
+        "bytes": 2226,
+        "sha256": "57d68b25e9ced7a1e2d660e3c0c51faac2ad44461bded449ca47beabdf8e8b64"
+      },
+      {
+        "path": "concepts/lib/Lax544225/BinaryFloats.ilean",
+        "bytes": 9091,
+        "sha256": "33be624d407702ce5c67aaaff099d52179cdb0fd540f58c670708498797ccf80"
+      },
+      {
+        "path": "concepts/lib/Lax544225/BinaryFloats.ilean.hash",
+        "bytes": 16,
+        "sha256": "1e083a1af74be56654648331449b858fefc5a5245fa672f920a0823c332d3838"
+      },
+      {
+        "path": "concepts/lib/Lax544225/BinaryFloats.olean",
+        "bytes": 208408,
+        "sha256": "86a4237fac0595efbdba7101cf14cf1cd29f122dc75a7d3d80e52914918c55c5"
+      },
+      {
+        "path": "concepts/lib/Lax544225/BinaryFloats.olean.hash",
+        "bytes": 16,
+        "sha256": "00ddcb502c6a8654f10332f93680f9f5fe4bca28d0cb4446b94e90f0e6340daf"
+      },
+      {
+        "path": "concepts/lib/Lax544225/BinaryFloats.trace",
+        "bytes": 2463,
+        "sha256": "63910346f71aeb18d452fd5c80920283b9169f8af29328b60efcdd51f30a6c31"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Boundary.ilean",
+        "bytes": 2413,
+        "sha256": "80763df32e56f42cf4290e6c8348b5de193e7c5bfddc94efb38d66ac202584a6"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Boundary.ilean.hash",
+        "bytes": 16,
+        "sha256": "740107d46a403e0f1fa23249986c8a6267c5a8edc8bdb635cc77c69f7950e24a"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Boundary.olean",
+        "bytes": 19544,
+        "sha256": "1c3bc7e73c6575cfc32090de2fda2f08e506d01f5f4c179f211e41292cc53c03"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Boundary.olean.hash",
+        "bytes": 16,
+        "sha256": "9c01438fe559ff039ede4b414c14711309d43be8c6622ced7b278556e4bb63b9"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Boundary.trace",
+        "bytes": 2266,
+        "sha256": "1c3625a4147b1bd119b16dfd95a0e7601eaa1e556047886fe84264c73f97f781"
+      },
+      {
+        "path": "concepts/lib/Lax544225/BoundaryCoveringCharacterization.ilean",
+        "bytes": 1766,
+        "sha256": "07793813f11d56a7430d1c1c83406a21bd25a8ff0f1a2eb9cfeddd46c023c811"
+      },
+      {
+        "path": "concepts/lib/Lax544225/BoundaryCoveringCharacterization.ilean.hash",
+        "bytes": 16,
+        "sha256": "741636121b64fdcc3875e0c8a877526146053b7e1f0a5f7dd42332e3843935ef"
+      },
+      {
+        "path": "concepts/lib/Lax544225/BoundaryCoveringCharacterization.olean",
+        "bytes": 12584,
+        "sha256": "d82393d607a218b77fa87d73a0364cc7faee0e2d124d0112c1f3fdb028978ce8"
+      },
+      {
+        "path": "concepts/lib/Lax544225/BoundaryCoveringCharacterization.olean.hash",
+        "bytes": 16,
+        "sha256": "357c79322d94058c35621e130a1a8f3c2581ae4dab7d701b1760d79d01843cd6"
+      },
+      {
+        "path": "concepts/lib/Lax544225/BoundaryCoveringCharacterization.trace",
+        "bytes": 2423,
+        "sha256": "584c88df9abd07c8f49672f8eb6490c94dab32a8f584833297f6c8888c49a0d3"
+      },
+      {
+        "path": "concepts/lib/Lax544225/BoundaryExistence.ilean",
+        "bytes": 1656,
+        "sha256": "5de4f9a004d59a7273b8ccef32ded75662033e105ecf9f4e2d4e850e784940ed"
+      },
+      {
+        "path": "concepts/lib/Lax544225/BoundaryExistence.ilean.hash",
+        "bytes": 16,
+        "sha256": "16481258ca8fae10b81b7bddca1bd5868d3a8b9c8247205f386e347f9c844dd1"
+      },
+      {
+        "path": "concepts/lib/Lax544225/BoundaryExistence.olean",
+        "bytes": 12608,
+        "sha256": "06e988055fa27ee09e27bafec8c9493f64bce7213c845ba22cc4540cd525db8a"
+      },
+      {
+        "path": "concepts/lib/Lax544225/BoundaryExistence.olean.hash",
+        "bytes": 16,
+        "sha256": "5ea139a36c7b27e29c804805a9cb5e44f2edc1f2382035992e5b9591e283bc23"
+      },
+      {
+        "path": "concepts/lib/Lax544225/BoundaryExistence.trace",
+        "bytes": 2483,
+        "sha256": "608986e4145b10b30410e3bdb4dd43752205d812b1b1929990c7d932e2c6603b"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Classifier.ilean",
+        "bytes": 1024,
+        "sha256": "e0e44156bc7b8c16751bfb5af1c86da1e515f3cd02a911fc02fc10c2fc5f4b6f"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Classifier.ilean.hash",
+        "bytes": 16,
+        "sha256": "90539dc520e069b81caa51c50c2e816f50ae7fb8903e2dcfde96bb093b26c1f6"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Classifier.olean",
+        "bytes": 45512,
+        "sha256": "095e71ed7d1a17f63e064d476139e87cc070cbf91891604ca0d3b9634270b449"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Classifier.olean.hash",
+        "bytes": 16,
+        "sha256": "1ff3b3fd92fa78ad98914c00bb204da304d687144e397ddc210ddcc7e393b507"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Classifier.trace",
+        "bytes": 3141,
+        "sha256": "eed5e94426800b8a0a1f00dc0f9892cf164af833789997897cf4d397da202d4a"
+      },
+      {
+        "path": "concepts/lib/Lax544225/ClassifierRobustness.ilean",
+        "bytes": 2463,
+        "sha256": "778696ce8b02fd5f7a84f8a7cceb41cf75a03e19bc4c4b0ca2eada625dc14538"
+      },
+      {
+        "path": "concepts/lib/Lax544225/ClassifierRobustness.ilean.hash",
+        "bytes": 16,
+        "sha256": "b68a00db89cdaa7a954d91f861425a8eb4f56598c1888e60a009f69fe436a050"
+      },
+      {
+        "path": "concepts/lib/Lax544225/ClassifierRobustness.olean",
+        "bytes": 13320,
+        "sha256": "f7947fab1b4da91d4da24f155a5810efbfea2a59c6ee01b203f0565f6c4fb321"
+      },
+      {
+        "path": "concepts/lib/Lax544225/ClassifierRobustness.olean.hash",
+        "bytes": 16,
+        "sha256": "7cbe4bed578157c7b0d971a16547903f913f1fcc32889d40b5b95ef4980864ac"
+      },
+      {
+        "path": "concepts/lib/Lax544225/ClassifierRobustness.trace",
+        "bytes": 2306,
+        "sha256": "0a051acfdda0fce9986de11c81b1f6c3a6562a7ffdb2a51139823b9543812414"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Covering.ilean",
+        "bytes": 1818,
+        "sha256": "16f2725ce04ec74d16440591cd1660a0d1f7c2804da07f8c4751a467f6910eea"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Covering.ilean.hash",
+        "bytes": 16,
+        "sha256": "dbfe776e2499787d35424160a8257950f683137c0deaa56bf894933c16d5d5ae"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Covering.olean",
+        "bytes": 13568,
+        "sha256": "21c0f8c32a4e8ed84d21344961ee5cb68c4a2f0616e3acbfcca13beda88ffd35"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Covering.olean.hash",
+        "bytes": 16,
+        "sha256": "a236938588f2ce11c84a84f125c4afbff27c0272e14f9dc1ceba887382aaacef"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Covering.trace",
+        "bytes": 2076,
+        "sha256": "659b19b7577889a9c6f7d8e9e0eed98cbd583316f81bc616768a737330929987"
+      },
+      {
+        "path": "concepts/lib/Lax544225/CoveringCharacterization.ilean",
+        "bytes": 1726,
+        "sha256": "7cc675a336437e0373ad2549d50be1347f1a81cc0c614f8e1c2065e69ca569c2"
+      },
+      {
+        "path": "concepts/lib/Lax544225/CoveringCharacterization.ilean.hash",
+        "bytes": 16,
+        "sha256": "a34d4c6edd930f71035522e739dde3309a8a40ce8a8e0ae6fa6fbcaf51ffcecd"
+      },
+      {
+        "path": "concepts/lib/Lax544225/CoveringCharacterization.olean",
+        "bytes": 10024,
+        "sha256": "3ebf161d2269e58db046cb3917b4ca349648fad46406ca223cc046ab901678a7"
+      },
+      {
+        "path": "concepts/lib/Lax544225/CoveringCharacterization.olean.hash",
+        "bytes": 16,
+        "sha256": "2dbbcc9d49887ae0e28df7eda37945d304a0bf90d476a6072950776d89f88705"
+      },
+      {
+        "path": "concepts/lib/Lax544225/CoveringCharacterization.trace",
+        "bytes": 2368,
+        "sha256": "1017d7426c508b901162c47d8e8e685949af719f101cb33659697b84f8f74287"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Decomposition.ilean",
+        "bytes": 1633,
+        "sha256": "384e7a990f5978daacb5f959bdb0a258ef0cf80367acc5cb0f826109e6cb81c0"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Decomposition.ilean.hash",
+        "bytes": 16,
+        "sha256": "1acc184448ad5aafa47896ce94c27caa36f2cae96c334b3f2f0bd1d98d4713ed"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Decomposition.olean",
+        "bytes": 13896,
+        "sha256": "213a635566a55b6bbb647024ab301fdd83a97142bcf8b2d7e27449017bb0735d"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Decomposition.olean.hash",
+        "bytes": 16,
+        "sha256": "efeba0263b9a8ab222f6b58b0ba6fbfb91cd73dc9d1f1f8a8225357d610a4d8d"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Decomposition.trace",
+        "bytes": 2439,
+        "sha256": "37545d6696d5d5280e9ddb7e5f6fa811a628c4df282e9aeb41a6929063936778"
+      },
+      {
+        "path": "concepts/lib/Lax544225/DecompositionObstruction.ilean",
+        "bytes": 1811,
+        "sha256": "2f97c9ed7bf646abfcd023f73dfb1ebb1893725d2e1f4713e7f6e327a96cd09c"
+      },
+      {
+        "path": "concepts/lib/Lax544225/DecompositionObstruction.ilean.hash",
+        "bytes": 16,
+        "sha256": "a4f755f16e92a44d05cc38ba92707a707fd68c551f0157520e85ebf60e5ef7a8"
+      },
+      {
+        "path": "concepts/lib/Lax544225/DecompositionObstruction.olean",
+        "bytes": 11360,
+        "sha256": "e94a48b376db7d43a9c096f7bcc0cf01c0c4376cc92a7f863ab2b4070a9a29a7"
+      },
+      {
+        "path": "concepts/lib/Lax544225/DecompositionObstruction.olean.hash",
+        "bytes": 16,
+        "sha256": "c445301dffc83046df8e9bab8a6a7e8227f7cc66096075ed663b5e3c21b32921"
+      },
+      {
+        "path": "concepts/lib/Lax544225/DecompositionObstruction.trace",
+        "bytes": 2385,
+        "sha256": "08f3d8af8e4f8d8fffa099fa1c8d26fad93ed8e84e072db1d7795cd0f37b2f6b"
+      },
+      {
+        "path": "concepts/lib/Lax544225/FloatAbsoluteSpace.ilean",
+        "bytes": 1089,
+        "sha256": "d8064eebc2d18494a4ee11e3dbd931f4f7ad472dc6703a2f4a6469b5e4a478c9"
+      },
+      {
+        "path": "concepts/lib/Lax544225/FloatAbsoluteSpace.ilean.hash",
+        "bytes": 16,
+        "sha256": "d36db9c2f0d1cba2c56c63bcbee1d8e7ad1a9b4adfef32bbe617fccb54effa16"
+      },
+      {
+        "path": "concepts/lib/Lax544225/FloatAbsoluteSpace.olean",
+        "bytes": 5384,
+        "sha256": "47275482b77bad14932398d3058c223c64542090c0fb48db41a56e337d9b35b5"
+      },
+      {
+        "path": "concepts/lib/Lax544225/FloatAbsoluteSpace.olean.hash",
+        "bytes": 16,
+        "sha256": "f8006ef3c50e6d27c1dda6b38757eff1e0f3f08fad551ca93f7bd20bcc3050c0"
+      },
+      {
+        "path": "concepts/lib/Lax544225/FloatAbsoluteSpace.trace",
+        "bytes": 2167,
+        "sha256": "9c136c082b0ed21771e5c61f49859ec066c7c535fe582462ef9a83715d759eb3"
+      },
+      {
+        "path": "concepts/lib/Lax544225/FloatSquaredSpace.ilean",
+        "bytes": 1083,
+        "sha256": "3acc7debae058b715a18b7456041b71e3cc13ba2069b2aa71f754b038a82894a"
+      },
+      {
+        "path": "concepts/lib/Lax544225/FloatSquaredSpace.ilean.hash",
+        "bytes": 16,
+        "sha256": "84d3cf6ea86d38fea7b207227b07a71d480f278dc9b851bfbdf1a1ea541a563d"
+      },
+      {
+        "path": "concepts/lib/Lax544225/FloatSquaredSpace.olean",
+        "bytes": 5384,
+        "sha256": "430c8b6957d5a906c0689d15798facb0b0a6000764ad899382d0cf12b4388e07"
+      },
+      {
+        "path": "concepts/lib/Lax544225/FloatSquaredSpace.olean.hash",
+        "bytes": 16,
+        "sha256": "a234762cc53273b7e0c52be19d9366c9be56953053eb2268a92e040245892c0e"
+      },
+      {
+        "path": "concepts/lib/Lax544225/FloatSquaredSpace.trace",
+        "bytes": 2160,
+        "sha256": "a99cac5e1c7cf03e7a5655cc0cc264cc3114a8deb3e5fd9c02ecae3ff26c2646"
+      },
+      {
+        "path": "concepts/lib/Lax544225/GeneralExistence.ilean",
+        "bytes": 1268,
+        "sha256": "f34d2f55c45fe191f291a068c45674298f2b99dec86a1dcc4a3d2654379c302c"
+      },
+      {
+        "path": "concepts/lib/Lax544225/GeneralExistence.ilean.hash",
+        "bytes": 16,
+        "sha256": "b4393b33e3ac1a90f43285ea7dce16516ab69919f0b19384245ccdad5aaa04f2"
+      },
+      {
+        "path": "concepts/lib/Lax544225/GeneralExistence.olean",
+        "bytes": 9328,
+        "sha256": "4b40731589df2ea0fa13b94f90ce6e1055d7caf0859d98b35ce38020ac1bd2a1"
+      },
+      {
+        "path": "concepts/lib/Lax544225/GeneralExistence.olean.hash",
+        "bytes": 16,
+        "sha256": "449759f69c7ccb24ccb4627c63f2a7288730d144ee996515b5de246351d887eb"
+      },
+      {
+        "path": "concepts/lib/Lax544225/GeneralExistence.trace",
+        "bytes": 2309,
+        "sha256": "2d71d3c05cad924f7731c390ce18fa41b6b5320f520baa6ea1640c6a67c57d30"
+      },
+      {
+        "path": "concepts/lib/Lax544225/ListSpaces.ilean",
+        "bytes": 3877,
+        "sha256": "392d4ac85ec70cfef08c4fca3ad23f84f935e32bd9e9b5068981e06c19e08227"
+      },
+      {
+        "path": "concepts/lib/Lax544225/ListSpaces.ilean.hash",
+        "bytes": 16,
+        "sha256": "aa2edf2b511ed23fbf33fd7fee4736c5a6220a9d342fab220c8c354881bae63a"
+      },
+      {
+        "path": "concepts/lib/Lax544225/ListSpaces.olean",
+        "bytes": 31760,
+        "sha256": "67990d2da98b9e2002e073a0fc662ac2fb5dcba01821b7ee809f6c656d35a3c5"
+      },
+      {
+        "path": "concepts/lib/Lax544225/ListSpaces.olean.hash",
+        "bytes": 16,
+        "sha256": "dc37901065b5b53c90258aae23de2e50940223a23aab2186366004b2c86e6471"
+      },
+      {
+        "path": "concepts/lib/Lax544225/ListSpaces.trace",
+        "bytes": 2270,
+        "sha256": "cefa9105c41ce61411e0b51a856049f9b20b6029cf65e3d3ab4ff730a27fdd55"
+      },
+      {
+        "path": "concepts/lib/Lax544225/MaximumListSpace.ilean",
+        "bytes": 1304,
+        "sha256": "c294a4c7108aa79b35293c5acc411d22591258251681887f009b8306aa70a661"
+      },
+      {
+        "path": "concepts/lib/Lax544225/MaximumListSpace.ilean.hash",
+        "bytes": 16,
+        "sha256": "c902867f73714ebbbbe0443949743ca1ad8e9d9f8e4223c5af1604225e0e95dc"
+      },
+      {
+        "path": "concepts/lib/Lax544225/MaximumListSpace.olean",
+        "bytes": 7408,
+        "sha256": "4c778c32b9441ec0d113939cdfcb86a3ac688003dc3438f647198f479a217fca"
+      },
+      {
+        "path": "concepts/lib/Lax544225/MaximumListSpace.olean.hash",
+        "bytes": 16,
+        "sha256": "f35f1fe5d6ad78f6760bde517aabd858f655a5b0ad01d2e35b92f6d1bb23d065"
+      },
+      {
+        "path": "concepts/lib/Lax544225/MaximumListSpace.trace",
+        "bytes": 2142,
+        "sha256": "e074abe57bfd950d603d1b50e00e619c00bed18427fd153a05692fdb3dc8e326"
+      },
+      {
+        "path": "concepts/lib/Lax544225/MaximumProductSpace.ilean",
+        "bytes": 1484,
+        "sha256": "6d1e1d178c59857401c583f05298ecf87c22e572481be148ebc89025217e28cd"
+      },
+      {
+        "path": "concepts/lib/Lax544225/MaximumProductSpace.ilean.hash",
+        "bytes": 16,
+        "sha256": "eb4838face3674dc8e4a70d9613a13ee96a68918b9b2ce31f3ea2f36151f6360"
+      },
+      {
+        "path": "concepts/lib/Lax544225/MaximumProductSpace.olean",
+        "bytes": 8128,
+        "sha256": "cc40060688b36d0cfd5bab01440714c1edcf107e767466abd82b08eaed7f4a09"
+      },
+      {
+        "path": "concepts/lib/Lax544225/MaximumProductSpace.olean.hash",
+        "bytes": 16,
+        "sha256": "ae3bd2fa097c6e582fed8a909ff90cd69c8b48e18032de126b853e78db94d31d"
+      },
+      {
+        "path": "concepts/lib/Lax544225/MaximumProductSpace.trace",
+        "bytes": 2176,
+        "sha256": "e3a7e6d49d1f96cac1b2b7996b7b7e8c984901a6b788445db7c6f239e1f35d4d"
+      },
+      {
+        "path": "concepts/lib/Lax544225/OrderedSemimetric.ilean",
+        "bytes": 1147,
+        "sha256": "1d818f690bc5da17e913cfcaf27318d9b06844c3f41f01b2c5a636d351f5597a"
+      },
+      {
+        "path": "concepts/lib/Lax544225/OrderedSemimetric.ilean.hash",
+        "bytes": 16,
+        "sha256": "b89ba05c2df44b7f8c1e48084b00f64098bb06a87eb177d65de12345cf165195"
+      },
+      {
+        "path": "concepts/lib/Lax544225/OrderedSemimetric.olean",
+        "bytes": 11448,
+        "sha256": "86783c19b7f8f7fb578a1251e6c45b3ceb5d0bf4e0b20a4768349a8b60f0d37c"
+      },
+      {
+        "path": "concepts/lib/Lax544225/OrderedSemimetric.olean.hash",
+        "bytes": 16,
+        "sha256": "09dc2279ce4f29517c452ea892df3cc4b46058f44b7c37c1811fc67e9e0fa762"
+      },
+      {
+        "path": "concepts/lib/Lax544225/OrderedSemimetric.trace",
+        "bytes": 2324,
+        "sha256": "d59091c2010551ccf5606b352d9016d30fcc4fb05908897657fbb32106eee27e"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PartialOrderPrecisionBound.ilean",
+        "bytes": 2396,
+        "sha256": "eef886f70dc6aad5b1b4d865822061dbd9563a2ac477486143323b35ef84bebb"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PartialOrderPrecisionBound.ilean.hash",
+        "bytes": 16,
+        "sha256": "e9ac99b0c0cff30a5f0cc6f120a96d6afae22b97ffd4505508f5e3343f2d2fb0"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PartialOrderPrecisionBound.olean",
+        "bytes": 16672,
+        "sha256": "d1419309481fc3e3910094553ab011ab2ef5782b6ddfcba45e48fdcf7c45d9d2"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PartialOrderPrecisionBound.olean.hash",
+        "bytes": 16,
+        "sha256": "df61f23fc3f7d9b760fda9344b9f8b5db3a2eb585f7c7f3895f4395325e52566"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PartialOrderPrecisionBound.trace",
+        "bytes": 2725,
+        "sha256": "c34af6bef764e3a5953677ef8e53f291466bc836e773c8a85aed41bebbf0ae3b"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PartitionRobustness.ilean",
+        "bytes": 2260,
+        "sha256": "862c26ec59db64f7768ba044565c86ddbac54e7a3179ba5be50d76528b558594"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PartitionRobustness.ilean.hash",
+        "bytes": 16,
+        "sha256": "83109a28a133b9ca20f5c80838990652ee983f945428e3a970f5d03527a64cd2"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PartitionRobustness.olean",
+        "bytes": 16264,
+        "sha256": "14f654cc52d9f4f558c74e86fc67368d1fd1154b1c590cc923e3205cbd39de97"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PartitionRobustness.olean.hash",
+        "bytes": 16,
+        "sha256": "a16a4f4944f3af4e41d04f28112925fb7ba89f53601dc73e72d8222c46007466"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PartitionRobustness.trace",
+        "bytes": 2299,
+        "sha256": "3f687e76491a70d798fe4924241615a76795cb3faa0697c1873fe1f64da54ebb"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Partitions.ilean",
+        "bytes": 2594,
+        "sha256": "65e0520fc5b5a135380e8761aab02542b9a891eae94838d601ea667c0fd34359"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Partitions.ilean.hash",
+        "bytes": 16,
+        "sha256": "4a685c323ec9d19b268aba747fa8c5c4eee98d349bf64cb4d66a1bd8e5a941b6"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Partitions.olean",
+        "bytes": 14176,
+        "sha256": "104dbfdfc03835af5ce6a2dbaa671400a6fd37be8587bc806977548eed48c933"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Partitions.olean.hash",
+        "bytes": 16,
+        "sha256": "27206eef369b64a07519233ab707a8472caf21865849d4dec810e306d4ad7dac"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Partitions.trace",
+        "bytes": 2271,
+        "sha256": "c773a7730c5518305e2282d34e04cfed9405246b10f1a1d3002489240f7863fe"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PrecisionGaps.ilean",
+        "bytes": 2893,
+        "sha256": "94d182966060cdc323389eb3106ca247ef3dbfca3dfd6ef36d4e7f3235b78b01"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PrecisionGaps.ilean.hash",
+        "bytes": 16,
+        "sha256": "a6d5ca381685bb6bada9b666541c608cc49a702db7d62fb4115fb3b14d6d2f9b"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PrecisionGaps.olean",
+        "bytes": 22200,
+        "sha256": "36d749f44fa69a69e59679f506c7e0642452d848eb13c19a65a9cb5f62530034"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PrecisionGaps.olean.hash",
+        "bytes": 16,
+        "sha256": "b376192120691d88d074a4839b350d2677ed64e2e8a7c842ade60b2142fb8fb6"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PrecisionGaps.trace",
+        "bytes": 2614,
+        "sha256": "40a5fda6c89dcb70c3698a8971b9afe820a769e27cda99eb661047447e2371ac"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PrecisionObstruction.ilean",
+        "bytes": 1694,
+        "sha256": "7f6640e264d672caf0fb2fadde99c398a5b5c030fec9a0a50b0125f82cd4e56c"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PrecisionObstruction.ilean.hash",
+        "bytes": 16,
+        "sha256": "d32733e0c925c12b71c3bcf7c2365c3b77e463c660fa5b7513f3042fd1a22d96"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PrecisionObstruction.olean",
+        "bytes": 12720,
+        "sha256": "5a0b2b0152b66d31a52a5a27fc7a80d69f6fec7bae9e8f7cca754ee5063bde66"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PrecisionObstruction.olean.hash",
+        "bytes": 16,
+        "sha256": "2abb18baa9ddb7ed3eb4951231a91c3eae65fa0b9cfe62ac7c6ebb83feaedb0d"
+      },
+      {
+        "path": "concepts/lib/Lax544225/PrecisionObstruction.trace",
+        "bytes": 2521,
+        "sha256": "66d8f2bd9b431639c7f23892192638972a0f2f9c03a28d96fdb9344e792bc51a"
+      },
+      {
+        "path": "concepts/lib/Lax544225/ProductSpaces.ilean",
+        "bytes": 2368,
+        "sha256": "cdea66cd9db42d35b03a2ad8f9c018697e99295c2d1ad5e3b68fc8c3c87787d7"
+      },
+      {
+        "path": "concepts/lib/Lax544225/ProductSpaces.ilean.hash",
+        "bytes": 16,
+        "sha256": "43ddd96452d02d099e6cb787ed3c986a84312e5840cc63d779458cb04911b4cd"
+      },
+      {
+        "path": "concepts/lib/Lax544225/ProductSpaces.olean",
+        "bytes": 14992,
+        "sha256": "63cd479f95f9687c361f0e37fea416975e20672ed434bec56b8e0d7804a7da5d"
+      },
+      {
+        "path": "concepts/lib/Lax544225/ProductSpaces.olean.hash",
+        "bytes": 16,
+        "sha256": "a08a744c9160ceda86f8457db05e9fca61a5a8eff61bade53e74acc00a46b3aa"
+      },
+      {
+        "path": "concepts/lib/Lax544225/ProductSpaces.trace",
+        "bytes": 2540,
+        "sha256": "fece91c0c88ee38c8e231923af23df738c75d0bfb050c04a2279a2843cc965df"
+      },
+      {
+        "path": "concepts/lib/Lax544225/RestrictionCounterexample.ilean",
+        "bytes": 2290,
+        "sha256": "ed6d75b4c2e7661e057e4a0c9aa96df7215dc868318d2e8fdafc70de44c11004"
+      },
+      {
+        "path": "concepts/lib/Lax544225/RestrictionCounterexample.ilean.hash",
+        "bytes": 16,
+        "sha256": "6ad9c79b1792912d68b7554b55201a7b8d64c5292726e4455e54d16ca73d1b4e"
+      },
+      {
+        "path": "concepts/lib/Lax544225/RestrictionCounterexample.olean",
+        "bytes": 11992,
+        "sha256": "6a34c5b22063a0a326013f1f206feae7dc10ee49bb9857477b903ba022132d8e"
+      },
+      {
+        "path": "concepts/lib/Lax544225/RestrictionCounterexample.olean.hash",
+        "bytes": 16,
+        "sha256": "e4755563e64fda11c83711aa5f6cff1b65d758cfa46f68096b4f77683f9e0821"
+      },
+      {
+        "path": "concepts/lib/Lax544225/RestrictionCounterexample.trace",
+        "bytes": 2233,
+        "sha256": "1169e358df42b0c201f0adb03ddda589f0d3000f5468d01e40e5343259f36c79"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Semimetric.ilean",
+        "bytes": 1412,
+        "sha256": "2edda1fcc24f19bba3efa60ef0844ba326300f2d5e98afbce9d28643d4f1716e"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Semimetric.ilean.hash",
+        "bytes": 16,
+        "sha256": "c3e1b52b3b2500c65d0d9adec117749e7d7a60d9e7332f2b2b9bb66aac3b4e75"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Semimetric.olean",
+        "bytes": 18640,
+        "sha256": "07c7ae5a54f065ed57c7d05649975ef906a7d38f10cb6255ed0ae6050c84f5a5"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Semimetric.olean.hash",
+        "bytes": 16,
+        "sha256": "1d1f846372048fedc827e48b1a98b4134e6d656e56f476b058952de214a49573"
+      },
+      {
+        "path": "concepts/lib/Lax544225/Semimetric.trace",
+        "bytes": 2117,
+        "sha256": "04f7011c46abe861655ac79b831314803a3ee310b46e6ab31c4bac7840f5d2ea"
+      },
+      {
+        "path": "concepts/lib/Lax544225/SuccessorCovering.ilean",
+        "bytes": 1829,
+        "sha256": "2dbed50a72f34d2c7ff6e1fed948336cb2326ae84432555aa73f3b5d67fa6d4a"
+      },
+      {
+        "path": "concepts/lib/Lax544225/SuccessorCovering.ilean.hash",
+        "bytes": 16,
+        "sha256": "10974aabf24dc3ffc9d5d03e3c18b86b55eac0d880153f12aaabe3d03d71986f"
+      },
+      {
+        "path": "concepts/lib/Lax544225/SuccessorCovering.olean",
+        "bytes": 14176,
+        "sha256": "2778d8c1c5dfff0945b4e20c0b04ce1665c924c8c581db014132c9f7d30a5ff8"
+      },
+      {
+        "path": "concepts/lib/Lax544225/SuccessorCovering.olean.hash",
+        "bytes": 16,
+        "sha256": "2eaa0bcd0e81e0561752be5d1946f356129ca9f44dedda0495bc314f53c18c94"
+      },
+      {
+        "path": "concepts/lib/Lax544225/SuccessorCovering.trace",
+        "bytes": 2471,
+        "sha256": "e65555202b8358255448d49ad54e698aca68f6d44704c26235861d13d53aa87f"
+      },
+      {
+        "path": "concepts/lib/Lax544225/SumListSpace.ilean",
+        "bytes": 1072,
+        "sha256": "d19dbfc7533ea79db3351b5ea1aa3158b54166914702c7f98c22e7af8e0ff737"
+      },
+      {
+        "path": "concepts/lib/Lax544225/SumListSpace.ilean.hash",
+        "bytes": 16,
+        "sha256": "fa879a70e4649d98a2965089fcc1325d8758977fd4827a82b5e6ac60855f1142"
+      },
+      {
+        "path": "concepts/lib/Lax544225/SumListSpace.olean",
+        "bytes": 6912,
+        "sha256": "9c9c08b809697c0e57330ba8a49a346204d96a529d7108836eb7396581c89629"
+      },
+      {
+        "path": "concepts/lib/Lax544225/SumListSpace.olean.hash",
+        "bytes": 16,
+        "sha256": "75e8998b78e94f3de222ea8c81dc557c821cd03d3d83244853a4da0cced5f33d"
+      },
+      {
+        "path": "concepts/lib/Lax544225/SumListSpace.trace",
+        "bytes": 2114,
+        "sha256": "5b7304b0b10ff48e12f06969ca14aeb8eab8f62942a7074c298ea8c6e4adc60c"
+      },
+      {
+        "path": "concepts/lib/Lax544225/SumProductSpace.ilean",
+        "bytes": 1252,
+        "sha256": "1b2672f30be144e705db1f148e497687e5e522973786bacfea4c7c428a26d454"
+      },
+      {
+        "path": "concepts/lib/Lax544225/SumProductSpace.ilean.hash",
+        "bytes": 16,
+        "sha256": "975ccc0cb6d0fc3b19dd302fccf4af0bdce16bd327d617ad11896a1eaf99e3ad"
+      },
+      {
+        "path": "concepts/lib/Lax544225/SumProductSpace.olean",
+        "bytes": 7640,
+        "sha256": "477e13a27926956698f7c8087993c25a315b850afe249f2113a5f0606dd3ef72"
+      },
+      {
+        "path": "concepts/lib/Lax544225/SumProductSpace.olean.hash",
+        "bytes": 16,
+        "sha256": "5c063ac6b3feb334f09a96fbe0d00122bb225ef5b5e3a1230c81b9769cabe882"
+      },
+      {
+        "path": "concepts/lib/Lax544225/SumProductSpace.trace",
+        "bytes": 2148,
+        "sha256": "35a67c3c65662f088c0bcf010fa514e0ae4b7a9a41d6013efa8ef91c610fb177"
+      },
+      {
+        "path": "concepts/lib/Lax544225/UnionCounterexample.ilean",
+        "bytes": 2665,
+        "sha256": "a6936e202f11cde346b1600148f1119d0574270e3c678194a48a281d0d9b03f1"
+      },
+      {
+        "path": "concepts/lib/Lax544225/UnionCounterexample.ilean.hash",
+        "bytes": 16,
+        "sha256": "668e383358b86e98eb5c9b10ff3d925133d0876ce20c145ae2aa31d73560e943"
+      },
+      {
+        "path": "concepts/lib/Lax544225/UnionCounterexample.olean",
+        "bytes": 12576,
+        "sha256": "a71c3f89242edae50f2573657b30e1c86b3655432fcf7ecd27f469632083a86c"
+      },
+      {
+        "path": "concepts/lib/Lax544225/UnionCounterexample.olean.hash",
+        "bytes": 16,
+        "sha256": "2d5ddd6fb9aa193b2f535cbad4206cfc1f3c879a2252fcbc24118d50764c48bc"
+      },
+      {
+        "path": "concepts/lib/Lax544225/UnionCounterexample.trace",
+        "bytes": 2188,
+        "sha256": "7eaec620182dd9209c983210d46ce32963e45305cd4544b79e05a2aa54c324ef"
+      },
+      {
+        "path": "concepts/lib/Lax544225.ilean",
+        "bytes": 1554,
+        "sha256": "b9c60b24c72e046b38bff1f4415cbe29e82f739daef21168c15eb863894230ce"
+      },
+      {
+        "path": "concepts/lib/Lax544225.ilean.hash",
+        "bytes": 16,
+        "sha256": "fffc52f9be5f3db904418773ba68901fb266b541fbd8fa8780f176ae71810cc4"
+      },
+      {
+        "path": "concepts/lib/Lax544225.olean",
+        "bytes": 4952,
+        "sha256": "b87b9a614b2d2c06509c531506c3cc81663b08bb09a02d16e129fdab77e213e1"
+      },
+      {
+        "path": "concepts/lib/Lax544225.olean.hash",
+        "bytes": 16,
+        "sha256": "d8d00b8882c0971a176e2f2f3f20f4b022e3260d29bcf6293e0ca037080fd978"
+      },
+      {
+        "path": "concepts/lib/Lax544225.trace",
+        "bytes": 6802,
+        "sha256": "09e15ba5cafdd44e544046552d0bba78ca135d608017ea72fe48d55934649922"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "d4a06b1e82d7116f47b8acda44ea6f06f95e4a7b99777690cb138d2918179db8"
+      },
+      {
+        "path": "concepts/package/Lax544225/Balls.lean",
+        "bytes": 880,
+        "sha256": "d54accd8143cc2298f8f2aea5e9941ddbd74ba69d134c6a7898f25314053075e"
+      },
+      {
+        "path": "concepts/package/Lax544225/BinaryFloats.lean",
+        "bytes": 4126,
+        "sha256": "f2dec43304134769119e883afb15b116c4268318fcf987602d4073d76e7a21f9"
+      },
+      {
+        "path": "concepts/package/Lax544225/Boundary.lean",
+        "bytes": 1503,
+        "sha256": "6aec6c8c219bb9df1892fdea01bf2834e431c55f142d54cae105857626e49c43"
+      },
+      {
+        "path": "concepts/package/Lax544225/BoundaryCoveringCharacterization.lean",
+        "bytes": 1035,
+        "sha256": "a7a677ef00e2911aafff4e62f889b6c07fa9d767088e261cf111ddcf24765be3"
+      },
+      {
+        "path": "concepts/package/Lax544225/BoundaryExistence.lean",
+        "bytes": 1056,
+        "sha256": "a93efc8125e5508411d58f23ea84d0c476ddb95ba502be6d057637d95c14bc7b"
+      },
+      {
+        "path": "concepts/package/Lax544225/Classifier.lean",
+        "bytes": 718,
+        "sha256": "d3914f5785bfca46f0c396fb7af0e7d2ae9523ea827188d8b73207ebaef0a231"
+      },
+      {
+        "path": "concepts/package/Lax544225/ClassifierRobustness.lean",
+        "bytes": 1396,
+        "sha256": "87fe50ac463be8bc37e3916cd43c47b62f0a5fffb55b99e6e24c01c9e2b02c8f"
+      },
+      {
+        "path": "concepts/package/Lax544225/Covering.lean",
+        "bytes": 1290,
+        "sha256": "3a2afaa82464c96ce1cc06c8d47fddd33b6f9dd788622f432504d4a23f5b5ba6"
+      },
+      {
+        "path": "concepts/package/Lax544225/CoveringCharacterization.lean",
+        "bytes": 960,
+        "sha256": "0643bbf50070a86352c4637dbf58ff91e8fa1bcb39f805410456372f55eb88d9"
+      },
+      {
+        "path": "concepts/package/Lax544225/Decomposition.lean",
+        "bytes": 1229,
+        "sha256": "acbfc8fbab6c21bd91122ad9c759bc8037915102bb272822b6678e2fc74ba923"
+      },
+      {
+        "path": "concepts/package/Lax544225/DecompositionObstruction.lean",
+        "bytes": 1000,
+        "sha256": "33b1384f5b79e88d7d6f8fd5f93db9187fc61f95b44507573650a40087b6d29c"
+      },
+      {
+        "path": "concepts/package/Lax544225/FloatAbsoluteSpace.lean",
+        "bytes": 609,
+        "sha256": "2c1c75f9b24d1250014fe0b7f9c214aee90e13b721ffac5bbb3bf3c9472a9899"
+      },
+      {
+        "path": "concepts/package/Lax544225/FloatSquaredSpace.lean",
+        "bytes": 607,
+        "sha256": "8789b6867eb8406c5c4f6204181c095ddb25cdf30a6431da1f4ed8cf3a6cd643"
+      },
+      {
+        "path": "concepts/package/Lax544225/GeneralExistence.lean",
+        "bytes": 977,
+        "sha256": "e187a30f51afe26eeb70e225f159db07e7c6c04bd2619291cf9e4e8912c3ec48"
+      },
+      {
+        "path": "concepts/package/Lax544225/ListSpaces.lean",
+        "bytes": 2118,
+        "sha256": "fff063b45d5b157a4f68c21b3a268488180e766cb0d4c3190393e45754673716"
+      },
+      {
+        "path": "concepts/package/Lax544225/MaximumListSpace.lean",
+        "bytes": 829,
+        "sha256": "c15e99d130615da5f3ec9478af553541af3576fdca83631115fc527db2a0c60a"
+      },
+      {
+        "path": "concepts/package/Lax544225/MaximumProductSpace.lean",
+        "bytes": 819,
+        "sha256": "aab6135b01226ea79c83a31af8466acc2e62d1ad63596b03d0b52b9ef63fb00b"
+      },
+      {
+        "path": "concepts/package/Lax544225/OrderedSemimetric.lean",
+        "bytes": 1162,
+        "sha256": "915bfd957720d1c3d1cd7a399da4a37a26cd43f108bfba8d6b964374f4ae24ba"
+      },
+      {
+        "path": "concepts/package/Lax544225/PartialOrderPrecisionBound.lean",
+        "bytes": 1545,
+        "sha256": "daf85c9ec63afc1ec7bb4a60beccc7ae5bdcebc6fa6bf6be026bb047a922e7e0"
+      },
+      {
+        "path": "concepts/package/Lax544225/PartitionRobustness.lean",
+        "bytes": 1443,
+        "sha256": "38e03e678fcdf039c95bd0f253b31be4e4284a99322175e15fc992edce5832ff"
+      },
+      {
+        "path": "concepts/package/Lax544225/Partitions.lean",
+        "bytes": 1334,
+        "sha256": "12810c3a6665721fb183cf8e9bebcc81e07d45572a98281524550115ec0176ea"
+      },
+      {
+        "path": "concepts/package/Lax544225/PrecisionGaps.lean",
+        "bytes": 1931,
+        "sha256": "3d8b898964bfb569f40c02a647a50b6327a94f4f175b209d2f88fa094f5acb77"
+      },
+      {
+        "path": "concepts/package/Lax544225/PrecisionObstruction.lean",
+        "bytes": 838,
+        "sha256": "cc67ffda9868769992a10dd1d8dfa084b14cb4781873a58a6d462c4727a428a8"
+      },
+      {
+        "path": "concepts/package/Lax544225/ProductSpaces.lean",
+        "bytes": 1732,
+        "sha256": "d7991083a7929d33b965372cdb7d6179b2d1adbd7a61089e7782fdc56d30dd62"
+      },
+      {
+        "path": "concepts/package/Lax544225/RestrictionCounterexample.lean",
+        "bytes": 1163,
+        "sha256": "f5fef5f65836bfe8c7a2217366f393ae3c9e21ba228d2981407a1be1a5d06307"
+      },
+      {
+        "path": "concepts/package/Lax544225/Semimetric.lean",
+        "bytes": 1020,
+        "sha256": "16f20a517004280a533b98dde36eb9eb88b6df9836daa9710b653b23d7f3bd4f"
+      },
+      {
+        "path": "concepts/package/Lax544225/SuccessorCovering.lean",
+        "bytes": 906,
+        "sha256": "6ec8b1dd9d3eef5e8af17604f853a071832731e2d0538434f8df4432572a8cb5"
+      },
+      {
+        "path": "concepts/package/Lax544225/SumListSpace.lean",
+        "bytes": 687,
+        "sha256": "0257bcfdf9f27992b7621fb87ce2aa94936623971d6d88a6bc2fd07437d2752f"
+      },
+      {
+        "path": "concepts/package/Lax544225/SumProductSpace.lean",
+        "bytes": 680,
+        "sha256": "c55b1a08db7593cf5df3670de6d9bf2bce5085870e3b967c993203aad15998fe"
+      },
+      {
+        "path": "concepts/package/Lax544225/UnionCounterexample.lean",
+        "bytes": 1171,
+        "sha256": "e213f343d353dd826e2f2134016b419599865fa8843d330c6eff939283ae04b7"
+      },
+      {
+        "path": "concepts/package/Lax544225.lean",
+        "bytes": 1025,
+        "sha256": "9ca15216b7f843d092900ba899b30460d7e82017a1389e104d4b14a58ba835bb"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/Basic.c",
+        "bytes": 1851,
+        "sha256": "bf45fdfca9673e438a42cc4c4580ab4aa8e167b6fa77c047cadbfa21a7b91c01"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/Basic.c.hash",
+        "bytes": 16,
+        "sha256": "17a6436e9171f443e7cd1b8b5a1bda5a530961c88194690b488fb3a128f7ad72"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/Counterexamples.c",
+        "bytes": 4729,
+        "sha256": "d583cb9b9f181e4a223e0387bcd69a73df67a09eecf900415342842997928052"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/Counterexamples.c.hash",
+        "bytes": 16,
+        "sha256": "6c8e425ae20a7d0ba85b926fcb81c9ab103b5136da2d1df29f000cc9159b873e"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/Decomposition.c",
+        "bytes": 2190,
+        "sha256": "eb8cbf6046add180f9bcdeb3b59bea36b238796f5a90d95890b8c7012c3f07a0"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/Decomposition.c.hash",
+        "bytes": 16,
+        "sha256": "9f8e8eda8fbd298f8c288a8c55549dbd1948bab941a50eeea44dd7e770575390"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/Existence.c",
+        "bytes": 1637,
+        "sha256": "b386abb3ecf64289620ce62132f9eab19c473d1db9090fca3774a6986a881c87"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/Existence.c.hash",
+        "bytes": 16,
+        "sha256": "364e25a77ea1839b237540391e2dde29bcc3941b4e952992222e45ee45c20e40"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/FloatEmbedding.c",
+        "bytes": 13358,
+        "sha256": "2699c40df28317873ec5b2b526a33969be53af40efeb64dca228508e7498034f"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/FloatEmbedding.c.hash",
+        "bytes": 16,
+        "sha256": "5106058b34c94d72d4575606640c7965a0c3bd54b9ef9cfd5d66fd0ac9cb17f7"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/Lists.c",
+        "bytes": 4411,
+        "sha256": "97a9c3c489b36909b0ba573f8bf4793acfbc4369ae1b99a3bc1d82feafe39043"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/Lists.c.hash",
+        "bytes": 16,
+        "sha256": "3d2c5fdd0bdd4488955e23bcccee86d994aab85a5e43ba51b1aa6e0415250dbf"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/MainResults.c",
+        "bytes": 2964,
+        "sha256": "14bd5186ee09cceec22dca607395494e3e00056213bc059bfb09da011e374bde"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/MainResults.c.hash",
+        "bytes": 16,
+        "sha256": "654658f72f82b86cfdde68518b9280aae9003a9dec9c5c0cf47ceaa1d378d32f"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/OrderedBounds.c",
+        "bytes": 2900,
+        "sha256": "797a48eb83f57b02add9a73bcdd8a569ea7fcac8a43bfc8bf33f2928d985f3b8"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/OrderedBounds.c.hash",
+        "bytes": 16,
+        "sha256": "0843e2e5cd7fb34f55d3e31986af07fb785d49c899e6282c3c693767be3ac64b"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/Products.c",
+        "bytes": 1617,
+        "sha256": "41c372e8cf6b45056ec2dd6946d027fa83f2aaab17715f1faad130690683aeca"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs/Products.c.hash",
+        "bytes": 16,
+        "sha256": "40a058b0cb6fb9f389f5e27e82dd45679a850ea3c587cbf32ceb868483e97abb"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs.c",
+        "bytes": 3453,
+        "sha256": "60b4e88dd8f1dd685b56a3a9ceada2b095b785deb2448df39438bbf83b60e7e0"
+      },
+      {
+        "path": "proofs/ir/Lax544225Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "1c60a8f6d4ffe8a47ebc86a094c9460de4c163c5d4f10b54655597ead8ca00c8"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Basic.ilean",
+        "bytes": 15758,
+        "sha256": "0fd2727edab02acc024faba908b7f77e33abb882db5355f1534293922cfeb279"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Basic.ilean.hash",
+        "bytes": 16,
+        "sha256": "4d96926f80e6ae214f35ce55d7acbe1d4b4a4d33a11420fff5f59b1fde37ba8e"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Basic.olean",
+        "bytes": 168032,
+        "sha256": "3274bbdf78959f07d9ac1558ca92ab05441fc043191c28308c1372752e5b81bd"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Basic.olean.hash",
+        "bytes": 16,
+        "sha256": "c011184c7146e4c4bfe39b46c2757fdbe72485056f050a2a93c646ff48819939"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Basic.trace",
+        "bytes": 2495,
+        "sha256": "6232fef3c32d3d097a8d9016f3c6e2b0dfa9c586691dc201774af8af25950008"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Counterexamples.ilean",
+        "bytes": 22283,
+        "sha256": "259ce28c81a775bfe75cef7dfb1d05e42bbbc64e3023d98ee8bd741b5fa7f381"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Counterexamples.ilean.hash",
+        "bytes": 16,
+        "sha256": "a2ecbec49dd10ab07c688e4e59cc8f1412b6af8ed53c9874517714da5e578529"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Counterexamples.olean",
+        "bytes": 661152,
+        "sha256": "cd7e00f005e1febdbfb9dd78c8f01e2a879bcad49cb10f6d53dffb6b75df8a77"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Counterexamples.olean.hash",
+        "bytes": 16,
+        "sha256": "c44cf182f06bef36ceae0936606a9c36b7ad343ca859bffc155c9f89ec7261af"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Counterexamples.trace",
+        "bytes": 3208,
+        "sha256": "6a4c764764835e26276789e2bd6aee36fc81fce910053d0ee3d6db0124abaa40"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Decomposition.ilean",
+        "bytes": 19978,
+        "sha256": "3c9bfa84b632569dc1609a3c0f297491bed68f9a1e86069380fc89acf02745da"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Decomposition.ilean.hash",
+        "bytes": 16,
+        "sha256": "408e8f5dcd5bb828854852610e00787083fe3324870de8a2a05fcb6959f92dc6"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Decomposition.olean",
+        "bytes": 178056,
+        "sha256": "8e6e795b38be7ef554d8e4b6f0b990c51e7a2f684f0f34a66366699e29eef382"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Decomposition.olean.hash",
+        "bytes": 16,
+        "sha256": "291577191c4f896fe34d68ce8af252a0c31f64354095550e6f24fcc4a22f3f5d"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Decomposition.trace",
+        "bytes": 2782,
+        "sha256": "35cec486a69d8e1b1231516a9238c18731a911d0d84274d67469590a333782ae"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Existence.ilean",
+        "bytes": 9559,
+        "sha256": "19217f2830372f8da5573a19864c8db47aac2366f8aca240cf73e8f76144d41b"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Existence.ilean.hash",
+        "bytes": 16,
+        "sha256": "91fd00008b0248ae43ca9be0f9564d4a6007bd592421905c674d2f599f8bb456"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Existence.olean",
+        "bytes": 118272,
+        "sha256": "379c439c84f1e639c5be055b2547403d7c221167bad6fd48f0771b1f4c5249a0"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Existence.olean.hash",
+        "bytes": 16,
+        "sha256": "e3feb826781d16fecaf77095ae1add3a003c169149f5cb210dff629984626374"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Existence.trace",
+        "bytes": 2390,
+        "sha256": "f783f06234b967b224b1d97ff06e6d5afbb16c76f83c220705741b39dd5cdd04"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/FloatEmbedding.ilean",
+        "bytes": 54637,
+        "sha256": "3ce1466940a9b8947fda8d9c9739af6abcbc1bbc2edae3cd02325f56548c55be"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/FloatEmbedding.ilean.hash",
+        "bytes": 16,
+        "sha256": "edf143697b95a976cec634c5f58ebab452a65f6c5b39ad53cf7163624585e637"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/FloatEmbedding.olean",
+        "bytes": 1296648,
+        "sha256": "6fb075db83e0a7462d04f5cc05fde4b7f79b95d1b75a4c75208958fbd3540990"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/FloatEmbedding.olean.hash",
+        "bytes": 16,
+        "sha256": "0bc1f28597336cfed14ddad7722259200ec55670ed8f885b1ebfe0d14a6f5538"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/FloatEmbedding.trace",
+        "bytes": 2744,
+        "sha256": "74371da662f01bb0007e81d9b210e5f1de3bdc023479bc505a117bcd11985d9c"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Lists.ilean",
+        "bytes": 37807,
+        "sha256": "37df84aead9e1b7a20760c284167e9f0d91d27f52003808942ee58c37d3be67e"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Lists.ilean.hash",
+        "bytes": 16,
+        "sha256": "84555d5e498b3a4a2cb8865ec87de9deea1711cb9ffb215c21d3443f14c48ae4"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Lists.olean",
+        "bytes": 178128,
+        "sha256": "13b62ac21b4cfd32a07e664d211e1316a1502cbf068b95dd2e687c24cca6737c"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Lists.olean.hash",
+        "bytes": 16,
+        "sha256": "4ee768bd7ae98ddd2048af15f58ea867d7aef7e816588b9c26ab4c4e1e3023c8"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Lists.trace",
+        "bytes": 2676,
+        "sha256": "bc766f971c56addafccf9ceafd932bb35e0a6b09d8b758b4a8c81ed63d7f00db"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/MainResults.ilean",
+        "bytes": 6354,
+        "sha256": "825c4068596e8c92c277e5929392e01fc4ef7b1bb571fd6842afdf44080c54c7"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/MainResults.ilean.hash",
+        "bytes": 16,
+        "sha256": "8d2eef4f22a95834a22ec3061a152e9503eae28c06037633ad2a66a51bc4b289"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/MainResults.olean",
+        "bytes": 27192,
+        "sha256": "b67c2ee7cd0b50f639177da8c8dc65e6b663b1bddcfebacee4fafea1bfef6262"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/MainResults.olean.hash",
+        "bytes": 16,
+        "sha256": "ccbe4993cf91899f6faf60009801b179dbbfc35496bcbf6f8f47fff60e190d89"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/MainResults.trace",
+        "bytes": 3250,
+        "sha256": "8a601de73e283adb8d26614d070acf252b97cdbff19d15f2027597947980e2a6"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/OrderedBounds.ilean",
+        "bytes": 37607,
+        "sha256": "7c13d1375dd4d567bed7889370dc2db855c77cd8cbf8deb9062edab25430aa42"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/OrderedBounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "2eb33cbad520ab9292c1132dcd06d29cfd2dd0aaadc93762271663bdbb79dbdf"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/OrderedBounds.olean",
+        "bytes": 419568,
+        "sha256": "5c18363483c589a7c71dd1b2d6dbf50b0a1b3214f30c2f657695958bd58fba88"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/OrderedBounds.olean.hash",
+        "bytes": 16,
+        "sha256": "e9beb4752a3ca3eba0750598417d8a6659c0d7283d1b13197a787f8ff040c364"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/OrderedBounds.trace",
+        "bytes": 3248,
+        "sha256": "b1962b09dbe83e91091599be53085ec421c2417f9ce353ecd72bfcb22a09e524"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Products.ilean",
+        "bytes": 14430,
+        "sha256": "e57082e445b5d310b2fb0068b891ed8bd8b6b17b802c64583a7efa3bf4f1aa65"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Products.ilean.hash",
+        "bytes": 16,
+        "sha256": "cf3009a07b2ff2619035127e85d4c26764a134abff5fa38a0f860960dafb5db0"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Products.olean",
+        "bytes": 120576,
+        "sha256": "8a458edb3b72f6d048f2bb359d3add3f06c22fbadfbdee9e4f3f77288f29dce2"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Products.olean.hash",
+        "bytes": 16,
+        "sha256": "850af2a8aed8e36d4adeec6620ecf873be29490d41dd84eef36da055f5f6febd"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs/Products.trace",
+        "bytes": 2364,
+        "sha256": "80795872e540508e55422f9c6a574de2e4fea1785fba0544887398999848ce4f"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs.ilean",
+        "bytes": 529,
+        "sha256": "0bcac3b32da739cd0e0768e56ac0cb293245e017b4afc7bf8fc11eded2ad27f8"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "dcd54293fde28784de5123a7eba634ba3271c704556ae248371a671e337daf3c"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs.olean",
+        "bytes": 2408,
+        "sha256": "6fbb4cf722f4f66cfcf50d756dacd37ebbd5e21762c4935d7ef4af3e0d674b7a"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "44d681aa522955c77b9a88255aa8eb5b9c77f562f1ae47192f97d9a8dd0c7e38"
+      },
+      {
+        "path": "proofs/lib/Lax544225Proofs.trace",
+        "bytes": 3444,
+        "sha256": "7effe1b892889ec1e707f2ccdea2de45fea04dd7e7790d95e62f0a6c9f6be34c"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "baebeff6f1fa014f68cc6ba524768e67d92fe38cee67afdaa62e323f2ff5c0e6"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "6d144a09e5c8c89e832a88a38d94f9ea334bda38b5eb0e79633cbf3dd91da23d"
+      },
+      {
+        "path": "proofs/package/Lax544225Proofs/Basic.lean",
+        "bytes": 8610,
+        "sha256": "36ea35935fde15a9a30c47614771751277521c65c942937389ae58ce7253264d"
+      },
+      {
+        "path": "proofs/package/Lax544225Proofs/Counterexamples.lean",
+        "bytes": 6328,
+        "sha256": "7a71df91989059df46d69bcfa966cbf6202aecd9f52ee1ea34b8f24f626a9920"
+      },
+      {
+        "path": "proofs/package/Lax544225Proofs/Decomposition.lean",
+        "bytes": 5969,
+        "sha256": "6cd55488b15dbb98fdf18fdb2b79c6a587d6c0102bc3a69ddd3c97a6249f73a8"
+      },
+      {
+        "path": "proofs/package/Lax544225Proofs/Existence.lean",
+        "bytes": 4483,
+        "sha256": "ae0228bc35babd86058d12711e9f36f0cba233efedac70c33a21bdd2e9315b85"
+      },
+      {
+        "path": "proofs/package/Lax544225Proofs/FloatEmbedding.lean",
+        "bytes": 15061,
+        "sha256": "ca603e89ed6f15371e74b69e52f3b6ff02bf3b4f152bae1adafffa2d35a8fcfd"
+      },
+      {
+        "path": "proofs/package/Lax544225Proofs/Lists.lean",
+        "bytes": 10871,
+        "sha256": "939cfa5c84c1eac920a4431344497311c2e8484ae23e855ab66b6eb7029361fd"
+      },
+      {
+        "path": "proofs/package/Lax544225Proofs/MainResults.lean",
+        "bytes": 4015,
+        "sha256": "5a1ff634712b28db1bc6ade64451ad33a480a0aeea9512fcf7652d0fd22ed3e6"
+      },
+      {
+        "path": "proofs/package/Lax544225Proofs/OrderedBounds.lean",
+        "bytes": 12997,
+        "sha256": "0fe2aab0528e331731ab4a2e8cd89c96ea9f1856be117879c33ec2b4a352bb81"
+      },
+      {
+        "path": "proofs/package/Lax544225Proofs/Products.lean",
+        "bytes": 5750,
+        "sha256": "a24ee5e13d50f6c6ef945eeee9c982f30c86582829cd3fa6050196522234448f"
+      },
+      {
+        "path": "proofs/package/Lax544225Proofs.lean",
+        "bytes": 309,
+        "sha256": "3984af250ecc3475e3b407976aefa6ec1d2e0eae6321112bd4bf827915b4b95b"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:d442411fb54a6304c2877fa1efc2823aeef2a667ff33c2c0e0e7087b0044ce64"
   }
 }
