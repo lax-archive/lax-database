@@ -22,7 +22,7 @@
         "@article{LeightonRao1999,\n  author = {Leighton, Tom and Rao, Satish},\n  title = {Multicommodity Max-Flow Min-Cut Theorems and Their Use in Designing Approximation Algorithms},\n  journal = {Journal of the ACM},\n  volume = {46},\n  number = {6},\n  pages = {787--832},\n  year = {1999},\n  doi = {10.1145/331524.331526},\n  url = {https://doi.org/10.1145/331524.331526}\n}\n"
       ]
     },
-    "abstract": "This submission concerns the deterministic algorithms behind the\nmulticommodity flow–cut theorems of Leighton and Rao. The general statement\nallows rational product demands, zero-weight transit vertices, and directed\nor undirected capacities. One deterministic algorithm runs in time polynomial\nin the binary encoding size of the rational input and returns a positive-demand\ncut and an exact rational concurrent flow satisfying\n$\\operatorname{ratio}(S)\\le C\\log_2(p)f$, where $p$ is the number of\npositive-weight vertices. Directed, undirected, and uniform variants are\ncorollaries of this common guarantee.\n\nThe submission also includes the deterministic uniform short-path flow\nconstruction of Theorem 18, with its simultaneous flow-value and path-length\nguarantees. Algorithms use the exact LP solver of\n[lax-109476](https://laxarchive.org/lax-109476/), the registered word RAM of\n[lax-808846](https://laxarchive.org/lax-808846/) and the polynomial-time\npredicate of [lax-759944](https://laxarchive.org/lax-759944/), measured in\nbinary rational input size and requiring exact encoded outputs.\n"
+    "abstract": "This submission concerns the deterministic algorithms behind the\nmulticommodity flow–cut theorems of Leighton and Rao. The general statement\nallows rational product demands, zero-weight transit vertices, and directed\nor undirected capacities. One deterministic algorithm runs in time polynomial\nin the binary encoding size of the rational input and returns a positive-demand\ncut and an exact rational concurrent flow satisfying\n$\\operatorname{ratio}(S)\\le C\\log_2(p)f$, where $p$ is the number of\npositive-weight vertices. Directed, undirected, and uniform variants are\ncorollaries of this common guarantee. Public arc-to-path conversion gives the\nclassical bound $\\operatorname{sparsestCut}\\le C\\log_2(p)\\operatorname{maxFlow}$.\n\nThe submission also includes the deterministic uniform short-path flow\nconstruction of Theorem 18, with its simultaneous flow-value and path-length\nguarantees. Algorithms use the exact LP solver of\n[lax-109476](https://laxarchive.org/lax-109476/), the registered word RAM of\n[lax-808846](https://laxarchive.org/lax-808846/) and the polynomial-time\npredicate of [lax-759944](https://laxarchive.org/lax-759944/), measured in\nbinary rational input size and requiring exact encoded outputs.\n"
   },
   "requiredByConcepts": [
     "Lax759944"
@@ -33,6 +33,33 @@
     "Lax808846Proofs"
   ],
   "concepts": [
+    {
+      "id": "Lax455465.ArcToPath",
+      "path": "concepts/Lax455465/ArcToPath.lean",
+      "title": "Arc-to-path conversion for concurrent flows",
+      "type": "lemma",
+      "description": "Every feasible concurrent arc flow can be replaced by a finite simple-path\nflow of the same value. The conversion never increases the load on any\ndirected arc, so it preserves both separate directed capacities and shared\nundirected capacities.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Capacities, vertex weights, and flows may be arbitrary nonnegative reals.\nCycles and diagonal commodities can be discarded. No positivity, symmetry,\nor rationality assumption is needed for this representation theorem."
+        }
+      ],
+      "imports": [
+        "Lax455465.ConcurrentFlow"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax455465.ConcurrentFlow\n\n/-!\n---\ntitle: Arc-to-path conversion for concurrent flows\ntype: lemma\n---\nEvery feasible concurrent arc flow can be replaced by a finite simple-path\nflow of the same value. The conversion never increases the load on any\ndirected arc, so it preserves both separate directed capacities and shared\nundirected capacities.\n\n# Formalization notes\n\nCapacities, vertex weights, and flows may be arbitrary nonnegative reals.\nCycles and diagonal commodities can be discarded. No positivity, symmetry,\nor rationality assumption is needed for this representation theorem.\n-/\n\nopen scoped NNReal\n\nnamespace Lax455465.ArcToPath\nopen Lax455465.ProductNetwork Lax455465.ConcurrentFlow\n\n/-- Conservation and capacities in the arc formulation yield the public\nsimple-path formulation, with no increase in arc load. -/\naxiom exists_path_flow {n : ℕ} (kind : EdgeKind) (N : Network n)\n    (π : VertexWeight n) (f : ℝ≥0) (F : ArcFlow n)\n    (hF : IsArcConcurrentFlow kind N π f F) :\n    ∃ P : PathFlow n, IsConcurrentFlow kind N π f P ∧\n      ∀ u v, arcLoad P u v ≤ totalArcLoad F u v\n\nend Lax455465.ArcToPath\n",
+      "statements": [
+        {
+          "id": "Lax455465.ArcToPath.exists_path_flow",
+          "signature": "exists_path_flow : ∀ {n : Nat} (kind : Lax455465.ProductNetwork.EdgeKind) (N : Lax455465.ProductNetwork.Network n)\n  (π : Lax455465.ProductNetwork.VertexWeight n) (f : NNReal) (F : Lax455465.ConcurrentFlow.ArcFlow n),\n  Lax455465.ConcurrentFlow.IsArcConcurrentFlow kind N π f F →\n    Exists fun P =>\n      And (Lax455465.ConcurrentFlow.IsConcurrentFlow kind N π f P)\n        (∀ (u v : Fin n),\n          NNReal.instPartialOrder.le (Lax455465.ConcurrentFlow.arcLoad P u v)\n            (Lax455465.ConcurrentFlow.totalArcLoad F u v))",
+          "startLine": 25,
+          "endLine": 31,
+          "doc": "Conservation and capacities in the arc formulation yield the public\nsimple-path formulation, with no increase in arc load."
+        }
+      ]
+    },
     {
       "id": "Lax455465.ConcurrentFlow",
       "path": "concepts/Lax455465/ConcurrentFlow.lean",
@@ -73,6 +100,34 @@
       "mathlibImports": [],
       "sourceText": "import Lax455465.RationalEncoding\n\n/-!\n---\ntitle: Exact flow–cut output certificates\ntype: definition\n---\nThe output contains both a cut and a rational concurrent flow. For a product\ninstance with $p$ positive-weight vertices, the cut has positive demand, the\nflow is feasible, and their values satisfy\n$$\\operatorname{ratio}(S)\\le C\\log_2(p)\\,f.$$\nThe same output witnesses both sides of the algorithmic flow–cut guarantee.\nA zero-capacity cut and the zero flow are valid when the instance has no\npositive concurrent flow.\n\n# Formalization notes\n\nThe output starts with the length-$n$ cut membership word, followed by the\nexisting rational arc-flow encoding. Validity is checked against the input;\nan output annotation about its approximation ratio is never trusted.\n-/\n\nopen scoped NNReal\n\nnamespace Lax455465.FlowCutCertificate\n\nopen Lax455465.ProductNetwork Lax455465.ConcurrentFlow Lax455465.RationalEncoding\n\n/-- The cut and rational path flow returned by a flow–cut algorithm. -/\nstructure Certificate (n : ℕ) where\n  /-- One shore of the cut. -/\n  cut : Finset (Fin n)\n  /-- A concurrent flow with an explicitly claimed value. -/\n  flow : ArcCertificate n\n\n/-- The exact output contains the cut followed by the flow certificate. -/\ndef encodeCertificate {n : ℕ} (certificate : Certificate n) : List ℕ :=\n  encodeCut certificate.cut ++ encodeArcs certificate.flow\n\n/-- The joint guarantee for directed and undirected product demands. -/\ndef IsValid {n : ℕ} (kind : EdgeKind) (I : RationalInstance n) (C : ℝ)\n    (certificate : Certificate n) : Prop :=\n  AdmissibleCut I.weights certificate.cut ∧\n  IsArcConcurrentFlow kind I.network I.weights\n    (certificate.flow.value : ℝ≥0) certificate.flow.flow ∧\n  (ratioCost I.network I.weights certificate.cut : ℝ) ≤\n    C * logFactor (supportCount I.weights) * (certificate.flow.value : ℝ)\n\nend Lax455465.FlowCutCertificate\n",
       "statements": []
+    },
+    {
+      "id": "Lax455465.ProductFlowCut",
+      "path": "concepts/Lax455465/ProductFlowCut.lean",
+      "title": "Classical product multicommodity flow–cut bound",
+      "type": "lemma",
+      "description": "For one universal constant $C>0$, every rational product-demand instance\nwith $p\\ge2$ positive-weight vertices satisfies\n$$\\operatorname{sparsestCut}(G,\\pi)\n  \\le C\\log_2(p)\\,\\operatorname{maxFlow}(G,\\pi).$$\nThe statement covers directed arcs with separate capacities and symmetric\nundirected edges with shared capacities. Uniform demand is the all-one\nspecialization.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The maximum flow is the supremum over the real-valued simple-path flows\ndefined in `ConcurrentFlow`. This corollary uses the joint certificate\nreturned by the deterministic RAM algorithm and the public arc-to-path\nconversion, connecting the algorithmic guarantee to the classical values."
+        }
+      ],
+      "imports": [
+        "Lax455465.ArcToPath",
+        "Lax455465.RamProductFlowCut"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax455465.RamProductFlowCut\nimport Lax455465.ArcToPath\n\n/-!\n---\ntitle: Classical product multicommodity flow–cut bound\ntype: lemma\n---\nFor one universal constant $C>0$, every rational product-demand instance\nwith $p\\ge2$ positive-weight vertices satisfies\n$$\\operatorname{sparsestCut}(G,\\pi)\n  \\le C\\log_2(p)\\,\\operatorname{maxFlow}(G,\\pi).$$\nThe statement covers directed arcs with separate capacities and symmetric\nundirected edges with shared capacities. Uniform demand is the all-one\nspecialization.\n\n# Formalization notes\n\nThe maximum flow is the supremum over the real-valued simple-path flows\ndefined in `ConcurrentFlow`. This corollary uses the joint certificate\nreturned by the deterministic RAM algorithm and the public arc-to-path\nconversion, connecting the algorithmic guarantee to the classical values.\n-/\n\nnamespace Lax455465.ProductFlowCut\nopen Lax455465.ProductNetwork Lax455465.ConcurrentFlow Lax455465.RationalEncoding\n\n/-- The classical flow–cut inequality follows from the constructive certificate. -/\naxiom exists_flow_cut_bound :\n  ∃ C : ℝ, 0 < C ∧\n    ∀ (kind : EdgeKind) (n : ℕ) (I : RationalInstance n),\n      (kind = .undirected → I.network.IsUndirected) →\n      2 ≤ supportCount I.weights →\n      (sparsestCut I.network I.weights : ℝ) ≤\n        C * logFactor (supportCount I.weights) * (maxFlow kind I.network I.weights : ℝ)\n\nend Lax455465.ProductFlowCut\n",
+      "statements": [
+        {
+          "id": "Lax455465.ProductFlowCut.exists_flow_cut_bound",
+          "signature": "exists_flow_cut_bound : Exists fun C =>\n  And (Real.instLT.lt 0 C)\n    (∀ (kind : Lax455465.ProductNetwork.EdgeKind) (n : Nat) (I : Lax455465.RationalEncoding.RationalInstance n),\n      (Eq kind Lax455465.ProductNetwork.EdgeKind.undirected → I.network.IsUndirected) →\n        instLENat.le 2 (Lax455465.ProductNetwork.supportCount I.weights) →\n          Real.instLE.le (Lax455465.ProductNetwork.sparsestCut I.network I.weights).toReal\n            (instHMul.hMul\n              (instHMul.hMul C (Lax455465.ProductNetwork.logFactor (Lax455465.ProductNetwork.supportCount I.weights)))\n              (Lax455465.ConcurrentFlow.maxFlow kind I.network I.weights).toReal))",
+          "startLine": 28,
+          "endLine": 35,
+          "doc": "The classical flow–cut inequality follows from the constructive certificate."
+        }
+      ]
     },
     {
       "id": "Lax455465.ProductNetwork",
@@ -302,6 +357,13 @@
   ],
   "proofs": [
     {
+      "id": "Lax455465Proofs.ArcToPath.exists_path_flow",
+      "path": "proofs/Lax455465Proofs/ArcToPath.lean",
+      "conclusion": "Lax455465.ArcToPath.exists_path_flow",
+      "assumptions": [],
+      "description": "Extract simple positive paths by repeated bottleneck subtraction for each\noff-diagonal commodity. Conservation supplies a path whenever residual supply\nis positive, even if the residual contains cycles. Each subtraction either\nfinishes the supply or removes a positive arc, giving finite termination.\nAdding the commodity path flows preserves capacities and the common value."
+    },
+    {
       "id": "Lax455465Proofs.ProductCorollaries.directed_product",
       "path": "proofs/Lax455465Proofs/ProductCorollaries.lean",
       "conclusion": "Lax455465.RamDirectedSparsestCut.exists_polynomial_time_sparse_cut",
@@ -362,6 +424,16 @@
       ]
     },
     {
+      "id": "Lax455465Proofs.ProductFlowCut.exists_flow_cut_bound",
+      "path": "proofs/Lax455465Proofs/ProductFlowCut.lean",
+      "conclusion": "Lax455465.ProductFlowCut.exists_flow_cut_bound",
+      "assumptions": [
+        "Lax455465.ArcToPath.exists_path_flow",
+        "Lax455465.RamProductFlowCut.exists_polynomial_time_flow_cut"
+      ],
+      "description": "The deterministic algorithm supplies an admissible cut and a feasible arc\nflow. Public arc-to-path conversion puts its value in the feasible set defining\n`maxFlow`; the boundedness lemma makes that value at most the supremum. The\nadmissible cut bounds the infimum defining `sparsestCut`, yielding the classical\ninequality with the algorithm's same universal approximation constant."
+    },
+    {
       "id": "Lax455465Proofs.RamProductAlgorithm.exists_polynomial_time_flow_cut",
       "path": "proofs/Lax455465Proofs/RamProductAlgorithm.lean",
       "conclusion": "Lax455465.RamProductFlowCut.exists_polynomial_time_flow_cut",
@@ -394,11 +466,21 @@
   ],
   "capture": {
     "formatVersion": 1,
-    "digest": "ec739a0362c7ebabf6939a6228d02778af8e61b94ab78a9222b28f007eee6ace",
-    "sourceCommit": "007c9c1e9fcf969ddcafc7ce26b770e2192c4ae8",
+    "digest": "7492514f8053d50d3e8cb3267796c0cf1ec329487ec1705eb768e7d87c604754",
+    "sourceCommit": "d59618889949423fcd352deb49cb20df4702c970",
     "leanToolchain": "leanprover/lean4:v4.33.0",
     "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
     "files": [
+      {
+        "path": "concepts/ir/Lax455465/ArcToPath.c",
+        "bytes": 1340,
+        "sha256": "12697a7d467e8f4a77ca1125dcd15da5bd8eb31e70bcd98cb2e180c3afdeb32a"
+      },
+      {
+        "path": "concepts/ir/Lax455465/ArcToPath.c.hash",
+        "bytes": 16,
+        "sha256": "be402165593ec755678afb56564b9798ee65f2c5166dbda1eb812b148792d447"
+      },
       {
         "path": "concepts/ir/Lax455465/ConcurrentFlow.c",
         "bytes": 6003,
@@ -418,6 +500,16 @@
         "path": "concepts/ir/Lax455465/FlowCutCertificate.c.hash",
         "bytes": 16,
         "sha256": "3c722c25884f80c80f82dbe54c11a814908aa157dd00acd9d6cb21e2697aee22"
+      },
+      {
+        "path": "concepts/ir/Lax455465/ProductFlowCut.c",
+        "bytes": 1587,
+        "sha256": "1d45765a21c7789dbc48c212bc86548e1ad6f6c8f86e649a839aae0d2b8a8740"
+      },
+      {
+        "path": "concepts/ir/Lax455465/ProductFlowCut.c.hash",
+        "bytes": 16,
+        "sha256": "1ae0fde816bfd40c5a0f143a7f5b6434584369159d19c4155ca7324ef7ce4afd"
       },
       {
         "path": "concepts/ir/Lax455465/ProductNetwork.c",
@@ -511,13 +603,38 @@
       },
       {
         "path": "concepts/ir/Lax455465.c",
-        "bytes": 3897,
-        "sha256": "31a3d9324800b77f65af35ea2bc8e68a46e8837914a9b82707553d79c8930a4c"
+        "bytes": 4368,
+        "sha256": "5d36b770efe72e1ff0af81dc7a3b29f4226c3883dd1bc279c49da933034cfe16"
       },
       {
         "path": "concepts/ir/Lax455465.c.hash",
         "bytes": 16,
-        "sha256": "a69bfc2665426412a78be3a05532ac8d964ed36c4875cff65ac8ba8b9bd54075"
+        "sha256": "f314e5d12510f249871f7a142c999ee314ed189de0278ddaa79382f262cedac3"
+      },
+      {
+        "path": "concepts/lib/Lax455465/ArcToPath.ilean",
+        "bytes": 2244,
+        "sha256": "8346a656f4a71fc534848518e0abc8c7a664236b6b9f9bfd8df65969600e621e"
+      },
+      {
+        "path": "concepts/lib/Lax455465/ArcToPath.ilean.hash",
+        "bytes": 16,
+        "sha256": "1dd9032094537178cea1abc0ea7943926caf018b610e0b3685b3edb3d38ecba6"
+      },
+      {
+        "path": "concepts/lib/Lax455465/ArcToPath.olean",
+        "bytes": 10592,
+        "sha256": "2dfc77b04d190736949b95eec196ba2438529f481075e08b52ba983cf60beaf2"
+      },
+      {
+        "path": "concepts/lib/Lax455465/ArcToPath.olean.hash",
+        "bytes": 16,
+        "sha256": "e1741a89742c10d8a3665e847b82b20e9370b7dcd030a9f053b117644bcc2f9c"
+      },
+      {
+        "path": "concepts/lib/Lax455465/ArcToPath.trace",
+        "bytes": 2218,
+        "sha256": "f718a7b7bf861d59ec497b2244965597f8e54627011723c47563f27a19554c88"
       },
       {
         "path": "concepts/lib/Lax455465/ConcurrentFlow.ilean",
@@ -568,6 +685,31 @@
         "path": "concepts/lib/Lax455465/FlowCutCertificate.trace",
         "bytes": 2285,
         "sha256": "fdbd043ffa38f3cbdbc992f77f53028aec154fea867a5e041b91b09ae568212d"
+      },
+      {
+        "path": "concepts/lib/Lax455465/ProductFlowCut.ilean",
+        "bytes": 3181,
+        "sha256": "30f60e19378f266c3765b7a4c07702046c9e603e24e77625d33b8da061570e0b"
+      },
+      {
+        "path": "concepts/lib/Lax455465/ProductFlowCut.ilean.hash",
+        "bytes": 16,
+        "sha256": "3b222e4e893b4e0f63bc85743cff13a1de691a5f9de773e2555f77069fbc2321"
+      },
+      {
+        "path": "concepts/lib/Lax455465/ProductFlowCut.olean",
+        "bytes": 13184,
+        "sha256": "6490df1444f46ed8ef24fb6e7473bc8902ea60e45d8a0adc4569c50550a9a03d"
+      },
+      {
+        "path": "concepts/lib/Lax455465/ProductFlowCut.olean.hash",
+        "bytes": 16,
+        "sha256": "fb88a4cad468242e590fd4410bc211678af8a9180385bf8208a1828f8241da20"
+      },
+      {
+        "path": "concepts/lib/Lax455465/ProductFlowCut.trace",
+        "bytes": 2403,
+        "sha256": "4af686980b74521814200c002f60d8baf7dec99155a0de5a7adba4d0c53cb9f5"
       },
       {
         "path": "concepts/lib/Lax455465/ProductNetwork.ilean",
@@ -796,28 +938,28 @@
       },
       {
         "path": "concepts/lib/Lax455465.ilean",
-        "bytes": 645,
-        "sha256": "b616d65c84278df4ba9b37ec73f09fc6b5694f781b9eacfe515febd5d3677f61"
+        "bytes": 734,
+        "sha256": "e8d2ed5c806561abcb7201445f5bf678628def430c6b9213cda352ea3fb75437"
       },
       {
         "path": "concepts/lib/Lax455465.ilean.hash",
         "bytes": 16,
-        "sha256": "8683d9234fb109ef6b3c2d24caaec61d934f41062313f61c98c30a5990101830"
+        "sha256": "75fd2208cbda1d2070b89c0506df621723e73fa2c96104e7341eb27b993f04f7"
       },
       {
         "path": "concepts/lib/Lax455465.olean",
-        "bytes": 2728,
-        "sha256": "dc94f4c1ac4f7ac0c5984cbac3656cd030e88493d07dbcd35d93eb11ddbb2d25"
+        "bytes": 2952,
+        "sha256": "c2330520bc62f849a026feee08c8ee00eb41b9c9ac67c3e87ceca08ef57744d8"
       },
       {
         "path": "concepts/lib/Lax455465.olean.hash",
         "bytes": 16,
-        "sha256": "b131a6b5a510dc3b1cd27c8727cda96b30262698d309188732c64352aa56c704"
+        "sha256": "481fb2118527b31cee3c32e9a0bac2e82bf7036966889fdf6df67967d1aacf2c"
       },
       {
         "path": "concepts/lib/Lax455465.trace",
-        "bytes": 3863,
-        "sha256": "b1251deeef1c99846e202715e63b1e2be855ea65dfc6c99002d839af3d6336af"
+        "bytes": 4168,
+        "sha256": "1d70af92b7775bc2ab292d2bb1ef87d4edca58935b9817ca83dfcebbcd337bef"
       },
       {
         "path": "concepts/package/lake-manifest.json",
@@ -830,6 +972,11 @@
         "sha256": "56ce70bbe9a5a3436bbac5c61dcda8c8c9cb0740d292207629d1d0d04fc498be"
       },
       {
+        "path": "concepts/package/Lax455465/ArcToPath.lean",
+        "bytes": 1140,
+        "sha256": "52ba37b4f0b43b6e8006fa1a69e3b9c8954ebe412e3177a2f1a3681287389268"
+      },
+      {
         "path": "concepts/package/Lax455465/ConcurrentFlow.lean",
         "bytes": 5101,
         "sha256": "1e0aabbf7f49969556fa118840e2d250643d7d4f2ab297b06d6f1d44c23a0c04"
@@ -838,6 +985,11 @@
         "path": "concepts/package/Lax455465/FlowCutCertificate.lean",
         "bytes": 1903,
         "sha256": "a4c04d54cdfca878815e953d4effe2d1957662aef8894b735a53d6db5cac62f8"
+      },
+      {
+        "path": "concepts/package/Lax455465/ProductFlowCut.lean",
+        "bytes": 1417,
+        "sha256": "69316a761bcaacc2fd7eca7fc7579274215a0e0fa377d4c5ed778b555fd9bda1"
       },
       {
         "path": "concepts/package/Lax455465/ProductNetwork.lean",
@@ -886,8 +1038,8 @@
       },
       {
         "path": "concepts/package/Lax455465.lean",
-        "bytes": 401,
-        "sha256": "e54c9093fb740e32b4dafa1e0695e973dd061be395e9572a6cf90401857c712d"
+        "bytes": 460,
+        "sha256": "77c458090039be21d73b07defadfe40cb324a264f04d4c07e0780bfae4efce5a"
       },
       {
         "path": "concepts/package/lean-toolchain",
@@ -933,6 +1085,16 @@
         "path": "proofs/ir/Lax455465Proofs/ArcCertificates.c.hash",
         "bytes": 16,
         "sha256": "c377e1538bd31291c539fdea071007fb736ca7515a1fc12b7ef2902855448aeb"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/ArcToPath.c",
+        "bytes": 1610,
+        "sha256": "8d382aa36924c7536f12407d04ec5ecc7e8791c27875d550b1d0c6e12aa5954c"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/ArcToPath.c.hash",
+        "bytes": 16,
+        "sha256": "e4cc1ba140113e677b5e493e20a1d43763678597e316dd00354937c066f8aa48"
       },
       {
         "path": "proofs/ir/Lax455465Proofs/BalancedPrefix.c",
@@ -1565,6 +1727,16 @@
         "sha256": "819a220cac3959a157c8d22d5a2dd4e1890be4f6007a2d46a93d61bf1a2d5132"
       },
       {
+        "path": "proofs/ir/Lax455465Proofs/MaxFlowBounds.c",
+        "bytes": 1390,
+        "sha256": "a62098505097551ee264f4b09180d3341ba87a493f5c3b0d58b6dd9c1fdd7b64"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/MaxFlowBounds.c.hash",
+        "bytes": 16,
+        "sha256": "16a64e2a47bf088e80072b3e2331b08d77087e778e9024048b50e1b589f64bdd"
+      },
+      {
         "path": "proofs/ir/Lax455465Proofs/MetricCostData.c",
         "bytes": 6311,
         "sha256": "3e82003d3b4b9f720de454a19325d0fc48cbc157146f07e000581f3e8b76a6bf"
@@ -1643,6 +1815,16 @@
         "path": "proofs/ir/Lax455465Proofs/PathCounting.c.hash",
         "bytes": 16,
         "sha256": "f172d88ef2ebfb50715a82fdbcf1602e3cc8b9c52e7a82a4bdf9850f2373570c"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/PathFlowSums.c",
+        "bytes": 1388,
+        "sha256": "72f0c994f95e53c8bb21cc7cd26679df95aa22e8cf2ff611498783e74f2c4623"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/PathFlowSums.c.hash",
+        "bytes": 16,
+        "sha256": "dfce6146f7e91e782f763170125b571b9066c8a2a44c0b4fe7c75dcf555fb781"
       },
       {
         "path": "proofs/ir/Lax455465Proofs/PathRecordArithmetic.c",
@@ -1743,6 +1925,16 @@
         "path": "proofs/ir/Lax455465Proofs/ProductCorollaries.c.hash",
         "bytes": 16,
         "sha256": "d0eb812bb093772b40f5a6839dc283b8f7e99bdb51ecd8c49a3bda51c10adcc9"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/ProductFlowCut.c",
+        "bytes": 1638,
+        "sha256": "897b95ab8585ed0054427feb224ae17f5c875ddec79964daa4bddd6d9d671b8b"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/ProductFlowCut.c.hash",
+        "bytes": 16,
+        "sha256": "d805a79846e20fcc28ac6b8ced666c94ffbed82651c5a1f77bc9e53fccfb0bc2"
       },
       {
         "path": "proofs/ir/Lax455465Proofs/RadiusData.c",
@@ -4355,6 +4547,56 @@
         "sha256": "8f635497b1c6a1ef46c84ecb23794c8052dc84348fcfff8ad933b75f079a2e7b"
       },
       {
+        "path": "proofs/ir/Lax455465Proofs/RealFlowDecomposition.c",
+        "bytes": 11038,
+        "sha256": "11d0b98987a96db996de40ada83b8165090e090247933334333e2b2753874565"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/RealFlowDecomposition.c.hash",
+        "bytes": 16,
+        "sha256": "f9675ea8ba0617ee59090265f92a771218cd7968cde8a02b46454958d1906294"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/RealPathCounting.c",
+        "bytes": 4852,
+        "sha256": "7f2ccc287173df6bc6b959e947e501548a082a5c240e3e3bfe3f84e663a400ae"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/RealPathCounting.c.hash",
+        "bytes": 16,
+        "sha256": "b6a09fa9ed1c1bf54bef0ff2a6354d54f0dd5be3ed1db5bfac3c0b80e74c8de0"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/RealPathFlow.c",
+        "bytes": 4436,
+        "sha256": "a374f34d39f96ec15b3542d4b7aaf88920088fb4c946bcabee6a1b5799dd81d0"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/RealPathFlow.c.hash",
+        "bytes": 16,
+        "sha256": "a196c4740f9cda5fa53144b37c9173bfa1bfff2c5a3d150de6e70950461fcbf8"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/RealPathSubtraction.c",
+        "bytes": 4334,
+        "sha256": "eaeb91bfaf3edda61da1d9a5d2939dab4a7094e1b42d77e3b4114c744fd8fcfa"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/RealPathSubtraction.c.hash",
+        "bytes": 16,
+        "sha256": "11512559ec934a02b421019b442d4ea2fbef598d1edf5a6f836e7a124773148c"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/RealPositivePath.c",
+        "bytes": 1629,
+        "sha256": "37e53828379516c33242bfbb8ae88df82aae1dab9e34b10ad44655fd7de0d847"
+      },
+      {
+        "path": "proofs/ir/Lax455465Proofs/RealPositivePath.c.hash",
+        "bytes": 16,
+        "sha256": "a55a15d312ee2c724f4cd47d33d0b65a4f7cac197eb07e31d6e9cb8cc41ad105"
+      },
+      {
         "path": "proofs/ir/Lax455465Proofs/RegionBudget.c",
         "bytes": 2943,
         "sha256": "8cb14d06702fb52ed31bde6c22373bf03b65be403921156c827fe94b6cbb70ac"
@@ -4966,13 +5208,13 @@
       },
       {
         "path": "proofs/ir/Lax455465Proofs.c",
-        "bytes": 114132,
-        "sha256": "cb619c76d31410b8649158184b9c1cfb7f0b4af8a56c6b9d319d92ba04600e85"
+        "bytes": 116607,
+        "sha256": "404d233cd10315d1b9730412cef07afe4912fdb934cfd9161157d76b4b828f07"
       },
       {
         "path": "proofs/ir/Lax455465Proofs.c.hash",
         "bytes": 16,
-        "sha256": "bb25f3e6225e4f70d1a701805277428a7633ac13be4702bc17218d6331821148"
+        "sha256": "ed2e88b4dfc642ea2f5cd0e9b9d4cdc93c4a7f6089fb448530290249f83143b3"
       },
       {
         "path": "proofs/lib/Lax455465Proofs/AcyclicFlowDecomposition.ilean",
@@ -5073,6 +5315,31 @@
         "path": "proofs/lib/Lax455465Proofs/ArcCertificates.trace",
         "bytes": 2900,
         "sha256": "ec35629bb931137d4275ab0d9c9416610d70e790f315316cfd6d863189dae5c7"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/ArcToPath.ilean",
+        "bytes": 11061,
+        "sha256": "c3bc600a7bd14e44a5d06cc1eecc1864f00a5a1471b5e32d92a41ff7d551ed35"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/ArcToPath.ilean.hash",
+        "bytes": 16,
+        "sha256": "c1481e930b29bed482216cae550a5986ed322e7e44747480231192cc816ef048"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/ArcToPath.olean",
+        "bytes": 142392,
+        "sha256": "7e2538ca6018cef873704b8fe6494d745fea7bc9598cf922b38a4d0a9e2f7fb8"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/ArcToPath.olean.hash",
+        "bytes": 16,
+        "sha256": "9ba3b4f5f19df90d958c9674fd6d51e7a5eff00e9ff965d277edab1a4370dcfc"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/ArcToPath.trace",
+        "bytes": 2568,
+        "sha256": "727b197f33f570fd05445885bd5295285c3157281a54ed5f8468dffc18a7ece0"
       },
       {
         "path": "proofs/lib/Lax455465Proofs/BalancedPrefix.ilean",
@@ -6650,6 +6917,31 @@
         "sha256": "9b9c9ff1b93a2a778fcb4be88d32545542a934270d6e454ddbb74818075f19dd"
       },
       {
+        "path": "proofs/lib/Lax455465Proofs/MaxFlowBounds.ilean",
+        "bytes": 13183,
+        "sha256": "415195242bcf617f2b404fb99f0da7810f7ef9d2fd22940ccea2d1004b590e88"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/MaxFlowBounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "ed932dedd67cbd335fb47ef7fcee37496503b0245bbb430a010e0cb2679de052"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/MaxFlowBounds.olean",
+        "bytes": 112920,
+        "sha256": "894216de37ca0701305b21d72e96f38d817f83f451cd64124cd4a241790cf909"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/MaxFlowBounds.olean.hash",
+        "bytes": 16,
+        "sha256": "57754cbbf6444e27a5b45fbf347972bb4b70e94ce7bd585588557c389b033ecb"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/MaxFlowBounds.trace",
+        "bytes": 2452,
+        "sha256": "9143d6b08368b5af664ea4ab8e7a5c2001b72284393880f99901959e80f1fde1"
+      },
+      {
         "path": "proofs/lib/Lax455465Proofs/MetricCostData.ilean",
         "bytes": 6361,
         "sha256": "856f2bc11782622338c49c7636b356387eae0db2c6b033ab432198ea0a57de15"
@@ -6848,6 +7140,31 @@
         "path": "proofs/lib/Lax455465Proofs/PathCounting.trace",
         "bytes": 5477,
         "sha256": "9f0fe9681031cd69892ff888c1b5336114b2405f85f0f14d834c84107b28cb81"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/PathFlowSums.ilean",
+        "bytes": 5149,
+        "sha256": "5376a36a13576c3f462eb4ccfad50d13bf467cccd36c87784ecf2c9b44a4cccc"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/PathFlowSums.ilean.hash",
+        "bytes": 16,
+        "sha256": "de08a6ff3efa125ee135870616318996276826e6d6a852195342b1c2bc65d8b3"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/PathFlowSums.olean",
+        "bytes": 70880,
+        "sha256": "109f95c5a9f1e6a02111f9aa5a5f10756495c253d0d49ad01550c5537cc5d011"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/PathFlowSums.olean.hash",
+        "bytes": 16,
+        "sha256": "d737bad2f09d60929fa00ec4bcfa4807b5df1a4b24be741430f5af1fec0802ee"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/PathFlowSums.trace",
+        "bytes": 2445,
+        "sha256": "df137d55c8ccb2ae8c25a9d426cc9d7f3fa5593f03503149b7b9898bb90643a2"
       },
       {
         "path": "proofs/lib/Lax455465Proofs/PathRecordArithmetic.ilean",
@@ -7098,6 +7415,31 @@
         "path": "proofs/lib/Lax455465Proofs/ProductCorollaries.trace",
         "bytes": 3203,
         "sha256": "561b76eb6c92f621e0c2a2682c6c4b33f3f1b9bddc65b1445270ae976865856e"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/ProductFlowCut.ilean",
+        "bytes": 9836,
+        "sha256": "a472f33b1a200ec52fdadadd7a69e4063079a668fd0d9de1b1ab2d5ce3e182b0"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/ProductFlowCut.ilean.hash",
+        "bytes": 16,
+        "sha256": "1d377f65419e44a1438595a70f8df161becbc8e0b0c5e26df35b195c8cef5c8a"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/ProductFlowCut.olean",
+        "bytes": 83320,
+        "sha256": "2deb278d7a4edf21e7158d5c259acb220b1f2eb3118fb9ec0e0b75ca2f1bebdc"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/ProductFlowCut.olean.hash",
+        "bytes": 16,
+        "sha256": "4746ba943992846468d1325bbd271547acb63e66e106b51df6bdde20faa5371e"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/ProductFlowCut.trace",
+        "bytes": 2622,
+        "sha256": "65c125a9d513d6bb252d1b4cfe0b4cb50543d5c6499972d8dfbda9bf93eb07c1"
       },
       {
         "path": "proofs/lib/Lax455465Proofs/RadiusData.ilean",
@@ -13625,6 +13967,131 @@
         "sha256": "8f3685ff8ee9b53de3fce6bb2dc3431fff49c4a547d054870fa8ffb4ce14b40f"
       },
       {
+        "path": "proofs/lib/Lax455465Proofs/RealFlowDecomposition.ilean",
+        "bytes": 12577,
+        "sha256": "87b0bfad6a883c216cb6ffa20f8e59b97c8f241cde82c91451250059a8d72dc2"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealFlowDecomposition.ilean.hash",
+        "bytes": 16,
+        "sha256": "cbe21e63bea7950ad40013ff5d040411bead29d4fb9a6c77174fccaf1bdaaefc"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealFlowDecomposition.olean",
+        "bytes": 292840,
+        "sha256": "79422343acd6c2f16a462d0bb06d40eb607d856658f4d2642f2bdd43634b1879"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealFlowDecomposition.olean.hash",
+        "bytes": 16,
+        "sha256": "7cce13bd6a6bdd543589e35975f54a85db24c8787416886afc74969d7ab98581"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealFlowDecomposition.trace",
+        "bytes": 4444,
+        "sha256": "c7e5ee89f356e67b73e8cf6d5509e1c07f89683b3ff6cd328bed9748669bb016"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPathCounting.ilean",
+        "bytes": 5509,
+        "sha256": "a000e85f0f2cd9d58164a15e7fe1e661ed0694f54b8d03e797b210e62a58c981"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPathCounting.ilean.hash",
+        "bytes": 16,
+        "sha256": "8d963c343e7769ee50730412b0b34772b982346aa8784130b12d4f4997f91af2"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPathCounting.olean",
+        "bytes": 79856,
+        "sha256": "aeab8f935747767492bd765ec426b8dd8c9126fa5cced28a2ad48c1c6914021c"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPathCounting.olean.hash",
+        "bytes": 16,
+        "sha256": "add3002ac6d3560204c85c2bdf03c218fa5c24d4ca89c7c0f4b11189436a276f"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPathCounting.trace",
+        "bytes": 2473,
+        "sha256": "985ef2786d26d214fa8ced789d512a81c2509dcbdefe8eb2a170be50f4626f39"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPathFlow.ilean",
+        "bytes": 12099,
+        "sha256": "7160b981f42200979e2f4a01b73755fa128102164122cd18cfb4b81c6dd49c23"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPathFlow.ilean.hash",
+        "bytes": 16,
+        "sha256": "d925cabde256a69a21d9690804d6f9adea4a3cbf64f5b5fd3c7de51b6ecb2641"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPathFlow.olean",
+        "bytes": 179576,
+        "sha256": "b30b4cfad2542ab4a5b561675247e967b5a869cac1fbc3091e339d2cfae031ac"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPathFlow.olean.hash",
+        "bytes": 16,
+        "sha256": "974128f33116d2c5ba5b4fb943ff66320e504a2c95735b134f8ea82565b0362d"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPathFlow.trace",
+        "bytes": 2946,
+        "sha256": "08a38d9b5635f2a16e614cc12acd0bd67af0659aabbecc1b909d3abb42d4c203"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPathSubtraction.ilean",
+        "bytes": 17822,
+        "sha256": "c0e237ac87e2ffbb77a16b24935e7159c9db5f40c327546d15f290027d5b548e"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPathSubtraction.ilean.hash",
+        "bytes": 16,
+        "sha256": "c3b1cb040b6883fca51228fd5be542d4de86e6d32f729bcf9a309c3c7d01eb0d"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPathSubtraction.olean",
+        "bytes": 299600,
+        "sha256": "7d62661900a387378c1661b6ca8687a916d0cba7aa46cf7bb5da862b332605e3"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPathSubtraction.olean.hash",
+        "bytes": 16,
+        "sha256": "9a283a858c11605062e6e0199cb75981930821a5e83d99d5cffee076d504c601"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPathSubtraction.trace",
+        "bytes": 3607,
+        "sha256": "74d064c61747267e557a1dd051a9416f0eab3527a098eb01076e226f92c76139"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPositivePath.ilean",
+        "bytes": 9999,
+        "sha256": "b5860f9b41c30a7a3d50a42d5845192849d4238f0af84244cf1b571f1aea3a16"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPositivePath.ilean.hash",
+        "bytes": 16,
+        "sha256": "c7dc3e5a4030cc4689b10a9f2b660ace78ea34669c8587371aa39a3fe0f35aae"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPositivePath.olean",
+        "bytes": 164640,
+        "sha256": "a2ce50724e35331accf67bcb25bd76cf0db9b908998f93634fda937c6e356faf"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPositivePath.olean.hash",
+        "bytes": 16,
+        "sha256": "d24b7d8042d7dcd1605ddb565b3f175af681714affdb9df48433337c91696730"
+      },
+      {
+        "path": "proofs/lib/Lax455465Proofs/RealPositivePath.trace",
+        "bytes": 2630,
+        "sha256": "503996872915e7fbeacc4ed24c5600972f5fafacdb2d2a503b8b81b9db8e97cb"
+      },
+      {
         "path": "proofs/lib/Lax455465Proofs/RegionBudget.ilean",
         "bytes": 6637,
         "sha256": "d8705d2698cd1ce45736ec2071878bb04d1b403bebd0df136cd997ca1dd06e22"
@@ -15151,28 +15618,28 @@
       },
       {
         "path": "proofs/lib/Lax455465Proofs.ilean",
-        "bytes": 22298,
-        "sha256": "a9f601c3a4de9b0d7d9a4ee7055e1bfd58c398810a3684cf79f4a9468aae3f5a"
+        "bytes": 22781,
+        "sha256": "ae86bd7dfd26a1f145fb1199eb92174f6e0487b163e39fdcb9114d3a556e2557"
       },
       {
         "path": "proofs/lib/Lax455465Proofs.ilean.hash",
         "bytes": 16,
-        "sha256": "bee6ef004cced9f450c7046199b57ccfa0dec40ad90be2bc963b3522a31b853b"
+        "sha256": "8f7af9a7fba58addebc356d5e02db76efb3faeb3c94919104b2d38013c5a48f5"
       },
       {
         "path": "proofs/lib/Lax455465Proofs.olean",
-        "bytes": 48576,
-        "sha256": "7d33e0ade18a77ce8da7404bf1adb5624a54e931875d86f556420d19b03d750a"
+        "bytes": 49616,
+        "sha256": "ef09839c50e472cdac0a653320abace537b0b1d81d0145e44e68b6564590f3d8"
       },
       {
         "path": "proofs/lib/Lax455465Proofs.olean.hash",
         "bytes": 16,
-        "sha256": "52e8ff4c58cead527a149630c64c596a6b55ae2f7c737af2f843b372b1ef158a"
+        "sha256": "13f9a7cf583ec17066a502697cf2d2f8b88ff82b984ef6a767125c8cb2002e27"
       },
       {
         "path": "proofs/lib/Lax455465Proofs.trace",
-        "bytes": 74223,
-        "sha256": "31f7e52ba7ba6b18d4e602086e1e0a472847c18b909d9edd5b1e76cd1bf67b3b"
+        "bytes": 75799,
+        "sha256": "15c78e0b6371735c7f694e9af58308e9383c319d7bed76b8e8a051de72f2e0a8"
       },
       {
         "path": "proofs/package/lake-manifest.json",
@@ -15203,6 +15670,11 @@
         "path": "proofs/package/Lax455465Proofs/ArcCertificates.lean",
         "bytes": 3164,
         "sha256": "84d9b265b00c7e85ce74717524c57c29ad1060a87e2747e1102449e6224b7421"
+      },
+      {
+        "path": "proofs/package/Lax455465Proofs/ArcToPath.lean",
+        "bytes": 3633,
+        "sha256": "e29afdb80310fbd923fb1c58113edcbc6660ee2739b42f6af9ad61d1be574d06"
       },
       {
         "path": "proofs/package/Lax455465Proofs/BalancedPrefix.lean",
@@ -15520,6 +15992,11 @@
         "sha256": "b453cabbdbeb44e744a8eb71a8b88d70d0dde947cefa578ffb16deb75f645300"
       },
       {
+        "path": "proofs/package/Lax455465Proofs/MaxFlowBounds.lean",
+        "bytes": 2896,
+        "sha256": "ff75a448aca5d61d3aa823a7a9da356c37cca1b520cde29cb2800bff0bcdf9c4"
+      },
+      {
         "path": "proofs/package/Lax455465Proofs/MetricCostData.lean",
         "bytes": 1344,
         "sha256": "72b10fd58e74f307830963a5b5827fa6afbc07bbf56e2305d2b256b6cda5b6b0"
@@ -15558,6 +16035,11 @@
         "path": "proofs/package/Lax455465Proofs/PathCounting.lean",
         "bytes": 2797,
         "sha256": "79f61e955d4d61fe2c597ccc3bb9a7ec47fdb44cdf8ca36b124efe8c794e6a10"
+      },
+      {
+        "path": "proofs/package/Lax455465Proofs/PathFlowSums.lean",
+        "bytes": 1553,
+        "sha256": "9fe14cb220f5dd24dd3aa55ee0ebb18ebe4c4512e921b69c1a2ad65631c6b5ef"
       },
       {
         "path": "proofs/package/Lax455465Proofs/PathRecordArithmetic.lean",
@@ -15608,6 +16090,11 @@
         "path": "proofs/package/Lax455465Proofs/ProductCorollaries.lean",
         "bytes": 5373,
         "sha256": "fbc95b3235219e1d139b7ef95f688aa84d17aebd38e94f98894bfafb25fb2c78"
+      },
+      {
+        "path": "proofs/package/Lax455465Proofs/ProductFlowCut.lean",
+        "bytes": 2478,
+        "sha256": "67150c8d45a7b919ce01140cab5b521255d3ba00464f04002977010b855eebee"
       },
       {
         "path": "proofs/package/Lax455465Proofs/RadiusData.lean",
@@ -16915,6 +17402,31 @@
         "sha256": "ee05950730c469962e06f231777647fd6db4571371516a6e1d6b1d56ea1b5045"
       },
       {
+        "path": "proofs/package/Lax455465Proofs/RealFlowDecomposition.lean",
+        "bytes": 3483,
+        "sha256": "d4f546e5f62a33047a16151c141ae0cfcd0d74a3a11c68bbc86cc2a8ff953e2b"
+      },
+      {
+        "path": "proofs/package/Lax455465Proofs/RealPathCounting.lean",
+        "bytes": 1153,
+        "sha256": "ab62a02b2bd02f05488d9c209b1ef7a002a4d14a6dcf469385f276a9725aea69"
+      },
+      {
+        "path": "proofs/package/Lax455465Proofs/RealPathFlow.lean",
+        "bytes": 2493,
+        "sha256": "91d5a0f7d793556ee1051f1af31ff4704740038b0c87f1ef0a8c917bac0e6668"
+      },
+      {
+        "path": "proofs/package/Lax455465Proofs/RealPathSubtraction.lean",
+        "bytes": 3667,
+        "sha256": "f470abc4d0b6d9019831734f287e192ab8446d6d54dc7bd19005fd9aeda36a3d"
+      },
+      {
+        "path": "proofs/package/Lax455465Proofs/RealPositivePath.lean",
+        "bytes": 3483,
+        "sha256": "dfd0c82a826b568ce97fbbc3a01d48e60017d555ee841d5ce060e0a31f82a0ab"
+      },
+      {
         "path": "proofs/package/Lax455465Proofs/RegionBudget.lean",
         "bytes": 2237,
         "sha256": "d055031c8bd98d952ab42e0c01e6608fe1492bc91cf321e5061ff0ae9271560a"
@@ -17221,8 +17733,8 @@
       },
       {
         "path": "proofs/package/Lax455465Proofs.lean",
-        "bytes": 16108,
-        "sha256": "b0d194eccc977328cdbf878850bd24a41cad6f6799d298e73394ba81f1ed53f0"
+        "bytes": 16456,
+        "sha256": "56fe0df908c1306a1c238512feb2a6325f465d3b35213adb8c4236e7dfc53677"
       },
       {
         "path": "proofs/package/lean-toolchain",
@@ -17230,6 +17742,17 @@
         "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
       }
     ],
-    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:ec739a0362c7ebabf6939a6228d02778af8e61b94ab78a9222b28f007eee6ace"
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:7492514f8053d50d3e8cb3267796c0cf1ec329487ec1705eb768e7d87c604754"
+  },
+  "lastSubmission": {
+    "commentId": 6134627797,
+    "eventCreatedAt": "2026-10-12T23:31:57Z",
+    "record": "bc0f5c11d6d985af74bac5abf13430edcc99557824077e131fc8757cf6c522ec",
+    "buildOutput": "21700386dc3dc663084716160938f38e2291ba7b4a8bbe45c558d414cfc90e65",
+    "previous": {
+      "archiveSha": "e470961d40d76ef921b5127c4c330f905ed3b111",
+      "record": "50d0f5827787f17540158ae3bd4a4e216dc4765da008da00bef7cc1f1f393274",
+      "buildOutput": "57b24e5b1613be9c6a80cb1b94388816f05c54db7d2fbd279402a1a41637f387"
+    }
   }
 }
