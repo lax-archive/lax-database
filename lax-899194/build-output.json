@@ -4,5 +4,776 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 192
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-899194",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "Tree Nash Equilibria in the Network Creation Game",
+      "authors": [],
+      "bibEntries": [
+        "@inproceedings{FabrikantLuthraManevaPapadimitriouShenker2003,\n  author = {Alex Fabrikant and Ankur Luthra and Elitza Maneva and Christos H. Papadimitriou and Scott Shenker},\n  title = {On a Network Creation Game},\n  booktitle = {Proceedings of the Twenty-Second Annual Symposium on Principles of Distributed Computing},\n  year = {2003},\n  pages = {347--351},\n  publisher = {ACM},\n  doi = {10.1145/872035.872088},\n  url = {https://people.eecs.berkeley.edu/~kubitron/courses/cs294-4-F03/papers/p347-fabrikant.pdf}\n}\n"
+      ]
+    },
+    "abstract": "In the network creation game, each player purchases incident undirected edges\nat price $\\alpha>0$ per edge and pays the sum of its distances to all players.\nDisconnected pairs have infinite distance. A pure Nash equilibrium admits no\nunilateral strategy change that reduces the changing player's cost.\n\nThis submission proves Theorem 3 of Fabrikant, Luthra, Maneva, Papadimitriou,\nand Shenker, *On a Network Creation Game* (PODC 2003, p. 350): every tree Nash\nequilibrium has social cost strictly less than five times the social optimum.\nThe optimum ranges over all strategy profiles, and the bound holds for every\npositive edge price and every number of players at least two.\n\nThe concept package separates strategy profiles, individual cost, Nash\nequilibrium, social cost, the inefficiency ratio, and the theorem statement.\nThe proof compares the distance savings obtained when both endpoints of a\ntree path buy a link to its midpoint. The resulting distance bound, together\nwith unique edge ownership at equilibrium and a lower bound on every\nprofile's social cost, gives the strict factor-five inequality.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax899194.InefficiencyRatio",
+      "path": "concepts/Lax899194/InefficiencyRatio.lean",
+      "title": "Inefficiency relative to the social optimum",
+      "type": "definition",
+      "description": "For fixed $n$ and edge price $\\alpha$, the social optimum is the minimum\nsocial cost over all strategy profiles. The inefficiency of a profile is\n$\\rho(s)=C(s)/\\operatorname{OPT}(n,\\alpha)$.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The optimum is encoded as an infimum. There are finitely many profiles and\nthe set of profiles is nonempty. For $n\\ge2$, a connected profile exists and\nevery profile has social cost at least $n(n-1)>0$. Thus the infimum is an\nattained finite minimum with a positive denominator in the theorem's domain.\n\nThe optimum ranges over all profiles, including networks with cycles. This\nuses the actual social optimum for every edge price rather than prescribing\na star. The paper uses $\\rho(G)$ for the ratio of an individual equilibrium;\nthe worst ratio over all equilibria is the price of anarchy."
+        }
+      ],
+      "imports": [
+        "Lax899194.SocialCost"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax899194.SocialCost\n\n/-!\n---\ntitle: Inefficiency relative to the social optimum\ntype: definition\n---\nFor fixed $n$ and edge price $\\alpha$, the social optimum is the minimum\nsocial cost over all strategy profiles. The inefficiency of a profile is\n$\\rho(s)=C(s)/\\operatorname{OPT}(n,\\alpha)$.\n\n# Formalization notes\n\nThe optimum is encoded as an infimum. There are finitely many profiles and\nthe set of profiles is nonempty. For $n\\ge2$, a connected profile exists and\nevery profile has social cost at least $n(n-1)>0$. Thus the infimum is an\nattained finite minimum with a positive denominator in the theorem's domain.\n\nThe optimum ranges over all profiles, including networks with cycles. This\nuses the actual social optimum for every edge price rather than prescribing\na star. The paper uses $\\rho(G)$ for the ratio of an individual equilibrium;\nthe worst ratio over all equilibria is the price of anarchy.\n-/\n\nnamespace Lax899194.InefficiencyRatio\n\nopen Lax899194.NetworkCreationGame Lax899194.SocialCost\nopen scoped NNReal ENNReal\n\n/-- The least social cost among all strategy profiles with `n` players. -/\nnoncomputable def optimalCost (n : ℕ) (α : ℝ≥0) : ℝ≥0∞ :=\n  ⨅ s : Profile n, socialCost α s\n\n/-- The social cost of a profile divided by the social optimum for the same game. -/\nnoncomputable def inefficiencyRatio {n : ℕ} (α : ℝ≥0) (s : Profile n) : ℝ≥0∞ :=\n  socialCost α s / optimalCost n α\n\nend Lax899194.InefficiencyRatio\n",
+      "statements": []
+    },
+    {
+      "id": "Lax899194.NashEquilibrium",
+      "path": "concepts/Lax899194/NashEquilibrium.lean",
+      "title": "Pure Nash equilibrium",
+      "type": "definition",
+      "description": "A strategy profile is a pure Nash equilibrium when no player can reduce its\nindividual cost by changing its own strategy while all other players keep\ntheir strategies. A deviation may replace the entire set of purchased edges.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The comparison is between costs in the two resulting networks, including\ndeviations that disconnect the network. Equality is allowed, so weak and\ntransient equilibria are included.\n\nThe displayed equilibrium inequality on p. 348 of the paper has its direction\nreversed. We use cost minimization, as specified by the surrounding discussion\nand explicitly by footnote 4 on p. 350: the current cost is at most the cost\nafter any unilateral deviation."
+        }
+      ],
+      "imports": [
+        "Lax899194.PlayerCost"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax899194.PlayerCost\n\n/-!\n---\ntitle: Pure Nash equilibrium\ntype: definition\n---\nA strategy profile is a pure Nash equilibrium when no player can reduce its\nindividual cost by changing its own strategy while all other players keep\ntheir strategies. A deviation may replace the entire set of purchased edges.\n\n# Formalization notes\n\nThe comparison is between costs in the two resulting networks, including\ndeviations that disconnect the network. Equality is allowed, so weak and\ntransient equilibria are included.\n\nThe displayed equilibrium inequality on p. 348 of the paper has its direction\nreversed. We use cost minimization, as specified by the surrounding discussion\nand explicitly by footnote 4 on p. 350: the current cost is at most the cost\nafter any unilateral deviation.\n-/\n\nnamespace Lax899194.NashEquilibrium\n\nopen Lax899194.NetworkCreationGame Lax899194.PlayerCost\nopen scoped NNReal\n\n/-- No unilateral replacement of a player's strategy lowers that player's cost. -/\ndef IsNashEquilibrium {n : ℕ} (α : ℝ≥0) (s : Profile n) : Prop :=\n  ∀ (i : Fin n) (t : Profile n),\n    (∀ j : Fin n, j ≠ i → t j = s j) →\n      playerCost α s i ≤ playerCost α t i\n\nend Lax899194.NashEquilibrium\n",
+      "statements": []
+    },
+    {
+      "id": "Lax899194.NetworkCreationGame",
+      "path": "concepts/Lax899194/NetworkCreationGame.lean",
+      "title": "Network creation game",
+      "type": "definition",
+      "description": "There are $n$ players, indexed by $\\{0,\\ldots,n-1\\}$. A strategy of player\n$i$ is a set $s_i$ of other players: player $i$ purchases an edge to each member\nof $s_i$. A strategy profile specifies one strategy for every player.\n\nThe resulting network $G[s]$ is undirected. Distinct players $i$ and $j$ are\nadjacent when $j\\in s_i$ or $i\\in s_j$. Either endpoint may purchase an edge,\nand both endpoints may purchase the same edge.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Strategies are subsets of `Fin n`, with self-purchases excluded by their type.\nEvery such subset is finite. Edge ownership remains part of the profile even\nthough the resulting graph is a simple graph."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Basic",
+        "Mathlib.Data.Set.Card"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Basic\nimport Mathlib.Data.Set.Card\n\n/-!\n---\ntitle: Network creation game\ntype: definition\n---\nThere are $n$ players, indexed by $\\{0,\\ldots,n-1\\}$. A strategy of player\n$i$ is a set $s_i$ of other players: player $i$ purchases an edge to each member\nof $s_i$. A strategy profile specifies one strategy for every player.\n\nThe resulting network $G[s]$ is undirected. Distinct players $i$ and $j$ are\nadjacent when $j\\in s_i$ or $i\\in s_j$. Either endpoint may purchase an edge,\nand both endpoints may purchase the same edge.\n\n# Formalization notes\n\nStrategies are subsets of `Fin n`, with self-purchases excluded by their type.\nEvery such subset is finite. Edge ownership remains part of the profile even\nthough the resulting graph is a simple graph.\n-/\n\nnamespace Lax899194.NetworkCreationGame\n\n/-- The other players to which player `i` purchases edges. -/\ndef Strategy (n : ℕ) (i : Fin n) := { S : Set (Fin n) // i ∉ S }\n\n/-- A choice of strategy for every player. -/\nabbrev Profile (n : ℕ) := (i : Fin n) → Strategy n i\n\n/-- The undirected network formed by all purchased edges. -/\ndef graph {n : ℕ} (s : Profile n) : SimpleGraph (Fin n) where\n  Adj i j := j ∈ (s i).val ∨ i ∈ (s j).val\n  symm := ⟨fun _ _ h => h.elim Or.inr Or.inl⟩\n  loopless := ⟨fun i h => h.elim (s i).property (s i).property⟩\n\nend Lax899194.NetworkCreationGame\n",
+      "statements": []
+    },
+    {
+      "id": "Lax899194.PlayerCost",
+      "path": "concepts/Lax899194/PlayerCost.lean",
+      "title": "Individual cost in the network creation game",
+      "type": "definition",
+      "description": "For an edge price $\\alpha>0$, player $i$ has cost\n$c_i(s)=\\alpha|s_i|+\\sum_j d_{G[s]}(i,j)$.\nThe distance is the length of a shortest path, and is infinite if there is no\npath. A player pays for every edge it purchases, including an edge also\npurchased by its other endpoint.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Costs take values in the extended nonnegative reals so that disconnected\nnetworks retain the infinite penalty. `SimpleGraph.edist` supplies the graph\ndistance, and `ENat.toENNReal` preserves both finite distances and infinity.\nThe edge price is a finite nonnegative real; the theorem assumes it is positive."
+        }
+      ],
+      "imports": [
+        "Lax899194.NetworkCreationGame"
+      ],
+      "mathlibImports": [
+        "Mathlib.Algebra.BigOperators.Group.Finset.Defs",
+        "Mathlib.Combinatorics.SimpleGraph.Metric",
+        "Mathlib.Data.Real.ENatENNReal"
+      ],
+      "sourceText": "import Lax899194.NetworkCreationGame\nimport Mathlib.Combinatorics.SimpleGraph.Metric\nimport Mathlib.Data.Real.ENatENNReal\nimport Mathlib.Algebra.BigOperators.Group.Finset.Defs\n\n/-!\n---\ntitle: Individual cost in the network creation game\ntype: definition\n---\nFor an edge price $\\alpha>0$, player $i$ has cost\n$c_i(s)=\\alpha|s_i|+\\sum_j d_{G[s]}(i,j)$.\nThe distance is the length of a shortest path, and is infinite if there is no\npath. A player pays for every edge it purchases, including an edge also\npurchased by its other endpoint.\n\n# Formalization notes\n\nCosts take values in the extended nonnegative reals so that disconnected\nnetworks retain the infinite penalty. `SimpleGraph.edist` supplies the graph\ndistance, and `ENat.toENNReal` preserves both finite distances and infinity.\nThe edge price is a finite nonnegative real; the theorem assumes it is positive.\n-/\n\nnamespace Lax899194.PlayerCost\n\nopen Lax899194.NetworkCreationGame\nopen scoped BigOperators NNReal ENNReal\n\n/-- Edge expenditure plus the sum of distances from player `i` to all players. -/\nnoncomputable def playerCost {n : ℕ} (α : ℝ≥0) (s : Profile n)\n    (i : Fin n) : ℝ≥0∞ :=\n  (α : ℝ≥0∞) * (s i).val.ncard +\n    ∑ j : Fin n, ((graph s).edist i j).toENNReal\n\nend Lax899194.PlayerCost\n",
+      "statements": []
+    },
+    {
+      "id": "Lax899194.SocialCost",
+      "path": "concepts/Lax899194/SocialCost.lean",
+      "title": "Social cost",
+      "type": "definition",
+      "description": "The social cost of a strategy profile is the sum of all players' individual\ncosts: $C(s)=\\sum_i c_i(s)$. Distances are counted over ordered pairs of\nplayers. An edge purchased by both endpoints is charged twice.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Social cost is defined on profiles so that it accounts for who purchases each\nedge. The graph alone does not determine the expenditure when both endpoints\npurchase an edge. No absence of double purchases is assumed in this definition."
+        }
+      ],
+      "imports": [
+        "Lax899194.PlayerCost"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax899194.PlayerCost\n\n/-!\n---\ntitle: Social cost\ntype: definition\n---\nThe social cost of a strategy profile is the sum of all players' individual\ncosts: $C(s)=\\sum_i c_i(s)$. Distances are counted over ordered pairs of\nplayers. An edge purchased by both endpoints is charged twice.\n\n# Formalization notes\n\nSocial cost is defined on profiles so that it accounts for who purchases each\nedge. The graph alone does not determine the expenditure when both endpoints\npurchase an edge. No absence of double purchases is assumed in this definition.\n-/\n\nnamespace Lax899194.SocialCost\n\nopen Lax899194.NetworkCreationGame Lax899194.PlayerCost\nopen scoped BigOperators NNReal ENNReal\n\n/-- The sum of all players' individual costs, with distances counted in both directions. -/\nnoncomputable def socialCost {n : ℕ} (α : ℝ≥0) (s : Profile n) : ℝ≥0∞ :=\n  ∑ i : Fin n, playerCost α s i\n\nend Lax899194.SocialCost\n",
+      "statements": []
+    },
+    {
+      "id": "Lax899194.TreeNashEfficiency",
+      "path": "concepts/Lax899194/TreeNashEfficiency.lean",
+      "title": "Tree Nash equilibria have inefficiency below five",
+      "type": "theorem",
+      "description": "For every positive edge price $\\alpha$ and every tree Nash equilibrium $T$,\n$\\rho(T)<5$: its social cost is strictly less than five times the social\noptimum.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "There are at least two players, making the cost ratio well-defined with a\npositive denominator. `SimpleGraph.IsTree` means connected and acyclic.\nThe equilibrium is a strategy profile whose resulting undirected network is\na tree; the profile retains edge ownership and the costs of deviations.\nNo non-transience assumption or lower bound such as $\\alpha\\ge2$ is imposed."
+        },
+        {
+          "title": "Reference",
+          "markdown": "Theorem 3, p. 350, in Fabrikant, Luthra, Maneva, Papadimitriou, and Shenker,\n[*On a Network Creation Game*](https://people.eecs.berkeley.edu/~kubitron/courses/cs294-4-F03/papers/p347-fabrikant.pdf),\nPODC 2003, pp. 347-351, DOI: 10.1145/872035.872088."
+        }
+      ],
+      "imports": [
+        "Lax899194.InefficiencyRatio",
+        "Lax899194.NashEquilibrium"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Acyclic"
+      ],
+      "sourceText": "import Lax899194.NashEquilibrium\nimport Lax899194.InefficiencyRatio\nimport Mathlib.Combinatorics.SimpleGraph.Acyclic\n\n/-!\n---\ntitle: Tree Nash equilibria have inefficiency below five\ntype: theorem\n---\nFor every positive edge price $\\alpha$ and every tree Nash equilibrium $T$,\n$\\rho(T)<5$: its social cost is strictly less than five times the social\noptimum.\n\n# Formalization notes\n\nThere are at least two players, making the cost ratio well-defined with a\npositive denominator. `SimpleGraph.IsTree` means connected and acyclic.\nThe equilibrium is a strategy profile whose resulting undirected network is\na tree; the profile retains edge ownership and the costs of deviations.\nNo non-transience assumption or lower bound such as $\\alpha\\ge2$ is imposed.\n\n# Reference\n\nTheorem 3, p. 350, in Fabrikant, Luthra, Maneva, Papadimitriou, and Shenker,\n[*On a Network Creation Game*](https://people.eecs.berkeley.edu/~kubitron/courses/cs294-4-F03/papers/p347-fabrikant.pdf),\nPODC 2003, pp. 347-351, DOI: 10.1145/872035.872088.\n-/\n\nnamespace Lax899194.TreeNashEfficiency\n\nopen Lax899194.NetworkCreationGame Lax899194.NashEquilibrium\nopen Lax899194.InefficiencyRatio\nopen scoped NNReal\n\n/-- Theorem 3: every tree Nash equilibrium has inefficiency strictly below five. -/\naxiom statement (n : ℕ) (hn : 2 ≤ n) (α : ℝ≥0) (hα : 0 < α)\n    (s : Profile n) (hNash : IsNashEquilibrium α s) (hTree : (graph s).IsTree) :\n    inefficiencyRatio α s < 5\n\nend Lax899194.TreeNashEfficiency\n",
+      "statements": [
+        {
+          "id": "Lax899194.TreeNashEfficiency.statement",
+          "signature": "statement : ∀ (n : Nat),\n  instLENat.le 2 n →\n    ∀ (α : NNReal),\n      NNReal.instPartialOrder.lt 0 α →\n        ∀ (s : Lax899194.NetworkCreationGame.Profile n),\n          Lax899194.NashEquilibrium.IsNashEquilibrium α s →\n            (Lax899194.NetworkCreationGame.graph s).IsTree →\n              ENNReal.instPartialOrder.lt (Lax899194.InefficiencyRatio.inefficiencyRatio α s) 5",
+          "startLine": 35,
+          "endLine": 38,
+          "doc": "Theorem 3: every tree Nash equilibrium has inefficiency strictly below five."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax899194Proofs.tree_nash_efficiency",
+      "path": "proofs/Lax899194Proofs/TreeNashEfficiency.lean",
+      "conclusion": "Lax899194.TreeNashEfficiency.statement",
+      "assumptions": [],
+      "description": "Every tree Nash equilibrium has inefficiency strictly below five.",
+      "sections": [
+        {
+          "title": "Proof strategy",
+          "markdown": "For a path of length $D$, let $r$ be its integer midpoint. Every vertex lies\nbeyond $r$ from at least one endpoint. If both endpoints buy a link to $r$,\ntheir combined distance savings are at least $n(\\lfloor D/2\\rfloor-1)$.\nThe two Nash inequalities bound this by $2\\alpha$, giving\n$D\\le 3+4\\alpha/n$.\n\nPositive edge price rules out duplicate purchases at equilibrium. A tree\ntherefore has $n-1$ purchases, and its social cost is at most\n$5\\alpha(n-1)+3n(n-1)$. Every connected profile has social cost at least\n$\\alpha(n-1)+n(n-1)$; disconnected profiles have infinite cost. Since\n$n\\ge2$, the former upper bound is strictly less than five times the latter\nlower bound. The optimum is positive and finite, so division proves the claim."
+        },
+        {
+          "title": "Attribution",
+          "markdown": "The conclusion is Theorem 3 of Fabrikant, Luthra, Maneva, Papadimitriou,\nand Shenker, *On a Network Creation Game* (PODC 2003, p. 350).\nThis proof uses a midpoint argument instead of the paper's centroid argument.\nTree paths, distances, and finite edge counting use mathlib."
+        }
+      ]
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "9354a825f7ffdbcbb95c751b7dce842b0b640f60a9ce2fababd3012be1989bac",
+    "sourceCommit": "ab7c839f02a08a417dcf6ccbf6f447790ddd5db3",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax899194/InefficiencyRatio.c",
+        "bytes": 1344,
+        "sha256": "86b1c96d5c113aa67946640e646fc22c08e2173df00f022628fe14f26b821b39"
+      },
+      {
+        "path": "concepts/ir/Lax899194/InefficiencyRatio.c.hash",
+        "bytes": 16,
+        "sha256": "bcd0546865e53f10b7a7958aa57b873f327b5b359291d0e226e4eeff1b2d49a0"
+      },
+      {
+        "path": "concepts/ir/Lax899194/NashEquilibrium.c",
+        "bytes": 1340,
+        "sha256": "1aeb45f23c4003c19b91eb71b17cb69b2a09b0911528eb6fc142d9ed2f9cb591"
+      },
+      {
+        "path": "concepts/ir/Lax899194/NashEquilibrium.c.hash",
+        "bytes": 16,
+        "sha256": "e35f80fd403930b5d5744d8a127f1bb7547dbbf6d6c129ec9021f5b5ec1ab849"
+      },
+      {
+        "path": "concepts/ir/Lax899194/NetworkCreationGame.c",
+        "bytes": 2316,
+        "sha256": "3bab6d6559695eded0eb6307d5f055033728ee8745064e059f4ac950d28a44c4"
+      },
+      {
+        "path": "concepts/ir/Lax899194/NetworkCreationGame.c.hash",
+        "bytes": 16,
+        "sha256": "773ff104ee856de49613ef41b03ceb60e52f705bb997b77d94a4abe6faf8218a"
+      },
+      {
+        "path": "concepts/ir/Lax899194/PlayerCost.c",
+        "bytes": 2203,
+        "sha256": "c2bbf0fe80e965d00faf456ba08ecd0ce333a4db23b99dd877aa7121dfbbf56a"
+      },
+      {
+        "path": "concepts/ir/Lax899194/PlayerCost.c.hash",
+        "bytes": 16,
+        "sha256": "c8ddf08529649578619aaa2c66e495151e79cbb302a7c8a0ac355019c8221e22"
+      },
+      {
+        "path": "concepts/ir/Lax899194/SocialCost.c",
+        "bytes": 1330,
+        "sha256": "612b5468b5b6492510825616940406b912947db2109bb9a46e18c6f80596bb49"
+      },
+      {
+        "path": "concepts/ir/Lax899194/SocialCost.c.hash",
+        "bytes": 16,
+        "sha256": "72e0cd4689d7ad976e55ffb7db41d3947ba922188994a967953a7955e55c6cde"
+      },
+      {
+        "path": "concepts/ir/Lax899194/TreeNashEfficiency.c",
+        "bytes": 1903,
+        "sha256": "b917b795717af058e2709bdfbf55c04d12b16105754becca5df3017765614cb1"
+      },
+      {
+        "path": "concepts/ir/Lax899194/TreeNashEfficiency.c.hash",
+        "bytes": 16,
+        "sha256": "34fd5fd05db5a1a363e132a37bc74e2dc9347834a8cc8657e5bd25e51d2a4876"
+      },
+      {
+        "path": "concepts/ir/Lax899194.c",
+        "bytes": 2550,
+        "sha256": "fd1b788d007e015beeaa84b95fb173543c9e8f6e1ca1e7f182329209f79c5ab3"
+      },
+      {
+        "path": "concepts/ir/Lax899194.c.hash",
+        "bytes": 16,
+        "sha256": "ca96f4683745b60c3b62e39f53bec71cd3d864f3d605df5a7096a48d63fa50e4"
+      },
+      {
+        "path": "concepts/lib/Lax899194/InefficiencyRatio.ilean",
+        "bytes": 1735,
+        "sha256": "cc83b0b15563c773b26e5ab3c809d19f6c4311d328750e0b16096564d610251d"
+      },
+      {
+        "path": "concepts/lib/Lax899194/InefficiencyRatio.ilean.hash",
+        "bytes": 16,
+        "sha256": "d6a827adc1ec6d63a8f83a28921e3c63f5df50abc1fdbfcf2f6d493b68b97e97"
+      },
+      {
+        "path": "concepts/lib/Lax899194/InefficiencyRatio.olean",
+        "bytes": 12096,
+        "sha256": "89a4d6db64c26aab7287418beeaf352d0eb57ef5b6bb5e95ffbed3835239ab51"
+      },
+      {
+        "path": "concepts/lib/Lax899194/InefficiencyRatio.olean.hash",
+        "bytes": 16,
+        "sha256": "d21d42e8c22750f9aa9f4ab2f3730ab08bb5acbd0a15cdaea293f3d8b1430a6f"
+      },
+      {
+        "path": "concepts/lib/Lax899194/InefficiencyRatio.trace",
+        "bytes": 2149,
+        "sha256": "111c408f7ce13d3b24a00de630693289a4284acc4764bf1dd40a1b0c8300e346"
+      },
+      {
+        "path": "concepts/lib/Lax899194/NashEquilibrium.ilean",
+        "bytes": 1328,
+        "sha256": "c826c463363b411959b5825ccdc66ef5265ad68b0637bc5277638c1d3e7245f1"
+      },
+      {
+        "path": "concepts/lib/Lax899194/NashEquilibrium.ilean.hash",
+        "bytes": 16,
+        "sha256": "d2c3906e87cfb45121a659653f805cb9fb9df04a25c1c09ae569dcc3e3b8839f"
+      },
+      {
+        "path": "concepts/lib/Lax899194/NashEquilibrium.olean",
+        "bytes": 9456,
+        "sha256": "4a9c785ea23d887777c671ad22fc6bf5ad81d247091919261e0907d0f15e06a4"
+      },
+      {
+        "path": "concepts/lib/Lax899194/NashEquilibrium.olean.hash",
+        "bytes": 16,
+        "sha256": "e12aeb7b3dd8e04cd3d389538d75c578ad002e8cb3a03a89b58d1642befa464d"
+      },
+      {
+        "path": "concepts/lib/Lax899194/NashEquilibrium.trace",
+        "bytes": 2135,
+        "sha256": "445051d1f6c04b5a5913f5dc7a269120205d81b6f3a8c5e4d057df90854b1c92"
+      },
+      {
+        "path": "concepts/lib/Lax899194/NetworkCreationGame.ilean",
+        "bytes": 3124,
+        "sha256": "ecdf4b283affd12dc849acbe296a4edcdc1c02cc964dfe7458cb48447a881c7d"
+      },
+      {
+        "path": "concepts/lib/Lax899194/NetworkCreationGame.ilean.hash",
+        "bytes": 16,
+        "sha256": "de3d9d41b4ebdb8a73ebb8ae9137c2e9837e4b5c750b34faf5f82090be7509cb"
+      },
+      {
+        "path": "concepts/lib/Lax899194/NetworkCreationGame.olean",
+        "bytes": 20312,
+        "sha256": "013ae2420e6e1beca70449b525ce207d14da2a1ee2def7b0c879c1a883214746"
+      },
+      {
+        "path": "concepts/lib/Lax899194/NetworkCreationGame.olean.hash",
+        "bytes": 16,
+        "sha256": "70f99e9333774705f63f6dd09643f6cf8f5c5fac94d974b69d6424b1e9b46d1e"
+      },
+      {
+        "path": "concepts/lib/Lax899194/NetworkCreationGame.trace",
+        "bytes": 2363,
+        "sha256": "7f2f7ae1c06a50b37844a5bd852b9a4da29a4f89a11c537fdca817bc5ffff4a0"
+      },
+      {
+        "path": "concepts/lib/Lax899194/PlayerCost.ilean",
+        "bytes": 2109,
+        "sha256": "a8c7adb13d992bb0d4e3fa5c3f63ebcc40ba8f27225a70156d1ca8fac6c29f7a"
+      },
+      {
+        "path": "concepts/lib/Lax899194/PlayerCost.ilean.hash",
+        "bytes": 16,
+        "sha256": "06888e6b4d9e3b6324dc1a7876eee2bbb84a10e8a0902709459fc7b3f47673c3"
+      },
+      {
+        "path": "concepts/lib/Lax899194/PlayerCost.olean",
+        "bytes": 14384,
+        "sha256": "dda86e70bd6d520d97f4d116704b8360f55f40e05613d49d98aa268222ed5da5"
+      },
+      {
+        "path": "concepts/lib/Lax899194/PlayerCost.olean.hash",
+        "bytes": 16,
+        "sha256": "0eddc658f5051f9fefd143d328c046b4bc546ad1ea0eda90b043b4d1977252cd"
+      },
+      {
+        "path": "concepts/lib/Lax899194/PlayerCost.trace",
+        "bytes": 2708,
+        "sha256": "b3f43768a299cbb43cee628ff3366c4f43b8dc286214aa2468a5a9167a2f40ba"
+      },
+      {
+        "path": "concepts/lib/Lax899194/SocialCost.ilean",
+        "bytes": 1203,
+        "sha256": "73be34df209136e994ac60247e9c527c33de0f6ec34cd9758b3e3cfd0b25dfa9"
+      },
+      {
+        "path": "concepts/lib/Lax899194/SocialCost.ilean.hash",
+        "bytes": 16,
+        "sha256": "69c8f3f98d65889b85c2fa78227c71d41bb042f6eebfb9e265da59405cebe460"
+      },
+      {
+        "path": "concepts/lib/Lax899194/SocialCost.olean",
+        "bytes": 8392,
+        "sha256": "9df66a11754b158b1cfd17c23e653700a2cbdd3faa152c3cae1fe44be7f4f5ef"
+      },
+      {
+        "path": "concepts/lib/Lax899194/SocialCost.olean.hash",
+        "bytes": 16,
+        "sha256": "d4dabc447421d163082c3d626b90aefe4c66181a25ecb73f3a0915d3016ac05b"
+      },
+      {
+        "path": "concepts/lib/Lax899194/SocialCost.trace",
+        "bytes": 2100,
+        "sha256": "a85428e2ed0084fef06119fa5735ef722749df366d1368890222180b80c2459c"
+      },
+      {
+        "path": "concepts/lib/Lax899194/TreeNashEfficiency.ilean",
+        "bytes": 1716,
+        "sha256": "0f6698682f44fa292ed562c613e7a46d5961fac37bdb6967dec3464e831c7a4b"
+      },
+      {
+        "path": "concepts/lib/Lax899194/TreeNashEfficiency.ilean.hash",
+        "bytes": 16,
+        "sha256": "c7a2183ef5f95d8265818c524c36e57231eb9603cebe1a7404eb99216b6300f9"
+      },
+      {
+        "path": "concepts/lib/Lax899194/TreeNashEfficiency.olean",
+        "bytes": 12920,
+        "sha256": "70d92b5dacac72ed85f4f7286a0d33f1af7735b0bdd55e6e8cef6ccecf9db4cb"
+      },
+      {
+        "path": "concepts/lib/Lax899194/TreeNashEfficiency.olean.hash",
+        "bytes": 16,
+        "sha256": "2d8a0e1f1a7cb6fb955dfd62309509dded68c3db4c3764c805661fc417699d18"
+      },
+      {
+        "path": "concepts/lib/Lax899194/TreeNashEfficiency.trace",
+        "bytes": 2542,
+        "sha256": "175461ed48949a9362c289a4cb901ed1d14c1f88310f9fb68662669b0dd2545a"
+      },
+      {
+        "path": "concepts/lib/Lax899194.ilean",
+        "bytes": 366,
+        "sha256": "bee2ceb61ddb655148ca548a9132703d668badb42f23474b202367152ba9687c"
+      },
+      {
+        "path": "concepts/lib/Lax899194.ilean.hash",
+        "bytes": 16,
+        "sha256": "94ad35d4671eecef6405a816ba5651975d126f88ff7d024abf5dd97e4ce87e53"
+      },
+      {
+        "path": "concepts/lib/Lax899194.olean",
+        "bytes": 2112,
+        "sha256": "b165222b98107b43b6b773245b32c587c686d0117f53c91644d85d922e0a9117"
+      },
+      {
+        "path": "concepts/lib/Lax899194.olean.hash",
+        "bytes": 16,
+        "sha256": "bb2fff740434adf096cf53084af5d278c8965e00d53a07d1fbd6d43fe51fd493"
+      },
+      {
+        "path": "concepts/lib/Lax899194.trace",
+        "bytes": 2839,
+        "sha256": "1030a6620f2bcde3245586d911706a5f5cbb9aed6ba0696d371c478d785c629d"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "4042339bbe7d94755639ace021193b85c001bd19c70a5b7b7f6a8b566a989dfc"
+      },
+      {
+        "path": "concepts/package/Lax899194/InefficiencyRatio.lean",
+        "bytes": 1476,
+        "sha256": "cc2fc7a475c1c7edf276285e0ae8dec6a786a4c872c4e5bcf5f180f8eb5903dc"
+      },
+      {
+        "path": "concepts/package/Lax899194/NashEquilibrium.lean",
+        "bytes": 1218,
+        "sha256": "2ed5a8948dc09008845f12e77cff575bab34fc83874f9aea4bc4add5eacb1a2e"
+      },
+      {
+        "path": "concepts/package/Lax899194/NetworkCreationGame.lean",
+        "bytes": 1398,
+        "sha256": "e3f10b092c2164dc8385331d0b42092b1a10290238440d4b41283dbcfe63681b"
+      },
+      {
+        "path": "concepts/package/Lax899194/PlayerCost.lean",
+        "bytes": 1279,
+        "sha256": "26456817d5cf64d7fea2674fed7b16514e50688e7c243b4b940f4ac94f3d9a0f"
+      },
+      {
+        "path": "concepts/package/Lax899194/SocialCost.lean",
+        "bytes": 920,
+        "sha256": "aa266be9027d9b4ac56b6e0b2f58bdc805d46ca28b2a2196f5d0240af7dc4842"
+      },
+      {
+        "path": "concepts/package/Lax899194/TreeNashEfficiency.lean",
+        "bytes": 1479,
+        "sha256": "e3c463e9546a4603c80b1582c98d22c1fc4306b0551cc8ecf35b24f90de8ddcc"
+      },
+      {
+        "path": "concepts/package/Lax899194.lean",
+        "bytes": 197,
+        "sha256": "8338b5a12e7956729e00c269506e8b9031bc17cd49ca8f2a572ee1c23066f49e"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax899194Proofs/Costs.c",
+        "bytes": 2088,
+        "sha256": "250bfc7d5db942982b02fac9f49dc5d09c73a25aa9d0c8243a6ff9d7e76f9ed8"
+      },
+      {
+        "path": "proofs/ir/Lax899194Proofs/Costs.c.hash",
+        "bytes": 16,
+        "sha256": "cf5ce30436a8d68279fbfac8ea5f9c89e5238e5b2cdb48221f082b021f3dffd3"
+      },
+      {
+        "path": "proofs/ir/Lax899194Proofs/NashDistance.c",
+        "bytes": 1634,
+        "sha256": "14c7ea97c198415bead4f51e850779bf0a3bd502b16e46db00877b4be6fa5594"
+      },
+      {
+        "path": "proofs/ir/Lax899194Proofs/NashDistance.c.hash",
+        "bytes": 16,
+        "sha256": "26bf57cab56d0766408cfdede96ec9e2e19255d73f2df381a1eb56242e3e88b0"
+      },
+      {
+        "path": "proofs/ir/Lax899194Proofs/Ownership.c",
+        "bytes": 3582,
+        "sha256": "a6510a022e3e3a1eebce9bb4b54b29e044e5bb09989aa915f6d5ba86a2cb4397"
+      },
+      {
+        "path": "proofs/ir/Lax899194Proofs/Ownership.c.hash",
+        "bytes": 16,
+        "sha256": "34d815594ade303e8c6dac6a5430c3884359cbc50714226d34d854107d3eb813"
+      },
+      {
+        "path": "proofs/ir/Lax899194Proofs/SocialBounds.c",
+        "bytes": 1646,
+        "sha256": "57e8683d47ad8277e15eb38dc4afe443be2bbd6015d8e0d1ce932c8d1588325a"
+      },
+      {
+        "path": "proofs/ir/Lax899194Proofs/SocialBounds.c.hash",
+        "bytes": 16,
+        "sha256": "5b90b01dc07990e3cf9bbc6b290d356fa05fd87880b0efa3f6bf7747a8a060b4"
+      },
+      {
+        "path": "proofs/ir/Lax899194Proofs/TreeGeometry.c",
+        "bytes": 1620,
+        "sha256": "44cfe606ac6ab06732c425ef27ef3624406b2cf4dd6d1180c4b806542671808a"
+      },
+      {
+        "path": "proofs/ir/Lax899194Proofs/TreeGeometry.c.hash",
+        "bytes": 16,
+        "sha256": "d56595ab41bd9d0e730e4bdf5a35ff417dcb4681d3dcae9334fa33688949450a"
+      },
+      {
+        "path": "proofs/ir/Lax899194Proofs/TreeNashEfficiency.c",
+        "bytes": 1400,
+        "sha256": "1e63b692928afa1162692f76570ee49eaa40f78e89775a588a0a5c51fca303ec"
+      },
+      {
+        "path": "proofs/ir/Lax899194Proofs/TreeNashEfficiency.c.hash",
+        "bytes": 16,
+        "sha256": "4c70d48ec47c674d51f4a722446fe3d20ff337007022eddf91b5e00bdfed1848"
+      },
+      {
+        "path": "proofs/ir/Lax899194Proofs.c",
+        "bytes": 2685,
+        "sha256": "b82a1eee9464c3b7f350238b9909542ad352b26b801edec4e3146446b99980de"
+      },
+      {
+        "path": "proofs/ir/Lax899194Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "61e0e9802859c1804bbee21d7e1bb93514b51a8a19b56163d013f5f43cd7eaae"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/Costs.ilean",
+        "bytes": 14226,
+        "sha256": "8b73994f3ea55a685bd67cc2f9c5726625f7776686730f0cafe2579d4741d527"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/Costs.ilean.hash",
+        "bytes": 16,
+        "sha256": "1e506727bc72ae80430cedc291c44b26313939336d7af715b31dfdb38c775414"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/Costs.olean",
+        "bytes": 142528,
+        "sha256": "a0595bf96b28fc6d5095aa95b54c48b976ddc37165d8e6d831fec83b4b1708a6"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/Costs.olean.hash",
+        "bytes": 16,
+        "sha256": "5d6d29f550f4f41db8a5585d688ffc5d43276bf836fb450e60eb1a5417735531"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/Costs.trace",
+        "bytes": 2660,
+        "sha256": "563f3e663b3e1c609a43e6878307ca1243df09a60d8a9704a123d0d14fc82340"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/NashDistance.ilean",
+        "bytes": 15765,
+        "sha256": "8253f8d7da0c62c3c3a8c3381f88359643c950b0b8c0f6b849eed3c37cf6e58f"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/NashDistance.ilean.hash",
+        "bytes": 16,
+        "sha256": "9b9bb940c5d7ab7a1e0d3f517b7db96a82a2e30b5edc583dacbebe9b912244cd"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/NashDistance.olean",
+        "bytes": 424752,
+        "sha256": "18c412ba9a948bf126794b7bc98050a4a0787e624ccdf710e689fa1bfe6fa63c"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/NashDistance.olean.hash",
+        "bytes": 16,
+        "sha256": "7f36480e6a1980971e2e4627ebc886d359d3b34fc84653cd3156c308c9ecbb91"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/NashDistance.trace",
+        "bytes": 2375,
+        "sha256": "df9c5429cd1e7440243f31da3d21bbbacceb34319920891cdd6054b88c8a379a"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/Ownership.ilean",
+        "bytes": 14839,
+        "sha256": "8cb2642ed6520234b82ef379b7c0ef0ab00794235e37b02abf0f29b5abfdbacc"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/Ownership.ilean.hash",
+        "bytes": 16,
+        "sha256": "5df78bd8238918f1b674676aff8ab7268d7084e36bf8a7067f0eec18c34d6d55"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/Ownership.olean",
+        "bytes": 300288,
+        "sha256": "ed78c618a47dda4aefd2b9181f43165d3c235841d16e508b423e7aa1657184f6"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/Ownership.olean.hash",
+        "bytes": 16,
+        "sha256": "2a6ed18beb4c39327a6250fc1921da7410d12607950289ee0916ff1b58ce39ad"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/Ownership.trace",
+        "bytes": 2387,
+        "sha256": "22315a717b1164119b4a64736b906de6067dbd49c221750130109142218050ac"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/SocialBounds.ilean",
+        "bytes": 22187,
+        "sha256": "25e6ca5e5912f5d73cc9639c29646cd00d613994d49a359bb3a2a9beee005594"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/SocialBounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "257376a2b1732eb7871598aa1e592218089cc95cf3d22bc6bd8a7b94a7c6aced"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/SocialBounds.olean",
+        "bytes": 263024,
+        "sha256": "0fd5d53f13c89885993d6262380dbdb937ef7f2f765187b7594d941d608c53c3"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/SocialBounds.olean.hash",
+        "bytes": 16,
+        "sha256": "74ed8aa6cc61fa358933e19e6a467a644596d030e678e3b038fb771f955ed8b5"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/SocialBounds.trace",
+        "bytes": 2390,
+        "sha256": "ace1d8fb2edf06adde05923a7231570d3fd90e9d56be49d5b8be86df03f53cee"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/TreeGeometry.ilean",
+        "bytes": 9360,
+        "sha256": "1a0211f74758b86941ff665156a73258597a1d8ccc30e093ad19508c9333c9a0"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/TreeGeometry.ilean.hash",
+        "bytes": 16,
+        "sha256": "379905024586274f4eaa32fa46b38180be22d9f80fc94744cc95e750869da5a5"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/TreeGeometry.olean",
+        "bytes": 132240,
+        "sha256": "026991595731f25482697542619aa0883ddcfdd6c2a0dc6b2f5a5fa5f7808951"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/TreeGeometry.olean.hash",
+        "bytes": 16,
+        "sha256": "b0e25d1372f2b94963af98121bb38617e9af86790982bdf7c2a3ee967c3120be"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/TreeGeometry.trace",
+        "bytes": 2394,
+        "sha256": "77316a53d49a9be26ea898ef46204d8b85c41e631ab70c9d5bc6500eef85985a"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/TreeNashEfficiency.ilean",
+        "bytes": 6426,
+        "sha256": "4aabc433587ad9f7c50ab0ae4e1f4dffdebb4a5a90cf28ef27e2f2dc66d1f14a"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/TreeNashEfficiency.ilean.hash",
+        "bytes": 16,
+        "sha256": "6349fabbde401c76f1f08cf3e801487103199279aacde607cd3716ff0b41d379"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/TreeNashEfficiency.olean",
+        "bytes": 162784,
+        "sha256": "2b020e3715a3242a46053e8cb00c3191acbc18a92873eba6e6115ff3b8343597"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/TreeNashEfficiency.olean.hash",
+        "bytes": 16,
+        "sha256": "be3ac17b849195865e4392a4b9118a1cbb2ff39ae6d1a772b093d559ee63b0e0"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs/TreeNashEfficiency.trace",
+        "bytes": 2272,
+        "sha256": "89c095ac40c98fa54d9dd59df0c2652f9e13ba849112333c0b1016d9601dd6b3"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs.ilean",
+        "bytes": 387,
+        "sha256": "4cd872e075bf0e2214c2ad3b65451fb9965be1316d256f355312a884ca8ecd5b"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "2e7b11d6907a25f5991ebd5739376ae9a0e15366ce5ec75896ba3131b9e13e8b"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs.olean",
+        "bytes": 2088,
+        "sha256": "e5885acd1b8af49441741c4c13ccc1a208273581b8728e5b30777725213200b6"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "8d7cd8af3e56b28eddf6396e94a7ba69683ae6f3fe215c7669c4c2debd2132fb"
+      },
+      {
+        "path": "proofs/lib/Lax899194Proofs.trace",
+        "bytes": 2973,
+        "sha256": "9d5089e9fbad59d29a320e7c14131ae9539e124f3b56ad6312429caef67f29e8"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "9f8e29db2e2d0fcf8482ccc686622a179e7795f415ac0463a30e5acb1f77c75c"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "114ec2e3b19e9c1448f3fdbce95624643ae785b92a66b1be7af36bac9eda6e93"
+      },
+      {
+        "path": "proofs/package/Lax899194Proofs/Costs.lean",
+        "bytes": 4042,
+        "sha256": "1234898c09387263bea3333e7562cc8ae557ea3bbe7c4d261d31a716daa2a33a"
+      },
+      {
+        "path": "proofs/package/Lax899194Proofs/NashDistance.lean",
+        "bytes": 4550,
+        "sha256": "5cc2bcb3a9821cde119f0372c7f7406e58273c3a5ae798617d03a7b2ab1b953f"
+      },
+      {
+        "path": "proofs/package/Lax899194Proofs/Ownership.lean",
+        "bytes": 4137,
+        "sha256": "00e9dc5ad4ecfcaaee41675ac6ddba0bafeac1639c851598f3adf7e22d1c1483"
+      },
+      {
+        "path": "proofs/package/Lax899194Proofs/SocialBounds.lean",
+        "bytes": 5325,
+        "sha256": "71591c98517b36d5e039195a74407c1160b027898db2c9397bca93a9f545243d"
+      },
+      {
+        "path": "proofs/package/Lax899194Proofs/TreeGeometry.lean",
+        "bytes": 2537,
+        "sha256": "e6b0893872f40bd710af9296e43759a266d5f2ba20c6c02c14f3926e24fcb407"
+      },
+      {
+        "path": "proofs/package/Lax899194Proofs/TreeNashEfficiency.lean",
+        "bytes": 2890,
+        "sha256": "b1364cfb62b899f30534b49c599354d9b5b7623b84a79805661243c12a60b02d"
+      },
+      {
+        "path": "proofs/package/Lax899194Proofs.lean",
+        "bytes": 212,
+        "sha256": "9729945b3bdabac529c97bdb2fbcfe1ebb7cff19689a6369b9940c1b2614f975"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:9354a825f7ffdbcbb95c751b7dce842b0b640f60a9ce2fababd3012be1989bac"
   }
 }
