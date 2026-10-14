@@ -4,5 +4,702 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 200
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-183560",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "Five Graph Width Parameters",
+      "authors": [
+        {
+          "name": "Hendrik Molter"
+        },
+        {
+          "name": "Codex (GPT-6)"
+        }
+      ],
+      "bibEntries": []
+    },
+    "abstract": "This draft extends an overview and hierarchy of graph parameters by defining\nfive width parameters:\n\n- treedepth;\n- pathwidth;\n- branchwidth;\n- rank-width;\n- modular-width.\n\nThroughout, graphs are finite, simple, and undirected, and may be disconnected.\nAll five parameters assign zero to the empty graph. Treedepth counts vertices\nin the height of a rooted forest. Branchwidth is zero for graphs with at most\none edge, and modular-width is zero for cographs.\n\nThe draft also defines the underlying structures:\n\n- rooted forests;\n- path decompositions;\n- branch decompositions;\n- cut-rank;\n- modular decompositions.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax183560.AncestorForest",
+      "path": "concepts/Lax183560/AncestorForest.lean",
+      "title": "Rooted forests through ancestor relations",
+      "type": "definition",
+      "description": "A strict ancestor relation of a rooted forest is transitive and irreflexive,\nand the ancestors of each vertex are linearly ordered. On a finite vertex\nset, these conditions characterize the strict ancestor relations of rooted\nforests.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Basic"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Basic\n\n/-!\n---\ntitle: Rooted forests through ancestor relations\ntype: definition\n---\nA strict ancestor relation of a rooted forest is transitive and irreflexive,\nand the ancestors of each vertex are linearly ordered. On a finite vertex\nset, these conditions characterize the strict ancestor relations of rooted\nforests.\n-/\n\nnamespace Lax183560.AncestorForest\n\n/-- A strict ancestor relation of a rooted forest on `V`. -/\nstructure AncestorForest (V : Type) where\n  ancestor : V → V → Prop\n  transitive : IsTrans V ancestor\n  irreflexive : Std.Irrefl ancestor\n  ancestors_linearly_ordered : ∀ u v w : V,\n    (ancestor u w ∧ ancestor v w) → (u = v ∨ ancestor u v ∨ ancestor v u)\n\n\nend Lax183560.AncestorForest\n",
+      "statements": []
+    },
+    {
+      "id": "Lax183560.BranchDecompositions",
+      "path": "concepts/Lax183560/BranchDecompositions.lean",
+      "title": "Binary branch decompositions of finite sets",
+      "type": "definition",
+      "description": "A branch decomposition of a finite set is an unrooted tree of maximum degree\nthree whose leaves are in bijection with the set. Each edge determines a cut\nby separating the leaves into two parts.\n\nFor symmetric cut functions, a decomposition can be represented by a binary\ntree obtained by rooting it at an edge. Each subtree determines one side of\na cut. The root determines the cut with an empty opposite side, which has\nvalue zero for the cut functions used here.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite",
+        "Mathlib.Data.ZMod.Basic",
+        "Mathlib.LinearAlgebra.Matrix.Rank",
+        "Mathlib.Order.Lattice.Nat"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Finite\nimport Mathlib.LinearAlgebra.Matrix.Rank\nimport Mathlib.Data.ZMod.Basic\nimport Mathlib.Order.Lattice.Nat\n\n/-!\n---\ntitle: Binary branch decompositions of finite sets\ntype: definition\n---\nA branch decomposition of a finite set is an unrooted tree of maximum degree\nthree whose leaves are in bijection with the set. Each edge determines a cut\nby separating the leaves into two parts.\n\nFor symmetric cut functions, a decomposition can be represented by a binary\ntree obtained by rooting it at an edge. Each subtree determines one side of\na cut. The root determines the cut with an empty opposite side, which has\nvalue zero for the cut functions used here.\n-/\n\nnamespace Lax183560.BranchDecompositions\n\ninductive BinaryTree (α : Type) where\n  | leaf : α → BinaryTree α\n  | fork : BinaryTree α → BinaryTree α → BinaryTree α\n\n/-- Leaves with multiplicity, in left-to-right order. -/\ndef BinaryTree.leaves {α : Type} : BinaryTree α → List α\n  | .leaf a => [a]\n  | .fork left right => left.leaves ++ right.leaves\n\n/-- A valid branch tree contains each element of the ground set once. -/\ndef BinaryTree.Valid {α : Type} [DecidableEq α]\n    (t : BinaryTree α) (ground : Finset α) : Prop :=\n  t.leaves.Nodup ∧ t.leaves.toFinset = ground\n\n/-- Maximum cut value among the cuts at the nodes of a branch tree. -/\ndef BinaryTree.cutWidth {α : Type} [DecidableEq α]\n    (measure : Finset α → ℕ) : BinaryTree α → ℕ\n  | .leaf a => measure {a}\n  | .fork left right =>\n      max (measure ((left.leaves ++ right.leaves).toFinset))\n        (max (left.cutWidth measure) (right.cutWidth measure))\n\nend Lax183560.BranchDecompositions\n",
+      "statements": []
+    },
+    {
+      "id": "Lax183560.Branchwidth",
+      "path": "concepts/Lax183560/Branchwidth.lean",
+      "title": "Branchwidth",
+      "type": "definition",
+      "description": "The branchwidth of a graph is the minimum, over all branch decompositions of\nits edge set, of the maximum size of a middle set. The middle set of a cut\nconsists of the vertices incident with an edge on each side of the cut.\nGraphs with at most one edge have branchwidth zero.",
+      "imports": [
+        "Lax183560.BranchDecompositions"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax183560.BranchDecompositions\n\n/-!\n---\ntitle: Branchwidth\ntype: definition\n---\nThe branchwidth of a graph is the minimum, over all branch decompositions of\nits edge set, of the maximum size of a middle set. The middle set of a cut\nconsists of the vertices incident with an edge on each side of the cut.\nGraphs with at most one edge have branchwidth zero.\n-/\n\nnamespace Lax183560.Branchwidth\n\nopen Lax183560.BranchDecompositions\n\n/-- Number of vertices incident with an edge in `A` and an edge outside `A`. -/\nnoncomputable def middleSize {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (A : Finset (Sym2 V)) : ℕ :=\n  {v : V | (∃ e : Sym2 V, e ∈ G.edgeSet ∧ e ∈ A ∧ v ∈ e) ∧\n    (∃ e : Sym2 V, e ∈ G.edgeSet ∧ e ∉ A ∧ v ∈ e)}.ncard\n\n/-- A branch decomposition with every middle set of size at most `k`. -/\nnoncomputable def HasBranchwidthAtMost {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (k : ℕ) : Prop := by\n  classical\n  exact G.edgeSet = ∅ ∨\n    ∃ t : BranchDecompositions.BinaryTree (Sym2 V),\n      t.Valid G.edgeFinset ∧\n      t.cutWidth (middleSize G) ≤ k\n\n/-- The minimum middle-set width of an edge branch decomposition. -/\nnoncomputable def branchwidth {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {k | HasBranchwidthAtMost G k}\n\nend Lax183560.Branchwidth\n",
+      "statements": []
+    },
+    {
+      "id": "Lax183560.CutRank",
+      "path": "concepts/Lax183560/CutRank.lean",
+      "title": "Binary cut-rank",
+      "type": "definition",
+      "description": "For a vertex set $A$ in a graph, the cut-rank is the rank over the\ntwo-element field of the adjacency matrix with rows indexed by $A$ and\ncolumns indexed by the vertices outside $A$.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite",
+        "Mathlib.Data.ZMod.Basic",
+        "Mathlib.LinearAlgebra.Matrix.Rank"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Finite\nimport Mathlib.LinearAlgebra.Matrix.Rank\nimport Mathlib.Data.ZMod.Basic\n\n/-!\n---\ntitle: Binary cut-rank\ntype: definition\n---\nFor a vertex set $A$ in a graph, the cut-rank is the rank over the\ntwo-element field of the adjacency matrix with rows indexed by $A$ and\ncolumns indexed by the vertices outside $A$.\n-/\n\nnamespace Lax183560.CutRank\n\n/-- Binary rank of the adjacency matrix across a cut. -/\nnoncomputable def cutRank {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (A : Finset V) : ℕ := by\n  classical\n  let M : Matrix {v : V // v ∈ A} {v : V // v ∉ A} (ZMod 2) :=\n    fun u v => if G.Adj u v then 1 else 0\n  exact M.rank\n\n\nend Lax183560.CutRank\n",
+      "statements": []
+    },
+    {
+      "id": "Lax183560.ModularDecomposition",
+      "path": "concepts/Lax183560/ModularDecomposition.lean",
+      "title": "Modular decompositions",
+      "type": "definition",
+      "description": "A modular decomposition recursively partitions a graph into nonempty modules.\nA module is a vertex set whose vertices have the same neighbors outside the\nset. Between any two parts, either all possible edges are present or none\nare; a quotient graph records which parts are adjacent. Each part is\ndecomposed recursively, with graphs on at most one vertex as the base case.\n\nA decomposition has width at most $k$ if every substitution uses at most\n$k$ parts, except for disjoint unions and complete joins, whose numbers of\nparts are unrestricted. The quotient graphs need not be prime.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Maps"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Maps\n\n/-!\n---\ntitle: Modular decompositions\ntype: definition\n---\nA modular decomposition recursively partitions a graph into nonempty modules.\nA module is a vertex set whose vertices have the same neighbors outside the\nset. Between any two parts, either all possible edges are present or none\nare; a quotient graph records which parts are adjacent. Each part is\ndecomposed recursively, with graphs on at most one vertex as the base case.\n\nA decomposition has width at most $k$ if every substitution uses at most\n$k$ parts, except for disjoint unions and complete joins, whose numbers of\nparts are unrestricted. The quotient graphs need not be prime.\n-/\n\nnamespace Lax183560.ModularDecomposition\n\n/-- A recursive modular decomposition whose nontrivial substitutions use at\nmost `k` parts. -/\ninductive ModularDecomposition :\n    (V : Type) → SimpleGraph V → ℕ → Prop where\n  | atom {V : Type} [Fintype V] (G : SimpleGraph V) (k : ℕ)\n      (h : Fintype.card V ≤ 1) : ModularDecomposition V G k\n  | substitute {V : Type} [Fintype V] [DecidableEq V]\n      (G : SimpleGraph V) (k n : ℕ)\n      (part : V → Fin n) (Q : SimpleGraph (Fin n))\n      (nontrivial : 2 ≤ n)\n      (surjective : Function.Surjective part)\n      (cross : ∀ u v : V, part u ≠ part v →\n        (G.Adj u v ↔ Q.Adj (part u) (part v)))\n      (children : ∀ i : Fin n,\n        ModularDecomposition {v : V // part v = i}\n          (G.induce {v : V | part v = i}) k)\n      (arity : Q = ⊥ ∨ Q = ⊤ ∨ n ≤ k) :\n      ModularDecomposition V G k\n\n\nend Lax183560.ModularDecomposition\n",
+      "statements": []
+    },
+    {
+      "id": "Lax183560.ModularWidth",
+      "path": "concepts/Lax183560/ModularWidth.lean",
+      "title": "Modular-width",
+      "type": "definition",
+      "description": "The modular-width of a graph is the minimum, over all modular decompositions,\nof the maximum number of parts in a substitution other than a disjoint union\nor a complete join. Disjoint unions and complete joins do not contribute to\nthe width. Under this convention, cographs have modular-width zero.",
+      "imports": [
+        "Lax183560.ModularDecomposition"
+      ],
+      "mathlibImports": [
+        "Mathlib.Order.Lattice.Nat"
+      ],
+      "sourceText": "import Lax183560.ModularDecomposition\nimport Mathlib.Order.Lattice.Nat\n\n/-!\n---\ntitle: Modular-width\ntype: definition\n---\nThe modular-width of a graph is the minimum, over all modular decompositions,\nof the maximum number of parts in a substitution other than a disjoint union\nor a complete join. Disjoint unions and complete joins do not contribute to\nthe width. Under this convention, cographs have modular-width zero.\n-/\n\nnamespace Lax183560.ModularWidth\n\nopen Lax183560.ModularDecomposition\n\n/-- Existence of a modular decomposition with substitution arity bounded by k. -/\ndef HasModularWidthAtMost (V : Type) (G : SimpleGraph V) (k : ℕ) : Prop :=\n  ModularDecomposition V G k\n\n/-- The least maximum arity of a non-union, non-join substitution. -/\nnoncomputable def modularWidth {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {k | HasModularWidthAtMost V G k}\n\nend Lax183560.ModularWidth\n",
+      "statements": []
+    },
+    {
+      "id": "Lax183560.PathDecomposition",
+      "path": "concepts/Lax183560/PathDecomposition.lean",
+      "title": "Path decompositions",
+      "type": "definition",
+      "description": "A path decomposition of a graph is a finite sequence of vertex bags such\nthat every vertex belongs to a bag, both endpoints of every edge belong to\na common bag, and the bags containing any fixed vertex form an interval.\nThe sequence may be empty when the graph has no vertices.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Basic"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Basic\n\n/-!\n---\ntitle: Path decompositions\ntype: definition\n---\nA path decomposition of a graph is a finite sequence of vertex bags such\nthat every vertex belongs to a bag, both endpoints of every edge belong to\na common bag, and the bags containing any fixed vertex form an interval.\nThe sequence may be empty when the graph has no vertices.\n-/\n\nnamespace Lax183560.PathDecomposition\n\n/-- A path decomposition indexed by a finite linear order. -/\nstructure PathDecomposition {V : Type} (G : SimpleGraph V) where\n  length : ℕ\n  bag : Fin length → Finset V\n  vertex_mem_bag : ∀ v : V, ∃ i, v ∈ bag i\n  edge_mem_bag : ∀ ⦃u v : V⦄, G.Adj u v →\n    ∃ i, u ∈ bag i ∧ v ∈ bag i\n  bag_indices_interval : ∀ v : V, ∀ i j l : Fin length,\n    (i ≤ j ∧ j ≤ l ∧ v ∈ bag i ∧ v ∈ bag l) → v ∈ bag j\n\n\nend Lax183560.PathDecomposition\n",
+      "statements": []
+    },
+    {
+      "id": "Lax183560.Pathwidth",
+      "path": "concepts/Lax183560/Pathwidth.lean",
+      "title": "Pathwidth",
+      "type": "definition",
+      "description": "The pathwidth of a graph is the minimum width of a path decomposition.\nThe width of a path decomposition is the maximum bag size minus one.\nThe empty graph has pathwidth zero.",
+      "imports": [
+        "Lax183560.PathDecomposition"
+      ],
+      "mathlibImports": [
+        "Mathlib.Order.Lattice.Nat"
+      ],
+      "sourceText": "import Lax183560.PathDecomposition\nimport Mathlib.Order.Lattice.Nat\n\n/-!\n---\ntitle: Pathwidth\ntype: definition\n---\nThe pathwidth of a graph is the minimum width of a path decomposition.\nThe width of a path decomposition is the maximum bag size minus one.\nThe empty graph has pathwidth zero.\n-/\n\nnamespace Lax183560.Pathwidth\n\nopen Lax183560.PathDecomposition\n\n/-- Existence of a path decomposition with bags of size at most `k + 1`. -/\ndef HasPathwidthAtMost {V : Type} (G : SimpleGraph V) (k : ℕ) : Prop :=\n  ∃ D : PathDecomposition G, ∀ i, (D.bag i).card ≤ k + 1\n\n/-- The minimum path-decomposition width. -/\nnoncomputable def pathwidth {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {k | HasPathwidthAtMost G k}\n\nend Lax183560.Pathwidth\n",
+      "statements": []
+    },
+    {
+      "id": "Lax183560.Rankwidth",
+      "path": "concepts/Lax183560/Rankwidth.lean",
+      "title": "Rank-width",
+      "type": "definition",
+      "description": "The rank-width of a graph is the minimum, over all branch decompositions of\nits vertex set, of the maximum cut-rank. The cut-rank of a cut is the rank\nover the two-element field of the adjacency matrix between its two sides.\nThe empty graph has rank-width zero.",
+      "imports": [
+        "Lax183560.BranchDecompositions",
+        "Lax183560.CutRank"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax183560.BranchDecompositions\nimport Lax183560.CutRank\n\n/-!\n---\ntitle: Rank-width\ntype: definition\n---\nThe rank-width of a graph is the minimum, over all branch decompositions of\nits vertex set, of the maximum cut-rank. The cut-rank of a cut is the rank\nover the two-element field of the adjacency matrix between its two sides.\nThe empty graph has rank-width zero.\n-/\n\nnamespace Lax183560.Rankwidth\n\nopen Lax183560.BranchDecompositions Lax183560.CutRank\n\n/-- Existence of a vertex branch decomposition of cut-rank at most `k`. -/\ndef HasRankwidthAtMost {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (k : ℕ) : Prop :=\n  IsEmpty V ∨\n    ∃ t : BranchDecompositions.BinaryTree V,\n      t.Valid Finset.univ ∧\n      t.cutWidth (cutRank G) ≤ k\n\n/-- The minimum maximum binary cut-rank. -/\nnoncomputable def rankwidth {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {k | HasRankwidthAtMost G k}\n\nend Lax183560.Rankwidth\n",
+      "statements": []
+    },
+    {
+      "id": "Lax183560.TreeDepth",
+      "path": "concepts/Lax183560/TreeDepth.lean",
+      "title": "Treedepth",
+      "type": "definition",
+      "description": "The treedepth of a graph is the minimum height of a rooted forest on its\nvertex set whose closure contains the graph. The closure joins every vertex\nto each of its ancestors, and height counts the vertices on a longest\nroot-to-leaf path. The empty graph has treedepth zero.",
+      "imports": [
+        "Lax183560.AncestorForest"
+      ],
+      "mathlibImports": [
+        "Mathlib.Order.Lattice.Nat"
+      ],
+      "sourceText": "import Lax183560.AncestorForest\nimport Mathlib.Order.Lattice.Nat\n\n/-!\n---\ntitle: Treedepth\ntype: definition\n---\nThe treedepth of a graph is the minimum height of a rooted forest on its\nvertex set whose closure contains the graph. The closure joins every vertex\nto each of its ancestors, and height counts the vertices on a longest\nroot-to-leaf path. The empty graph has treedepth zero.\n-/\n\nnamespace Lax183560.TreeDepth\n\nopen Lax183560.AncestorForest\n\n/-- `G` lies in the closure of a forest of vertex height at most `k`. -/\ndef HasTreedepthAtMost {V : Type} (G : SimpleGraph V) (k : ℕ) : Prop :=\n  ∃ F : AncestorForest V,\n    (∀ ⦃u v : V⦄, G.Adj u v → (F.ancestor u v ∨ F.ancestor v u)) ∧\n    ∃ rank : V → Fin k,\n      ∀ ⦃u v : V⦄, F.ancestor u v → rank u < rank v\n\n/-- The minimum height of a rooted forest whose closure contains `G`. -/\nnoncomputable def treedepth {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {k | HasTreedepthAtMost G k}\n\nend Lax183560.TreeDepth\n",
+      "statements": []
+    }
+  ],
+  "proofs": [],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "b918b5f3420b46f2bebc9233780a5300265a24b24ff44825d827fa7e50fe460d",
+    "sourceCommit": "fe4b2defb8288843d39df8ce62f07f9f147426a8",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax183560/AncestorForest.c",
+        "bytes": 1391,
+        "sha256": "3dea1aba8951d8bddcd4398dd96a11836b17961226b659d00931417322b2d2e1"
+      },
+      {
+        "path": "concepts/ir/Lax183560/AncestorForest.c.hash",
+        "bytes": 16,
+        "sha256": "79fc207041123dc5add873f94a4c67949d7c4025bfbad1b537b32f3f52c18223"
+      },
+      {
+        "path": "concepts/ir/Lax183560/BranchDecompositions.c",
+        "bytes": 14170,
+        "sha256": "49218c8d3f73444e937a2afd8bc61cf5a3829c7bbf0e6ef478ea0fc5dc6ef2e6"
+      },
+      {
+        "path": "concepts/ir/Lax183560/BranchDecompositions.c.hash",
+        "bytes": 16,
+        "sha256": "145cc6eb985aedd5bbf9b583267766a0755beb14e7e22874b065828636d090c1"
+      },
+      {
+        "path": "concepts/ir/Lax183560/Branchwidth.c",
+        "bytes": 1362,
+        "sha256": "5ae56c8302ea2c3dccdb28261aff48daf537d6f233b1880f64d3d066dacae56f"
+      },
+      {
+        "path": "concepts/ir/Lax183560/Branchwidth.c.hash",
+        "bytes": 16,
+        "sha256": "bdbf46d3d1a3ee430a2c2a8999992f971586c58dc6b3997d3ebedeb85f21f5b6"
+      },
+      {
+        "path": "concepts/ir/Lax183560/CutRank.c",
+        "bytes": 1882,
+        "sha256": "79d4c860b18b970656ede044414c93051cf2c86febb47b509a17c3028b53351d"
+      },
+      {
+        "path": "concepts/ir/Lax183560/CutRank.c.hash",
+        "bytes": 16,
+        "sha256": "21a213486c9f96584bc6f4f727bad4ede5da8c38b2d6684fd7b7bcc0f8bdabb8"
+      },
+      {
+        "path": "concepts/ir/Lax183560/ModularDecomposition.c",
+        "bytes": 1400,
+        "sha256": "f92c0cd34cca92584419ece19f80b3b38a6d593f5386ed871fd08d7b1d28d284"
+      },
+      {
+        "path": "concepts/ir/Lax183560/ModularDecomposition.c.hash",
+        "bytes": 16,
+        "sha256": "4d733f9c6c09e26d0a5eed21847b4c7d6175337de451d9d61ac024a01f83b8bd"
+      },
+      {
+        "path": "concepts/ir/Lax183560/ModularWidth.c",
+        "bytes": 1606,
+        "sha256": "119f4a9add1ce307896a8f4491a8df9e0071bd6bfe7ad0470726770d4f3a3a5c"
+      },
+      {
+        "path": "concepts/ir/Lax183560/ModularWidth.c.hash",
+        "bytes": 16,
+        "sha256": "d6a667702d1212c45a588b590bad70085d83fd7764c9a3d042c078546d3c5948"
+      },
+      {
+        "path": "concepts/ir/Lax183560/PathDecomposition.c",
+        "bytes": 1397,
+        "sha256": "fbf96fc279dd3d956b8d606b1d32ad9ae88cfe58e06c2061dc1af7dedeedabb4"
+      },
+      {
+        "path": "concepts/ir/Lax183560/PathDecomposition.c.hash",
+        "bytes": 16,
+        "sha256": "e336c6c28d8ac71b7a6274ec5f07049a22040acacaa617cddb31bf4988e6cf8c"
+      },
+      {
+        "path": "concepts/ir/Lax183560/Pathwidth.c",
+        "bytes": 1591,
+        "sha256": "6d5ed9e32a54c2fea1dee1b55c16da18bd58485cfac0a564a8530cab850ce11b"
+      },
+      {
+        "path": "concepts/ir/Lax183560/Pathwidth.c.hash",
+        "bytes": 16,
+        "sha256": "c221c3151c2338e0899598c86b18103d320b56b51b57017ade48560fa868a6b9"
+      },
+      {
+        "path": "concepts/ir/Lax183560/Rankwidth.c",
+        "bytes": 1580,
+        "sha256": "68d6ed81989f2df24cf283206e2fdf0545d82e8102e1ab31f1a7aec627fa6fd2"
+      },
+      {
+        "path": "concepts/ir/Lax183560/Rankwidth.c.hash",
+        "bytes": 16,
+        "sha256": "07664e7bac4636b9fe5c61426efc75e5e1a7c67293f983395126003a935b73cf"
+      },
+      {
+        "path": "concepts/ir/Lax183560/TreeDepth.c",
+        "bytes": 1582,
+        "sha256": "e258664d5624adb3926f41a4f865712069c8a2e3d1c23cad91f48cf5902d6c38"
+      },
+      {
+        "path": "concepts/ir/Lax183560/TreeDepth.c.hash",
+        "bytes": 16,
+        "sha256": "6e255b6b5b2160c2f385e704699f0617a0a32e951ccda28372b9f31b7509d0c6"
+      },
+      {
+        "path": "concepts/ir/Lax183560.c",
+        "bytes": 3471,
+        "sha256": "1911936c1afbc4524b8080b5c42e3ce41b9702bc0e93bb91b97b76a7e308f501"
+      },
+      {
+        "path": "concepts/ir/Lax183560.c.hash",
+        "bytes": 16,
+        "sha256": "4fb175b94768044141c09fb0e324a354058a1564df3aa592696dddc3d971f272"
+      },
+      {
+        "path": "concepts/lib/Lax183560/AncestorForest.ilean",
+        "bytes": 1304,
+        "sha256": "96846a00c88b7a153b9f3ded5c07024d993461069c6f3acb3e828bf5a532ab2d"
+      },
+      {
+        "path": "concepts/lib/Lax183560/AncestorForest.ilean.hash",
+        "bytes": 16,
+        "sha256": "306ec1657e4740a09685971517b2b60b6e4c8f9e97c943f381e8d5d2f99b0e57"
+      },
+      {
+        "path": "concepts/lib/Lax183560/AncestorForest.olean",
+        "bytes": 54800,
+        "sha256": "99b02219fa0a1f56e8f5aecb675219069c07f089bcab1899515f3aa2dbd7b7a8"
+      },
+      {
+        "path": "concepts/lib/Lax183560/AncestorForest.olean.hash",
+        "bytes": 16,
+        "sha256": "1147941ff531c7d134799f26cb7fe3f66acd6d9dd1ebb4470211f474cbae81c4"
+      },
+      {
+        "path": "concepts/lib/Lax183560/AncestorForest.trace",
+        "bytes": 4016,
+        "sha256": "3022d855c84493bcf33d20f54bfaeece32fdbf4a41e22f1b82ae44fd338ccda3"
+      },
+      {
+        "path": "concepts/lib/Lax183560/BranchDecompositions.ilean",
+        "bytes": 4255,
+        "sha256": "97d8ec763e362fc15a3f2a526a1d3ca2544023286f587a4e29efffdd65b42e2f"
+      },
+      {
+        "path": "concepts/lib/Lax183560/BranchDecompositions.ilean.hash",
+        "bytes": 16,
+        "sha256": "71d09d4b284d6298fbad53f2ab30683a43aa7e7dfca6cfd410837d4597d4d98d"
+      },
+      {
+        "path": "concepts/lib/Lax183560/BranchDecompositions.olean",
+        "bytes": 123616,
+        "sha256": "efcc29b852e940863694b508eb616e4651bb61b0f7fceac38fc0bc0d51846de5"
+      },
+      {
+        "path": "concepts/lib/Lax183560/BranchDecompositions.olean.hash",
+        "bytes": 16,
+        "sha256": "4bb6f4577e14d7d400d67799293c8b165e5d050aae15c7a69ce341cb92a8486c"
+      },
+      {
+        "path": "concepts/lib/Lax183560/BranchDecompositions.trace",
+        "bytes": 2889,
+        "sha256": "cb5516af014559a1fefd5198f72f152251093e76c63b249ce4029d4a01dd1b5f"
+      },
+      {
+        "path": "concepts/lib/Lax183560/Branchwidth.ilean",
+        "bytes": 3641,
+        "sha256": "6fd0bf507cf42e46be0599182a5609fcf3cc1de1d99cb21392ff2c0a50fa5404"
+      },
+      {
+        "path": "concepts/lib/Lax183560/Branchwidth.ilean.hash",
+        "bytes": 16,
+        "sha256": "d67bf4c6d9679e53997420d523aa11a339ce06ed0a544be23b799f71e54dca75"
+      },
+      {
+        "path": "concepts/lib/Lax183560/Branchwidth.olean",
+        "bytes": 18464,
+        "sha256": "54c953b38941638bf4544980ee09ee655ff4eca53db8e8bcb821ba5e4c658d9a"
+      },
+      {
+        "path": "concepts/lib/Lax183560/Branchwidth.olean.hash",
+        "bytes": 16,
+        "sha256": "3533f208ccbb616decbcfaeec6de605a26447efce7eb42a1686b2d141998abcf"
+      },
+      {
+        "path": "concepts/lib/Lax183560/Branchwidth.trace",
+        "bytes": 2298,
+        "sha256": "bf020c60cd6d5d1b780fecd82dcdfa0d8cf0c62613943d2fe275e59520dec922"
+      },
+      {
+        "path": "concepts/lib/Lax183560/CutRank.ilean",
+        "bytes": 1695,
+        "sha256": "6ca119a4a19c80651090c4ccb8b919767832b2bda19ca3b2c76d186307bd1fa9"
+      },
+      {
+        "path": "concepts/lib/Lax183560/CutRank.ilean.hash",
+        "bytes": 16,
+        "sha256": "809bd3b1ec5f7915aca41f5859d1e114ae426e1ba03e639611d442063fb48acf"
+      },
+      {
+        "path": "concepts/lib/Lax183560/CutRank.olean",
+        "bytes": 16040,
+        "sha256": "c69eeb324719eae7febbb8206a2060ea58c3e642c327dab476d01fdae339483d"
+      },
+      {
+        "path": "concepts/lib/Lax183560/CutRank.olean.hash",
+        "bytes": 16,
+        "sha256": "13c9a8540535d4c8c3c2e1c6d789714f0466234a5855dbec09b1f573f906cd35"
+      },
+      {
+        "path": "concepts/lib/Lax183560/CutRank.trace",
+        "bytes": 2635,
+        "sha256": "b86f05a02d63554a1082677595ab67324f9773f88adf1661275d48b93ac02a69"
+      },
+      {
+        "path": "concepts/lib/Lax183560/ModularDecomposition.ilean",
+        "bytes": 3210,
+        "sha256": "ca7825de7c0404125f6d82a19945628fbfc3e76c2a9dc2c78d54a8f5bbf471ba"
+      },
+      {
+        "path": "concepts/lib/Lax183560/ModularDecomposition.ilean.hash",
+        "bytes": 16,
+        "sha256": "fccb7a2cccb0c31e901c068da67635b9bc5974eab3792871cf763d8eab767733"
+      },
+      {
+        "path": "concepts/lib/Lax183560/ModularDecomposition.olean",
+        "bytes": 55896,
+        "sha256": "6ee0cf6cacdeac4aac9662ec8467dfa053e5c11b684a4a3a0d92a6f963500bf1"
+      },
+      {
+        "path": "concepts/lib/Lax183560/ModularDecomposition.olean.hash",
+        "bytes": 16,
+        "sha256": "90102ce16f84cbb3a8c32fa2e8546dad7bd46fb7e9bc904686a5471d17c16444"
+      },
+      {
+        "path": "concepts/lib/Lax183560/ModularDecomposition.trace",
+        "bytes": 3277,
+        "sha256": "7020050e51506f1cf3899ea7e3390d2426bc81c3790fef97422ec5d455759595"
+      },
+      {
+        "path": "concepts/lib/Lax183560/ModularWidth.ilean",
+        "bytes": 1714,
+        "sha256": "dfb239ce265f8e8c278bd0a16d44d4b5aa45dca642f2dd89d5d61e2765ae6338"
+      },
+      {
+        "path": "concepts/lib/Lax183560/ModularWidth.ilean.hash",
+        "bytes": 16,
+        "sha256": "67e4f0550bc7605989aab1eac954eeedfa4b40fd754e94c8a914dc3256caf4e9"
+      },
+      {
+        "path": "concepts/lib/Lax183560/ModularWidth.olean",
+        "bytes": 9560,
+        "sha256": "480f8056141f939652d8fb5dc5a59b86a6c6540724407a5bf228a1a30b2cac0b"
+      },
+      {
+        "path": "concepts/lib/Lax183560/ModularWidth.olean.hash",
+        "bytes": 16,
+        "sha256": "febe66426bd2435e238d33c23172b0800d0fc585f84c6d967e3942ef50c0f79b"
+      },
+      {
+        "path": "concepts/lib/Lax183560/ModularWidth.trace",
+        "bytes": 2468,
+        "sha256": "bf90838426ec09fe9c10343cee3e5dff44064d92466c01b803d9e41a4347c085"
+      },
+      {
+        "path": "concepts/lib/Lax183560/PathDecomposition.ilean",
+        "bytes": 2073,
+        "sha256": "1f7874929c1b3d73aa42a4f50d818fb9966c45a354e4a9f68ace5d34b269b314"
+      },
+      {
+        "path": "concepts/lib/Lax183560/PathDecomposition.ilean.hash",
+        "bytes": 16,
+        "sha256": "4c7ad9afa324e870843b0f0e391dc4168371aef0147e0faa68c9a41ddd7c0647"
+      },
+      {
+        "path": "concepts/lib/Lax183560/PathDecomposition.olean",
+        "bytes": 88272,
+        "sha256": "d67a99d44084e0d9b7e835f7c684dc4f729ccb2373ce6096f70a50260cdce547"
+      },
+      {
+        "path": "concepts/lib/Lax183560/PathDecomposition.olean.hash",
+        "bytes": 16,
+        "sha256": "448dafb6fa5f17fa9732f173199be82b82c84ce7d04b29f00724a0d85b4775d0"
+      },
+      {
+        "path": "concepts/lib/Lax183560/PathDecomposition.trace",
+        "bytes": 4390,
+        "sha256": "7bc13471b295989aeb9a8b973dda24d676d4c453fae9df15bf4a722896717747"
+      },
+      {
+        "path": "concepts/lib/Lax183560/Pathwidth.ilean",
+        "bytes": 1966,
+        "sha256": "e3c2df78e5f7fa5e5687ac088532a7b40968d232fb16e9ea9edb28128a01185f"
+      },
+      {
+        "path": "concepts/lib/Lax183560/Pathwidth.ilean.hash",
+        "bytes": 16,
+        "sha256": "7928f26963f25b12b5d87bf81c94f3a64f59440ad8aeeacfbc788fe183556194"
+      },
+      {
+        "path": "concepts/lib/Lax183560/Pathwidth.olean",
+        "bytes": 12296,
+        "sha256": "b026982e5117041fa9d83c6c91690f9d721b02c3f76d625526dc390832683f19"
+      },
+      {
+        "path": "concepts/lib/Lax183560/Pathwidth.olean.hash",
+        "bytes": 16,
+        "sha256": "130ddf2cc40644bec6fce3526642e28f5f98ac63315ab161b6ca8d907fe12ccb"
+      },
+      {
+        "path": "concepts/lib/Lax183560/Pathwidth.trace",
+        "bytes": 2441,
+        "sha256": "c86ff0af730a3d0371deba2353ef8cbf42510fb52520268cd6977230a26807c9"
+      },
+      {
+        "path": "concepts/lib/Lax183560/Rankwidth.ilean",
+        "bytes": 2583,
+        "sha256": "a436eb07cda43a612efaae4db8271f593c367139053e6f8e9aeb89292671944d"
+      },
+      {
+        "path": "concepts/lib/Lax183560/Rankwidth.ilean.hash",
+        "bytes": 16,
+        "sha256": "befed65001f0fd97d7c2500c1f859381d4ff5677bb16c4c7975e25adab029017"
+      },
+      {
+        "path": "concepts/lib/Lax183560/Rankwidth.olean",
+        "bytes": 12032,
+        "sha256": "654154f1bf0fedf85c535d601ce499b5a7caa34b79be3e28ec1535cb84966854"
+      },
+      {
+        "path": "concepts/lib/Lax183560/Rankwidth.olean.hash",
+        "bytes": 16,
+        "sha256": "368c07d7372ef685d54e522c5af97960a66e4d70938a8ff13a67a47624f7f319"
+      },
+      {
+        "path": "concepts/lib/Lax183560/Rankwidth.trace",
+        "bytes": 2424,
+        "sha256": "4861b7464dd52e67f92883e4115b32e5da1d0a0745bed0d91be7a3c9b85c02f0"
+      },
+      {
+        "path": "concepts/lib/Lax183560/TreeDepth.ilean",
+        "bytes": 2214,
+        "sha256": "942f7611bf6014d42509ab243c149103f1f3204e4686fbc02a497a9333068ae3"
+      },
+      {
+        "path": "concepts/lib/Lax183560/TreeDepth.ilean.hash",
+        "bytes": 16,
+        "sha256": "a94c4b5d84e1a2e08783a1feb4c1d9051ddb7910fb006f71697e72aa954c2be5"
+      },
+      {
+        "path": "concepts/lib/Lax183560/TreeDepth.olean",
+        "bytes": 12432,
+        "sha256": "5afa7c593490311560af3bd46d707b2fc5210a69fd85d7dcceb7114a4133ad68"
+      },
+      {
+        "path": "concepts/lib/Lax183560/TreeDepth.olean.hash",
+        "bytes": 16,
+        "sha256": "988c5e70dbd2d508a50a08f81603f44bd7191b816f5f8a00bd3e5d445acea882"
+      },
+      {
+        "path": "concepts/lib/Lax183560/TreeDepth.trace",
+        "bytes": 2435,
+        "sha256": "5b9ce366c18e490a00e19b6e98ddfc28b3320d537cf6b37643d7fb3e7a79971e"
+      },
+      {
+        "path": "concepts/lib/Lax183560.ilean",
+        "bytes": 537,
+        "sha256": "3dd99f50aa073a1717e38f7a571c272acb9dbf689de9f24b22bf2283dc47455f"
+      },
+      {
+        "path": "concepts/lib/Lax183560.ilean.hash",
+        "bytes": 16,
+        "sha256": "224652c020caf20028eeb945dea640d4b6ad7b0e1b509ebe72aa21ee742a4637"
+      },
+      {
+        "path": "concepts/lib/Lax183560.olean",
+        "bytes": 2552,
+        "sha256": "e63c953d93cb338d3b7717e766f315e260748978559c804676d4e42544b68e0a"
+      },
+      {
+        "path": "concepts/lib/Lax183560.olean.hash",
+        "bytes": 16,
+        "sha256": "a9e80ecbfb2718bebf3d258cc501e95bada19f27fc1768c18330c73225ccae4d"
+      },
+      {
+        "path": "concepts/lib/Lax183560.trace",
+        "bytes": 3592,
+        "sha256": "aeec40f72ba12b5bbe78a48339859174f7ede40f35a7ddd492a082bb262ea557"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "7c458667b5747543cea79a6aeb5b69754b817afa189344654e0123130547f513"
+      },
+      {
+        "path": "concepts/package/Lax183560/AncestorForest.lean",
+        "bytes": 763,
+        "sha256": "451c7dd2c596e9950b1ceea461c2daf09ebaf8952a294ddd7d0e58e9c94fadb9"
+      },
+      {
+        "path": "concepts/package/Lax183560/BranchDecompositions.lean",
+        "bytes": 1690,
+        "sha256": "832af9c62cb748614b9468079a6a51ecfdba5a45da639dbef8a7c82f928952a3"
+      },
+      {
+        "path": "concepts/package/Lax183560/Branchwidth.lean",
+        "bytes": 1381,
+        "sha256": "2f9c01aff92f2a286b9aa0f5db3da314d05abec98a9667079f49ab82d6790f90"
+      },
+      {
+        "path": "concepts/package/Lax183560/CutRank.lean",
+        "bytes": 722,
+        "sha256": "6d2a3bedc83afea3546ca1a502291a034920d62aee96a8396fe61f55d6f42922"
+      },
+      {
+        "path": "concepts/package/Lax183560/ModularDecomposition.lean",
+        "bytes": 1613,
+        "sha256": "3e0d40f8dbe54ae50f2d4769d419a7222c154b1ac7b8c402548bfe7a8670e587"
+      },
+      {
+        "path": "concepts/package/Lax183560/ModularWidth.lean",
+        "bytes": 927,
+        "sha256": "3fbb13abde38c4c0cbabc9b36207963527f84d1e950539b854593cdf14386cd7"
+      },
+      {
+        "path": "concepts/package/Lax183560/PathDecomposition.lean",
+        "bytes": 906,
+        "sha256": "ffd6c513390001817355c158ab31a45292899041dec4e1a816cbaaa95f098afd"
+      },
+      {
+        "path": "concepts/package/Lax183560/Pathwidth.lean",
+        "bytes": 780,
+        "sha256": "9d3eefc781344c20f66cbed2feedb8aa4117139437d3c99c6c783a595ad13b95"
+      },
+      {
+        "path": "concepts/package/Lax183560/Rankwidth.lean",
+        "bytes": 978,
+        "sha256": "912e120d8707bca3500aa71276c56422eeab69c7fa1bc7ac94ae18805d3e2558"
+      },
+      {
+        "path": "concepts/package/Lax183560/TreeDepth.lean",
+        "bytes": 1029,
+        "sha256": "23e907f2a4979ede65d9c4364a8908fa1be09f6d221c0461ceacc105e0e5ce8b"
+      },
+      {
+        "path": "concepts/package/Lax183560.lean",
+        "bytes": 308,
+        "sha256": "2e27f7a2a5f6e16346db8131c11acc191bf61c966de2497eb9bb5d90da50d609"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax183560Proofs.c",
+        "bytes": 1095,
+        "sha256": "db9036bba5f11381c1576d59ac39c37ba039c4078b09888ad5a63aa896ee55d2"
+      },
+      {
+        "path": "proofs/ir/Lax183560Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "29e81802e4cb8b8498f0c24634cbb0d46e1a2fe707e4c734ce3fa3310f8f38af"
+      },
+      {
+        "path": "proofs/lib/Lax183560Proofs.ilean",
+        "bytes": 86,
+        "sha256": "7421d08a8744620d34e79d79186a6d357f0348a99d9771f03662d244162fcbb5"
+      },
+      {
+        "path": "proofs/lib/Lax183560Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "10211c9ff9da6510b1fe215ba2b57c6c10087f3114252beb7aa91d26f9707fe3"
+      },
+      {
+        "path": "proofs/lib/Lax183560Proofs.olean",
+        "bytes": 1384,
+        "sha256": "c7210b9f3f3bf4cdb4d720ec9cf9f24db486e754d46e657127eec2916b66a342"
+      },
+      {
+        "path": "proofs/lib/Lax183560Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "e1210e652623853177b61cd27b2be320438b44c91110b262a16691cdbe867b73"
+      },
+      {
+        "path": "proofs/lib/Lax183560Proofs.trace",
+        "bytes": 2173,
+        "sha256": "b2e0950806cc0be662707b3a9bfde6e3d6459418969aa51e89eb2111575f6fa9"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "3d04c32bc39c17e1bacfeb45c995e6667f699eb0392d3a57837432cf2e3d8577"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "81fc99ca9b7527994591e04a984b3022e86ceffa971a8b5aed4a92021cddc2b1"
+      },
+      {
+        "path": "proofs/package/Lax183560Proofs.lean",
+        "bytes": 1,
+        "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:b918b5f3420b46f2bebc9233780a5300265a24b24ff44825d827fa7e50fe460d"
+  },
+  "lastSubmission": {
+    "commentId": 6172941244,
+    "eventCreatedAt": "2026-10-14T16:18:27Z",
+    "record": "f28e6a10f6479c431478f6f021faa05994a548cbbb6e3a07b4a4c3923b6042af",
+    "buildOutput": "7d4dc3912734a2655d6971cc771014507254c0ea320f3c2ab0e76e93a1f8ac0e",
+    "previous": {
+      "archiveSha": "8102c8aae4f63b9b3dcf1e90b5d66c6dbfad44ce",
+      "record": "902e0b1f1ff47fbfb715cbf9bbae4b2fdaa94cb8032c54ac2247ca2fa17cc868",
+      "buildOutput": "bbdc4b7369bf72b97ea336f6adc93789f7eb916deb36e96bfd5e7d88e34b9020"
+    }
   }
 }
