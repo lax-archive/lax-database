@@ -4,5 +4,325 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 198
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-457868",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "Refined Near-Linear Computation of Welzl Orders",
+      "authors": [
+        {
+          "name": "Clemens Kuske",
+          "github": "clemenskuske"
+        },
+        {
+          "name": "Codex (OpenAI)"
+        }
+      ],
+      "bibEntries": [
+        "@misc{DreierKuske2026,\n  author        = {Dreier, Jan and Kuske, Clemens},\n  title         = {Near-Linear Time Computation of {Welzl} Orders on\n                   Graphs with Linear Neighborhood Complexity},\n  year          = {2026},\n  eprint        = {2602.14625},\n  archivePrefix = {arXiv},\n  primaryClass  = {cs.DS},\n  doi           = {10.48550/arXiv.2602.14625}\n}\n"
+      ]
+    },
+    "abstract": "This submission improves Lax195003: for graphs with linear neighborhood complexity, a randomized word-RAM program computes Welzl orders with crossing number $O_c(\\log n)$ in near-linear time.\n\nThe theorem keeps the program black-box; its supporting concepts and concrete construction belong in the proof section.\n"
+  },
+  "requiredByConcepts": [
+    "Lax11",
+    "Lax195003",
+    "Lax808846"
+  ],
+  "requiredByProofs": [
+    "Lax11",
+    "Lax195003",
+    "Lax808846"
+  ],
+  "concepts": [
+    {
+      "id": "Lax457868.RefinedWelzlOrders",
+      "path": "concepts/Lax457868/RefinedWelzlOrders.lean",
+      "title": "Refined near-linear computation of Welzl orders",
+      "type": "theorem",
+      "description": "For every graph with linear neighborhood complexity bounded by `c · k`,\nwhere `c ≥ 2`, a randomized word-RAM algorithm computes an order whose\ncrossing number is at most a constant times\n`c^5 (log₂ c)^2 log₂ n`. Its running time is linear in the encoded input\nsize times `log n`, and it succeeds with probability at least `2/3`.\nFor fixed `c`, the crossing bound is `O(log n)`.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The graph order and neighborhood-complexity predicates, the compressed-sparse-\nrow input encoding, and the finite-tape randomized word-RAM semantics are\nimported from Lax195003 and its registered dependencies. The graph statement\nuses the existing open-neighborhood convention. The paper's set-system result\nimplies this specialization because an undirected graph's open-neighborhood\nsystem is self-dual.\n\nThe paper states expected running time. This statement uses a bounded-time\nversion: truncate an expected-time run at a sufficiently large constant\nmultiple of its expectation and return failure on timeout. Markov's inequality\nthen gives success on at least two thirds of finite tapes, with every tape\nhalting within the displayed bound. Repeating independent attempts until a\nvalid order is returned recovers expected near-linear time. The runtime\nconstant is existential; the displayed crossing constant is an explicit\nrounding-up of the paper's sampler parameters.\n\nThe program is existential and black-box at the concept level. Its concrete\ninstruction sequence and the bridges from the refined sampler to the machine\ninterface belong in the proof package."
+        }
+      ],
+      "imports": [
+        "Lax11.GraphEncoding",
+        "Lax195003.WelzlOrdersComputation",
+        "Lax195003.WelzlOrdersInGraphs",
+        "Lax195003.WelzlOrdersNeighborhoodComplexity",
+        "Lax195003.WordRamRandomness",
+        "Lax808846.Ram"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Nat.Log"
+      ],
+      "sourceText": "import Lax195003.WelzlOrdersInGraphs\nimport Lax195003.WelzlOrdersComputation\nimport Lax195003.WelzlOrdersNeighborhoodComplexity\nimport Lax195003.WordRamRandomness\nimport Lax11.GraphEncoding\nimport Lax808846.Ram\nimport Mathlib.Data.Nat.Log\n\n/-!\n---\ntitle: Refined near-linear computation of Welzl orders\ntype: theorem\n---\nFor every graph with linear neighborhood complexity bounded by `c · k`,\nwhere `c ≥ 2`, a randomized word-RAM algorithm computes an order whose\ncrossing number is at most a constant times\n`c^5 (log₂ c)^2 log₂ n`. Its running time is linear in the encoded input\nsize times `log n`, and it succeeds with probability at least `2/3`.\nFor fixed `c`, the crossing bound is `O(log n)`.\n\n# Formalization notes\n\nThe graph order and neighborhood-complexity predicates, the compressed-sparse-\nrow input encoding, and the finite-tape randomized word-RAM semantics are\nimported from Lax195003 and its registered dependencies. The graph statement\nuses the existing open-neighborhood convention. The paper's set-system result\nimplies this specialization because an undirected graph's open-neighborhood\nsystem is self-dual.\n\nThe paper states expected running time. This statement uses a bounded-time\nversion: truncate an expected-time run at a sufficiently large constant\nmultiple of its expectation and return failure on timeout. Markov's inequality\nthen gives success on at least two thirds of finite tapes, with every tape\nhalting within the displayed bound. Repeating independent attempts until a\nvalid order is returned recovers expected near-linear time. The runtime\nconstant is existential; the displayed crossing constant is an explicit\nrounding-up of the paper's sampler parameters.\n\nThe program is existential and black-box at the concept level. Its concrete\ninstruction sequence and the bridges from the refined sampler to the machine\ninterface belong in the proof package.\n-/\n\nnamespace Lax457868.RefinedWelzlOrders\n\nopen Lax11.GraphEncoding\nopen Lax808846.Ram\nopen Lax195003.WelzlOrdersInGraphs\nopen Lax195003.WelzlOrdersNeighborhoodComplexity\nopen Lax195003.WordRamRandomness\n\n/-- A black-box word-RAM program achieves the refined crossing bound within\nnear-linear time, with constant success probability. -/\naxiom exists_refined_randomized_welzlOrder_program :\n      ∃ (p : Program) (Ktime : ℕ), 1 ≤ Ktime ∧\n      ∀ (c n : ℕ) (G : SimpleGraph (Fin n)),\n        2 ≤ c → 2 ≤ n →\n        HasLinearNeighborhoodComplexityWithConstant G c →\n        ∀ (w : ℕ) (x : List ℕ), EncodesGraph x n G →\n          (∀ v ∈ c :: x, Ktime * (x.length + v + 1) ≤ 2 ^ w) →\n          let T := Ktime * (x.length + 1) * (Nat.clog 2 n + 1)\n          SucceedsWithProbabilityAtLeastInTime\n            (2 / 3 : ℚ) w p (c :: x) T T\n            (EncodesGraphWelzlOrder G 1\n              (100000 * c ^ 5 * (Nat.clog 2 c + 1) ^ 2 *\n                (Nat.clog 2 n + 1)))\n\nend Lax457868.RefinedWelzlOrders\n",
+      "statements": [
+        {
+          "id": "Lax457868.RefinedWelzlOrders.exists_refined_randomized_welzlOrder_program",
+          "signature": "exists_refined_randomized_welzlOrder_program : failed to pretty print expression (use 'set_option pp.rawOnError true' for raw representation)",
+          "startLine": 52,
+          "endLine": 66,
+          "doc": "A black-box word-RAM program achieves the refined crossing bound within\nnear-linear time, with constant success probability."
+        }
+      ]
+    }
+  ],
+  "proofs": [],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "17b5dd1af1de7fe08f1d400a531223bfc938f5d2edb10c378c5729d6f1de7dde",
+    "sourceCommit": "f60fc646e7200838ba14a0e34811324df88a74a5",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax457868/RefinedWelzlOrders.c",
+        "bytes": 2849,
+        "sha256": "48dddc1ca872a13987a31c2ac036ec41391ccb3b2576c122d0b63f0bbb009dec"
+      },
+      {
+        "path": "concepts/ir/Lax457868/RefinedWelzlOrders.c.hash",
+        "bytes": 16,
+        "sha256": "d9f0d83ff0e68df08702f5cae392107f59dbb015f575da2e80775b519ab07d35"
+      },
+      {
+        "path": "concepts/ir/Lax457868.c",
+        "bytes": 1332,
+        "sha256": "1a63267ab24d877d4d9ca4e61dfa6d1c99fcb10c8ce6159e39e19cbd52eb419d"
+      },
+      {
+        "path": "concepts/ir/Lax457868.c.hash",
+        "bytes": 16,
+        "sha256": "72ab68c1f2173703ba400d8b14afc7f51d34320ad31c98a6b40e46865a3d6b8d"
+      },
+      {
+        "path": "concepts/lib/Lax457868/RefinedWelzlOrders.ilean",
+        "bytes": 3746,
+        "sha256": "abe7287e4c8aad5927fa2a3f8d8f3bb24f8031cbc14ef8734a4a6d078f8e5b3d"
+      },
+      {
+        "path": "concepts/lib/Lax457868/RefinedWelzlOrders.ilean.hash",
+        "bytes": 16,
+        "sha256": "65987548d92487ee08408990eebfe4df878f326344019b0d95894bb29d84c223"
+      },
+      {
+        "path": "concepts/lib/Lax457868/RefinedWelzlOrders.olean",
+        "bytes": 18896,
+        "sha256": "ca9dbb42f8de51d2505f452b4e9c9d42eb799499aaaed3f31f7c043a424f20ac"
+      },
+      {
+        "path": "concepts/lib/Lax457868/RefinedWelzlOrders.olean.hash",
+        "bytes": 16,
+        "sha256": "cf27c975cd5a8a955b8372c00d3f23326c728947b28c6639d964a0e4b8eb4692"
+      },
+      {
+        "path": "concepts/lib/Lax457868/RefinedWelzlOrders.trace",
+        "bytes": 3561,
+        "sha256": "1c65cf6ff4c887e15df3dcdfec01c1d2cfb7f2b7a54a3f8ada0d9fedb7eeaf14"
+      },
+      {
+        "path": "concepts/lib/Lax457868.ilean",
+        "bytes": 130,
+        "sha256": "025c775cd2e50bd1d3c28f939fe0718e742cb5e8a7735ba2431db608f294146a"
+      },
+      {
+        "path": "concepts/lib/Lax457868.ilean.hash",
+        "bytes": 16,
+        "sha256": "a4f4ccc0b41b0d7fbdbf994440b015b57f6296e59bcc8a8b5ebe201233b6d3a9"
+      },
+      {
+        "path": "concepts/lib/Lax457868.olean",
+        "bytes": 1536,
+        "sha256": "75c9e808e3988548ee88537f169a59224b89cf254bdc0f9fedd5526f2f57056b"
+      },
+      {
+        "path": "concepts/lib/Lax457868.olean.hash",
+        "bytes": 16,
+        "sha256": "6eb032b9d6bd26dc310931b41d4f5b6242c855d7fd959609f5f80d1a683f871e"
+      },
+      {
+        "path": "concepts/lib/Lax457868.trace",
+        "bytes": 2454,
+        "sha256": "a2abb955342626e80fba6c40740af2a1cb888889b7ae4cd3c64b0b5ce7c2040a"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3997,
+        "sha256": "5397c5473a4ccc526986695b279d7cff8682ba50055d5e2e4f9373efb526390c"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 757,
+        "sha256": "3959e4832acf2ac0e284d55ada78958fce877b25650a19f6635ea7ec3406eac0"
+      },
+      {
+        "path": "concepts/package/Lax457868/RefinedWelzlOrders.lean",
+        "bytes": 2936,
+        "sha256": "5757edc5b880578a165ee3fdf6263c895b712769706295292854ae5187883d4b"
+      },
+      {
+        "path": "concepts/package/Lax457868.lean",
+        "bytes": 36,
+        "sha256": "0e1fbcda2bb113d62e6e5f2059b520a6ce2f3f958ee76c9fb4ddde9d70cc436b"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax457868Proofs/ParameterBounds.c",
+        "bytes": 1336,
+        "sha256": "c02782b0a0beba5713c32fecd412a1ac78e46c8b043e70bc87ea78152fcac430"
+      },
+      {
+        "path": "proofs/ir/Lax457868Proofs/ParameterBounds.c.hash",
+        "bytes": 16,
+        "sha256": "5e64310a69a21a6da13ee1d9cc7a2e87bbe99bd0a90251546aad703971094c7c"
+      },
+      {
+        "path": "proofs/ir/Lax457868Proofs/RefinedWelzlOrders.c",
+        "bytes": 1664,
+        "sha256": "5ee5687377c2a5b346f018e5849d366dd0cc95c379289a051aa1bfd22df1ce6c"
+      },
+      {
+        "path": "proofs/ir/Lax457868Proofs/RefinedWelzlOrders.c.hash",
+        "bytes": 16,
+        "sha256": "5003dd65555164bb5a8b4eea26491ed13790264786de9ec62a03623ef50ac8f0"
+      },
+      {
+        "path": "proofs/ir/Lax457868Proofs.c",
+        "bytes": 1656,
+        "sha256": "da6213b91ce48efe5d9a4d61f427634191841761d11de5089f011ed78e4a67fb"
+      },
+      {
+        "path": "proofs/ir/Lax457868Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "e458d933afebf3aba5ff4392acb1799f9eee21202680d47bf8d8b498518f5bd5"
+      },
+      {
+        "path": "proofs/lib/Lax457868Proofs/ParameterBounds.ilean",
+        "bytes": 693,
+        "sha256": "ee8aae5c2b1852338a4f966988478610a9b15e7aaef58acf378e14933d30796e"
+      },
+      {
+        "path": "proofs/lib/Lax457868Proofs/ParameterBounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "d017d464b3e751e01ad2dc330552cecbfb3890e0409d19c8b9144b55ffc675c7"
+      },
+      {
+        "path": "proofs/lib/Lax457868Proofs/ParameterBounds.olean",
+        "bytes": 244464,
+        "sha256": "1ec22b5bf23a8a98dcf9ef16fedd53b571ebd44c666e33ff1efd09b7c7b4e857"
+      },
+      {
+        "path": "proofs/lib/Lax457868Proofs/ParameterBounds.olean.hash",
+        "bytes": 16,
+        "sha256": "cc2379f55bcbba0cc6a487f0f270081c5d203805f91619893285ec137cf58b53"
+      },
+      {
+        "path": "proofs/lib/Lax457868Proofs/ParameterBounds.trace",
+        "bytes": 2648,
+        "sha256": "9718fa7f3feeb81aa1a10e4110462c462e3ec65105a66d5c5c4fdfa892bf5aa8"
+      },
+      {
+        "path": "proofs/lib/Lax457868Proofs/RefinedWelzlOrders.ilean",
+        "bytes": 209,
+        "sha256": "7cbd0b4f0e8590b1bcd6b5d8a2012b9d5d15e39b289a70f582c795e2c24b9f7f"
+      },
+      {
+        "path": "proofs/lib/Lax457868Proofs/RefinedWelzlOrders.ilean.hash",
+        "bytes": 16,
+        "sha256": "9074111dea35105bf0f04390b3e09e3c9a4f226f038868d52431d41691a1dfb5"
+      },
+      {
+        "path": "proofs/lib/Lax457868Proofs/RefinedWelzlOrders.olean",
+        "bytes": 1728,
+        "sha256": "553d626a5f4838865a08a864836969a9a611410e90a45d28f8ce40ad07a43a64"
+      },
+      {
+        "path": "proofs/lib/Lax457868Proofs/RefinedWelzlOrders.olean.hash",
+        "bytes": 16,
+        "sha256": "b985b6f2b2d02a6ab47f10d7a603e4c33207fb42e376220003762cf80e0ef7db"
+      },
+      {
+        "path": "proofs/lib/Lax457868Proofs/RefinedWelzlOrders.trace",
+        "bytes": 2879,
+        "sha256": "322969dc5473637f59d5a5b2c8418cb293e149e3ae5494f5631d16e640c36b6f"
+      },
+      {
+        "path": "proofs/lib/Lax457868Proofs.ilean",
+        "bytes": 196,
+        "sha256": "aac06ca5c807f7d5bd7a537cca979a868f7fe145166d2e957e9d3c3c2d4b57f8"
+      },
+      {
+        "path": "proofs/lib/Lax457868Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "d1ea8daf11de4daf95063a3906960b175b7760595083c93cf5b0abc51f38343b"
+      },
+      {
+        "path": "proofs/lib/Lax457868Proofs.olean",
+        "bytes": 1648,
+        "sha256": "cf74559f7273ecd789498200fe70baecb72d4b3e491bc87ee1c6fa9717821c51"
+      },
+      {
+        "path": "proofs/lib/Lax457868Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "539d31698b435b51385fa8e5544e89bd18753a021ed85149cf22d40fa68846fa"
+      },
+      {
+        "path": "proofs/lib/Lax457868Proofs.trace",
+        "bytes": 2758,
+        "sha256": "af7043ebaa31b38461413d5af9b623f6576b3e45b9f722ca4ec564ac49626b87"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 4187,
+        "sha256": "c8286afaf5e45c3fc65074241fd095aa43c87c287a69024541b85658cb0b0b37"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 830,
+        "sha256": "7f998a3914bd5dfb3807cc293b50c2ce0670b06563218c64d0e29339f9493677"
+      },
+      {
+        "path": "proofs/package/Lax457868Proofs/ParameterBounds.lean",
+        "bytes": 1233,
+        "sha256": "8b8aa4b9399d6b7fcf736b9494da48d4212f86bb21853499d5a35dcfa8faba38"
+      },
+      {
+        "path": "proofs/package/Lax457868Proofs/RefinedWelzlOrders.lean",
+        "bytes": 75,
+        "sha256": "b1a4b949cd71d535c4c19a6b230cf080a33188f81fb777fe1793e185365b71a4"
+      },
+      {
+        "path": "proofs/package/Lax457868Proofs.lean",
+        "bytes": 81,
+        "sha256": "94ec8308d3bd22870abb36849aa67223cf53c0fd257161af5b0017c05c66356b"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:17b5dd1af1de7fe08f1d400a531223bfc938f5d2edb10c378c5729d6f1de7dde"
+  },
+  "lastSubmission": {
+    "commentId": 6161061430,
+    "eventCreatedAt": "2026-10-14T04:42:28Z",
+    "record": "81854dd73f5c5cab3421ba6d8508ddf8057c373dc23f5941cf4b2dab6f49ea09",
+    "buildOutput": "1ac18ab6cfac78ba012a3bdf062af5af05d7c11c545f8e3b1310379739fad4ac",
+    "previous": {
+      "archiveSha": "b05f3e33ecca3ea567174f777b7d723b67a8165c",
+      "record": "42411a7ba3a3eec87aedf7ceb86a1a93ef4552aa4bd382eba07675134930da24",
+      "buildOutput": "1a0df1649cc35dabb2a995200231e1a035205fd43f59d123d7bf4c21bfda8d45"
+    }
   }
 }
