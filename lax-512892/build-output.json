@@ -4,5 +4,407 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 207
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-512892",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "Gaifman's Theorem",
+      "authors": [
+        {
+          "name": "Fatemeh Ghasemi",
+          "github": "faghasemi"
+        }
+      ],
+      "bibEntries": [
+        "@incollection{Gaifman1982,\n  author    = {Haim Gaifman},\n  title     = {On Local and Non-Local Properties},\n  booktitle = {Proceedings of the Herbrand Symposium},\n  series    = {Studies in Logic and the Foundations of Mathematics},\n  volume    = {107},\n  pages     = {105--135},\n  publisher = {Elsevier},\n  year      = {1982},\n  doi       = {10.1016/S0049-237X(08)71879-2}\n}\n",
+        "@book{Libkin2004,\n  author    = {Leonid Libkin},\n  title     = {Elements of Finite Model Theory},\n  series    = {Texts in Theoretical Computer Science. An EATCS Series},\n  publisher = {Springer},\n  year      = {2004},\n  doi       = {10.1007/978-3-662-07003-1},\n  isbn      = {3-540-21202-7}\n}\n"
+      ]
+    },
+    "abstract": "This submission formalizes Gaifman's normal-form theorem for first-order\nlogic over finite relational vocabularies. It develops the syntax and\nsemantics of relational structures and first-order formulas, the associated\nGaifman graph and its metric neighborhoods, local formulas, and uniform basic\nlocal sentences.\n\nThe main result states that every first-order formula is equivalent to a\nBoolean combination of formulas local around its free variables and sentences\nasserting the existence of pairwise distant witnesses satisfying one fixed\nlocal formula. The formalization follows Gaifman's original theorem and the\nuniform formulation in Libkin's *Elements of Finite Model Theory*.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax512892.FirstOrder",
+      "path": "concepts/Lax512892/FirstOrder.lean",
+      "title": "First-order logic over a relational vocabulary",
+      "type": "definition",
+      "description": "First-order terms are variables or constants. Formulas are relation atoms,\nequalities, negations, disjunctions, and existential quantifications. The\nsatisfaction relation gives these constructors their usual semantics, and the\nquantifier rank is the greatest nesting depth of quantifiers.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "`Formula σ k` has exactly `k` available free variables. Variables are finite\nlevels: an existential quantifier adds the new last variable, and satisfaction\nextends an environment with `Fin.snoc`. Consequently a sentence has type\n`Formula σ 0`; closedness is enforced by the type rather than checked by a\nseparate predicate. Conjunction and universal quantification are definable from\nthe chosen constructors and do not need additional semantic cases."
+        }
+      ],
+      "imports": [
+        "Lax512892.RelationalStructures"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax512892.RelationalStructures\n\n/-!\n---\ntitle: First-order logic over a relational vocabulary\ntype: definition\n---\nFirst-order terms are variables or constants. Formulas are relation atoms,\nequalities, negations, disjunctions, and existential quantifications. The\nsatisfaction relation gives these constructors their usual semantics, and the\nquantifier rank is the greatest nesting depth of quantifiers.\n\n# Formalization notes\n\n`Formula σ k` has exactly `k` available free variables. Variables are finite\nlevels: an existential quantifier adds the new last variable, and satisfaction\nextends an environment with `Fin.snoc`. Consequently a sentence has type\n`Formula σ 0`; closedness is enforced by the type rather than checked by a\nseparate predicate. Conjunction and universal quantification are definable from\nthe chosen constructors and do not need additional semantic cases.\n-/\n\nnamespace Lax512892.FirstOrder\n\nopen Lax512892.RelationalStructures\n\n/-- Terms over `σ` with `k` available variables. -/\ninductive Term (σ : Vocabulary) (k : ℕ) : Type\n  /-- A variable. -/\n  | var (i : Fin k)\n  /-- A constant of the vocabulary. -/\n  | const (c : σ.Constant)\n\n/-- First-order formulas over `σ` with `k` available free variables. -/\ninductive Formula (σ : Vocabulary) : ℕ → Type\n  /-- A relation atom. -/\n  | rel {k : ℕ} (R : σ.Relation) (args : Fin (σ.arity R) → Term σ k) : Formula σ k\n  /-- Equality of terms. -/\n  | eq {k : ℕ} (left right : Term σ k) : Formula σ k\n  /-- Negation. -/\n  | not {k : ℕ} (φ : Formula σ k) : Formula σ k\n  /-- Disjunction. -/\n  | or {k : ℕ} (φ ψ : Formula σ k) : Formula σ k\n  /-- Existential quantification, binding the new last variable. -/\n  | ex {k : ℕ} (φ : Formula σ (k + 1)) : Formula σ k\n\nnamespace Term\n\n/-- Interpretation of a term in a structure under an environment. -/\ndef eval {σ : Vocabulary} {M : Type*} {k : ℕ} (A : Structure σ M)\n    (env : Fin k → M) : Term σ k → M\n  | .var i => env i\n  | .const c => A.constant c\n\nend Term\n\nnamespace Formula\n\n/-- Satisfaction of a formula in a structure under an environment for its free\nvariables. -/\ndef Sat {σ : Vocabulary} {M : Type*} (A : Structure σ M) :\n    {k : ℕ} → Formula σ k → (Fin k → M) → Prop\n  | _, .rel R args, env => A.relation R (fun i => (args i).eval A env)\n  | _, .eq left right, env => left.eval A env = right.eval A env\n  | _, .not φ, env => ¬ Sat A φ env\n  | _, .or φ ψ, env => Sat A φ env ∨ Sat A ψ env\n  | _, .ex φ, env => ∃ x : M, Sat A φ (Fin.snoc env x)\n\n/-- The quantifier rank of a formula. -/\ndef quantifierRank {σ : Vocabulary} : {k : ℕ} → Formula σ k → ℕ\n  | _, .rel _ _ => 0\n  | _, .eq _ _ => 0\n  | _, .not φ => quantifierRank φ\n  | _, .or φ ψ => max (quantifierRank φ) (quantifierRank ψ)\n  | _, .ex φ => quantifierRank φ + 1\n\nend Formula\n\nend Lax512892.FirstOrder\n",
+      "statements": []
+    },
+    {
+      "id": "Lax512892.GaifmanNormalForm",
+      "path": "concepts/Lax512892/GaifmanNormalForm.lean",
+      "title": "Gaifman's normal-form theorem",
+      "type": "theorem",
+      "description": "Every first-order formula over a finite relational vocabulary has an effective,\nuniform translation into a Boolean combination of formulas local around its\nfree tuple and basic local sentences. For one common radius `r`, a basic local\nsentence asserts that there are `s` witnesses, pairwise at Gaifman distance\ngreater than `2r`, all satisfying the same one-variable `r`-local formula.\n\nIf the input has quantifier rank `q` and `k` free variables, the radius can be\nchosen at most `7^q`, and every basic local sentence needs at most `q + k`\nwitnesses. When the input is a sentence, no local formula with free variables\noccurs: its normal form is a Boolean combination solely of basic local\nsentences. The equivalence is over all finite structures.\n\nThis is the uniform formulation of Gaifman's theorem used in Theorem 4.22 of\nLibkin's *Elements of Finite Model Theory*, following Gaifman's original\nlocality theorem.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The output syntax is reified. `NormalForm σ k` stores its common radius and a\nBoolean combination whose atoms are either local formulas around the `k` free\nvariables or basic local sentences. This permits the radius, witness, and\nsentence-only conditions to be stated directly about every atom that occurs.\n\nThe theorem quantifies once over a single translation function, before any\ninput formula or structure. This records uniformity more faithfully than a\nseparate existential normal form for each formula. It does not assert a running\ntime bound for the translation. A constructive proof of the axiom supplies the\neffective transformation; code extraction is not part of the concept surface.\n\nThe `s = 0` basic sentence is allowed and is vacuously true, exactly as the\ndisplayed first-order sentence with an empty witness tuple. Pairwise separation\nis imposed only for distinct witness indices."
+        }
+      ],
+      "imports": [
+        "Lax512892.Locality"
+      ],
+      "mathlibImports": [
+        "Mathlib.Data.Fintype.Basic"
+      ],
+      "sourceText": "import Lax512892.Locality\nimport Mathlib.Data.Fintype.Basic\n\n/-!\n---\ntitle: Gaifman's normal-form theorem\ntype: theorem\n---\nEvery first-order formula over a finite relational vocabulary has an effective,\nuniform translation into a Boolean combination of formulas local around its\nfree tuple and basic local sentences. For one common radius `r`, a basic local\nsentence asserts that there are `s` witnesses, pairwise at Gaifman distance\ngreater than `2r`, all satisfying the same one-variable `r`-local formula.\n\nIf the input has quantifier rank `q` and `k` free variables, the radius can be\nchosen at most `7^q`, and every basic local sentence needs at most `q + k`\nwitnesses. When the input is a sentence, no local formula with free variables\noccurs: its normal form is a Boolean combination solely of basic local\nsentences. The equivalence is over all finite structures.\n\nThis is the uniform formulation of Gaifman's theorem used in Theorem 4.22 of\nLibkin's *Elements of Finite Model Theory*, following Gaifman's original\nlocality theorem.\n\n# Formalization notes\n\nThe output syntax is reified. `NormalForm σ k` stores its common radius and a\nBoolean combination whose atoms are either local formulas around the `k` free\nvariables or basic local sentences. This permits the radius, witness, and\nsentence-only conditions to be stated directly about every atom that occurs.\n\nThe theorem quantifies once over a single translation function, before any\ninput formula or structure. This records uniformity more faithfully than a\nseparate existential normal form for each formula. It does not assert a running\ntime bound for the translation. A constructive proof of the axiom supplies the\neffective transformation; code extraction is not part of the concept surface.\n\nThe `s = 0` basic sentence is allowed and is vacuously true, exactly as the\ndisplayed first-order sentence with an empty witness tuple. Pairwise separation\nis imposed only for distinct witness indices.\n-/\n\nnamespace Lax512892.GaifmanNormalForm\n\nopen Lax512892.RelationalStructures Lax512892.FirstOrder Lax512892.Locality\n\nuniverse u\n\n/-- Boolean combinations of atoms of type `α`. -/\ninductive BooleanCombination (α : Type u) : Type u\n  /-- An atomic constituent. -/\n  | atom (a : α)\n  /-- Truth, serving also as the empty Boolean combination. -/\n  | truth\n  /-- Negation. -/\n  | not (b : BooleanCombination α)\n  /-- Conjunction. -/\n  | and (b c : BooleanCombination α)\n\nnamespace BooleanCombination\n\n/-- Evaluation of a Boolean combination from an interpretation of its atoms. -/\ndef eval {α : Type u} (value : α → Prop) : BooleanCombination α → Prop\n  | .atom a => value a\n  | .truth => True\n  | .not b => ¬ b.eval value\n  | .and b c => b.eval value ∧ c.eval value\n\n/-- The atoms occurring in a Boolean combination, with multiplicity. -/\ndef atoms {α : Type u} : BooleanCombination α → List α\n  | .atom a => [a]\n  | .truth => []\n  | .not b => b.atoms\n  | .and b c => b.atoms ++ c.atoms\n\nend BooleanCombination\n\n/-- A basic local sentence at radius `r`: `witnessCount` pairwise far-apart\nwitnesses all satisfy the same one-variable local formula `property`. -/\nstructure BasicLocalSentence (σ : Vocabulary) (r : ℕ) where\n  /-- The number of witnesses. -/\n  witnessCount : ℕ\n  /-- The uniform local property required of every witness. -/\n  property : LocalFormula σ 1 r 0\n\nnamespace BasicLocalSentence\n\n/-- Semantics of a basic local sentence. -/\ndef Sat {σ : Vocabulary} {M : Type*} {r : ℕ} (A : Structure σ M)\n    (β : BasicLocalSentence σ r) : Prop :=\n  ∃ witnesses : Fin β.witnessCount → M,\n    (∀ i, β.property.Sat A (fun _ => witnesses i) Fin.elim0) ∧\n      ∀ i j, i ≠ j →\n        ¬ distanceAtMost A (2 * r) (witnesses i) (witnesses j)\n\nend BasicLocalSentence\n\n/-- A Gaifman normal form for a formula with `k` free variables. All its atoms\nshare the stored locality radius. -/\nstructure NormalForm (σ : Vocabulary) (k : ℕ) where\n  /-- The common locality radius. -/\n  radius : ℕ\n  /-- A Boolean combination of local formulas and basic local sentences. -/\n  body : BooleanCombination\n    (LocalFormula σ k radius 0 ⊕ BasicLocalSentence σ radius)\n\nnamespace NormalForm\n\n/-- Satisfaction of a normal form under an environment for its free variables. -/\ndef Sat {σ : Vocabulary} {M : Type*} {k : ℕ} (A : Structure σ M)\n    (env : Fin k → M) (nf : NormalForm σ k) : Prop :=\n  nf.body.eval (Sum.elim\n    (fun ψ => ψ.Sat A env Fin.elim0)\n    (fun basic => basic.Sat A))\n\n/-- Every basic local sentence occurring in `nf` uses at most `bound`\nwitnesses. -/\ndef WitnessesBounded {σ : Vocabulary} {k : ℕ}\n    (nf : NormalForm σ k) (bound : ℕ) : Prop :=\n  ∀ basic : BasicLocalSentence σ nf.radius,\n    Sum.inr basic ∈ nf.body.atoms → basic.witnessCount ≤ bound\n\n/-- No local-formula atom occurs in `nf`. -/\ndef ContainsOnlyBasicSentences {σ : Vocabulary} {k : ℕ}\n    (nf : NormalForm σ k) : Prop :=\n  ∀ ψ : LocalFormula σ k nf.radius 0, Sum.inl ψ ∉ nf.body.atoms\n\nend NormalForm\n\n/-- **Gaifman's normal-form theorem.** There is a uniform transformation of\nevery first-order formula over `σ` into an equivalent Gaifman normal form. For\nan input of quantifier rank `q` with `k` free variables, its common radius is at\nmost `7 ^ q`, each basic local sentence has at most `q + k` witnesses, and a\nsentence is translated using basic local sentences only. Equivalence holds in\nevery finite `σ`-structure. -/\naxiom gaifmanNormalForm (σ : Vocabulary) :\n    ∃ translate : (k : ℕ) → Formula σ k → NormalForm σ k,\n      ∀ (k : ℕ) (φ : Formula σ k),\n        (translate k φ).radius ≤ 7 ^ φ.quantifierRank ∧\n        (translate k φ).WitnessesBounded (φ.quantifierRank + k) ∧\n        (k = 0 → (translate k φ).ContainsOnlyBasicSentences) ∧\n        ∀ {M : Type} [Fintype M] (A : Structure σ M) (env : Fin k → M),\n          φ.Sat A env ↔ (translate k φ).Sat A env\n\nend Lax512892.GaifmanNormalForm\n",
+      "statements": [
+        {
+          "id": "Lax512892.GaifmanNormalForm.gaifmanNormalForm",
+          "signature": "gaifmanNormalForm : ∀ (σ : Lax512892.RelationalStructures.Vocabulary),\n  Exists fun translate =>\n    ∀ (k : Nat) (φ : Lax512892.FirstOrder.Formula σ k),\n      And (instLENat.le (translate k φ).radius (instHPow.hPow 7 φ.quantifierRank))\n        (And ((translate k φ).WitnessesBounded (instHAdd.hAdd φ.quantifierRank k))\n          (And (Eq k 0 → (translate k φ).ContainsOnlyBasicSentences)\n            (∀ {M : Type} [Fintype M] (A : Lax512892.RelationalStructures.Structure σ M) (env : Fin k → M),\n              Iff (Lax512892.FirstOrder.Formula.Sat A φ env)\n                (Lax512892.GaifmanNormalForm.NormalForm.Sat A env (translate k φ)))))",
+          "startLine": 130,
+          "endLine": 143,
+          "doc": "**Gaifman's normal-form theorem.** There is a uniform transformation of\nevery first-order formula over `σ` into an equivalent Gaifman normal form. For\nan input of quantifier rank `q` with `k` free variables, its common radius is at\nmost `7 ^ q`, each basic local sentence has at most `q + k` witnesses, and a\nsentence is translated using basic local sentences only. Equivalence holds in\nevery finite `σ`-structure."
+        }
+      ]
+    },
+    {
+      "id": "Lax512892.Locality",
+      "path": "concepts/Lax512892/Locality.lean",
+      "title": "Gaifman distance and local formulas",
+      "type": "definition",
+      "description": "Two distinct elements of a relational structure are Gaifman-adjacent when they\noccur together in a tuple belonging to an interpreted relation. The predicate\n`distanceAtMost A r a b` says that the Gaifman graph has a walk of length at\nmost `r` from `a` to `b`.\n\nAn `r`-local formula around a tuple of anchor variables is represented by a\nsyntax in which every quantifier is explicitly restricted to the union of the\nradius-`r` balls around those anchors. Its atomic terms may refer to anchors,\nlocally bound variables, and vocabulary constants. This is the syntactic notion\nof locality used by Gaifman's normal-form theorem, not merely a semantic\ninvariance property.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Anchor variables and locally bound variables have separate types. This prevents\na newly quantified variable from silently becoming an additional centre of the\nneighbourhood. The semantics of the local existential constructor chooses an\nelement in the ball around one of the original anchors and extends only the\nbound-variable environment. Negation supplies restricted universal\nquantification in the usual way.\n\nDistance is defined by bounded walks instead of a minimum taking the value\ninfinity. At radius zero it is equality; the successor clause either uses a\nshorter walk or takes one Gaifman edge followed by a shorter walk."
+        }
+      ],
+      "imports": [
+        "Lax512892.FirstOrder"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax512892.FirstOrder\n\n/-!\n---\ntitle: Gaifman distance and local formulas\ntype: definition\n---\nTwo distinct elements of a relational structure are Gaifman-adjacent when they\noccur together in a tuple belonging to an interpreted relation. The predicate\n`distanceAtMost A r a b` says that the Gaifman graph has a walk of length at\nmost `r` from `a` to `b`.\n\nAn `r`-local formula around a tuple of anchor variables is represented by a\nsyntax in which every quantifier is explicitly restricted to the union of the\nradius-`r` balls around those anchors. Its atomic terms may refer to anchors,\nlocally bound variables, and vocabulary constants. This is the syntactic notion\nof locality used by Gaifman's normal-form theorem, not merely a semantic\ninvariance property.\n\n# Formalization notes\n\nAnchor variables and locally bound variables have separate types. This prevents\na newly quantified variable from silently becoming an additional centre of the\nneighbourhood. The semantics of the local existential constructor chooses an\nelement in the ball around one of the original anchors and extends only the\nbound-variable environment. Negation supplies restricted universal\nquantification in the usual way.\n\nDistance is defined by bounded walks instead of a minimum taking the value\ninfinity. At radius zero it is equality; the successor clause either uses a\nshorter walk or takes one Gaifman edge followed by a shorter walk.\n-/\n\nnamespace Lax512892.Locality\n\nopen Lax512892.RelationalStructures Lax512892.FirstOrder\n\n/-- Adjacency in the Gaifman graph of a relational structure. -/\ndef gaifmanAdjacent {σ : Vocabulary} {M : Type*} (A : Structure σ M) (a b : M) : Prop :=\n  a ≠ b ∧\n    ∃ (R : σ.Relation) (tuple : Fin (σ.arity R) → M),\n      A.relation R tuple ∧\n        ∃ i j : Fin (σ.arity R), i ≠ j ∧ tuple i = a ∧ tuple j = b\n\n/-- `distanceAtMost A r a b` holds when a walk of at most `r` Gaifman edges\njoins `a` to `b`. -/\ndef distanceAtMost {σ : Vocabulary} {M : Type*} (A : Structure σ M) :\n    ℕ → M → M → Prop\n  | 0, a, b => a = b\n  | r + 1, a, b =>\n      distanceAtMost A r a b ∨\n        ∃ c : M, gaifmanAdjacent A a c ∧ distanceAtMost A r c b\n\n/-- Membership in the union of the radius-`r` balls around the tuple `anchors`. -/\ndef inBallAround {σ : Vocabulary} {M : Type*} (A : Structure σ M)\n    (r : ℕ) {k : ℕ} (anchors : Fin k → M) (x : M) : Prop :=\n  ∃ i : Fin k, distanceAtMost A r (anchors i) x\n\n/-- A term in a local formula, distinguishing the fixed anchor variables from\nvariables introduced by restricted quantifiers. -/\ninductive LocalTerm (σ : Vocabulary) (anchorCount boundCount : ℕ) : Type\n  /-- One of the fixed variables around which locality is measured. -/\n  | anchor (i : Fin anchorCount)\n  /-- A variable introduced by a restricted quantifier. -/\n  | bound (i : Fin boundCount)\n  /-- A constant of the vocabulary. -/\n  | const (c : σ.Constant)\n\n/-- Formulas whose quantifiers are all restricted to the radius-`r` ball around\nthe original `anchorCount` variables. -/\ninductive LocalFormula (σ : Vocabulary) (anchorCount r : ℕ) : ℕ → Type\n  /-- A relation atom. -/\n  | rel {boundCount : ℕ} (R : σ.Relation)\n      (args : Fin (σ.arity R) → LocalTerm σ anchorCount boundCount) :\n      LocalFormula σ anchorCount r boundCount\n  /-- Equality of local terms. -/\n  | eq {boundCount : ℕ} (left right : LocalTerm σ anchorCount boundCount) :\n      LocalFormula σ anchorCount r boundCount\n  /-- Negation. -/\n  | not {boundCount : ℕ} (φ : LocalFormula σ anchorCount r boundCount) :\n      LocalFormula σ anchorCount r boundCount\n  /-- Disjunction. -/\n  | or {boundCount : ℕ} (φ ψ : LocalFormula σ anchorCount r boundCount) :\n      LocalFormula σ anchorCount r boundCount\n  /-- Existential quantification restricted to the radius-`r` ball around the\n  original anchors. -/\n  | ex {boundCount : ℕ} (φ : LocalFormula σ anchorCount r (boundCount + 1)) :\n      LocalFormula σ anchorCount r boundCount\n\nnamespace LocalTerm\n\n/-- Interpretation of a term occurring in a local formula. -/\ndef eval {σ : Vocabulary} {M : Type*} {anchorCount boundCount : ℕ}\n    (A : Structure σ M)\n    (anchors : Fin anchorCount → M) (bound : Fin boundCount → M) :\n    LocalTerm σ anchorCount boundCount → M\n  | .anchor i => anchors i\n  | .bound i => bound i\n  | .const c => A.constant c\n\nend LocalTerm\n\nnamespace LocalFormula\n\n/-- Satisfaction for a syntactically local formula. Every existential witness\nis required to lie in the fixed neighbourhood of the anchor tuple. -/\ndef Sat {σ : Vocabulary} {M : Type*} {anchorCount r : ℕ}\n    (A : Structure σ M)\n    (anchors : Fin anchorCount → M) :\n    {boundCount : ℕ} → LocalFormula σ anchorCount r boundCount →\n      (Fin boundCount → M) → Prop\n  | _, .rel R args, bound =>\n      A.relation R (fun i => (args i).eval A anchors bound)\n  | _, .eq left right, bound =>\n      left.eval A anchors bound = right.eval A anchors bound\n  | _, .not φ, bound => ¬ Sat A anchors φ bound\n  | _, .or φ ψ, bound => Sat A anchors φ bound ∨ Sat A anchors ψ bound\n  | _, .ex φ, bound =>\n      ∃ x : M, inBallAround A r anchors x ∧ Sat A anchors φ (Fin.snoc bound x)\n\nend LocalFormula\n\nend Lax512892.Locality\n",
+      "statements": []
+    },
+    {
+      "id": "Lax512892.RelationalStructures",
+      "path": "concepts/Lax512892/RelationalStructures.lean",
+      "title": "Finite relational vocabularies and structures",
+      "type": "definition",
+      "description": "A finite relational vocabulary consists of finitely many relation symbols, each\nwith a specified finite arity, and finitely many constant symbols. A structure\ninterprets every relation symbol as a relation of the corresponding arity and\nevery constant symbol as an element of its carrier.\n\nThis is the notion of relational vocabulary used in the stated version of\nGaifman's theorem. Function symbols of positive arity are deliberately absent.\nThe theorem will quantify over finite carrier types, while the definitions in\nthis file make sense over any carrier type.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The relation symbols are positions in `relationArities`; the entry at a position\nis that symbol's arity. Thus finiteness is built into the type of a vocabulary,\nrather than imposed by a typeclass side condition. Constants are represented by\n`Fin constantCount`. A structure on an empty carrier can exist exactly when the\nvocabulary has no constants, matching the usual convention."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.Fin.Tuple.Basic"
+      ],
+      "sourceText": "import Mathlib.Data.Fin.Tuple.Basic\n\n/-!\n---\ntitle: Finite relational vocabularies and structures\ntype: definition\n---\nA finite relational vocabulary consists of finitely many relation symbols, each\nwith a specified finite arity, and finitely many constant symbols. A structure\ninterprets every relation symbol as a relation of the corresponding arity and\nevery constant symbol as an element of its carrier.\n\nThis is the notion of relational vocabulary used in the stated version of\nGaifman's theorem. Function symbols of positive arity are deliberately absent.\nThe theorem will quantify over finite carrier types, while the definitions in\nthis file make sense over any carrier type.\n\n# Formalization notes\n\nThe relation symbols are positions in `relationArities`; the entry at a position\nis that symbol's arity. Thus finiteness is built into the type of a vocabulary,\nrather than imposed by a typeclass side condition. Constants are represented by\n`Fin constantCount`. A structure on an empty carrier can exist exactly when the\nvocabulary has no constants, matching the usual convention.\n-/\n\nnamespace Lax512892.RelationalStructures\n\n/-- A finite relational vocabulary: a finite list of relation arities and a\nfinite number of constant symbols. -/\nstructure Vocabulary where\n  /-- One arity for each relation symbol. -/\n  relationArities : List ℕ\n  /-- The number of constant symbols. -/\n  constantCount : ℕ\n\nnamespace Vocabulary\n\n/-- The finite type of relation symbols of `σ`. -/\nabbrev Relation (σ : Vocabulary) := Fin σ.relationArities.length\n\n/-- The arity of a relation symbol. -/\ndef arity (σ : Vocabulary) (R : σ.Relation) : ℕ :=\n  σ.relationArities.get R\n\n/-- The finite type of constant symbols of `σ`. -/\nabbrev Constant (σ : Vocabulary) := Fin σ.constantCount\n\nend Vocabulary\n\n/-- An interpretation of the relational vocabulary `σ` on the carrier `M`. -/\nstructure Structure (σ : Vocabulary) (M : Type*) where\n  /-- Interpretation of every relation symbol as a relation of its arity. -/\n  relation : (R : σ.Relation) → (Fin (σ.arity R) → M) → Prop\n  /-- Interpretation of every constant symbol. -/\n  constant : σ.Constant → M\n\nend Lax512892.RelationalStructures\n",
+      "statements": []
+    }
+  ],
+  "proofs": [],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "42bb49ca0997d93557a96484367f1e2befe5cc569c7ebf291f689a5e810efe3b",
+    "sourceCommit": "4e1cc756381b995ae0936cbb1e5ee157c90099ed",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax512892/FirstOrder.c",
+        "bytes": 26087,
+        "sha256": "f8b3fa0d3b048a95655e9d61ddeae35af1ebba7c1f92f4866be98c65f4af2270"
+      },
+      {
+        "path": "concepts/ir/Lax512892/FirstOrder.c.hash",
+        "bytes": 16,
+        "sha256": "8f1457e4a53d31281a36cee93f59a905797b1958b40f3d12969d43c50161d43c"
+      },
+      {
+        "path": "concepts/ir/Lax512892/GaifmanNormalForm.c",
+        "bytes": 12308,
+        "sha256": "a60cff00b80ad26f08bc59a612f1596c0d9d7bd2887991c5a6b973b2d174eeb2"
+      },
+      {
+        "path": "concepts/ir/Lax512892/GaifmanNormalForm.c.hash",
+        "bytes": 16,
+        "sha256": "c191f2d78dda019dac84bf8c99d90910ad6d51dabfb39107517050526706317a"
+      },
+      {
+        "path": "concepts/ir/Lax512892/Locality.c",
+        "bytes": 28453,
+        "sha256": "b36c8dfc881ba6c7eb34b4508e431025734235c9edd569389ffda131703953cb"
+      },
+      {
+        "path": "concepts/ir/Lax512892/Locality.c.hash",
+        "bytes": 16,
+        "sha256": "21b553b7d83443441bf4240bb747b801e64a14cc4b43e1b70fd9eb8aaf08d191"
+      },
+      {
+        "path": "concepts/ir/Lax512892/RelationalStructures.c",
+        "bytes": 2338,
+        "sha256": "237fd5243f60d3eb70008b13b33c7e566730373b29e1edfa239d3bd653789b23"
+      },
+      {
+        "path": "concepts/ir/Lax512892/RelationalStructures.c.hash",
+        "bytes": 16,
+        "sha256": "78ae643c1e99762b0bab4e06375415f3cd637b85e5335f53d1d1417a487970b5"
+      },
+      {
+        "path": "concepts/ir/Lax512892.c",
+        "bytes": 2046,
+        "sha256": "b24b98b51fb68fb671a9d63049a96fcbd01404feea878c329c4192e2ad8c875d"
+      },
+      {
+        "path": "concepts/ir/Lax512892.c.hash",
+        "bytes": 16,
+        "sha256": "22c248bec80aa0db16692ca9bfdc9be1434e059255c664882bcccbf5da5573b4"
+      },
+      {
+        "path": "concepts/lib/Lax512892/FirstOrder.ilean",
+        "bytes": 6725,
+        "sha256": "9730ab9416a5145e30162d7cbb8c4ce9dc341fa01a0117f5f3dd16bbdd0a9259"
+      },
+      {
+        "path": "concepts/lib/Lax512892/FirstOrder.ilean.hash",
+        "bytes": 16,
+        "sha256": "7dbfbc2279d0209f6fad93554e5a35dead6e642e84f161b37b29513f55f6c60c"
+      },
+      {
+        "path": "concepts/lib/Lax512892/FirstOrder.olean",
+        "bytes": 322504,
+        "sha256": "6d28c8c2227e4881c018c892659c1ef3ebe46896d71e4e2d1929a601d6e08069"
+      },
+      {
+        "path": "concepts/lib/Lax512892/FirstOrder.olean.hash",
+        "bytes": 16,
+        "sha256": "a4d87fa429da7037f76893106d0dc7e42f2f7e10e287b8da05a4f94fc6aec21d"
+      },
+      {
+        "path": "concepts/lib/Lax512892/FirstOrder.trace",
+        "bytes": 2127,
+        "sha256": "bd04b1841badac723831a40d48d6376b94f112a91f7f8c494be91691a77f5f92"
+      },
+      {
+        "path": "concepts/lib/Lax512892/GaifmanNormalForm.ilean",
+        "bytes": 11493,
+        "sha256": "4580b7c80a10599394331b9792dad57a9f967b9132eecb488fcba82a0e37e98b"
+      },
+      {
+        "path": "concepts/lib/Lax512892/GaifmanNormalForm.ilean.hash",
+        "bytes": 16,
+        "sha256": "79ba6cef07f0ae2ce6f37207e79f4037e26735877f343bb6d9494a632ebb87b9"
+      },
+      {
+        "path": "concepts/lib/Lax512892/GaifmanNormalForm.olean",
+        "bytes": 222656,
+        "sha256": "15daa772340085325b1f7d0479ea31c8658833911be460c4a9a89e5c8815f9ca"
+      },
+      {
+        "path": "concepts/lib/Lax512892/GaifmanNormalForm.olean.hash",
+        "bytes": 16,
+        "sha256": "04648a4bdde97c5b3e595957fe88d5c62b0e10c26e087693f2fc8b1cfcd6fcce"
+      },
+      {
+        "path": "concepts/lib/Lax512892/GaifmanNormalForm.trace",
+        "bytes": 2310,
+        "sha256": "55c8bba03248bf11ccd916113b0eb961af7903a724bc00bfa9da056e6b8b2eb9"
+      },
+      {
+        "path": "concepts/lib/Lax512892/Locality.ilean",
+        "bytes": 7928,
+        "sha256": "fa11e0717e0a0a3a5706929f9447e21dd795f5655216e9f168adc163bff23e08"
+      },
+      {
+        "path": "concepts/lib/Lax512892/Locality.ilean.hash",
+        "bytes": 16,
+        "sha256": "c905b038326e0231c67f82ebfe05d372113b439d0e1afcacef248c7766d266b3"
+      },
+      {
+        "path": "concepts/lib/Lax512892/Locality.olean",
+        "bytes": 368768,
+        "sha256": "8cd3ece9cb9a322bcc11e9c6f1ffa93066c6cee2602330e97cf43a386c09ea98"
+      },
+      {
+        "path": "concepts/lib/Lax512892/Locality.olean.hash",
+        "bytes": 16,
+        "sha256": "0cbca00ed2e751ccafea6980af2eeacf6c2d72d24299524378c9aefad8889e4e"
+      },
+      {
+        "path": "concepts/lib/Lax512892/Locality.trace",
+        "bytes": 2086,
+        "sha256": "b5bcff4f8f42ffc6e1607b3da9faf3064897dede5a8f5016035dd28a6fb506e9"
+      },
+      {
+        "path": "concepts/lib/Lax512892/RelationalStructures.ilean",
+        "bytes": 3630,
+        "sha256": "0f9058de7d93e3ca1ab82cb2e2969504e1969969075a82e6953221289c748094"
+      },
+      {
+        "path": "concepts/lib/Lax512892/RelationalStructures.ilean.hash",
+        "bytes": 16,
+        "sha256": "7d024133b1b70f54ea6326906f6116ca170ae0d42990e3a2da435f7f540bdaf5"
+      },
+      {
+        "path": "concepts/lib/Lax512892/RelationalStructures.olean",
+        "bytes": 76216,
+        "sha256": "70b7475a170770e0a810f01d58285f8cbba1174f54d811450a822c54b18630c4"
+      },
+      {
+        "path": "concepts/lib/Lax512892/RelationalStructures.olean.hash",
+        "bytes": 16,
+        "sha256": "60565cddb21705438812bdc0eb29e5ece0114ce46617141e78f7370600e8cf76"
+      },
+      {
+        "path": "concepts/lib/Lax512892/RelationalStructures.trace",
+        "bytes": 2193,
+        "sha256": "10c310e6b07faa739af12bf4c0649a89d47e402a350666ef7a49a4e21fc08a05"
+      },
+      {
+        "path": "concepts/lib/Lax512892.ilean",
+        "bytes": 266,
+        "sha256": "5bc4434133d75ca02cd5ded106582c5770e261db21e8fcc5cace3870e2600e78"
+      },
+      {
+        "path": "concepts/lib/Lax512892.ilean.hash",
+        "bytes": 16,
+        "sha256": "366cb704ec4a73c2dd2773774cb6dc855962fbff66e77d31cb475e91b82b95bb"
+      },
+      {
+        "path": "concepts/lib/Lax512892.olean",
+        "bytes": 1880,
+        "sha256": "b306008b8dc3786e13300b4bc883293573e95d89b4dc6be4641bd560e82d18dd"
+      },
+      {
+        "path": "concepts/lib/Lax512892.olean.hash",
+        "bytes": 16,
+        "sha256": "319d6485b1a4d623b57680534a03cdb047badca9b4ce5e01af014af82760ecbb"
+      },
+      {
+        "path": "concepts/lib/Lax512892.trace",
+        "bytes": 2505,
+        "sha256": "c9c73cbb2daa7f20cd5bab1ba4d80362cb2dd59713c06747a35af8f2ea8195c6"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "2238b069a6aceffde9574691ec2f9ae5dff2a73904cba4f8b2fe0028ea90d894"
+      },
+      {
+        "path": "concepts/package/Lax512892/FirstOrder.lean",
+        "bytes": 2887,
+        "sha256": "3ebfe11d3acc76c64f918c9d3961d62afc7caf7f343b0866099440bf330172b8"
+      },
+      {
+        "path": "concepts/package/Lax512892/GaifmanNormalForm.lean",
+        "bytes": 5970,
+        "sha256": "f14f88733590e14f14f684d56fb1421a493aad4f443f2e0d17b651e76a774cea"
+      },
+      {
+        "path": "concepts/package/Lax512892/Locality.lean",
+        "bytes": 5257,
+        "sha256": "57e35909aa9a0c130ef0568224e752b32211f935a9f5620672cd0a57774ec671"
+      },
+      {
+        "path": "concepts/package/Lax512892/RelationalStructures.lean",
+        "bytes": 2203,
+        "sha256": "5b54877e3cc9c8d13fedb1550cbf312ee87b53001b0b05fb77969effb1ec213f"
+      },
+      {
+        "path": "concepts/package/Lax512892.lean",
+        "bytes": 127,
+        "sha256": "440c541be2b7a266a6edd0cc9ed678e1af05e31ef0c5c14dae59dc6348ee668f"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax512892Proofs.c",
+        "bytes": 1095,
+        "sha256": "bed362ef9b6c64557bed78a03aaeaa719a306f884a1259b1224b1937070e199a"
+      },
+      {
+        "path": "proofs/ir/Lax512892Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "6c8c3d4740e87939875e5e45a3223436c770972a5f8af8ccc92b411aa8b11c6f"
+      },
+      {
+        "path": "proofs/lib/Lax512892Proofs.ilean",
+        "bytes": 86,
+        "sha256": "a732ddb7457a965b018252ff0a04b904e12466a809bc57b6b77c4d235e103b61"
+      },
+      {
+        "path": "proofs/lib/Lax512892Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "ad485b63be23c4163af85bdc3146c54b9c9f108938583c3d5a093171218a64aa"
+      },
+      {
+        "path": "proofs/lib/Lax512892Proofs.olean",
+        "bytes": 1384,
+        "sha256": "5cc9faf807af15df18222e37e5dc315423c95cccb0cecf447b7d25f5a8f7019e"
+      },
+      {
+        "path": "proofs/lib/Lax512892Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "0ed2d6b275d80884c367aa0bfc7657e7d2790c016e7a4ad2f17bc3fe4f01b21f"
+      },
+      {
+        "path": "proofs/lib/Lax512892Proofs.trace",
+        "bytes": 1986,
+        "sha256": "b2eb36c93a0f110d31380bf3356a95b0e5ba161536a5643edc9a8d485995e57a"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "162d3736ed1e956e4324b2822220a7e4ea5cbb1a0fe3005c9af4ef98cbbc60a7"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "042be5f7d7973bd18f056fc5b8f3e4a66c16cd413cae29e0a9c140f5b4f4a7c2"
+      },
+      {
+        "path": "proofs/package/Lax512892Proofs.lean",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:42bb49ca0997d93557a96484367f1e2befe5cc569c7ebf291f689a5e810efe3b"
+  },
+  "lastSubmission": {
+    "commentId": 6369474434,
+    "eventCreatedAt": "2026-10-23T16:18:37Z",
+    "record": "8b1f2d349e24b3602eb875294ee8ac6d449b10c290fc3b04ae8bb5f4fbb3612a",
+    "buildOutput": "04da9e22fd5ff5d253f5777ddb2bffb925f319316f0a46c51e45cfe143105db2",
+    "previous": {
+      "archiveSha": "bc730ea0df94ea6ee0ae626b9ca4e9beff168b9d",
+      "record": "3652907a8fb7e3d91d9284157c438dd468b15bfc3d061d54fb2474dcd2268d52",
+      "buildOutput": "f461c34d28f8ffc01c6e163a00ea7153c5c49fbe4096f4ff08485def44cd6b75"
+    }
   }
 }
