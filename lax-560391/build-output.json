@@ -4,5 +4,1247 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 208
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-560391",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "Ten Graph Parameters",
+      "authors": [
+        {
+          "name": "Hendrik Molter"
+        },
+        {
+          "name": "Codex (GPT-6)"
+        }
+      ],
+      "bibEntries": []
+    },
+    "abstract": "This draft extends an overview and hierarchy of graph parameters by defining\nten further parameters:\n\n- Boxicity\n- c-closure\n- Chordal intersection dimension\n- Cochromatic number\n- Distance to block graphs\n- Distance to chordal graphs\n- Distance to distance-hereditary graphs\n- Distance to interval graphs\n- Edge clique cover number\n- Vertex integrity\n\nThroughout, graphs are finite, simple, and undirected, and may be disconnected.\nAll ten parameters assign zero to the empty graph. Boxicity and chordal\nintersection dimension allow zero dimensions and zero factors, respectively,\nso complete graphs have value zero. The c-closure convention also assigns\nzero to complete graphs.\n\nThe draft also defines the underlying structures and graph classes in\nseparate concepts:\n\n- Edge clique covers\n- Cochromatic partitions\n- Box representations\n- Interval representations\n- Chordal intersection representations\n- c-closed graphs\n- Chordal graphs\n- Block graphs\n- Distance-hereditary graphs\n- Interval graphs\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax560391.BlockGraphs",
+      "path": "concepts/Lax560391/BlockGraphs.lean",
+      "title": "Block graphs",
+      "type": "definition",
+      "description": "A block graph is a graph with no induced cycle of length at least four\nand no induced diamond (a complete four-vertex graph minus one edge).\nEquivalently, every block is a clique. Empty and disconnected graphs are allowed.",
+      "imports": [
+        "Lax560391.ChordalGraphs"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax560391.ChordalGraphs\n\n/-!\n---\ntitle: Block graphs\ntype: definition\n---\nA block graph is a graph with no induced cycle of length at least four\nand no induced diamond (a complete four-vertex graph minus one edge).\nEquivalently, every block is a clique. Empty and disconnected graphs are allowed.\n-/\n\nnamespace Lax560391.BlockGraphs\n\nopen Lax560391.ChordalGraphs\n\n/-- The four vertices induce a diamond, `K₄` with edge `cd` removed. -/\ndef IsInducedDiamond {V : Type} (G : SimpleGraph V) (a b c d : V) : Prop :=\n  ([a, b, c, d] : List V).Nodup ∧\n  G.Adj a b ∧ G.Adj a c ∧ G.Adj a d ∧\n  G.Adj b c ∧ G.Adj b d ∧ ¬ G.Adj c d\n\n/-- Block graphs are the chordal, diamond-free graphs. -/\ndef IsBlock {V : Type} (G : SimpleGraph V) : Prop :=\n  IsChordal G ∧ ¬ ∃ a b c d : V, IsInducedDiamond G a b c d\n\nend Lax560391.BlockGraphs\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.Boxicity",
+      "path": "concepts/Lax560391/Boxicity.lean",
+      "title": "Boxicity",
+      "type": "definition",
+      "description": "Boxicity is the minimum number of coordinates in an intersection\nrepresentation by nonempty axis-parallel closed boxes. Zero coordinates give a\ncomplete graph, so complete graphs have value zero.",
+      "imports": [
+        "Lax560391.BoxRepresentation"
+      ],
+      "mathlibImports": [
+        "Mathlib.Order.Lattice.Nat"
+      ],
+      "sourceText": "import Lax560391.BoxRepresentation\nimport Mathlib.Order.Lattice.Nat\n\n/-!\n---\ntitle: Boxicity\ntype: definition\n---\nBoxicity is the minimum number of coordinates in an intersection\nrepresentation by nonempty axis-parallel closed boxes. Zero coordinates give a\ncomplete graph, so complete graphs have value zero.\n-/\n\nnamespace Lax560391.Boxicity\n\n/-- An intersection representation by nonempty closed `k`-dimensional\naxis-parallel boxes. -/\ndef HasBoxicityAtMost {V : Type} (G : SimpleGraph V) (k : ℕ) : Prop :=\n  Nonempty (Lax560391.BoxRepresentation.BoxRepresentation G k)\n\nnoncomputable def boxicity {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {k | HasBoxicityAtMost G k}\n\nend Lax560391.Boxicity\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.BoxRepresentation",
+      "path": "concepts/Lax560391/BoxRepresentation.lean",
+      "title": "Box representations",
+      "type": "definition",
+      "description": "A box representation assigns a nonempty closed axis-parallel real box to\neach vertex, with adjacency exactly when the boxes intersect. The dimension\nmay be zero, in which case the represented graph is complete.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Basic",
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Basic\nimport Mathlib.Data.Real.Basic\n\n/-!\n---\ntitle: Box representations\ntype: definition\n---\nA box representation assigns a nonempty closed axis-parallel real box to\neach vertex, with adjacency exactly when the boxes intersect. The dimension\nmay be zero, in which case the represented graph is complete.\n-/\n\nnamespace Lax560391.BoxRepresentation\n\nstructure BoxRepresentation {V : Type} (G : SimpleGraph V) (k : ℕ) where\n  lo : V → Fin k → ℝ\n  hi : V → Fin k → ℝ\n  nonempty : ∀ v i, lo v i ≤ hi v i\n  represents : ∀ u v, u ≠ v →\n    (G.Adj u v ↔ ∀ i, lo u i ≤ hi v i ∧ lo v i ≤ hi u i)\n\nend Lax560391.BoxRepresentation\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.CClosedGraphs",
+      "path": "concepts/Lax560391/CClosedGraphs.lean",
+      "title": "c-closed graphs",
+      "type": "definition",
+      "description": "A graph is c-closed if every pair of distinct nonadjacent vertices has\nfewer than c common neighbors. The value c may be zero; exactly the\ncomplete graphs are 0-closed.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite",
+        "Mathlib.Data.Set.Card"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Finite\nimport Mathlib.Data.Set.Card\n\n/-!\n---\ntitle: c-closed graphs\ntype: definition\n---\nA graph is c-closed if every pair of distinct nonadjacent vertices has\nfewer than c common neighbors. The value c may be zero; exactly the\ncomplete graphs are 0-closed.\n-/\n\nnamespace Lax560391.CClosedGraphs\n\ndef IsCClosed {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (c : ℕ) : Prop :=\n  ∀ u v : V, u ≠ v → ¬G.Adj u v →\n    {w : V | G.Adj u w ∧ G.Adj v w}.ncard < c\n\nend Lax560391.CClosedGraphs\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.ChordalGraphs",
+      "path": "concepts/Lax560391/ChordalGraphs.lean",
+      "title": "Chordal graphs",
+      "type": "definition",
+      "description": "A graph is chordal if it has no induced cycle of length at least four.\nEmpty and disconnected graphs are allowed.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Basic"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Basic\n\n/-!\n---\ntitle: Chordal graphs\ntype: definition\n---\nA graph is chordal if it has no induced cycle of length at least four.\nEmpty and disconnected graphs are allowed.\n-/\n\nnamespace Lax560391.ChordalGraphs\n\n/-- The next vertex index, wrapping from the last index to zero. -/\ndef cyclicSucc (n : ℕ) (hn : 0 < n) (i : Fin n) : Fin n :=\n  ⟨(i.val + 1) % n, Nat.mod_lt _ hn⟩\n\n/-- A chordless cycle of length at least four. -/\ndef HasInducedLongCycle {V : Type} (G : SimpleGraph V) : Prop :=\n  ∃ n : ℕ, ∃ hn : 4 ≤ n,\n    let next := cyclicSucc n (lt_of_lt_of_le (by decide : 0 < 4) hn)\n    ∃ f : Fin n ↪ V,\n    (∀ i : Fin n, G.Adj (f i) (f (next i))) ∧\n    (∀ i j : Fin n, i ≠ j → j ≠ next i → i ≠ next j →\n      ¬ G.Adj (f i) (f j))\n\n/-- No induced cycle of length at least four. -/\ndef IsChordal {V : Type} (G : SimpleGraph V) : Prop :=\n  ¬ HasInducedLongCycle G\n\nend Lax560391.ChordalGraphs\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.ChordalIntersectionDimension",
+      "path": "concepts/Lax560391/ChordalIntersectionDimension.lean",
+      "title": "Chordal intersection dimension",
+      "type": "definition",
+      "description": "The minimum number of chordal supergraphs whose edge intersection is the\ngraph. The intersection of zero factors is complete, so complete graphs have\nvalue zero.",
+      "imports": [
+        "Lax560391.ChordalIntersectionRepresentation"
+      ],
+      "mathlibImports": [
+        "Mathlib.Order.Lattice.Nat"
+      ],
+      "sourceText": "import Lax560391.ChordalIntersectionRepresentation\nimport Mathlib.Order.Lattice.Nat\n\n/-!\n---\ntitle: Chordal intersection dimension\ntype: definition\n---\nThe minimum number of chordal supergraphs whose edge intersection is the\ngraph. The intersection of zero factors is complete, so complete graphs have\nvalue zero.\n-/\n\nnamespace Lax560391.ChordalIntersectionDimension\n\n/-- `G` is the intersection of `k` chordal graphs on the same vertices.\nThe distinctness guard gives the intersection of zero graphs the complete\ngraph rather than a reflexive relation. -/\ndef HasChordalIntersectionDimensionAtMost {V : Type}\n    (G : SimpleGraph V) (k : ℕ) : Prop :=\n  Nonempty (Lax560391.ChordalIntersectionRepresentation.ChordalIntersectionRepresentation G k)\n\nnoncomputable def chordalIntersectionDimension\n    {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {k | HasChordalIntersectionDimensionAtMost G k}\n\nend Lax560391.ChordalIntersectionDimension\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.ChordalIntersectionRepresentation",
+      "path": "concepts/Lax560391/ChordalIntersectionRepresentation.lean",
+      "title": "Chordal intersection representations",
+      "type": "definition",
+      "description": "A chordal intersection representation is an indexed family of chordal\ngraphs on the same vertex set whose edge intersection is the represented\ngraph. Each factor is consequently a supergraph. Zero factors represent\nthe complete simple graph.",
+      "imports": [
+        "Lax560391.ChordalGraphs"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax560391.ChordalGraphs\n\n/-!\n---\ntitle: Chordal intersection representations\ntype: definition\n---\nA chordal intersection representation is an indexed family of chordal\ngraphs on the same vertex set whose edge intersection is the represented\ngraph. Each factor is consequently a supergraph. Zero factors represent\nthe complete simple graph.\n-/\n\nnamespace Lax560391.ChordalIntersectionRepresentation\n\nstructure ChordalIntersectionRepresentation {V : Type}\n    (G : SimpleGraph V) (k : ℕ) where\n  factors : Fin k → SimpleGraph V\n  chordal : ∀ i, Lax560391.ChordalGraphs.IsChordal (factors i)\n  represents : ∀ u v, u ≠ v → (G.Adj u v ↔ ∀ i, (factors i).Adj u v)\n\nend Lax560391.ChordalIntersectionRepresentation\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.Closure",
+      "path": "concepts/Lax560391/Closure.lean",
+      "title": "c-closure",
+      "type": "definition",
+      "description": "The c-closure is the least natural number c for which the graph is c-closed.\nComplete graphs have value zero.",
+      "imports": [
+        "Lax560391.CClosedGraphs"
+      ],
+      "mathlibImports": [
+        "Mathlib.Order.Lattice.Nat"
+      ],
+      "sourceText": "import Lax560391.CClosedGraphs\nimport Mathlib.Order.Lattice.Nat\n\n/-!\n---\ntitle: c-closure\ntype: definition\n---\nThe c-closure is the least natural number c for which the graph is c-closed.\nComplete graphs have value zero.\n-/\n\nnamespace Lax560391.Closure\n\nnoncomputable def closure {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {c : ℕ | Lax560391.CClosedGraphs.IsCClosed G c}\n\nend Lax560391.Closure\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.CochromaticNumber",
+      "path": "concepts/Lax560391/CochromaticNumber.lean",
+      "title": "Cochromatic number",
+      "type": "definition",
+      "description": "The cochromatic number is the least number of parts in a vertex partition\nwhere each part induces either a clique or an independent set. Parts need not\nbe graph modules. The empty graph has cochromatic number zero.",
+      "imports": [
+        "Lax560391.CochromaticPartition"
+      ],
+      "mathlibImports": [
+        "Mathlib.Order.Lattice.Nat"
+      ],
+      "sourceText": "import Lax560391.CochromaticPartition\nimport Mathlib.Order.Lattice.Nat\n\n/-!\n---\ntitle: Cochromatic number\ntype: definition\n---\nThe cochromatic number is the least number of parts in a vertex partition\nwhere each part induces either a clique or an independent set. Parts need not\nbe graph modules. The empty graph has cochromatic number zero.\n-/\n\nnamespace Lax560391.CochromaticNumber\n\n/-- A partition into at most `k` cliques or independent sets. Empty labels\nare allowed and do not affect the minimum. -/\ndef HasCochromaticNumberAtMost {V : Type} (G : SimpleGraph V) (k : ℕ) : Prop :=\n  Nonempty (Lax560391.CochromaticPartition.CochromaticPartition G k)\n\nnoncomputable def cochromaticNumber {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {k | HasCochromaticNumberAtMost G k}\n\nend Lax560391.CochromaticNumber\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.CochromaticPartition",
+      "path": "concepts/Lax560391/CochromaticPartition.lean",
+      "title": "Cochromatic partitions",
+      "type": "definition",
+      "description": "A cochromatic partition assigns each vertex a part, each part inducing\neither a clique or an independent set. Empty labels are allowed. Parts need\nnot be modules.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Basic"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Basic\n\n/-!\n---\ntitle: Cochromatic partitions\ntype: definition\n---\nA cochromatic partition assigns each vertex a part, each part inducing\neither a clique or an independent set. Empty labels are allowed. Parts need\nnot be modules.\n-/\n\nnamespace Lax560391.CochromaticPartition\n\nstructure CochromaticPartition {V : Type} (G : SimpleGraph V) (k : ℕ) where\n  part : V → Fin k\n  homogeneous : ∀ i,\n    (∀ u v, u ≠ v → part u = i → part v = i → G.Adj u v) ∨\n    (∀ u v, part u = i → part v = i → ¬ G.Adj u v)\n\nend Lax560391.CochromaticPartition\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.DistanceHereditaryGraphs",
+      "path": "concepts/Lax560391/DistanceHereditaryGraphs.lean",
+      "title": "Distance-hereditary graphs",
+      "type": "definition",
+      "description": "A graph is distance-hereditary if every connected induced subgraph preserves\nthe distances between its vertices. Extended shortest-path distance is used\nto distinguish disconnected pairs. Empty and disconnected graphs are allowed.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Metric"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Metric\n\n/-!\n---\ntitle: Distance-hereditary graphs\ntype: definition\n---\nA graph is distance-hereditary if every connected induced subgraph preserves\nthe distances between its vertices. Extended shortest-path distance is used\nto distinguish disconnected pairs. Empty and disconnected graphs are allowed.\n-/\n\nnamespace Lax560391.DistanceHereditaryGraphs\n\n/-- Every connected induced subgraph retains the distances of `G`.\nExtended distance avoids identifying disconnected pairs with distance zero. -/\ndef IsDistanceHereditary {V : Type} (G : SimpleGraph V) : Prop :=\n  ∀ S : Set V, (G.induce S).Connected →\n    ∀ u v : S, (G.induce S).edist u v = G.edist u.1 v.1\n\nend Lax560391.DistanceHereditaryGraphs\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.DistanceToBlock",
+      "path": "concepts/Lax560391/DistanceToBlock.lean",
+      "title": "Distance to block graphs",
+      "type": "definition",
+      "description": "The minimum number of vertices whose deletion leaves a block graph, expressed\nas a chordal graph with no induced diamond.",
+      "imports": [
+        "Lax560391.BlockGraphs"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite",
+        "Mathlib.Order.Lattice.Nat"
+      ],
+      "sourceText": "import Lax560391.BlockGraphs\nimport Mathlib.Combinatorics.SimpleGraph.Finite\nimport Mathlib.Order.Lattice.Nat\n\n/-!\n---\ntitle: Distance to block graphs\ntype: definition\n---\nThe minimum number of vertices whose deletion leaves a block graph, expressed\nas a chordal graph with no induced diamond.\n-/\n\nnamespace Lax560391.DistanceToBlock\n\nopen Lax560391.BlockGraphs\n\nnoncomputable def distanceToBlock {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {k : ℕ | ∃ S : Finset V, (S.card = k) ∧\n    (IsBlock (G.induce {v | v ∉ S}))}\n\nend Lax560391.DistanceToBlock\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.DistanceToChordal",
+      "path": "concepts/Lax560391/DistanceToChordal.lean",
+      "title": "Distance to chordal graphs",
+      "type": "definition",
+      "description": "The minimum number of vertices whose deletion leaves a graph with no induced\ncycle of length at least four.",
+      "imports": [
+        "Lax560391.ChordalGraphs"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite",
+        "Mathlib.Order.Lattice.Nat"
+      ],
+      "sourceText": "import Lax560391.ChordalGraphs\nimport Mathlib.Combinatorics.SimpleGraph.Finite\nimport Mathlib.Order.Lattice.Nat\n\n/-!\n---\ntitle: Distance to chordal graphs\ntype: definition\n---\nThe minimum number of vertices whose deletion leaves a graph with no induced\ncycle of length at least four.\n-/\n\nnamespace Lax560391.DistanceToChordal\n\nopen Lax560391.ChordalGraphs\n\nnoncomputable def distanceToChordal {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {k : ℕ | ∃ S : Finset V, (S.card = k) ∧\n    (IsChordal (G.induce {v | v ∉ S}))}\n\nend Lax560391.DistanceToChordal\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.DistanceToDistanceHereditary",
+      "path": "concepts/Lax560391/DistanceToDistanceHereditary.lean",
+      "title": "Distance to distance-hereditary graphs",
+      "type": "definition",
+      "description": "The minimum number of vertices whose deletion leaves a graph in which every\nconnected induced subgraph preserves distances.",
+      "imports": [
+        "Lax560391.DistanceHereditaryGraphs"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite",
+        "Mathlib.Order.Lattice.Nat"
+      ],
+      "sourceText": "import Lax560391.DistanceHereditaryGraphs\nimport Mathlib.Combinatorics.SimpleGraph.Finite\nimport Mathlib.Order.Lattice.Nat\n\n/-!\n---\ntitle: Distance to distance-hereditary graphs\ntype: definition\n---\nThe minimum number of vertices whose deletion leaves a graph in which every\nconnected induced subgraph preserves distances.\n-/\n\nnamespace Lax560391.DistanceToDistanceHereditary\n\nopen Lax560391.DistanceHereditaryGraphs\n\nnoncomputable def distanceToDistanceHereditary\n    {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {k : ℕ | ∃ S : Finset V, (S.card = k) ∧\n    (IsDistanceHereditary (G.induce {v | v ∉ S}))}\n\nend Lax560391.DistanceToDistanceHereditary\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.DistanceToInterval",
+      "path": "concepts/Lax560391/DistanceToInterval.lean",
+      "title": "Distance to interval graphs",
+      "type": "definition",
+      "description": "The minimum number of vertices whose deletion leaves an intersection graph of\nnonempty closed intervals on the real line.",
+      "imports": [
+        "Lax560391.IntervalGraphs"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Finite",
+        "Mathlib.Order.Lattice.Nat"
+      ],
+      "sourceText": "import Lax560391.IntervalGraphs\nimport Mathlib.Combinatorics.SimpleGraph.Finite\nimport Mathlib.Order.Lattice.Nat\n\n/-!\n---\ntitle: Distance to interval graphs\ntype: definition\n---\nThe minimum number of vertices whose deletion leaves an intersection graph of\nnonempty closed intervals on the real line.\n-/\n\nnamespace Lax560391.DistanceToInterval\n\nopen Lax560391.IntervalGraphs\n\nnoncomputable def distanceToInterval {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {k : ℕ | ∃ S : Finset V, (S.card = k) ∧\n    (IsInterval (G.induce {v | v ∉ S}))}\n\nend Lax560391.DistanceToInterval\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.EdgeCliqueCover",
+      "path": "concepts/Lax560391/EdgeCliqueCover.lean",
+      "title": "Edge clique cover number",
+      "type": "definition",
+      "description": "An edge clique cover is a family of vertex cliques such that every graph edge\nhas both endpoints in at least one family member. Its number is the minimum\nsize of such a family. An edgeless graph has edge clique cover number zero.",
+      "imports": [
+        "Lax560391.EdgeCliqueCovering"
+      ],
+      "mathlibImports": [
+        "Mathlib.Order.Lattice.Nat"
+      ],
+      "sourceText": "import Lax560391.EdgeCliqueCovering\nimport Mathlib.Order.Lattice.Nat\n\n/-!\n---\ntitle: Edge clique cover number\ntype: definition\n---\nAn edge clique cover is a family of vertex cliques such that every graph edge\nhas both endpoints in at least one family member. Its number is the minimum\nsize of such a family. An edgeless graph has edge clique cover number zero.\n-/\n\nnamespace Lax560391.EdgeCliqueCover\n\n/-- `k` indexed cliques cover every edge of `G`. Repeated or empty cliques\nare harmless because the minimum index count is taken. -/\ndef HasEdgeCliqueCoverAtMost {V : Type} [DecidableEq V]\n    (G : SimpleGraph V) (k : ℕ) : Prop :=\n  Nonempty (Lax560391.EdgeCliqueCovering.EdgeCliqueCovering G k)\n\nnoncomputable def edgeCliqueCover {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {k | HasEdgeCliqueCoverAtMost G k}\n\nend Lax560391.EdgeCliqueCover\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.EdgeCliqueCovering",
+      "path": "concepts/Lax560391/EdgeCliqueCovering.lean",
+      "title": "Edge clique covers",
+      "type": "definition",
+      "description": "An edge clique cover is an indexed family of vertex cliques covering every\nedge. Cliques may overlap, be empty, or repeat; isolated vertices need not\nbe covered.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Clique"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Clique\n\n/-!\n---\ntitle: Edge clique covers\ntype: definition\n---\nAn edge clique cover is an indexed family of vertex cliques covering every\nedge. Cliques may overlap, be empty, or repeat; isolated vertices need not\nbe covered.\n-/\n\nnamespace Lax560391.EdgeCliqueCovering\n\nstructure EdgeCliqueCovering {V : Type} [DecidableEq V]\n    (G : SimpleGraph V) (k : ℕ) where\n  cliques : Fin k → Finset V\n  isClique : ∀ i, ∀ u ∈ cliques i, ∀ v ∈ cliques i, u ≠ v → G.Adj u v\n  covers : ∀ ⦃u v⦄, G.Adj u v → ∃ i, u ∈ cliques i ∧ v ∈ cliques i\n\nend Lax560391.EdgeCliqueCovering\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.IntervalGraphs",
+      "path": "concepts/Lax560391/IntervalGraphs.lean",
+      "title": "Interval graphs",
+      "type": "definition",
+      "description": "An interval graph is a graph admitting an interval representation by\nnonempty closed real intervals. Empty and disconnected graphs are allowed.",
+      "imports": [
+        "Lax560391.IntervalRepresentation"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax560391.IntervalRepresentation\n\n/-!\n---\ntitle: Interval graphs\ntype: definition\n---\nAn interval graph is a graph admitting an interval representation by\nnonempty closed real intervals. Empty and disconnected graphs are allowed.\n-/\n\nnamespace Lax560391.IntervalGraphs\n\ndef IsInterval {V : Type} (G : SimpleGraph V) : Prop :=\n  Nonempty (Lax560391.IntervalRepresentation.IntervalRepresentation G)\n\nend Lax560391.IntervalGraphs\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.IntervalRepresentation",
+      "path": "concepts/Lax560391/IntervalRepresentation.lean",
+      "title": "Interval representations",
+      "type": "definition",
+      "description": "An interval representation assigns a nonempty closed real interval to each\nvertex, with adjacency exactly when two distinct vertices have intersecting\nintervals. Point intervals and repeated intervals are allowed.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Basic",
+        "Mathlib.Data.Real.Basic"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Basic\nimport Mathlib.Data.Real.Basic\n\n/-!\n---\ntitle: Interval representations\ntype: definition\n---\nAn interval representation assigns a nonempty closed real interval to each\nvertex, with adjacency exactly when two distinct vertices have intersecting\nintervals. Point intervals and repeated intervals are allowed.\n-/\n\nnamespace Lax560391.IntervalRepresentation\n\nstructure IntervalRepresentation {V : Type} (G : SimpleGraph V) where\n  lo : V → ℝ\n  hi : V → ℝ\n  nonempty : ∀ v, lo v ≤ hi v\n  represents : ∀ u v, u ≠ v →\n    (G.Adj u v ↔ lo u ≤ hi v ∧ lo v ≤ hi u)\n\nend Lax560391.IntervalRepresentation\n",
+      "statements": []
+    },
+    {
+      "id": "Lax560391.VertexIntegrity",
+      "path": "concepts/Lax560391/VertexIntegrity.lean",
+      "title": "Vertex integrity",
+      "type": "definition",
+      "description": "The vertex integrity of a finite graph is the minimum, over vertex sets `S`,\nof the size of `S` plus the order of the largest connected component of the\ngraph induced by the remaining vertices. The maximum component order is zero\nwhen no vertices remain.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected",
+        "Mathlib.Data.Set.Card",
+        "Mathlib.Order.Lattice.Nat"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected\nimport Mathlib.Data.Set.Card\nimport Mathlib.Order.Lattice.Nat\n\n/-!\n---\ntitle: Vertex integrity\ntype: definition\n---\nThe vertex integrity of a finite graph is the minimum, over vertex sets `S`,\nof the size of `S` plus the order of the largest connected component of the\ngraph induced by the remaining vertices. The maximum component order is zero\nwhen no vertices remain.\n-/\n\nnamespace Lax560391.VertexIntegrity\n\n/-- Deleting `S` leaves no component larger than `k - |S|`. -/\ndef HasVertexIntegrityAtMost {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) (k : ℕ) : Prop :=\n  ∃ S : Set V, S.ncard ≤ k ∧\n    ∀ C : (G.induce Sᶜ).ConnectedComponent,\n      S.ncard + C.supp.ncard ≤ k\n\n/-- The minimum of deletion-set size plus largest remaining component size. -/\nnoncomputable def vertexIntegrity {V : Type} [Fintype V] [DecidableEq V]\n    (G : SimpleGraph V) : ℕ :=\n  sInf {k | HasVertexIntegrityAtMost G k}\n\nend Lax560391.VertexIntegrity\n",
+      "statements": []
+    }
+  ],
+  "proofs": [],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "8d9c49c6cde2014685dd9be3048bae6d1d2d8bdf62df797b02d66508a5652385",
+    "sourceCommit": "0c6f2d8df06fae49a2ecfcb00f1c0691aabab748",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax560391/BlockGraphs.c",
+        "bytes": 1341,
+        "sha256": "2f205aa3da9b60f062b9dd242b0c46e0c92053152b4b32b633c573832020e44d"
+      },
+      {
+        "path": "concepts/ir/Lax560391/BlockGraphs.c.hash",
+        "bytes": 16,
+        "sha256": "f7cdba3a9291621a82e6c72f8c0b563fc9e2230166fcbc146a656314a64958b7"
+      },
+      {
+        "path": "concepts/ir/Lax560391/Boxicity.c",
+        "bytes": 1589,
+        "sha256": "f74fcd17d6da9b4c711327b604912077da1dfcf991bd308c8e587e84bd79c809"
+      },
+      {
+        "path": "concepts/ir/Lax560391/Boxicity.c.hash",
+        "bytes": 16,
+        "sha256": "c25ad4f2dd74dc7a0a5f4e726a20e94d05c54fe465804392dd94f2ac45c1c2a2"
+      },
+      {
+        "path": "concepts/ir/Lax560391/BoxRepresentation.c",
+        "bytes": 1633,
+        "sha256": "5eae7a0517d4136631e0b6484ffc4ea7c32798dc2f6196c13579a81484c18a80"
+      },
+      {
+        "path": "concepts/ir/Lax560391/BoxRepresentation.c.hash",
+        "bytes": 16,
+        "sha256": "4ce39072137b07e572eb2195b83ea26d58a9b1ddc1d8bb675c6b17f69458397d"
+      },
+      {
+        "path": "concepts/ir/Lax560391/CClosedGraphs.c",
+        "bytes": 1622,
+        "sha256": "f0c1fc50bf763c88729fb93068b0dc059542f13dafcc2311842484b0f87df50c"
+      },
+      {
+        "path": "concepts/ir/Lax560391/CClosedGraphs.c.hash",
+        "bytes": 16,
+        "sha256": "5feebd6271c9e741d2c30627fa21b77be7f5e1ef140060617db5cdc4ff82d093"
+      },
+      {
+        "path": "concepts/ir/Lax560391/ChordalGraphs.c",
+        "bytes": 3264,
+        "sha256": "fb4b281db53f521308967956dbf08e8e7426ccd6527e5981f730db2dd9e77365"
+      },
+      {
+        "path": "concepts/ir/Lax560391/ChordalGraphs.c.hash",
+        "bytes": 16,
+        "sha256": "1c24d3620e4b2a9ef889aca68ec7163e29aff580748bb25a8f9d573fd968d81c"
+      },
+      {
+        "path": "concepts/ir/Lax560391/ChordalIntersectionDimension.c",
+        "bytes": 1677,
+        "sha256": "5b889403d7e2d2dc725da939583340c6ed13a57f4be14c425e0aa31164d1ef78"
+      },
+      {
+        "path": "concepts/ir/Lax560391/ChordalIntersectionDimension.c.hash",
+        "bytes": 16,
+        "sha256": "ba2c05d67a724a9e609cbc860930e50a4279b649b57926d52ee4c67e0bb32c7c"
+      },
+      {
+        "path": "concepts/ir/Lax560391/ChordalIntersectionRepresentation.c",
+        "bytes": 1385,
+        "sha256": "b6c225748653d55d91b0a1f3a76720f0006eb8a1649b28f59da33cd21c92ee3e"
+      },
+      {
+        "path": "concepts/ir/Lax560391/ChordalIntersectionRepresentation.c.hash",
+        "bytes": 16,
+        "sha256": "ef3c10c11948e66e1fa60b7dde53c7e0d0b25b28c4d52de45cffa193fcadc333"
+      },
+      {
+        "path": "concepts/ir/Lax560391/Closure.c",
+        "bytes": 1575,
+        "sha256": "229075a83e672fac958ff5cb9e23c2a73da8201a7d85f918245afb8dc9698651"
+      },
+      {
+        "path": "concepts/ir/Lax560391/Closure.c.hash",
+        "bytes": 16,
+        "sha256": "d69e94dd9ad7ab52594357515c6044b1f6f65afd38291d7812977ee72534bd64"
+      },
+      {
+        "path": "concepts/ir/Lax560391/CochromaticNumber.c",
+        "bytes": 1616,
+        "sha256": "1ea4eceb9cfc446825300a7ef56ec850d2fb198a0370cbd56605f91d08b6ac56"
+      },
+      {
+        "path": "concepts/ir/Lax560391/CochromaticNumber.c.hash",
+        "bytes": 16,
+        "sha256": "12640ffa6d025619e81152cba7188dfc39c791f53dfd0358b6b44085a91463bd"
+      },
+      {
+        "path": "concepts/ir/Lax560391/CochromaticPartition.c",
+        "bytes": 1403,
+        "sha256": "914516b1898f7267812db4fb1cf4779db890ea51689a61d5b5de63ca3e1af6e9"
+      },
+      {
+        "path": "concepts/ir/Lax560391/CochromaticPartition.c.hash",
+        "bytes": 16,
+        "sha256": "dee7ec4292eb096bb1fb5b27926c16b951e07994d02f5bd6c3cdb4df1faad6c4"
+      },
+      {
+        "path": "concepts/ir/Lax560391/DistanceHereditaryGraphs.c",
+        "bytes": 1414,
+        "sha256": "77b951b932945cc26a791015aadd318c5ca3333a6820a3b2fd5a1832c9a3bcdf"
+      },
+      {
+        "path": "concepts/ir/Lax560391/DistanceHereditaryGraphs.c.hash",
+        "bytes": 16,
+        "sha256": "e4e1db50ee97c185b3ee0d6f0c5c799f9cc5b175d100f2cdb27d06d5a678a932"
+      },
+      {
+        "path": "concepts/ir/Lax560391/DistanceToBlock.c",
+        "bytes": 1872,
+        "sha256": "bf7b6ce4f8c170b235351ab810589eaa9afc2343e4d930e4b70a337907bcb09a"
+      },
+      {
+        "path": "concepts/ir/Lax560391/DistanceToBlock.c.hash",
+        "bytes": 16,
+        "sha256": "9c2c0089237205078c1bdfd286100289b3373caf515b18c58b728cae4e592e9a"
+      },
+      {
+        "path": "concepts/ir/Lax560391/DistanceToChordal.c",
+        "bytes": 1882,
+        "sha256": "e98468e03696c7706a81a1e741e5a47c5eb5df57445730180037c55b8de67e2a"
+      },
+      {
+        "path": "concepts/ir/Lax560391/DistanceToChordal.c.hash",
+        "bytes": 16,
+        "sha256": "5867bf7e4c6c5b5495f03ee4b9d37a7b9317b606e6bca7f5422fbad1d384ce63"
+      },
+      {
+        "path": "concepts/ir/Lax560391/DistanceToDistanceHereditary.c",
+        "bytes": 1937,
+        "sha256": "4bdff93485e5b52c6253de74a778627a5b3efb0fd61139ca8adb0c35b30166e6"
+      },
+      {
+        "path": "concepts/ir/Lax560391/DistanceToDistanceHereditary.c.hash",
+        "bytes": 16,
+        "sha256": "39f7718edaaf31f345a9313151b82d9ba64f126610240dc447ad63cae64913fe"
+      },
+      {
+        "path": "concepts/ir/Lax560391/DistanceToInterval.c",
+        "bytes": 1887,
+        "sha256": "ad2057ae67b760d1ac1ddea3d3b34be8a9a0e6e4d311d5834b98cb2480089688"
+      },
+      {
+        "path": "concepts/ir/Lax560391/DistanceToInterval.c.hash",
+        "bytes": 16,
+        "sha256": "f5556da52e6a46ae920fae26bb96ea0cba494f34177ed32c8edead1d13bea6b6"
+      },
+      {
+        "path": "concepts/ir/Lax560391/EdgeCliqueCover.c",
+        "bytes": 1606,
+        "sha256": "91342b9db27020d7a00f50171d586854e03571c686b6179b882c5473b64e42f1"
+      },
+      {
+        "path": "concepts/ir/Lax560391/EdgeCliqueCover.c.hash",
+        "bytes": 16,
+        "sha256": "9b145161222e48fc6d1524824ab64325b551255b35d92bb8ca9549d0027bcd51"
+      },
+      {
+        "path": "concepts/ir/Lax560391/EdgeCliqueCovering.c",
+        "bytes": 1402,
+        "sha256": "e49c1f55833b86ee6172dbbe7a17e04d760650c37ba5ad312f772c9922ee2b07"
+      },
+      {
+        "path": "concepts/ir/Lax560391/EdgeCliqueCovering.c.hash",
+        "bytes": 16,
+        "sha256": "3d82f48fd36112456a0ff1cc61ad08746398ea6120eaa3f694801525c49c60c7"
+      },
+      {
+        "path": "concepts/ir/Lax560391/IntervalGraphs.c",
+        "bytes": 1374,
+        "sha256": "1fb5b68f0d646f2545879885295561bbd7ec71d3359b0b728ea9086600f3e4e0"
+      },
+      {
+        "path": "concepts/ir/Lax560391/IntervalGraphs.c.hash",
+        "bytes": 16,
+        "sha256": "61de5c8ba127681c64556d3d38ba02d736ff82c1a8a7188f1bf16172e7098c3e"
+      },
+      {
+        "path": "concepts/ir/Lax560391/IntervalRepresentation.c",
+        "bytes": 1643,
+        "sha256": "d96136e45bd1c03f026bd349b6f3ea8b6f5245f11f89b4e81c9b48ccd6196e85"
+      },
+      {
+        "path": "concepts/ir/Lax560391/IntervalRepresentation.c.hash",
+        "bytes": 16,
+        "sha256": "bc373178a5094d2911ee0a548432e4de53ec14e13ae3a8c6f83d2b2ab517cb07"
+      },
+      {
+        "path": "concepts/ir/Lax560391/VertexIntegrity.c",
+        "bytes": 1916,
+        "sha256": "1b312393209305bba49133a8dab6ebf50432936deb4776ee82e469cc0d0830cd"
+      },
+      {
+        "path": "concepts/ir/Lax560391/VertexIntegrity.c.hash",
+        "bytes": 16,
+        "sha256": "c74b61ec9b583c11c4df6e7d2628eb2ef6bbe8f4553357e8d8ae34392c017d62"
+      },
+      {
+        "path": "concepts/ir/Lax560391.c",
+        "bytes": 6156,
+        "sha256": "0f875a4777f1c5aec5dc064bb3065bd877b5b147fa385d890a092d01e5a90d7a"
+      },
+      {
+        "path": "concepts/ir/Lax560391.c.hash",
+        "bytes": 16,
+        "sha256": "7b48d21ee4ba5345c342d5616c1366e48e6344212ee14702ca417dcc14eb2c88"
+      },
+      {
+        "path": "concepts/lib/Lax560391/BlockGraphs.ilean",
+        "bytes": 1671,
+        "sha256": "188c4f6abbbe05c2b183c59bfae6617b5de77feadf9bae89a8da94c6efff9ee5"
+      },
+      {
+        "path": "concepts/lib/Lax560391/BlockGraphs.ilean.hash",
+        "bytes": 16,
+        "sha256": "a756994caf1cd39d5e40473134ae4c1ca80fe82602249e588c232e754cc2d851"
+      },
+      {
+        "path": "concepts/lib/Lax560391/BlockGraphs.olean",
+        "bytes": 9792,
+        "sha256": "df07a0b481bcc1b3ba3bdbc416130070a23b0e6ceeb17788f5ed3a39bee08fb9"
+      },
+      {
+        "path": "concepts/lib/Lax560391/BlockGraphs.olean.hash",
+        "bytes": 16,
+        "sha256": "349cd758d4a353a3bc9593e2cb348553e0e3a007082fc2fefb1072324fb10b7e"
+      },
+      {
+        "path": "concepts/lib/Lax560391/BlockGraphs.trace",
+        "bytes": 2284,
+        "sha256": "37ffe7fbe2dc606bdd5439669227dc18bdee9c5c9d166fa8dfb8c53d65678e8a"
+      },
+      {
+        "path": "concepts/lib/Lax560391/Boxicity.ilean",
+        "bytes": 1724,
+        "sha256": "1b63d672395204708af7613f99d30138ceb9ac80029e0eea5faeae6f39af1d89"
+      },
+      {
+        "path": "concepts/lib/Lax560391/Boxicity.ilean.hash",
+        "bytes": 16,
+        "sha256": "2ef97e072a1554a70a5a6449465c4507bbc007e6fc1e2784fc8b3b645ab7345d"
+      },
+      {
+        "path": "concepts/lib/Lax560391/Boxicity.olean",
+        "bytes": 9480,
+        "sha256": "d2a9226d8c25272f306f235ea89e1adae2aa24c8f174d55bc3e2c128eac0731c"
+      },
+      {
+        "path": "concepts/lib/Lax560391/Boxicity.olean.hash",
+        "bytes": 16,
+        "sha256": "163c78d760e91f581f1e8c8de3b465c75b825a6ff3bba767b7e7b4a1856b9a84"
+      },
+      {
+        "path": "concepts/lib/Lax560391/Boxicity.trace",
+        "bytes": 2434,
+        "sha256": "5671582a954bd1f419ffaedc4033d40cc876767f9bb3dece89054c1b0086ac2a"
+      },
+      {
+        "path": "concepts/lib/Lax560391/BoxRepresentation.ilean",
+        "bytes": 1998,
+        "sha256": "5282806d94479eeb7c38cfbd331e30cc5ef07b34c5868e42188cc38cf0a3eb40"
+      },
+      {
+        "path": "concepts/lib/Lax560391/BoxRepresentation.ilean.hash",
+        "bytes": 16,
+        "sha256": "f9bcbfaf96b6625983fb8e7257ade6e02599b3ac6df56a83bd89446e1efa697e"
+      },
+      {
+        "path": "concepts/lib/Lax560391/BoxRepresentation.olean",
+        "bytes": 74280,
+        "sha256": "367da9c18a069a5fd96180f104854ea63eaf617998c48f9b04ef141dea27eb5c"
+      },
+      {
+        "path": "concepts/lib/Lax560391/BoxRepresentation.olean.hash",
+        "bytes": 16,
+        "sha256": "53fd43a1cf840daea503b165d45282213d5d877d730fd74ab6ece5ed2b7a1bd2"
+      },
+      {
+        "path": "concepts/lib/Lax560391/BoxRepresentation.trace",
+        "bytes": 4235,
+        "sha256": "29c1e433e0373c169c7c43182e7f107633e81efec769563359e254fe233bcc03"
+      },
+      {
+        "path": "concepts/lib/Lax560391/CClosedGraphs.ilean",
+        "bytes": 1381,
+        "sha256": "65475fbd34fe7164d96013bf40e69d649a4ef21e8a99cd9cb9d5c115b62e6f3f"
+      },
+      {
+        "path": "concepts/lib/Lax560391/CClosedGraphs.ilean.hash",
+        "bytes": 16,
+        "sha256": "b28ce49812f9eb8450b8178b22011700c7af4011199059fb796b67050b7db341"
+      },
+      {
+        "path": "concepts/lib/Lax560391/CClosedGraphs.olean",
+        "bytes": 9880,
+        "sha256": "3282ab7e57600c917d5468cc5cea647baf19995397fdfba387f93cd8c3d54bcb"
+      },
+      {
+        "path": "concepts/lib/Lax560391/CClosedGraphs.olean.hash",
+        "bytes": 16,
+        "sha256": "d652c2955b84d54f1ff69baf8b6688a314a114d1735aa94721628f5922125a10"
+      },
+      {
+        "path": "concepts/lib/Lax560391/CClosedGraphs.trace",
+        "bytes": 2487,
+        "sha256": "6295bdd723fa7bce18e34e730faf150717e7d535ff2fae4a74f4e05176f46907"
+      },
+      {
+        "path": "concepts/lib/Lax560391/ChordalGraphs.ilean",
+        "bytes": 2308,
+        "sha256": "1bc70241c4154f9daed1923f330e87eb84546993ec5f66aef359049d010c3b47"
+      },
+      {
+        "path": "concepts/lib/Lax560391/ChordalGraphs.ilean.hash",
+        "bytes": 16,
+        "sha256": "17c8ad78ed690bce5a4c3ee2b959c37544fc94780c5da096462a70849c9823ba"
+      },
+      {
+        "path": "concepts/lib/Lax560391/ChordalGraphs.olean",
+        "bytes": 26536,
+        "sha256": "83bdf76a4907669ca360038aa8fee1111e98d1cb196fd5bb2b2586c76de845d4"
+      },
+      {
+        "path": "concepts/lib/Lax560391/ChordalGraphs.olean.hash",
+        "bytes": 16,
+        "sha256": "6e6214a516ef50bec0c3b318fdf44abf94a05d41f5acbd14251675b9cb46b56d"
+      },
+      {
+        "path": "concepts/lib/Lax560391/ChordalGraphs.trace",
+        "bytes": 2337,
+        "sha256": "1c359cc24828833e1c70621d50861053c6d228b38366a036317557565c8bfa80"
+      },
+      {
+        "path": "concepts/lib/Lax560391/ChordalIntersectionDimension.ilean",
+        "bytes": 2407,
+        "sha256": "27b95584ea828540094b00a65c487fbc01b4bd13ba399f5733d01925e426c8be"
+      },
+      {
+        "path": "concepts/lib/Lax560391/ChordalIntersectionDimension.ilean.hash",
+        "bytes": 16,
+        "sha256": "643ad5ce322c96c22c0a0bcafe6915821e96f6ee13a578a9792a7f41e8b7ceeb"
+      },
+      {
+        "path": "concepts/lib/Lax560391/ChordalIntersectionDimension.olean",
+        "bytes": 9624,
+        "sha256": "d956b2a1844f274c1bfa4bbe07eac1760372110cd7a76def590a9f36fba3a504"
+      },
+      {
+        "path": "concepts/lib/Lax560391/ChordalIntersectionDimension.olean.hash",
+        "bytes": 16,
+        "sha256": "a94d1dee97998716fd051cecccecd2824724ed03f62d49fedc1976b215f2374f"
+      },
+      {
+        "path": "concepts/lib/Lax560391/ChordalIntersectionDimension.trace",
+        "bytes": 2613,
+        "sha256": "caec2a9c5748ee2b03b8c7a29fda75fd7a838b665c8854169bfe12e580400a6b"
+      },
+      {
+        "path": "concepts/lib/Lax560391/ChordalIntersectionRepresentation.ilean",
+        "bytes": 2316,
+        "sha256": "98103de21501aeeaef9ca60d5a9a7e14e6ff5c76c7420080d0728b79fb47725d"
+      },
+      {
+        "path": "concepts/lib/Lax560391/ChordalIntersectionRepresentation.ilean.hash",
+        "bytes": 16,
+        "sha256": "340b592e896359dab37441ac730c97a625abd2225840bd4161b6e23aa64a7a00"
+      },
+      {
+        "path": "concepts/lib/Lax560391/ChordalIntersectionRepresentation.olean",
+        "bytes": 63176,
+        "sha256": "c3f4c6becc365c38f12a9048b7bead04f717c66cf0756bba3121431249f338d8"
+      },
+      {
+        "path": "concepts/lib/Lax560391/ChordalIntersectionRepresentation.olean.hash",
+        "bytes": 16,
+        "sha256": "c7f544b65d758369fea4bd654cf55a8989729587141dec9cc1f6c24308841c3b"
+      },
+      {
+        "path": "concepts/lib/Lax560391/ChordalIntersectionRepresentation.trace",
+        "bytes": 4193,
+        "sha256": "6428f014afb1a382a014069c67e0eafa31593bb8ad545d2420363926d14366ed"
+      },
+      {
+        "path": "concepts/lib/Lax560391/Closure.ilean",
+        "bytes": 1242,
+        "sha256": "dbe09c0d4543593488eb9a95e70caecea5130fc49141d38372fd130126754831"
+      },
+      {
+        "path": "concepts/lib/Lax560391/Closure.ilean.hash",
+        "bytes": 16,
+        "sha256": "2514d08fe2210e6e4931a3b8abe847732487f9175e3fad6e2857f8e95321436a"
+      },
+      {
+        "path": "concepts/lib/Lax560391/Closure.olean",
+        "bytes": 8064,
+        "sha256": "df845aaf314148ab492f884ba1e73f3ce5d9f0795144e8ef56b204b395df2489"
+      },
+      {
+        "path": "concepts/lib/Lax560391/Closure.olean.hash",
+        "bytes": 16,
+        "sha256": "7ea146fba45fe5824de736e8491dc3792e46d93d5e31d3a8e12be58ed9e28d30"
+      },
+      {
+        "path": "concepts/lib/Lax560391/Closure.trace",
+        "bytes": 2419,
+        "sha256": "8d6dea7ae422f77ed571cee933c46d3a6111608732c8abeb1b8d0536a0c35f64"
+      },
+      {
+        "path": "concepts/lib/Lax560391/CochromaticNumber.ilean",
+        "bytes": 2015,
+        "sha256": "771697b683371138d1a3e3aa1944e591d5b975114d16effe3082ac246398f626"
+      },
+      {
+        "path": "concepts/lib/Lax560391/CochromaticNumber.ilean.hash",
+        "bytes": 16,
+        "sha256": "5b72aa3b93c54cd93695e5400165b968009b9dfe1a4dea59325d20521321787a"
+      },
+      {
+        "path": "concepts/lib/Lax560391/CochromaticNumber.olean",
+        "bytes": 9560,
+        "sha256": "87bc757612a74a9b681d1145192730b25dbaa88024bbad300ed376455b4fe9eb"
+      },
+      {
+        "path": "concepts/lib/Lax560391/CochromaticNumber.olean.hash",
+        "bytes": 16,
+        "sha256": "e569165d2322543c6c9a8c5c0d97670abee52d30c808f6c943bf8cb3742e3f2f"
+      },
+      {
+        "path": "concepts/lib/Lax560391/CochromaticNumber.trace",
+        "bytes": 2503,
+        "sha256": "ad2885c70cd3e261bdb8d2dc79a1ee0f105ec975efaaf72c760288ca7540e89b"
+      },
+      {
+        "path": "concepts/lib/Lax560391/CochromaticPartition.ilean",
+        "bytes": 1509,
+        "sha256": "5a6eee57cc31aecf032f7dbf0547053116a8d7d7eacbb40c5f88dea5a63d5949"
+      },
+      {
+        "path": "concepts/lib/Lax560391/CochromaticPartition.ilean.hash",
+        "bytes": 16,
+        "sha256": "d5260eb10fd1f9c1569eefec0d6948b87f560584b669995e026723fa3b8d3b52"
+      },
+      {
+        "path": "concepts/lib/Lax560391/CochromaticPartition.olean",
+        "bytes": 60976,
+        "sha256": "824a357e03ba314c7ef06025cbcd507e04c75f19bb6f7bc6a353f4f5b0072643"
+      },
+      {
+        "path": "concepts/lib/Lax560391/CochromaticPartition.olean.hash",
+        "bytes": 16,
+        "sha256": "eb4d514d70703f922f7082844caa95f8a0f9abb2107ee24fe70b691dea165f06"
+      },
+      {
+        "path": "concepts/lib/Lax560391/CochromaticPartition.trace",
+        "bytes": 3576,
+        "sha256": "5f5c1397d68d4918cd1e8ca920a7fe478e9fd701569db8228baade4fbb7afc66"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceHereditaryGraphs.ilean",
+        "bytes": 1734,
+        "sha256": "06c11352418d55eb5c8117050904b9fadf555cc6e344ccfe1fe4487a62384d16"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceHereditaryGraphs.ilean.hash",
+        "bytes": 16,
+        "sha256": "8fab86cfa582f6f4ec95ff78de199f58c850cd30588c61fcd76f24af0a6559ff"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceHereditaryGraphs.olean",
+        "bytes": 9408,
+        "sha256": "8e562f5b1291b5782c43a7608f873c20483913e0f7dc9278572499f30b8b090e"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceHereditaryGraphs.olean.hash",
+        "bytes": 16,
+        "sha256": "3c805cf42add244953d30e47b3a60cec00c18df3df1dde8d98ffd33f7f7c5fb1"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceHereditaryGraphs.trace",
+        "bytes": 2416,
+        "sha256": "fde727c6d7bab148cfc895d6a78b93cca5d0f8c5b404caa6052050fa7b3cba4e"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToBlock.ilean",
+        "bytes": 1946,
+        "sha256": "4596c63d0cdbb62ee344b8b0af4c8b4aea48a0461f734f72e87c64bc1279ea04"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToBlock.ilean.hash",
+        "bytes": 16,
+        "sha256": "02d11aaf0c10b42b94bf75a027816e5e20bfe229cc805f4e4d8d342203e05fc5"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToBlock.olean",
+        "bytes": 10824,
+        "sha256": "d9b20bfaceee75f7c7b4955ac4187e7c71bbe6e01d785d861a8acc90e5136a8c"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToBlock.olean.hash",
+        "bytes": 16,
+        "sha256": "2495b11ec14748db2613e88f4e608878edd83361d2a24170f6f195476a4338ad"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToBlock.trace",
+        "bytes": 2664,
+        "sha256": "7fab33b5c7998f17446780be5a785983d585b3dee81dfd41c7b10c12bffd25d8"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToChordal.ilean",
+        "bytes": 2006,
+        "sha256": "1c5511e9af7998db552ba97a18b454ebd73c1199881f990f4808bf35fbb3b730"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToChordal.ilean.hash",
+        "bytes": 16,
+        "sha256": "727dac30e9b31395070f6322944bb6a9ad512bc7403b3bf5ad103d27c6d96a01"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToChordal.olean",
+        "bytes": 10840,
+        "sha256": "9c175bbdd102782151fd8f38410eb61144ff1b614de6b80bcd68a6b2d4f088d9"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToChordal.olean.hash",
+        "bytes": 16,
+        "sha256": "6ec86c2911657d993f93e7bfb660f1161516ebbc4ff1c2d862cab220d789cfe5"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToChordal.trace",
+        "bytes": 2689,
+        "sha256": "bf688cef6b723f0e043d884bb6489bd680386f3ae3135cadb5928619b638fb56"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToDistanceHereditary.ilean",
+        "bytes": 2336,
+        "sha256": "86b3863341773b05c5b78592ca1e4c4188d51e5a15dd6c1bbd638ccd8f75b980"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToDistanceHereditary.ilean.hash",
+        "bytes": 16,
+        "sha256": "e956b43322eba605faf0b3c188793d49c35bfad4a055342b6bbdc8df58ffa611"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToDistanceHereditary.olean",
+        "bytes": 10904,
+        "sha256": "22564b8c7348698e345473d7135a77a287d3c985e6da48663297954de24bf631"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToDistanceHereditary.olean.hash",
+        "bytes": 16,
+        "sha256": "4794bfcfc7950af75b08f707d25b53cf684627b3366b3cd013afcdc51e65aa14"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToDistanceHereditary.trace",
+        "bytes": 2788,
+        "sha256": "777ead550f8bc3d99cb114f81c27f2391794bf56d20186aeb684ea35fa417ee6"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToInterval.ilean",
+        "bytes": 2036,
+        "sha256": "f81fdb2ff6998cc4e6b8c639446d787e9d4e41b41b638c51537ac6c71cf55323"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToInterval.ilean.hash",
+        "bytes": 16,
+        "sha256": "cbdfb62d0da5062d9f4676b246362b2a66d5da771820f98136e304823e40bb66"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToInterval.olean",
+        "bytes": 10856,
+        "sha256": "66c8e4fa932e02694875beddedb3fe61d8c642e3633d652f13dcc80a4635f76f"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToInterval.olean.hash",
+        "bytes": 16,
+        "sha256": "45402a0a0d7caa02290aa6caf59366ee3dc02659f7c5b4e27e7c6c58098f2a6a"
+      },
+      {
+        "path": "concepts/lib/Lax560391/DistanceToInterval.trace",
+        "bytes": 2698,
+        "sha256": "69fb7c2b8dd3239e18d68af3a296077abec660b0746e2cbb508128c5045a5367"
+      },
+      {
+        "path": "concepts/lib/Lax560391/EdgeCliqueCover.ilean",
+        "bytes": 2011,
+        "sha256": "304c77a825b32a14bce542ae26d4da5d273798052bc11f9979663fef6638e13b"
+      },
+      {
+        "path": "concepts/lib/Lax560391/EdgeCliqueCover.ilean.hash",
+        "bytes": 16,
+        "sha256": "4b9db7e32bbec718f04278f2f5b46d4a13152a7243729dc4236f0f1a904434f9"
+      },
+      {
+        "path": "concepts/lib/Lax560391/EdgeCliqueCover.olean",
+        "bytes": 9920,
+        "sha256": "9e2817c965383cc4d3d34dff0683aabcb9dcfb60d047fa43d196a8a05766e8c2"
+      },
+      {
+        "path": "concepts/lib/Lax560391/EdgeCliqueCover.olean.hash",
+        "bytes": 16,
+        "sha256": "7b5c13a3eb5fde865370f7e974fe2d7fd17989b5e4470fb05017803d6e5d2188"
+      },
+      {
+        "path": "concepts/lib/Lax560391/EdgeCliqueCover.trace",
+        "bytes": 2485,
+        "sha256": "3fe0028c5ff46b79dd43b6ab38ef8a5fad9ddc0db25d83ff6ecf21ef48d27c9f"
+      },
+      {
+        "path": "concepts/lib/Lax560391/EdgeCliqueCovering.ilean",
+        "bytes": 1927,
+        "sha256": "7b7e3257cc04e1ec2c767bc8bae8dead6e4c093d16e47724732213bb5fbf1ae4"
+      },
+      {
+        "path": "concepts/lib/Lax560391/EdgeCliqueCovering.ilean.hash",
+        "bytes": 16,
+        "sha256": "c337661c30d6c40635d3a2bc9658183c6f84dc20f86a53b21b5f87bd21fed525"
+      },
+      {
+        "path": "concepts/lib/Lax560391/EdgeCliqueCovering.olean",
+        "bytes": 78736,
+        "sha256": "3897d14b1ef987be5e14de8756756d27fcdeb62165bc7aafe2488e3719c9a1dd"
+      },
+      {
+        "path": "concepts/lib/Lax560391/EdgeCliqueCovering.olean.hash",
+        "bytes": 16,
+        "sha256": "fe744e2b8b3084300451ad484b33fe5fd402f43bb7c7acccf752738dff3049cd"
+      },
+      {
+        "path": "concepts/lib/Lax560391/EdgeCliqueCovering.trace",
+        "bytes": 3823,
+        "sha256": "eaed48631896772c03e85d3175f6ddefee73641cfc492fd1cc007be71afb77ae"
+      },
+      {
+        "path": "concepts/lib/Lax560391/IntervalGraphs.ilean",
+        "bytes": 849,
+        "sha256": "02aa216fd1f65c0dccd51024469e5999f23b1c2adb7e9b04fc1afb0a9252c5bf"
+      },
+      {
+        "path": "concepts/lib/Lax560391/IntervalGraphs.ilean.hash",
+        "bytes": 16,
+        "sha256": "c959b82fa6844e6e0e1e88a9f40043ad5d3106bcead4f45296973b28fa112f01"
+      },
+      {
+        "path": "concepts/lib/Lax560391/IntervalGraphs.olean",
+        "bytes": 4576,
+        "sha256": "5c6463baaf8ec27f47494500928b89ce2b1f2a2dab4da63f82436281fc3d025c"
+      },
+      {
+        "path": "concepts/lib/Lax560391/IntervalGraphs.olean.hash",
+        "bytes": 16,
+        "sha256": "7d7048419c7843ddbc94fe4f4d5f2e0fddce0a2ba1f2cc607931d2e7fe5a87af"
+      },
+      {
+        "path": "concepts/lib/Lax560391/IntervalGraphs.trace",
+        "bytes": 2330,
+        "sha256": "d3e0c56f979bdd0ef5a597f709a7f5256750217a4985838ed00004ad5c4c8b40"
+      },
+      {
+        "path": "concepts/lib/Lax560391/IntervalRepresentation.ilean",
+        "bytes": 1792,
+        "sha256": "5af73721347a2a3dcdb7147ee90c593b9e240335a81b6e151b53aa2737d0ac28"
+      },
+      {
+        "path": "concepts/lib/Lax560391/IntervalRepresentation.ilean.hash",
+        "bytes": 16,
+        "sha256": "16f4955ccdc5d5c419bc6f98b0a5bd4d615abc4d612393761ea33c77a317fb48"
+      },
+      {
+        "path": "concepts/lib/Lax560391/IntervalRepresentation.olean",
+        "bytes": 65192,
+        "sha256": "553932e5603534ed9edd230b578357f1905180d6245674b20891c2953ed298ab"
+      },
+      {
+        "path": "concepts/lib/Lax560391/IntervalRepresentation.olean.hash",
+        "bytes": 16,
+        "sha256": "b985c32a2ac4470dece55b951c9da9bfdeecfe8798689ce8c796ff8f5c090129"
+      },
+      {
+        "path": "concepts/lib/Lax560391/IntervalRepresentation.trace",
+        "bytes": 4390,
+        "sha256": "08435615826fdc22ede00ab6c60c47bf0dd81a0559667ac154ce67160c4675c9"
+      },
+      {
+        "path": "concepts/lib/Lax560391/VertexIntegrity.ilean",
+        "bytes": 2871,
+        "sha256": "9092a581e288c50f5c4656d57452eaa4af80c6671eaf34c066c36b37cb3348bc"
+      },
+      {
+        "path": "concepts/lib/Lax560391/VertexIntegrity.ilean.hash",
+        "bytes": 16,
+        "sha256": "d575a1e779afce82051ed732d05e87cdd0ed2dbbd9f6478d104d42ce3a20e703"
+      },
+      {
+        "path": "concepts/lib/Lax560391/VertexIntegrity.olean",
+        "bytes": 13928,
+        "sha256": "e20f3b98cbce80696c719936bd2f12ab7a6547577d69c103ec38415eb84cf3d9"
+      },
+      {
+        "path": "concepts/lib/Lax560391/VertexIntegrity.olean.hash",
+        "bytes": 16,
+        "sha256": "9b340c4f7ed357ca8a349bd06248e4d0f67d5d0ed2eecea1e2561619c9b4b587"
+      },
+      {
+        "path": "concepts/lib/Lax560391/VertexIntegrity.trace",
+        "bytes": 2696,
+        "sha256": "6e0c710b4186a31696a62e75d3dfca19ec58d825950ecf3f28e725dce5f31b72"
+      },
+      {
+        "path": "concepts/lib/Lax560391.ilean",
+        "bytes": 1092,
+        "sha256": "e099965f4a2c93428e8068546a2e84131c53ade3cb10d9ba2b0b5f5807620b1f"
+      },
+      {
+        "path": "concepts/lib/Lax560391.ilean.hash",
+        "bytes": 16,
+        "sha256": "6e990010856b574861506a7c4fa8b14f20b9d2e10783eb5fce0a7aa584c144fa"
+      },
+      {
+        "path": "concepts/lib/Lax560391.olean",
+        "bytes": 3776,
+        "sha256": "15a2d7123ec0e9130c4e6770c67be9e8d5903cd7890a96f35d837b46b2b75bc0"
+      },
+      {
+        "path": "concepts/lib/Lax560391.olean.hash",
+        "bytes": 16,
+        "sha256": "f7f830f267f4125d7ab44e032f78cdf0991e154f18684462fafb084a33941a28"
+      },
+      {
+        "path": "concepts/lib/Lax560391.trace",
+        "bytes": 5407,
+        "sha256": "078faab77cd4ea497e09fab6804095df5487ba1567da90010e8bce985d490f4c"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "35ff738632948ab52ef1cbe45965a8197edc0a4d5edcd7c5ff7b087ff0958890"
+      },
+      {
+        "path": "concepts/package/Lax560391/BlockGraphs.lean",
+        "bytes": 848,
+        "sha256": "96d93799af2af892d912cc214d091c31a1fa12b7b7498261a3ab1a7b33ba6bbf"
+      },
+      {
+        "path": "concepts/package/Lax560391/Boxicity.lean",
+        "bytes": 733,
+        "sha256": "ac557fe44153eb1196f665c0d0e593443e990b9cd6c077b51fc1cef7888ed14b"
+      },
+      {
+        "path": "concepts/package/Lax560391/BoxRepresentation.lean",
+        "bytes": 694,
+        "sha256": "946e9fa566cbd9a02363bdef7996b69740a684b8d9e151f397f009d07aff2bff"
+      },
+      {
+        "path": "concepts/package/Lax560391/CClosedGraphs.lean",
+        "bytes": 555,
+        "sha256": "582afa9210e03667566f292541451dd013e9aef0ceae4774d659e06240e414dd"
+      },
+      {
+        "path": "concepts/package/Lax560391/ChordalGraphs.lean",
+        "bytes": 972,
+        "sha256": "98d033ed3a8318618ce04d6102209c34f3181924e3efb9cc40309238e9bd2110"
+      },
+      {
+        "path": "concepts/package/Lax560391/ChordalIntersectionDimension.lean",
+        "bytes": 972,
+        "sha256": "830eddb009fd3118aaea6949c815cf41a3ae73b8f38d048f9b52b7ddd3bfe77c"
+      },
+      {
+        "path": "concepts/package/Lax560391/ChordalIntersectionRepresentation.lean",
+        "bytes": 730,
+        "sha256": "4b7e2d3e3ba1e91dbd63a43387ae92ff7b5346e4b308bafed82311917821a56a"
+      },
+      {
+        "path": "concepts/package/Lax560391/Closure.lean",
+        "bytes": 432,
+        "sha256": "ec47c0e45feb449fb851034496e3ed2d52f4f0c8008742564d9ec80d8c90baf8"
+      },
+      {
+        "path": "concepts/package/Lax560391/CochromaticNumber.lean",
+        "bytes": 843,
+        "sha256": "bb1655086254fa32e8f8e2041ace24f30ebc819e989d85c08f0a773b6948d48c"
+      },
+      {
+        "path": "concepts/package/Lax560391/CochromaticPartition.lean",
+        "bytes": 603,
+        "sha256": "cb0d4a9c9904bedb01f1501bc454ab4510b159a8803c50134273585abd35bfb4"
+      },
+      {
+        "path": "concepts/package/Lax560391/DistanceHereditaryGraphs.lean",
+        "bytes": 747,
+        "sha256": "6079323fa803ecf7c0836e272c4843864513a449bbaf3ca37bc4bf3f4cafcea1"
+      },
+      {
+        "path": "concepts/package/Lax560391/DistanceToBlock.lean",
+        "bytes": 593,
+        "sha256": "6f69d4f12c90c1f1d02733a8a0edf91c33b009ae69d78ff9ed2b28977f59dc0e"
+      },
+      {
+        "path": "concepts/package/Lax560391/DistanceToChordal.lean",
+        "bytes": 593,
+        "sha256": "7142fcd511908b3aa61fc2fa3acc2e2b002b6b5b527ce7be9fe406c7729188cb"
+      },
+      {
+        "path": "concepts/package/Lax560391/DistanceToDistanceHereditary.lean",
+        "bytes": 691,
+        "sha256": "4a3a02c5e8f8295e324b18c46a6bfb8d7671dfd4430011fcc3ca794f75756d5e"
+      },
+      {
+        "path": "concepts/package/Lax560391/DistanceToInterval.lean",
+        "bytes": 614,
+        "sha256": "d9df075267b3add9825b5c45a68bc951851d88459a129b02c08f5aa27a8fa57a"
+      },
+      {
+        "path": "concepts/package/Lax560391/EdgeCliqueCover.lean",
+        "bytes": 880,
+        "sha256": "99105f5f87470c042258d039fde1446ac79c1a2e2524e4922c2fc55a6f858f18"
+      },
+      {
+        "path": "concepts/package/Lax560391/EdgeCliqueCovering.lean",
+        "bytes": 638,
+        "sha256": "ab3b9972c41d2ddaea23c6c1c002f6d01b090a810edc2ba8a183666d7594c506"
+      },
+      {
+        "path": "concepts/package/Lax560391/IntervalGraphs.lean",
+        "bytes": 434,
+        "sha256": "f8f6121850da64012dade37874b2778ffdf6e65c2a5cdabaddaa4f483e7ee1c9"
+      },
+      {
+        "path": "concepts/package/Lax560391/IntervalRepresentation.lean",
+        "bytes": 666,
+        "sha256": "018c55e9565148e0351e46369d6de70ca5bde3aa80687a87b78a9f1265b1bd46"
+      },
+      {
+        "path": "concepts/package/Lax560391/VertexIntegrity.lean",
+        "bytes": 1028,
+        "sha256": "f5e5825e0ec81be541efe4693e01e803c754ead214b56024e119c30aacde79ef"
+      },
+      {
+        "path": "concepts/package/Lax560391.lean",
+        "bytes": 713,
+        "sha256": "f37dc6fb4b1194ffdb47a4f0ac4270191e0f27eaedbcd002ee12a8c86d64681a"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax560391Proofs.c",
+        "bytes": 1095,
+        "sha256": "b87681532cdd8bf06d40ee4ae8cc13fd636762336f97b1f476ba61767e21f2a6"
+      },
+      {
+        "path": "proofs/ir/Lax560391Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "2b2ee0f600186297ce718fc6f2f9434a6611a1c2ee49603ff85303128cd6a504"
+      },
+      {
+        "path": "proofs/lib/Lax560391Proofs.ilean",
+        "bytes": 86,
+        "sha256": "69b49f9598e0568e762377c5ee7a53c54847e40e2b0a99bdb80f0f8e6667c2ea"
+      },
+      {
+        "path": "proofs/lib/Lax560391Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "a6fe555c7c14713808a9f8df58134334c57d9bb3d0b082be27921b641396f524"
+      },
+      {
+        "path": "proofs/lib/Lax560391Proofs.olean",
+        "bytes": 1384,
+        "sha256": "d1b6342a3c6847dbdc2ed0b24d2d776e371420e44a814f35e48249bea6d4658f"
+      },
+      {
+        "path": "proofs/lib/Lax560391Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "e98ceb8b3c41849672f45267746e1b2855b6c8962e29248a39a3af78b55e0c5d"
+      },
+      {
+        "path": "proofs/lib/Lax560391Proofs.trace",
+        "bytes": 2173,
+        "sha256": "64b8d9774518000938ebda0f4627007c4a92bfd52b995fd096cc3b6d4a346687"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "98bfb9da7af69baea78c53c643b0a7a240e471182ab5121a7bbf3bdce9d5ada9"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "a2d0e38f30a3855849726f383bab8ddbbcf65823bd8a956b9d43dcc2c9daa93f"
+      },
+      {
+        "path": "proofs/package/Lax560391Proofs.lean",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:8d9c49c6cde2014685dd9be3048bae6d1d2d8bdf62df797b02d66508a5652385"
+  },
+  "lastSubmission": {
+    "commentId": 6421540476,
+    "eventCreatedAt": "2026-10-26T16:37:22Z",
+    "record": "991211d988377f883a626b52efd1fbc0cf292251ff4a6e4da8359a6daad33333",
+    "buildOutput": "c58fc6875f18936703d12f52211d780bf7772997ab01a850c60e3539498a834c",
+    "previous": {
+      "archiveSha": "db78c92c9751d3083414e6367a6cb0f152ebe1d7",
+      "record": "ee3c5afe508954f44cd0952b1adeb935ae9053182f2702206ace939f768d2082",
+      "buildOutput": "a88a54cc96b1b573e1cc15da0bb1d298a811a2a7e0193d0fbdc88f7e43bc938c"
+    }
   }
 }
