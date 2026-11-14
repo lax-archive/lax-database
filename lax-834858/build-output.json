@@ -4,5 +4,313 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 225
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-834858",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "Two oscillators of the rule B37/S2378 that Conway's rule does not sustain",
+      "authors": [
+        {
+          "name": "Joel Cruz Cabrera",
+          "orcid": "0009-0005-4048-1237",
+          "github": "joelcanary"
+        }
+      ],
+      "bibEntries": [
+        "@book{gardner1983,\n  author = {Gardner, Martin},\n  title = {Wheels, Life and Other Mathematical Amusements},\n  publisher = {W. H. Freeman},\n  year = {1983}\n}\n"
+      ]
+    },
+    "abstract": "The outer-totalistic rule $B37/S2378$ — a dead cell is born with 3 or 7 live neighbours, a live cell survives with 2, 3, 7 or 8 — was selected by exhaustive search and runs as the background automaton of a public website. An exhaustive census of the 51,472 seeds whose bounding box is exactly $4 \\times 4$, classified by recurrence up to translation, produced 96 distinct objects (phases of an oscillator counted together) with oscillator periods 2, 3, 10 and 32; the same census under Conway's $B3/S23$ produced 81 objects with periods 2 and 3 only. This submission archives the two objects that separate the rules. The period-10 oscillator has 11 live cells in its smallest phase and the period-32 one has 13 in the phase shown; each is given as an explicit board whose margin is wide enough that no phase of the cycle reaches the border, so the statements are statements about the patterns on the plane. Four statements are proved: the two periods, the minimality of the first, and the failure of Conway's rule to return the first pattern to itself within those ten generations. Every proof is a finite evaluation closed by `decide` in the kernel, with no `native_decide` and no assumption beyond `propext`.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax834858.Oscillators",
+      "path": "concepts/Lax834858/Oscillators.lean",
+      "title": "Two oscillators of the rule B37/S2378 that Conway's rule does not sustain",
+      "type": "theorem",
+      "description": "The outer-totalistic rule `B37/S2378` (a dead cell is born with 3 or 7 live\nneighbours; a live cell survives with 2, 3, 7 or 8) admits two oscillators that an\nexhaustive census of the `4 × 4` box under Conway's `B3/S23` does not produce: one of\nperiod 10 with 11 live cells, and one of period 32 with 13. Both are exhibited here\nas explicit finite boards, and every statement is a finite computation closed by\n`decide`: the period-10 pattern returns to itself after exactly ten generations and\nafter no fewer, the period-32 pattern returns after thirty-two, and under Conway's\nrule the first pattern does not return to itself within those ten generations. The\nboards carry a margin wide enough that no phase touches the border, so each statement\nis also a statement about the pattern on the infinite plane.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Data.List.Basic",
+        "Mathlib.Logic.Function.Iterate"
+      ],
+      "sourceText": "import Mathlib.Logic.Function.Iterate\nimport Mathlib.Data.List.Basic\n\n/-!\n---\ntitle: Two oscillators of the rule B37/S2378 that Conway's rule does not sustain\ntype: theorem\n---\nThe outer-totalistic rule `B37/S2378` (a dead cell is born with 3 or 7 live\nneighbours; a live cell survives with 2, 3, 7 or 8) admits two oscillators that an\nexhaustive census of the `4 × 4` box under Conway's `B3/S23` does not produce: one of\nperiod 10 with 11 live cells, and one of period 32 with 13. Both are exhibited here\nas explicit finite boards, and every statement is a finite computation closed by\n`decide`: the period-10 pattern returns to itself after exactly ten generations and\nafter no fewer, the period-32 pattern returns after thirty-two, and under Conway's\nrule the first pattern does not return to itself within those ten generations. The\nboards carry a margin wide enough that no phase touches the border, so each statement\nis also a statement about the pattern on the infinite plane.\n-/\n\nnamespace Lax834858.Oscillators\n\n/-- A board: a list of rows of cells; `true` is alive. Outside the list everything is\ndead, so a pattern that never reaches the border evolves as it would on the plane. -/\nabbrev Board := List (List Bool)\n\n/-- The cell at `(y, x)`; out of range it is dead. -/\ndef get (b : Board) (y x : Nat) : Bool := (b.getD y []).getD x false\n\n/-- The number of live cells among the eight neighbours of `(y, x)`. -/\ndef neighbours (b : Board) (y x : Nat) : Nat :=\n  let idx : List (Int × Int) := [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]\n  idx.foldl (fun acc p =>\n    let yy : Int := (y : Int) + p.1\n    let xx : Int := (x : Int) + p.2\n    if 0 ≤ yy ∧ 0 ≤ xx then acc + (if get b yy.toNat xx.toNat then 1 else 0) else acc) 0\n\n/-- One generation of the outer-totalistic rule with birth set `birth` and survival\nset `survive`, on a board of fixed size. -/\ndef step (birth survive : List Nat) (b : Board) : Board :=\n  (List.range b.length).map fun y =>\n    (List.range ((b.getD 0 []).length)).map fun x =>\n      let n := neighbours b y x\n      if get b y x then survive.contains n else birth.contains n\n\n/-- `B37/S2378`: a dead cell is born with 3 or 7 live neighbours, a live cell survives\nwith 2, 3, 7 or 8. -/\ndef houseStep : Board → Board := step [3, 7] [2, 3, 7, 8]\n\n/-- Conway's `B3/S23`. -/\ndef conwayStep : Board → Board := step [3] [2, 3]\n\n/-- The period-10 oscillator, 11 live cells, on a `13 × 14` board: the margin is wide\nenough that no phase of the cycle reaches the border. -/\ndef p10 : Board :=\n  [[false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,true ,false,false,true ,false,false,false,false,false],\n   [false,false,false,false,true ,false,false,false,true ,false,false,false,false,false],\n   [false,false,false,false,true ,false,true ,false,false,true ,false,false,false,false],\n   [false,false,false,false,true ,false,false,false,true ,false,false,false,false,false],\n   [false,false,false,false,false,true ,false,false,true ,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false]]\n\n/-- The period-32 oscillator, 13 live cells in the phase shown, on an `18 × 20` board. -/\ndef p32 : Board :=\n  [[false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,true ,true ,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,true ,false,false,true ,true ,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,true ,false,false,false,true ,true ,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,true ,true ,true ,true ,true ,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false],\n   [false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false,false]]\n\n\n\n/-- Under `B37/S2378` the pattern `p10` returns to itself after ten generations. -/\naxiom p10_period : houseStep^[10] p10 = p10\n\n/-- Ten is its exact period: no smaller positive number of generations works. -/\naxiom p10_period_minimal : ∀ k ∈ [1, 2, 3, 4, 5, 6, 7, 8, 9], houseStep^[k] p10 ≠ p10\n\n/-- Under `B37/S2378` the pattern `p32` returns to itself after thirty-two generations. -/\naxiom p32_period : houseStep^[32] p32 = p32\n\n/-- Conway's rule does not sustain `p10`: under `B3/S23` it does not return to itself\nwithin ten generations. -/\naxiom p10_not_conway : ∀ k ∈ [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], conwayStep^[k] p10 ≠ p10\n\nend Lax834858.Oscillators\n",
+      "statements": [
+        {
+          "id": "Lax834858.Oscillators.p10_not_conway",
+          "signature": "p10_not_conway : ∀ (k : Nat),\n  List.instMembership.mem\n      (List.cons 1\n        (List.cons 2\n          (List.cons 3\n            (List.cons 4\n              (List.cons 5 (List.cons 6 (List.cons 7 (List.cons 8 (List.cons 9 (List.cons 10 List.nil))))))))))\n      k →\n    Ne (Nat.iterate Lax834858.Oscillators.conwayStep k Lax834858.Oscillators.p10) Lax834858.Oscillators.p10",
+          "startLine": 102,
+          "endLine": 104,
+          "doc": "Conway's rule does not sustain `p10`: under `B3/S23` it does not return to itself\nwithin ten generations."
+        },
+        {
+          "id": "Lax834858.Oscillators.p10_period",
+          "signature": "p10_period : Eq (Nat.iterate Lax834858.Oscillators.houseStep 10 Lax834858.Oscillators.p10) Lax834858.Oscillators.p10",
+          "startLine": 93,
+          "endLine": 94,
+          "doc": "Under `B37/S2378` the pattern `p10` returns to itself after ten generations."
+        },
+        {
+          "id": "Lax834858.Oscillators.p10_period_minimal",
+          "signature": "p10_period_minimal : ∀ (k : Nat),\n  List.instMembership.mem\n      (List.cons 1\n        (List.cons 2\n          (List.cons 3 (List.cons 4 (List.cons 5 (List.cons 6 (List.cons 7 (List.cons 8 (List.cons 9 List.nil)))))))))\n      k →\n    Ne (Nat.iterate Lax834858.Oscillators.houseStep k Lax834858.Oscillators.p10) Lax834858.Oscillators.p10",
+          "startLine": 96,
+          "endLine": 97,
+          "doc": "Ten is its exact period: no smaller positive number of generations works."
+        },
+        {
+          "id": "Lax834858.Oscillators.p32_period",
+          "signature": "p32_period : Eq (Nat.iterate Lax834858.Oscillators.houseStep 32 Lax834858.Oscillators.p32) Lax834858.Oscillators.p32",
+          "startLine": 99,
+          "endLine": 100,
+          "doc": "Under `B37/S2378` the pattern `p32` returns to itself after thirty-two generations."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax834858Proofs.Oscillators.p10_not_conway",
+      "path": "proofs/Lax834858Proofs/Oscillators.lean",
+      "conclusion": "Lax834858.Oscillators.p10_not_conway",
+      "assumptions": [],
+      "description": "The same ten evaluations under `B3/S23`: the pattern is not periodic there within its\nown period, so the clauses that distinguish the two rules are the ones sustaining it."
+    },
+    {
+      "id": "Lax834858Proofs.Oscillators.p10_period",
+      "path": "proofs/Lax834858Proofs/Oscillators.lean",
+      "conclusion": "Lax834858.Oscillators.p10_period",
+      "assumptions": [],
+      "description": "Ten generations of `B37/S2378` evaluated on the board."
+    },
+    {
+      "id": "Lax834858Proofs.Oscillators.p10_period_minimal",
+      "path": "proofs/Lax834858Proofs/Oscillators.lean",
+      "conclusion": "Lax834858.Oscillators.p10_period_minimal",
+      "assumptions": [],
+      "description": "The nine shorter returns are each refuted by evaluation."
+    },
+    {
+      "id": "Lax834858Proofs.Oscillators.p32_period",
+      "path": "proofs/Lax834858Proofs/Oscillators.lean",
+      "conclusion": "Lax834858.Oscillators.p32_period",
+      "assumptions": [],
+      "description": "Thirty-two generations of `B37/S2378` evaluated on the board."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "73ca21de22096c4be017ea0cec272627bf0b672101e105a057065e20ec7be1f0",
+    "sourceCommit": "f37a1f3d29b6bb0f1b797d16d24242a5bc821ff0",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax834858/Oscillators.c",
+        "bytes": 101495,
+        "sha256": "f4491bf7bc6f7b379541124dbfdcd04dfafe26442e91d0643ea3f195f83525b1"
+      },
+      {
+        "path": "concepts/ir/Lax834858/Oscillators.c.hash",
+        "bytes": 16,
+        "sha256": "80b71f93bc1b01f8270bde011c56bfd6dc1e5f4a2e5723d5d054a0caf57d7975"
+      },
+      {
+        "path": "concepts/ir/Lax834858.c",
+        "bytes": 1311,
+        "sha256": "669af8d19a96cdedc4e9a6979a93b0b4f1077dda28dc79bea077b5f4e17f4954"
+      },
+      {
+        "path": "concepts/ir/Lax834858.c.hash",
+        "bytes": 16,
+        "sha256": "2fa1f30e6c72a67552733bdc62dd7a6d56f35214c29ee8a997e33a36e7231ac2"
+      },
+      {
+        "path": "concepts/lib/Lax834858/Oscillators.ilean",
+        "bytes": 29496,
+        "sha256": "2e14e41e2794fbc7aaa14421b51ba92da5443982a38fd5142b77c98887fe412b"
+      },
+      {
+        "path": "concepts/lib/Lax834858/Oscillators.ilean.hash",
+        "bytes": 16,
+        "sha256": "386178ee30082e58267e316d320447a18c2a9a6c7ebf1860644662a6e4566da7"
+      },
+      {
+        "path": "concepts/lib/Lax834858/Oscillators.olean",
+        "bytes": 262080,
+        "sha256": "0897f6b950a39952cd0b3aead39a68aebb109d4cb65515ee45d08a582dac45cf"
+      },
+      {
+        "path": "concepts/lib/Lax834858/Oscillators.olean.hash",
+        "bytes": 16,
+        "sha256": "91ff72b06f98ff571b5289daed94afe139d4bb584311aa6242b4215e71dc6d28"
+      },
+      {
+        "path": "concepts/lib/Lax834858/Oscillators.trace",
+        "bytes": 2293,
+        "sha256": "68b79cff7070e090505dffb59a1e9a890bf2d27be84e91ba586e64ad96c09348"
+      },
+      {
+        "path": "concepts/lib/Lax834858.ilean",
+        "bytes": 123,
+        "sha256": "4b3cb9f450280fc0b73507d61b2d8656a50b752689dc08b20f9bdfe7823aee5b"
+      },
+      {
+        "path": "concepts/lib/Lax834858.ilean.hash",
+        "bytes": 16,
+        "sha256": "944ccf0d01c8d78537ab89dee41336c801c09197f8f7685c01c2243a34b5c3db"
+      },
+      {
+        "path": "concepts/lib/Lax834858.olean",
+        "bytes": 1528,
+        "sha256": "89eac33d1a3c917213f45439efe8eef32eb6137a0d72685491694bdabcf0691c"
+      },
+      {
+        "path": "concepts/lib/Lax834858.olean.hash",
+        "bytes": 16,
+        "sha256": "f1abb2f622eb0b05c57a636adcb5748904b857a9eeb8e7868172023d72612243"
+      },
+      {
+        "path": "concepts/lib/Lax834858.trace",
+        "bytes": 2025,
+        "sha256": "ce28384ffcc00a6d8ae0f3f868c42f6893351b50e9486776110285952d0ff30e"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "8d235015007de422562918c9101c1fa7a55cdf62fa109c1170bdfe490ca12c77"
+      },
+      {
+        "path": "concepts/package/Lax834858/Oscillators.lean",
+        "bytes": 6766,
+        "sha256": "be899472bee99b26743990307a577bb89aa2db26b01c12c1c9f5de21015eab2a"
+      },
+      {
+        "path": "concepts/package/Lax834858.lean",
+        "bytes": 29,
+        "sha256": "907e733d2545f94958c5fb2119b02e929ea3739070034aa19e12d181f75cec8a"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax834858Proofs/Oscillators.c",
+        "bytes": 1353,
+        "sha256": "6de978ec16bac5040da76035da48f55802aebed9b15c3e50ee0e9b7bfaa23c1a"
+      },
+      {
+        "path": "proofs/ir/Lax834858Proofs/Oscillators.c.hash",
+        "bytes": 16,
+        "sha256": "6086ea9a2ba4b0d4370285f56648a8393b7a9d1f036d66c12107d1cd2cc87aa5"
+      },
+      {
+        "path": "proofs/ir/Lax834858Proofs.c",
+        "bytes": 1359,
+        "sha256": "474f22ef5e8baedb6e360c5f4e083940571c39afe3968d2d2f478efb71dea8a1"
+      },
+      {
+        "path": "proofs/ir/Lax834858Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "fa382929ae0f6dd86cd5a32bbad796cd6e82c78cabd712521e2b4eb2fedabe3b"
+      },
+      {
+        "path": "proofs/lib/Lax834858Proofs/Oscillators.ilean",
+        "bytes": 2346,
+        "sha256": "86531172079c2ef28d3e34ae9a041135999cade784b08945e0a658739492b69f"
+      },
+      {
+        "path": "proofs/lib/Lax834858Proofs/Oscillators.ilean.hash",
+        "bytes": 16,
+        "sha256": "58c7c6fd248c53817b6d036859014084f5cdb899c702608bc3ee71e068b7b7ea"
+      },
+      {
+        "path": "proofs/lib/Lax834858Proofs/Oscillators.olean",
+        "bytes": 18912,
+        "sha256": "a33eca580456f68f90bcacf1997bee7a5b5daf610ac8cd580ade91783bf76336"
+      },
+      {
+        "path": "proofs/lib/Lax834858Proofs/Oscillators.olean.hash",
+        "bytes": 16,
+        "sha256": "4ca78c9dfe3a952b154727ac6de0fb4f619f8d8b63f611aa6f70870e49778db1"
+      },
+      {
+        "path": "proofs/lib/Lax834858Proofs/Oscillators.trace",
+        "bytes": 2199,
+        "sha256": "2beb3a52442e3ad21aadb4c71fd3248a84ad2885efa61a9129566c735d1aa9bc"
+      },
+      {
+        "path": "proofs/lib/Lax834858Proofs.ilean",
+        "bytes": 135,
+        "sha256": "4fab064f62a60eeb5d9a27f1d8455badf828cc923279a70fb8d3e95a9e672d00"
+      },
+      {
+        "path": "proofs/lib/Lax834858Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "7ddb4eea083145cf46e2214e559497cb0bf0b4afb8232b2a2c98d129f993ee31"
+      },
+      {
+        "path": "proofs/lib/Lax834858Proofs.olean",
+        "bytes": 1528,
+        "sha256": "b045a3cd86a24a6f1b405b0cb2b52659aba94997d8868f75b06f74f185131963"
+      },
+      {
+        "path": "proofs/lib/Lax834858Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "7efaad320bcaac6af7bc6719d28c682da9621fc544dd652ca074b253b4d83f4c"
+      },
+      {
+        "path": "proofs/lib/Lax834858Proofs.trace",
+        "bytes": 2134,
+        "sha256": "8d77f3992fd2d06bddef52d5393bc4ad7828212346c16a28ad5e10b322536f97"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "c402db8682509ef78ae58beeb3e6dda467387f31c996dc891308cc072a9a1e6f"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "c742c86fbd6168d5b7bd5d77a791285777c96acd2bbba8a794f295a76657b7da"
+      },
+      {
+        "path": "proofs/package/Lax834858Proofs/Oscillators.lean",
+        "bytes": 1399,
+        "sha256": "4ea64284834ae15679120211221a6f35df01d9104d5411a896a2dff3042b9517"
+      },
+      {
+        "path": "proofs/package/Lax834858Proofs.lean",
+        "bytes": 35,
+        "sha256": "28c0aa40da2ebeb629d42ca61374141ca23c592b1989ace9eacaa3780c06e788"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:73ca21de22096c4be017ea0cec272627bf0b672101e105a057065e20ec7be1f0"
+  },
+  "lastSubmission": {
+    "commentId": 6877034017,
+    "eventCreatedAt": "2026-11-14T12:07:51Z",
+    "record": "3f54472637d8e0a874e16433f9fb4e7785b5669e95c3b32095cf0396e0390a09",
+    "buildOutput": "b5d5b8ebb5290ac3ae5c20131b0ff34a9e265884cb6489912a8121852f3af38c",
+    "previous": {
+      "archiveSha": "1180c8452aa4aa40e62fa8be4ed1e83c82c8f7fe",
+      "record": "61bcc42747b4353d2ad32062af1b4baa3e6d66745315c532fcb4319518a87e80",
+      "buildOutput": "93e931ae0739b787370d1c7391fbc417fbf5b973aea4a17c88a35bcda047b1a7"
+    }
   }
 }
