@@ -4,5 +4,268 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 224
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-423666",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "Cubical C19 first-order factorization",
+      "authors": [
+        {
+          "name": "G. D. Partin",
+          "github": "gpartin"
+        }
+      ],
+      "bibEntries": [
+        "@software{partin2026cubical,\n  author = {Partin, G. D.},\n  title = {LeanDiracDerivation},\n  year = {2026},\n  doi = {10.5281/zenodo.24150001},\n  url = {https://github.com/gpartin/LeanDiracDerivation}\n}\n"
+      ]
+    },
+    "abstract": "The eight vertices of an oriented cube carry three signed incidence\noperations, one for each coordinate direction, together with the cube's parity\ngrading.  This submission proves that the associated first-order complex\nsymbol squares to the isotropic quadratic symbol selected by the\nlong-wavelength second moment of the C19 cubic stencil.  The result is an\nalgebraic factorization statement; it does not claim a localized electron,\nphysical spin, or an exact finite-spacing Dirac equation.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax423666.CubicalC19",
+      "path": "concepts/Lax423666/CubicalC19.lean",
+      "title": "Cubical C19 first-order factorization",
+      "type": "theorem",
+      "description": "Let eight complex amplitudes occupy the vertices of an oriented cube.  Flip a\nvertex across each coordinate direction and attach the orientation sign given\nby the lower coordinate bits.  Grade each vertex by total cube parity.  The\nfirst-order symbol obtained from the three signed flips and this grading,\nnormalized by the long-wavelength second moment of the C19 stencil, squares to\nthe isotropic quadratic C19 symbol for every complex mass, real momentum, and\neight-corner amplitude.\n\nThis is an algebraic continuum-symbol statement.  It does not assert an exact\nfinite-spacing factorization or the existence of a physical electron.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib"
+      ],
+      "sourceText": "import Mathlib\n\n/-!\n---\ntitle: Cubical C19 first-order factorization\ntype: theorem\n---\nLet eight complex amplitudes occupy the vertices of an oriented cube.  Flip a\nvertex across each coordinate direction and attach the orientation sign given\nby the lower coordinate bits.  Grade each vertex by total cube parity.  The\nfirst-order symbol obtained from the three signed flips and this grading,\nnormalized by the long-wavelength second moment of the C19 stencil, squares to\nthe isotropic quadratic C19 symbol for every complex mass, real momentum, and\neight-corner amplitude.\n\nThis is an algebraic continuum-symbol statement.  It does not assert an exact\nfinite-spacing factorization or the existence of a physical electron.\n-/\n\nnamespace Lax423666.CubicalC19\n\nnoncomputable section\n\nabbrev CubeCorner := Fin 8\nabbrev Cell8 := CubeCorner → ℂ\n\ndef cellFlip0 : CubeCorner → CubeCorner\n  | 0 => 4 | 1 => 5 | 2 => 6 | 3 => 7\n  | 4 => 0 | 5 => 1 | 6 => 2 | _ => 3\n\ndef cellFlip1 : CubeCorner → CubeCorner\n  | 0 => 2 | 1 => 3 | 2 => 0 | 3 => 1\n  | 4 => 6 | 5 => 7 | 6 => 4 | _ => 5\n\ndef cellFlip2 : CubeCorner → CubeCorner\n  | 0 => 1 | 1 => 0 | 2 => 3 | 3 => 2\n  | 4 => 5 | 5 => 4 | 6 => 7 | _ => 6\n\ndef cellBit0 : CubeCorner → Nat\n  | 0 | 1 | 2 | 3 => 0\n  | _ => 1\n\ndef cellBit1 : CubeCorner → Nat\n  | 0 | 1 | 4 | 5 => 0\n  | _ => 1\n\ndef cellBit2 : CubeCorner → Nat\n  | 0 | 2 | 4 | 6 => 0\n  | _ => 1\n\ndef incidenceFlip (axis : Fin 3) : CubeCorner → CubeCorner :=\n  match axis with\n  | 0 => cellFlip0\n  | 1 => cellFlip1\n  | _ => cellFlip2\n\ndef incidenceSign (axis : Fin 3) (corner : CubeCorner) : ℂ :=\n  match axis with\n  | 0 => 1\n  | 1 => if cellBit0 corner = 0 then 1 else -1\n  | _ => if (cellBit0 corner + cellBit1 corner) % 2 = 0 then 1 else -1\n\ndef incidenceGamma (axis : Fin 3) (amplitude : Cell8) : Cell8 :=\n  fun corner => incidenceSign axis corner * amplitude (incidenceFlip axis corner)\n\ndef parityBeta (amplitude : Cell8) : Cell8 :=\n  fun corner =>\n    if (cellBit0 corner + cellBit1 corner + cellBit2 corner) % 2 = 0 then\n      amplitude corner\n    else\n      -amplitude corner\n\ndef incidenceLinear (k0 k1 k2 : ℂ) (amplitude : Cell8) : Cell8 :=\n  fun corner =>\n    k0 * incidenceGamma 0 amplitude corner +\n    k1 * incidenceGamma 1 amplitude corner +\n    k2 * incidenceGamma 2 amplitude corner\n\ndef firstOrderSymbol\n    (mass k0 k1 k2 : ℂ) (amplitude : Cell8) : Cell8 :=\n  fun corner =>\n    mass * parityBeta amplitude corner +\n      incidenceLinear k0 k1 k2 amplitude corner\n\ndef c19ContinuumSpeed : ℝ := Real.sqrt 12\n\ndef c19FirstOrderSymbol\n    (mass : ℂ) (momentum : Fin 3 → ℝ) (amplitude : Cell8) : Cell8 :=\n  firstOrderSymbol mass\n    (c19ContinuumSpeed * momentum 0)\n    (c19ContinuumSpeed * momentum 1)\n    (c19ContinuumSpeed * momentum 2) amplitude\n\ndef c19QuadraticSymbol\n    (mass : ℂ) (momentum : Fin 3 → ℝ) (amplitude : Cell8) : Cell8 :=\n  fun corner =>\n    (mass ^ 2 + (12 : ℂ) *\n      ((momentum 0 : ℂ) ^ 2 + (momentum 1 : ℂ) ^ 2 +\n        (momentum 2 : ℂ) ^ 2)) * amplitude corner\n\naxiom cubicalC19Factorization\n    (mass : ℂ) (momentum : Fin 3 → ℝ) (amplitude : Cell8) :\n    c19FirstOrderSymbol mass momentum\n        (c19FirstOrderSymbol mass momentum amplitude) =\n      c19QuadraticSymbol mass momentum amplitude\n\nend\n\nend Lax423666.CubicalC19\n",
+      "statements": [
+        {
+          "id": "Lax423666.CubicalC19.cubicalC19Factorization",
+          "signature": "cubicalC19Factorization : ∀ (mass : Complex) (momentum : Fin 3 → Real) (amplitude : Lax423666.CubicalC19.Cell8),\n  Eq\n    (Lax423666.CubicalC19.c19FirstOrderSymbol mass momentum\n      (Lax423666.CubicalC19.c19FirstOrderSymbol mass momentum amplitude))\n    (Lax423666.CubicalC19.c19QuadraticSymbol mass momentum amplitude)",
+          "startLine": 101,
+          "endLine": 105
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax423666Proofs.cubicalC19Factorization_proof",
+      "path": "proofs/Lax423666Proofs/CubicalC19.lean",
+      "conclusion": "Lax423666.CubicalC19.cubicalC19Factorization",
+      "assumptions": [],
+      "description": "The proof expands the eight cube corners.  Cubical orientation makes each\nsigned flip square to the identity while every mixed pair cancels.  Cube\nparity cancels the mass--transport cross terms.  Finally the C19 second-moment\nnormalization turns the three surviving directional squares into the isotropic\nquadratic symbol."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "f4f08af89fae39e1daffe02b7e409af67b84a0f4c2c85e97fd34496c5f15db46",
+    "sourceCommit": "183560395c847d2e4512661774c705ecd37e5e62",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax423666/CubicalC19.c",
+        "bytes": 55618,
+        "sha256": "854df1d843947648a42499f089e068ffbee83f496bb9210b966616c2a21ac606"
+      },
+      {
+        "path": "concepts/ir/Lax423666/CubicalC19.c.hash",
+        "bytes": 16,
+        "sha256": "ced6a5e301c69ca3e2b6174e9c86438671609c311a26c0aa2375ebc8cb609bac"
+      },
+      {
+        "path": "concepts/ir/Lax423666.c",
+        "bytes": 1308,
+        "sha256": "971319e96cd258c33e1ef127d52a31d5c2bc4b31c8381308af208addc871240b"
+      },
+      {
+        "path": "concepts/ir/Lax423666.c.hash",
+        "bytes": 16,
+        "sha256": "8a47b6896e81e78e36234157e0aebc1dcb1a8d4ea1350dc1110f0822a335bcb4"
+      },
+      {
+        "path": "concepts/lib/Lax423666/CubicalC19.ilean",
+        "bytes": 7931,
+        "sha256": "a32d42a4a824ddb9550a5541c2a2ee509395ab62eccbc14fe408347ddbed94fb"
+      },
+      {
+        "path": "concepts/lib/Lax423666/CubicalC19.ilean.hash",
+        "bytes": 16,
+        "sha256": "f4087d7859ca500e7ce4ac13106260d5a2648a15877538daf1efabc4fdd72ecf"
+      },
+      {
+        "path": "concepts/lib/Lax423666/CubicalC19.olean",
+        "bytes": 187688,
+        "sha256": "4031611de63ff6d49256da0c26eca6b5160c02e9c7a28065aeadc5b402f5de70"
+      },
+      {
+        "path": "concepts/lib/Lax423666/CubicalC19.olean.hash",
+        "bytes": 16,
+        "sha256": "efdbb3020e8055b9c5bbc4f7a03712392da32f306b9ca5771ae3c3861822d8d6"
+      },
+      {
+        "path": "concepts/lib/Lax423666/CubicalC19.trace",
+        "bytes": 2130,
+        "sha256": "738b5474bc109f5a468ddedc76a97194e433245731d53130416944383cba1bf2"
+      },
+      {
+        "path": "concepts/lib/Lax423666.ilean",
+        "bytes": 122,
+        "sha256": "040469b32f555a4c7defc85a5f77aff40cd4f04a7b6356629cb81e056314ccd5"
+      },
+      {
+        "path": "concepts/lib/Lax423666.ilean.hash",
+        "bytes": 16,
+        "sha256": "9a9853758cd7f07be4d13e14fcd7a14f8bc9522c057517ae5dbb2a6e88f28126"
+      },
+      {
+        "path": "concepts/lib/Lax423666.olean",
+        "bytes": 1528,
+        "sha256": "28e4d2845c1e919f4e0194ea354f2ac44aebba59b84e40d44f170711dccdb3f5"
+      },
+      {
+        "path": "concepts/lib/Lax423666.olean.hash",
+        "bytes": 16,
+        "sha256": "a065789a2eb637679226de4a05cebae618e39d943d0202037e16c0c6be909b77"
+      },
+      {
+        "path": "concepts/lib/Lax423666.trace",
+        "bytes": 2079,
+        "sha256": "e807e4ec61c6bd015fbd8f4422ac2536c239aedf9dafa43fa955afbbd6a28406"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "b180b0dafd0528c5d3f3412b93e9e453ae7bcaa9c138a8f130aca2b5e02efd20"
+      },
+      {
+        "path": "concepts/package/Lax423666/CubicalC19.lean",
+        "bytes": 3317,
+        "sha256": "215830a9183430afab49650504db61c78c582ebc410bb6f515c3838248283b50"
+      },
+      {
+        "path": "concepts/package/Lax423666.lean",
+        "bytes": 28,
+        "sha256": "8a0be8b94c956acf97865e3a6b8f4d10e3991bfe28d91babeec55c09afa5ab98"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax423666Proofs/CubicalC19.c",
+        "bytes": 58101,
+        "sha256": "b8c6c9a4b2171410eec7cf48f3e2709b8b14bb0c010c4486d1b143dee45f2000"
+      },
+      {
+        "path": "proofs/ir/Lax423666Proofs/CubicalC19.c.hash",
+        "bytes": 16,
+        "sha256": "984f40b6649dff3abc1d4808bb7dadabf9e1b71408115b53604ed3960f8ff289"
+      },
+      {
+        "path": "proofs/ir/Lax423666Proofs.c",
+        "bytes": 1356,
+        "sha256": "061667a308ce0233c84fb2b26202e49cb7f93a09605ac328dfbb8237fb22c2a9"
+      },
+      {
+        "path": "proofs/ir/Lax423666Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "8484d699afe9f4c6733917bc13b49287622fa31a2f825c6c6a913aa7f7b69085"
+      },
+      {
+        "path": "proofs/lib/Lax423666Proofs/CubicalC19.ilean",
+        "bytes": 5966,
+        "sha256": "8c8410ea242f85315c8483ad3eea68b5eb357b0c722b1f96442d775cb1f07cf6"
+      },
+      {
+        "path": "proofs/lib/Lax423666Proofs/CubicalC19.ilean.hash",
+        "bytes": 16,
+        "sha256": "a43df255763ebe80fe43f4d94b3401fc2be37892da3b2106569b95345685695c"
+      },
+      {
+        "path": "proofs/lib/Lax423666Proofs/CubicalC19.olean",
+        "bytes": 1795480,
+        "sha256": "9674d5c13b8fe0b4d9358642c6c6ae86656ac37b46915239b67d8046a8580a97"
+      },
+      {
+        "path": "proofs/lib/Lax423666Proofs/CubicalC19.olean.hash",
+        "bytes": 16,
+        "sha256": "de6e8d35f363f6428ccb93e62d85bc7ad3f4d111e6155469a6266010f3473ca0"
+      },
+      {
+        "path": "proofs/lib/Lax423666Proofs/CubicalC19.trace",
+        "bytes": 2257,
+        "sha256": "6048248989d9b5fca3b13a832c1e18f25739a319acabf5c2e17224dd832573e5"
+      },
+      {
+        "path": "proofs/lib/Lax423666Proofs.ilean",
+        "bytes": 134,
+        "sha256": "163ff73da9507d964c408d31a2086ab6d96d0dd2f243eda1a87e3783389f5c58"
+      },
+      {
+        "path": "proofs/lib/Lax423666Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "984fa876a986b33136eccd3c9133404a539f81563becf2d979634e1cfea7b97c"
+      },
+      {
+        "path": "proofs/lib/Lax423666Proofs.olean",
+        "bytes": 1528,
+        "sha256": "0389eef77fcb3b2da1022610d3407fa7ae89268949d352d6ec13421e4c37818a"
+      },
+      {
+        "path": "proofs/lib/Lax423666Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "0970362efd9f7f6eea6b8c75d5da8e7950d2fa775923c3ed75d922271bb7eb21"
+      },
+      {
+        "path": "proofs/lib/Lax423666Proofs.trace",
+        "bytes": 2196,
+        "sha256": "e9fd212fa3f8fce948a261d502bcc5738a7431dafff0874983c3a57d90cce34d"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "d7b1d1a70244eef528d187e9d4662dc6b11295fb9a11ac2aa512ff1cdbd7868f"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "260401c7a18a3ca13a3ac07d22573519c37a2069bac567a8c8f56bcd7e4fa840"
+      },
+      {
+        "path": "proofs/package/Lax423666Proofs/CubicalC19.lean",
+        "bytes": 1649,
+        "sha256": "8f8882c525abadd9a981da65f431e4250e6a418d2a9f23fda7c8fcfbd9a1c457"
+      },
+      {
+        "path": "proofs/package/Lax423666Proofs.lean",
+        "bytes": 34,
+        "sha256": "43aa07cc7c7bdadc5adfa341286ef329d86d50b6fbd5733c1014e5b12d002f21"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:f4f08af89fae39e1daffe02b7e409af67b84a0f4c2c85e97fd34496c5f15db46"
+  },
+  "lastSubmission": {
+    "commentId": 6919178166,
+    "eventCreatedAt": "2026-11-16T14:26:04Z",
+    "record": "db45d39fb73e31bed556c8688d5d8b8d8df8cc28df6eab4fe4443d741b7a7da9",
+    "buildOutput": "2f057c366870c948ef8a38d8951525c3f81adf8f2442e539129fe99395de455f",
+    "previous": {
+      "archiveSha": "fe431c5e2f6cb3d6f7a0e96d97b4f14c05316477",
+      "record": "daf29d17668434c442f5f41b5f9de470f28b71efa6117ae01e7456b0f4465dec",
+      "buildOutput": "ae02f7e5adfa7cbdfb84b142dea5e6777a513fc84ae7b5cd738c07b50ff09d6b"
+    }
   }
 }
