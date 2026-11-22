@@ -4,5 +4,268 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 232
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-277496",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "Two cubical Dirac sectors from one eight-corner fiber",
+      "authors": [
+        {
+          "name": "G. D. Partin",
+          "github": "gpartin"
+        }
+      ],
+      "bibEntries": [
+        "@software{partin2026diracv2,\n  author = {Partin, G. D.},\n  title = {Lean LFM-to-Dirac Derivation V2},\n  year = {2026},\n  doi = {10.5281/zenodo.24432641},\n  url = {https://github.com/gpartin/LeanDiracDerivation}\n}\n"
+      ]
+    },
+    "abstract": "The eight complex amplitudes on an oriented cube admit a geometric involution\nbuilt from two signed corner flips.  This submission proves that every\neight-corner amplitude decomposes into its positive and negative eigensectors,\nthat the sectors intersect only at zero, and that the cubical C19 first-order\nDirac symbol preserves both sectors.  Thus the full eight-corner fiber is\nexhausted by two disjoint four-component sectors carrying the same free\nfirst-order generator.  This is an algebraic classification result; it does\nnot claim a nonlinear localized electron or experimental validation.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax277496.CubicalTwoFlavor",
+      "path": "concepts/Lax277496/CubicalTwoFlavor.lean",
+      "title": "Two cubical Dirac sectors from one eight-corner fiber",
+      "type": "theorem",
+      "description": "Every complex amplitude on the eight corners of an oriented cube decomposes\ninto the positive and negative eigenspaces of the geometric flavor involution\ndefined below.  The two eigenspaces intersect only at zero, and the cubical\nC19 first-order symbol preserves both.  The statement is algebraic and does\nnot assert a nonlinear localized particle.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib"
+      ],
+      "sourceText": "import Mathlib\n\n/-!\n---\ntitle: Two cubical Dirac sectors from one eight-corner fiber\ntype: theorem\n---\nEvery complex amplitude on the eight corners of an oriented cube decomposes\ninto the positive and negative eigenspaces of the geometric flavor involution\ndefined below.  The two eigenspaces intersect only at zero, and the cubical\nC19 first-order symbol preserves both.  The statement is algebraic and does\nnot assert a nonlinear localized particle.\n-/\n\nnamespace Lax277496.CubicalTwoFlavor\n\nnoncomputable section\n\nabbrev CubeCorner := Fin 8\nabbrev Cell8 := CubeCorner → ℂ\n\ndef cellFlip0 : CubeCorner → CubeCorner\n  | 0 => 4 | 1 => 5 | 2 => 6 | 3 => 7\n  | 4 => 0 | 5 => 1 | 6 => 2 | _ => 3\n\ndef cellFlip1 : CubeCorner → CubeCorner\n  | 0 => 2 | 1 => 3 | 2 => 0 | 3 => 1\n  | 4 => 6 | 5 => 7 | 6 => 4 | _ => 5\n\ndef cellFlip2 : CubeCorner → CubeCorner\n  | 0 => 1 | 1 => 0 | 2 => 3 | 3 => 2\n  | 4 => 5 | 5 => 4 | 6 => 7 | _ => 6\n\ndef cellBit0 : CubeCorner → Nat\n  | 0 | 1 | 2 | 3 => 0 | _ => 1\n\ndef cellBit1 : CubeCorner → Nat\n  | 0 | 1 | 4 | 5 => 0 | _ => 1\n\ndef cellBit2 : CubeCorner → Nat\n  | 0 | 2 | 4 | 6 => 0 | _ => 1\n\ndef incidenceFlip (axis : Fin 3) : CubeCorner → CubeCorner :=\n  match axis with | 0 => cellFlip0 | 1 => cellFlip1 | _ => cellFlip2\n\ndef incidenceSign (axis : Fin 3) (corner : CubeCorner) : ℂ :=\n  match axis with\n  | 0 => 1\n  | 1 => if cellBit0 corner = 0 then 1 else -1\n  | _ => if (cellBit0 corner + cellBit1 corner) % 2 = 0 then 1 else -1\n\ndef incidenceGamma (axis : Fin 3) (amplitude : Cell8) : Cell8 := fun corner =>\n  incidenceSign axis corner * amplitude (incidenceFlip axis corner)\n\ndef parityBeta (amplitude : Cell8) : Cell8 := fun corner =>\n  if (cellBit0 corner + cellBit1 corner + cellBit2 corner) % 2 = 0 then\n    amplitude corner\n  else -amplitude corner\n\ndef cubeFlavor (amplitude : Cell8) : Cell8 := fun corner =>\n  let sign : ℝ := if cellBit2 corner = 0 then 1 else -1\n  (sign : ℂ) * Complex.I * amplitude (cellFlip1 (cellFlip2 corner))\n\ndef plusProjection (amplitude : Cell8) : Cell8 := fun corner =>\n  (amplitude corner + cubeFlavor amplitude corner) / 2\n\ndef minusProjection (amplitude : Cell8) : Cell8 := fun corner =>\n  (amplitude corner - cubeFlavor amplitude corner) / 2\n\ndef firstOrderSymbol\n    (mass k0 k1 k2 : ℂ) (amplitude : Cell8) : Cell8 := fun corner =>\n  mass * parityBeta amplitude corner +\n    k0 * incidenceGamma 0 amplitude corner +\n    k1 * incidenceGamma 1 amplitude corner +\n    k2 * incidenceGamma 2 amplitude corner\n\naxiom twoFlavorClassification :\n  (∀ amplitude,\n    (fun corner => plusProjection amplitude corner +\n      minusProjection amplitude corner) = amplitude) ∧\n  (∀ amplitude, cubeFlavor (plusProjection amplitude) = plusProjection amplitude) ∧\n  (∀ amplitude, cubeFlavor (minusProjection amplitude) =\n    fun corner => -minusProjection amplitude corner) ∧\n  (∀ amplitude, cubeFlavor amplitude = amplitude →\n    cubeFlavor amplitude = (fun corner => -amplitude corner) → amplitude = 0) ∧\n  (∀ mass k0 k1 k2 amplitude, cubeFlavor amplitude = amplitude →\n    cubeFlavor (firstOrderSymbol mass k0 k1 k2 amplitude) =\n      firstOrderSymbol mass k0 k1 k2 amplitude) ∧\n  (∀ mass k0 k1 k2 amplitude,\n    cubeFlavor amplitude = (fun corner => -amplitude corner) →\n    cubeFlavor (firstOrderSymbol mass k0 k1 k2 amplitude) =\n      fun corner => -firstOrderSymbol mass k0 k1 k2 amplitude corner)\n\nend\n\nend Lax277496.CubicalTwoFlavor\n",
+      "statements": [
+        {
+          "id": "Lax277496.CubicalTwoFlavor.twoFlavorClassification",
+          "signature": "twoFlavorClassification : And\n  (∀ (amplitude : Lax277496.CubicalTwoFlavor.Cell8),\n    Eq\n      (fun corner =>\n        instHAdd.hAdd (Lax277496.CubicalTwoFlavor.plusProjection amplitude corner)\n          (Lax277496.CubicalTwoFlavor.minusProjection amplitude corner))\n      amplitude)\n  (And\n    (∀ (amplitude : Lax277496.CubicalTwoFlavor.Cell8),\n      Eq (Lax277496.CubicalTwoFlavor.cubeFlavor (Lax277496.CubicalTwoFlavor.plusProjection amplitude))\n        (Lax277496.CubicalTwoFlavor.plusProjection amplitude))\n    (And\n      (∀ (amplitude : Lax277496.CubicalTwoFlavor.Cell8),\n        Eq (Lax277496.CubicalTwoFlavor.cubeFlavor (Lax277496.CubicalTwoFlavor.minusProjection amplitude)) fun corner =>\n          Complex.instNeg.neg (Lax277496.CubicalTwoFlavor.minusProjection amplitude corner))\n      (And\n        (∀ (amplitude : Lax277496.CubicalTwoFlavor.Cell8),\n          Eq (Lax277496.CubicalTwoFlavor.cubeFlavor amplitude) amplitude →\n            (Eq (Lax277496.CubicalTwoFlavor.cubeFlavor amplitude) fun corner =>\n                Complex.instNeg.neg (amplitude corner)) →\n              Eq amplitude 0)\n        (And\n          (∀ (mass k0 k1 k2 : Complex) (amplitude : Lax277496.CubicalTwoFlavor.Cell8),\n            Eq (Lax277496.CubicalTwoFlavor.cubeFlavor amplitude) amplitude →\n              Eq\n                (Lax277496.CubicalTwoFlavor.cubeFlavor\n                  (Lax277496.CubicalTwoFlavor.firstOrderSymbol mass k0 k1 k2 amplitude))\n                (Lax277496.CubicalTwoFlavor.firstOrderSymbol mass k0 k1 k2 amplitude))\n          (∀ (mass k0 k1 k2 : Complex) (amplitude : Lax277496.CubicalTwoFlavor.Cell8),\n            (Eq (Lax277496.CubicalTwoFlavor.cubeFlavor amplitude) fun corner =>\n                Complex.instNeg.neg (amplitude corner)) →\n              Eq\n                (Lax277496.CubicalTwoFlavor.cubeFlavor\n                  (Lax277496.CubicalTwoFlavor.firstOrderSymbol mass k0 k1 k2 amplitude))\n                fun corner =>\n                Complex.instNeg.neg (Lax277496.CubicalTwoFlavor.firstOrderSymbol mass k0 k1 k2 amplitude corner))))))",
+          "startLine": 77,
+          "endLine": 92
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax277496Proofs.twoFlavorClassification_proof",
+      "path": "proofs/Lax277496Proofs/CubicalTwoFlavor.lean",
+      "conclusion": "Lax277496.CubicalTwoFlavor.twoFlavorClassification",
+      "assumptions": [],
+      "description": "The proof expands the eight corners, proves that the flavor operation is an\ninvolution, constructs its two projections, and checks that the cubical\nfirst-order symbol commutes with the flavor operation."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "e037679503f460887c777978d494b0e9a6f72b410687f6016168d2e748f70f40",
+    "sourceCommit": "a0ea62c5b2fb0a18c4b230d70962eb094000e56a",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax277496/CubicalTwoFlavor.c",
+        "bytes": 49236,
+        "sha256": "bb83373d90744092712ea082acb105f0e43044505a86b0c0eedfd97adbf0b6c7"
+      },
+      {
+        "path": "concepts/ir/Lax277496/CubicalTwoFlavor.c.hash",
+        "bytes": 16,
+        "sha256": "28e5b9449045e746819258f5434c526c207726dcb79078988a9a3f2aeb9a6d14"
+      },
+      {
+        "path": "concepts/ir/Lax277496.c",
+        "bytes": 1326,
+        "sha256": "d97c7aa2a714900c1e2f806c0ee721ca8972203f8f0bf611feeab2ca1e2a65eb"
+      },
+      {
+        "path": "concepts/ir/Lax277496.c.hash",
+        "bytes": 16,
+        "sha256": "27dca882bd727273171eb6a7851a7ca1cf061b6b85f15784b4bf0b9f89064939"
+      },
+      {
+        "path": "concepts/lib/Lax277496/CubicalTwoFlavor.ilean",
+        "bytes": 8499,
+        "sha256": "14f8fcb58860c52a0dc807aba999c90736747778d84f2b9e6cafb60058c5806f"
+      },
+      {
+        "path": "concepts/lib/Lax277496/CubicalTwoFlavor.ilean.hash",
+        "bytes": 16,
+        "sha256": "bfdb3de9a8a8b931acf99687e8dfc190629fb291673766cffa5adcfff47b3d63"
+      },
+      {
+        "path": "concepts/lib/Lax277496/CubicalTwoFlavor.olean",
+        "bytes": 169704,
+        "sha256": "fd8293a5370de5e70b95cc064690f246ab6e87bc6036658f3f375041ac20db19"
+      },
+      {
+        "path": "concepts/lib/Lax277496/CubicalTwoFlavor.olean.hash",
+        "bytes": 16,
+        "sha256": "61783851b10ad14227dad40a80625c264db35a0b201df42a2a0a742ee49d6fd9"
+      },
+      {
+        "path": "concepts/lib/Lax277496/CubicalTwoFlavor.trace",
+        "bytes": 2210,
+        "sha256": "896c1f99b42b39cf4b84dc3bf93673fb30f38ee02a6f67629883bcc639efe496"
+      },
+      {
+        "path": "concepts/lib/Lax277496.ilean",
+        "bytes": 128,
+        "sha256": "1996a5e9ad196c3ed5e4cbf2b199826de380f65c2038b89f5996eeb84603af43"
+      },
+      {
+        "path": "concepts/lib/Lax277496.ilean.hash",
+        "bytes": 16,
+        "sha256": "f8c83c79f476c523675f22902cf6e93234ce290d6aca1a4e92a37fe7aec019bf"
+      },
+      {
+        "path": "concepts/lib/Lax277496.olean",
+        "bytes": 1536,
+        "sha256": "cd585f744b15f287aef4fa611ef9b8d4f225d5a77db3f7e8e75b90b476f2b439"
+      },
+      {
+        "path": "concepts/lib/Lax277496.olean.hash",
+        "bytes": 16,
+        "sha256": "016e1bb1c52c03694e78cd27a44894960ef4049e1b55a3c815d077369653f9b2"
+      },
+      {
+        "path": "concepts/lib/Lax277496.trace",
+        "bytes": 2133,
+        "sha256": "38fa133f4b5839b051bcd168ecf507fe22885a8f76df552ecda29a7bc80515e1"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "4836f46f44873202cfda31d0ded1db278c9501f3baf1687347a7227611f28d51"
+      },
+      {
+        "path": "concepts/package/Lax277496/CubicalTwoFlavor.lean",
+        "bytes": 3454,
+        "sha256": "09247a0ae65c4b04998559d17b8665fcc315d357b32efe876cbd4bc8e1caba04"
+      },
+      {
+        "path": "concepts/package/Lax277496.lean",
+        "bytes": 34,
+        "sha256": "a01cd397a0247bd1480bc4ef8e431ff6229655808365840d0d1b4f7c051c56a6"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax277496Proofs/CubicalTwoFlavor.c",
+        "bytes": 60639,
+        "sha256": "c5586b1823909ceef8f1b1b920e22e6d7c173622cecfaf588463255032bed2ec"
+      },
+      {
+        "path": "proofs/ir/Lax277496Proofs/CubicalTwoFlavor.c.hash",
+        "bytes": 16,
+        "sha256": "f34b0832f83b66cbba0ac448cf2eb4f4d8dd9eb39cd88a523d236e325ef1f85c"
+      },
+      {
+        "path": "proofs/ir/Lax277496Proofs.c",
+        "bytes": 1374,
+        "sha256": "dfb2a1200086fc2418bb28918b8ccf0a193f415f7086a4933dff17ffac1bfacc"
+      },
+      {
+        "path": "proofs/ir/Lax277496Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "637d907115c9db059a9b9c82c0d4160f70be0196885a81ce845fa8f70449b6df"
+      },
+      {
+        "path": "proofs/lib/Lax277496Proofs/CubicalTwoFlavor.ilean",
+        "bytes": 9476,
+        "sha256": "773d925d8707f2c2240fbbd7abc1400abe67719c07048325474d40bd3341d65b"
+      },
+      {
+        "path": "proofs/lib/Lax277496Proofs/CubicalTwoFlavor.ilean.hash",
+        "bytes": 16,
+        "sha256": "e1591a7441923c316da758beb1e26253abb0acfac327da3dcf3a1548db1f0728"
+      },
+      {
+        "path": "proofs/lib/Lax277496Proofs/CubicalTwoFlavor.olean",
+        "bytes": 2167184,
+        "sha256": "b0d8410cede1dceec1e3241116b3334cdef556ad8510bacdfea52ee6b9366e5a"
+      },
+      {
+        "path": "proofs/lib/Lax277496Proofs/CubicalTwoFlavor.olean.hash",
+        "bytes": 16,
+        "sha256": "897bd2da645667da3ba9aa68d17247db7c0b6e55391c5f9bcf566434e5de7a9b"
+      },
+      {
+        "path": "proofs/lib/Lax277496Proofs/CubicalTwoFlavor.trace",
+        "bytes": 2358,
+        "sha256": "b6976d75662dcf653ab636600a55a84c78a2de235e344c40db882c8434133b58"
+      },
+      {
+        "path": "proofs/lib/Lax277496Proofs.ilean",
+        "bytes": 140,
+        "sha256": "09330bc7231321fa1e51162591874776f42c56f20a1d95c800f9a316cea47c05"
+      },
+      {
+        "path": "proofs/lib/Lax277496Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "d688fbe999c152799d651503e8e9faa71807a0ead89c1df5ad161cf6610189e9"
+      },
+      {
+        "path": "proofs/lib/Lax277496Proofs.olean",
+        "bytes": 1536,
+        "sha256": "2e4578975a2c45d7f2e8fe9e96040dc7e839563957608f14ccf2361cdb84f491"
+      },
+      {
+        "path": "proofs/lib/Lax277496Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "3f91ed1c715a86f72c92c10829ab6ee81321502848e985b085e92c05254e964d"
+      },
+      {
+        "path": "proofs/lib/Lax277496Proofs.trace",
+        "bytes": 2255,
+        "sha256": "3ea23ef709ce3a638d0911d2eebc04f1e8fcde256bf28a4a6eff8b740657fc6b"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "6aa03b464913a0566522fc87e02431593f11c86667d2ca054707bc8e99d6edda"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "a4393d7b71e3c7707ecb736ed25573e0a0a8ff8906b22249003ec3efc3a79578"
+      },
+      {
+        "path": "proofs/package/Lax277496Proofs/CubicalTwoFlavor.lean",
+        "bytes": 3242,
+        "sha256": "1aac08cf8b72e31d62caa3a283dfe3a73c2593f1737cd617247acc118c043766"
+      },
+      {
+        "path": "proofs/package/Lax277496Proofs.lean",
+        "bytes": 40,
+        "sha256": "304a2c8b5a8d6a23a34db04532fcd9d603383da7a2867e3650e926023ea9b105"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:e037679503f460887c777978d494b0e9a6f72b410687f6016168d2e748f70f40"
+  },
+  "lastSubmission": {
+    "commentId": 7073860372,
+    "eventCreatedAt": "2026-11-22T03:54:37Z",
+    "record": "dc5e96f3cad3b1582694c1a941b6147eb7b601ce2ec97708e15ca1f64bf39409",
+    "buildOutput": "4538900a8997a4ef2397a939348091c646142c60dddb641cc01d549a2c45102a",
+    "previous": {
+      "archiveSha": "b8838b35cd1e175ba1fd5395794032e03b3046c5",
+      "record": "e2c55bc1ced6e63d13eb7336b73b7576953f61695205fc5bd5dc8e1828af373e",
+      "buildOutput": "2c692c54c4db1d8b4ff51a2289829a5769c6adbf386271a3eae6aa9f76981e60"
+    }
   }
 }
