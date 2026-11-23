@@ -4,5 +4,4057 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 234
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-869952",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "Formal Tree Bounds for the Sum Network Creation Game",
+      "authors": [],
+      "bibEntries": [
+        "@inproceedings{DippelVetta2024,\n  author = {Jack Dippel and Adrian Vetta},\n  title = {One n Remains to Settle the Tree Conjecture},\n  booktitle = {Proceedings of STACS},\n  year = {2024},\n  volume = {289},\n  pages = {28:1--28:16},\n  doi = {10.4230/LIPIcs.STACS.2024.28}\n}\n",
+        "@inproceedings{FabrikantEtAl2003,\n  author = {Alex Fabrikant and Ankur Luthra and Elitza Maneva and Christos H. Papadimitriou and Scott Shenker},\n  title = {On a Network Creation Game},\n  booktitle = {Proceedings of ACM PODC},\n  year = {2003},\n  pages = {347--351},\n  doi = {10.1145/872035.872088}\n}\n",
+        "@misc{Lax899194,\n  title = {Tree Nash Equilibria in the Network Creation Game},\n  year = {2026},\n  howpublished = {Lax Lean Archive, lax-899194},\n  url = {https://laxarchive.org/lax-899194/index.html}\n}\n"
+      ]
+    },
+    "abstract": "In the sum network creation game, each player pays a price $\\alpha$ per edge\nit purchases and the sum of its undirected distances to all other players.\nAn unreachable vertex contributes infinite distance. A Nash equilibrium is\nstable under unilateral changes to the entire purchased edge set.\n\nThis development formalizes Dippel and Vetta's general tree theorem at\n$\\alpha>2n$. It proves that an equilibrium at $\\alpha>n$ has girth at least\neight and that it is a tree for up to ten players. It also checks an improved\ndeletion bound for purchases into degree-two vertices of maximal cyclic\nblocks, and a weighted addition inequality for block attachments.\n\nThe formal game definitions adapt the Apache-2.0 sources of\n[lax-899194](https://laxarchive.org/lax-899194/index.html), originally developed\nin [the upstream repository](https://github.com/clemenskuske/network-creation-tree-equilibria/tree/ab7c839f02a08a417dcf6ccbf6f447790ddd5db3).\nThe archive package changes the namespace and adds mathematical definitions\nand proofs. OpenAI Codex assisted in developing and documenting the Lean\nproofs and their computational certificates.\n\nThe full Tree Conjecture for all player counts at $\\alpha>n$ is open in this\ndevelopment. The attached repository also records mathematical arguments\nwith external integer checks for additive refinements of the general bound.\n"
+  },
+  "requiredByConcepts": [],
+  "requiredByProofs": [],
+  "concepts": [
+    {
+      "id": "Lax869952.BlockGeometry",
+      "path": "concepts/Lax869952/BlockGeometry.lean",
+      "title": "Maximal biconnected blocks and their attachment weights",
+      "type": "definition",
+      "description": "A block is a maximal vertex set of size at least three that stays connected\nafter removal of any one vertex. The block graph is induced on that set\nand retains the ambient vertex type. The attachment of a block vertex $v$\ncontains each player with a walk whose first entry into the block is $v$.\nIts weight is the cardinality of that attachment.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Metric",
+        "Mathlib.Data.Finset.Powerset"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Metric\nimport Mathlib.Data.Finset.Powerset\n\n/-!\n---\ntitle: Maximal biconnected blocks and their attachment weights\ntype: definition\n---\nA block is a maximal vertex set of size at least three that stays connected\nafter removal of any one vertex. The block graph is induced on that set\nand retains the ambient vertex type. The attachment of a block vertex $v$\ncontains each player with a walk whose first entry into the block is $v$.\nIts weight is the cardinality of that attachment.\n-/\n\nnamespace Lax869952.BlockGeometry\n\nvariable {V : Type*} {G : SimpleGraph V}\n\n/-- The induced two-connected vertex set, expressed in ambient walks. -/\nstructure TwoConnectedOn (G : SimpleGraph V) (S : Finset V) : Prop where\n  card_ge_three : 3 ≤ S.card\n  walk (z : V) {x y : V} (hx : x ∈ S) (hy : y ∈ S) (hxz : x ≠ z) (hyz : y ≠ z) :\n    ∃ p : G.Walk x y, (∀ a ∈ p.support, a ∈ S) ∧ z ∉ p.support\n\n/-- Maximality excludes bridge blocks. -/\nstructure IsBiconnectedBlock (G : SimpleGraph V) (S : Finset V) : Prop where\n  twoConnected : TwoConnectedOn G S\n  maximal (T : Finset V) : S ⊆ T → TwoConnectedOn G T → T ⊆ S\n\ndef blockGraph (G : SimpleGraph V) (S : Finset V) : SimpleGraph V :=\n  ((⊤ : G.Subgraph).induce (↑S : Set V)).spanningCoe\n\ndef FirstEntryInto (S : Finset V) {x y : V} (p : G.Walk x y) : Prop :=\n  ∀ a ∈ p.support, a ∈ S → a = y\n\nnoncomputable def blockAttachment {n : ℕ} (G : SimpleGraph (Fin n))\n    (S : Finset (Fin n)) (v : Fin n) : Finset (Fin n) := by\n  classical\n  exact Finset.univ.filter (fun x => ∃ p : G.Walk x v, FirstEntryInto S p)\n\nend Lax869952.BlockGeometry\n",
+      "statements": []
+    },
+    {
+      "id": "Lax869952.GirthAtPopulationPrice",
+      "path": "concepts/Lax869952/GirthAtPopulationPrice.lean",
+      "title": "Girth at least eight at price above the player count",
+      "type": "theorem",
+      "description": "At $\\alpha>n$, every cycle in a pure Nash equilibrium has at least eight edges.",
+      "imports": [
+        "Lax869952.NashEquilibrium"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Metric"
+      ],
+      "sourceText": "import Lax869952.NashEquilibrium\nimport Mathlib.Combinatorics.SimpleGraph.Metric\n\n/-!\n---\ntitle: Girth at least eight at price above the player count\ntype: theorem\n---\nAt $\\alpha>n$, every cycle in a pure Nash equilibrium has at least eight edges.\n-/\n\nnamespace Lax869952.GirthAtPopulationPrice\n\nopen Lax869952.NetworkCreationGame Lax869952.NashEquilibrium\nopen scoped NNReal BigOperators\n\naxiom statement {n : ℕ} (s : Profile n) (α : ℝ≥0)\n    (hα : (n : ℝ≥0) < α) (hne : IsNashEquilibrium α s)\n    {u : Fin n} (p : (graph s).Walk u u) (hp : p.IsCycle) : 8 ≤ p.length\n\nend Lax869952.GirthAtPopulationPrice\n",
+      "statements": [
+        {
+          "id": "Lax869952.GirthAtPopulationPrice.statement",
+          "signature": "statement : ∀ {n : Nat} (s : Lax869952.NetworkCreationGame.Profile n) (α : NNReal),\n  NNReal.instPartialOrder.lt n.cast α →\n    Lax869952.NashEquilibrium.IsNashEquilibrium α s →\n      ∀ {u : Fin n} (p : (Lax869952.NetworkCreationGame.graph s).Walk u u), p.IsCycle → instLENat.le 8 p.length",
+          "startLine": 17,
+          "endLine": 19
+        }
+      ]
+    },
+    {
+      "id": "Lax869952.LeafAdditionInequality",
+      "path": "concepts/Lax869952/LeafAdditionInequality.lean",
+      "title": "Weighted leaf addition inequality for a maximal block",
+      "type": "theorem",
+      "description": "If a block vertex $v$ has another player in its attachment, its attachment and the block distances satisfy every single-addition inequality of a leaf at $v$. The weights are actual attachment cardinalities.",
+      "imports": [
+        "Lax869952.BlockGeometry",
+        "Lax869952.NashEquilibrium"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax869952.NashEquilibrium\nimport Lax869952.BlockGeometry\n\n/-!\n---\ntitle: Weighted leaf addition inequality for a maximal block\ntype: theorem\n---\nIf a block vertex $v$ has another player in its attachment, its attachment and the block distances satisfy every single-addition inequality of a leaf at $v$. The weights are actual attachment cardinalities.\n-/\n\nnamespace Lax869952.LeafAdditionInequality\n\nopen Lax869952.NetworkCreationGame Lax869952.NashEquilibrium\nopen scoped NNReal BigOperators\n\naxiom statement {n : ℕ} {S : Finset (Fin n)} (α : ℝ≥0) (s : Profile n)\n    (hne : IsNashEquilibrium α s) (hS : BlockGeometry.IsBiconnectedBlock (graph s) S)\n    {v r : Fin n} (hv : v ∈ S) (hr : r ∈ S) (hvr : v ≠ r)\n    (hWeight : 1 < (BlockGeometry.blockAttachment (graph s) S v).card) :\n    (∑ z ∈ S, ((BlockGeometry.blockAttachment (graph s) S z).card : ℝ) *\n      max 0 (((BlockGeometry.blockGraph (graph s) S).dist v z : ℝ) -\n        ((BlockGeometry.blockGraph (graph s) S).dist r z : ℝ))) ≤ (α : ℝ)\n\nend Lax869952.LeafAdditionInequality\n",
+      "statements": [
+        {
+          "id": "Lax869952.LeafAdditionInequality.statement",
+          "signature": "statement : ∀ {n : Nat} {S : Finset (Fin n)} (α : NNReal) (s : Lax869952.NetworkCreationGame.Profile n),\n  Lax869952.NashEquilibrium.IsNashEquilibrium α s →\n    Lax869952.BlockGeometry.IsBiconnectedBlock (Lax869952.NetworkCreationGame.graph s) S →\n      ∀ {v r : Fin n},\n        SetLike.instMembership.mem S v →\n          SetLike.instMembership.mem S r →\n            Ne v r →\n              instLTNat.lt 1\n                  (Lax869952.BlockGeometry.blockAttachment (Lax869952.NetworkCreationGame.graph s) S v).card →\n                Real.instLE.le\n                  (S.sum fun z =>\n                    instHMul.hMul\n                      (Lax869952.BlockGeometry.blockAttachment (Lax869952.NetworkCreationGame.graph s) S z).card.cast\n                      (Real.instMax.max 0\n                        (instHSub.hSub\n                          ((Lax869952.BlockGeometry.blockGraph (Lax869952.NetworkCreationGame.graph s) S).dist v z).cast\n                          ((Lax869952.BlockGeometry.blockGraph (Lax869952.NetworkCreationGame.graph s) S).dist r\n                              z).cast)))\n                  α.toReal",
+          "startLine": 17,
+          "endLine": 23
+        }
+      ]
+    },
+    {
+      "id": "Lax869952.NashEquilibrium",
+      "path": "concepts/Lax869952/NashEquilibrium.lean",
+      "title": "Pure Nash equilibrium",
+      "type": "definition",
+      "description": "A strategy profile is a pure Nash equilibrium when no player can reduce its\nindividual cost by changing its own strategy while all other players keep\ntheir strategies. A deviation may replace the entire set of purchased edges.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "The comparison is between costs in the two resulting networks, including\ndeviations that disconnect the network. Equality is allowed, so weak and\ntransient equilibria are included.\n\nThe displayed equilibrium inequality on p. 348 of the paper has its direction\nreversed. We use cost minimization, as specified by the surrounding discussion\nand explicitly by footnote 4 on p. 350: the current cost is at most the cost\nafter any unilateral deviation."
+        }
+      ],
+      "imports": [
+        "Lax869952.PlayerCost"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax869952.PlayerCost\n\n/-!\n---\ntitle: Pure Nash equilibrium\ntype: definition\n---\nA strategy profile is a pure Nash equilibrium when no player can reduce its\nindividual cost by changing its own strategy while all other players keep\ntheir strategies. A deviation may replace the entire set of purchased edges.\n\n# Formalization notes\n\nThe comparison is between costs in the two resulting networks, including\ndeviations that disconnect the network. Equality is allowed, so weak and\ntransient equilibria are included.\n\nThe displayed equilibrium inequality on p. 348 of the paper has its direction\nreversed. We use cost minimization, as specified by the surrounding discussion\nand explicitly by footnote 4 on p. 350: the current cost is at most the cost\nafter any unilateral deviation.\n-/\n\nnamespace Lax869952.NashEquilibrium\n\nopen Lax869952.NetworkCreationGame Lax869952.PlayerCost\nopen scoped NNReal\n\n/-- No unilateral replacement of a player's strategy lowers that player's cost. -/\ndef IsNashEquilibrium {n : ℕ} (α : ℝ≥0) (s : Profile n) : Prop :=\n  ∀ (i : Fin n) (t : Profile n),\n    (∀ j : Fin n, j ≠ i → t j = s j) →\n      playerCost α s i ≤ playerCost α t i\n\nend Lax869952.NashEquilibrium\n",
+      "statements": []
+    },
+    {
+      "id": "Lax869952.NetworkCreationGame",
+      "path": "concepts/Lax869952/NetworkCreationGame.lean",
+      "title": "Network creation game",
+      "type": "definition",
+      "description": "There are $n$ players, indexed by $\\{0,\\ldots,n-1\\}$. A strategy of player\n$i$ is a set $s_i$ of other players: player $i$ purchases an edge to each member\nof $s_i$. A strategy profile specifies one strategy for every player.\n\nThe resulting network $G[s]$ is undirected. Distinct players $i$ and $j$ are\nadjacent when $j\\in s_i$ or $i\\in s_j$. Either endpoint may purchase an edge,\nand both endpoints may purchase the same edge.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Strategies are subsets of `Fin n`, with self-purchases excluded by their type.\nEvery such subset is finite. Edge ownership remains part of the profile even\nthough the resulting graph is a simple graph."
+        }
+      ],
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Basic",
+        "Mathlib.Data.Set.Card"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.Basic\nimport Mathlib.Data.Set.Card\n\n/-!\n---\ntitle: Network creation game\ntype: definition\n---\nThere are $n$ players, indexed by $\\{0,\\ldots,n-1\\}$. A strategy of player\n$i$ is a set $s_i$ of other players: player $i$ purchases an edge to each member\nof $s_i$. A strategy profile specifies one strategy for every player.\n\nThe resulting network $G[s]$ is undirected. Distinct players $i$ and $j$ are\nadjacent when $j\\in s_i$ or $i\\in s_j$. Either endpoint may purchase an edge,\nand both endpoints may purchase the same edge.\n\n# Formalization notes\n\nStrategies are subsets of `Fin n`, with self-purchases excluded by their type.\nEvery such subset is finite. Edge ownership remains part of the profile even\nthough the resulting graph is a simple graph.\n-/\n\nnamespace Lax869952.NetworkCreationGame\n\n/-- The other players to which player `i` purchases edges. -/\ndef Strategy (n : ℕ) (i : Fin n) := { S : Set (Fin n) // i ∉ S }\n\n/-- A choice of strategy for every player. -/\nabbrev Profile (n : ℕ) := (i : Fin n) → Strategy n i\n\n/-- The undirected network formed by all purchased edges. -/\ndef graph {n : ℕ} (s : Profile n) : SimpleGraph (Fin n) where\n  Adj i j := j ∈ (s i).val ∨ i ∈ (s j).val\n  symm := ⟨fun _ _ h => h.elim Or.inr Or.inl⟩\n  loopless := ⟨fun i h => h.elim (s i).property (s i).property⟩\n\nend Lax869952.NetworkCreationGame\n",
+      "statements": []
+    },
+    {
+      "id": "Lax869952.PlayerCost",
+      "path": "concepts/Lax869952/PlayerCost.lean",
+      "title": "Individual cost in the network creation game",
+      "type": "definition",
+      "description": "For an edge price $\\alpha>0$, player $i$ has cost\n$c_i(s)=\\alpha|s_i|+\\sum_j d_{G[s]}(i,j)$.\nThe distance is the length of a shortest path, and is infinite if there is no\npath. A player pays for every edge it purchases, including an edge also\npurchased by its other endpoint.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "Costs take values in the extended nonnegative reals so that disconnected\nnetworks retain the infinite penalty. `SimpleGraph.edist` supplies the graph\ndistance, and `ENat.toENNReal` preserves both finite distances and infinity.\nThe edge price is a finite nonnegative real; the theorem assumes it is positive."
+        }
+      ],
+      "imports": [
+        "Lax869952.NetworkCreationGame"
+      ],
+      "mathlibImports": [
+        "Mathlib.Algebra.BigOperators.Group.Finset.Defs",
+        "Mathlib.Combinatorics.SimpleGraph.Metric",
+        "Mathlib.Data.Real.ENatENNReal"
+      ],
+      "sourceText": "import Lax869952.NetworkCreationGame\nimport Mathlib.Combinatorics.SimpleGraph.Metric\nimport Mathlib.Data.Real.ENatENNReal\nimport Mathlib.Algebra.BigOperators.Group.Finset.Defs\n\n/-!\n---\ntitle: Individual cost in the network creation game\ntype: definition\n---\nFor an edge price $\\alpha>0$, player $i$ has cost\n$c_i(s)=\\alpha|s_i|+\\sum_j d_{G[s]}(i,j)$.\nThe distance is the length of a shortest path, and is infinite if there is no\npath. A player pays for every edge it purchases, including an edge also\npurchased by its other endpoint.\n\n# Formalization notes\n\nCosts take values in the extended nonnegative reals so that disconnected\nnetworks retain the infinite penalty. `SimpleGraph.edist` supplies the graph\ndistance, and `ENat.toENNReal` preserves both finite distances and infinity.\nThe edge price is a finite nonnegative real; the theorem assumes it is positive.\n-/\n\nnamespace Lax869952.PlayerCost\n\nopen Lax869952.NetworkCreationGame\nopen scoped BigOperators NNReal ENNReal\n\n/-- Edge expenditure plus the sum of distances from player `i` to all players. -/\nnoncomputable def playerCost {n : ℕ} (α : ℝ≥0) (s : Profile n)\n    (i : Fin n) : ℝ≥0∞ :=\n  (α : ℝ≥0∞) * (s i).val.ncard +\n    ∑ j : Fin n, ((graph s).edist i j).toENNReal\n\nend Lax869952.PlayerCost\n",
+      "statements": []
+    },
+    {
+      "id": "Lax869952.ReceiverDeletionBound",
+      "path": "concepts/Lax869952/ReceiverDeletionBound.lean",
+      "title": "Deletion bound for a purchase into a degree-two block vertex",
+      "type": "theorem",
+      "description": "Let $v$ have degree two in a maximal cyclic block of a Nash equilibrium of girth at least eight. If a neighbor buys an edge into $v$, then for any cycle of length $c$ through $v$ in that block, the attachment weight $w(v)$ satisfies\n\n$$\\alpha+6\\le 2(c-3)w(v).$$\n\nThe result allows either owner of the other edge incident to $v$.",
+      "imports": [
+        "Lax869952.BlockGeometry",
+        "Lax869952.NashEquilibrium"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax869952.NashEquilibrium\nimport Lax869952.BlockGeometry\n\n/-!\n---\ntitle: Deletion bound for a purchase into a degree-two block vertex\ntype: theorem\n---\nLet $v$ have degree two in a maximal cyclic block of a Nash equilibrium of girth at least eight. If a neighbor buys an edge into $v$, then for any cycle of length $c$ through $v$ in that block, the attachment weight $w(v)$ satisfies\n\n$$\\alpha+6\\le 2(c-3)w(v).$$\n\nThe result allows either owner of the other edge incident to $v$.\n-/\n\nnamespace Lax869952.ReceiverDeletionBound\n\nopen Lax869952.NetworkCreationGame Lax869952.NashEquilibrium\nopen scoped NNReal BigOperators\n\naxiom statement {n : ℕ} {S : Finset (Fin n)} (s : Profile n) (α : ℝ≥0)\n    (hne : IsNashEquilibrium α s) (hS : BlockGeometry.IsBiconnectedBlock (graph s) S)\n    [DecidableRel (BlockGeometry.blockGraph (graph s) S).Adj]\n    (girth : ∀ {x}, (p : (graph s).Walk x x) → p.IsCycle → 8 ≤ p.length)\n    {u v w : Fin n} (huv : (BlockGeometry.blockGraph (graph s) S).Adj u v)\n    (hvw : (BlockGeometry.blockGraph (graph s) S).Adj v w) (huw : u ≠ w)\n    (hdegree : (BlockGeometry.blockGraph (graph s) S).degree v = 2)\n    (hBuy : v ∈ (s u).val)\n    (c : (BlockGeometry.blockGraph (graph s) S).Walk v v) (hc : c.IsCycle) :\n    (α : ℝ) + 6 ≤ 2 * ((c.length : ℝ) - 3) *\n      ((BlockGeometry.blockAttachment (graph s) S v).card : ℝ)\n\nend Lax869952.ReceiverDeletionBound\n",
+      "statements": [
+        {
+          "id": "Lax869952.ReceiverDeletionBound.statement",
+          "signature": "statement : ∀ {n : Nat} {S : Finset (Fin n)} (s : Lax869952.NetworkCreationGame.Profile n) (α : NNReal),\n  Lax869952.NashEquilibrium.IsNashEquilibrium α s →\n    Lax869952.BlockGeometry.IsBiconnectedBlock (Lax869952.NetworkCreationGame.graph s) S →\n      ∀ [inst : DecidableRel (Lax869952.BlockGeometry.blockGraph (Lax869952.NetworkCreationGame.graph s) S).Adj],\n        (∀ {x : Fin n} (p : (Lax869952.NetworkCreationGame.graph s).Walk x x), p.IsCycle → instLENat.le 8 p.length) →\n          ∀ {u v w : Fin n},\n            (Lax869952.BlockGeometry.blockGraph (Lax869952.NetworkCreationGame.graph s) S).Adj u v →\n              (Lax869952.BlockGeometry.blockGraph (Lax869952.NetworkCreationGame.graph s) S).Adj v w →\n                Ne u w →\n                  Eq ((Lax869952.BlockGeometry.blockGraph (Lax869952.NetworkCreationGame.graph s) S).degree v) 2 →\n                    Set.instMembership.mem (s u).val v →\n                      ∀ (c : (Lax869952.BlockGeometry.blockGraph (Lax869952.NetworkCreationGame.graph s) S).Walk v v),\n                        c.IsCycle →\n                          Real.instLE.le (instHAdd.hAdd α.toReal 6)\n                            (instHMul.hMul (instHMul.hMul 2 (instHSub.hSub c.length.cast 3))\n                              (Lax869952.BlockGeometry.blockAttachment (Lax869952.NetworkCreationGame.graph s) S\n                                    v).card.cast)",
+          "startLine": 21,
+          "endLine": 31
+        }
+      ]
+    },
+    {
+      "id": "Lax869952.SmallGames",
+      "path": "concepts/Lax869952/SmallGames.lean",
+      "title": "The Tree Conjecture for up to ten players",
+      "type": "theorem",
+      "description": "For $1\\le n\\le10$ and $\\alpha>n$, every pure Nash equilibrium graph is a tree.",
+      "imports": [
+        "Lax869952.NashEquilibrium"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Acyclic"
+      ],
+      "sourceText": "import Lax869952.NashEquilibrium\nimport Mathlib.Combinatorics.SimpleGraph.Acyclic\n\n/-!\n---\ntitle: The Tree Conjecture for up to ten players\ntype: theorem\n---\nFor $1\\le n\\le10$ and $\\alpha>n$, every pure Nash equilibrium graph is a tree.\n-/\n\nnamespace Lax869952.SmallGames\n\nopen Lax869952.NetworkCreationGame Lax869952.NashEquilibrium\nopen scoped NNReal BigOperators\n\naxiom statement {n : ℕ} (hn : 0 < n) (hsmall : n ≤ 10)\n    (s : Profile n) (α : ℝ≥0) (hα : (n : ℝ≥0) < α)\n    (hne : IsNashEquilibrium α s) : (graph s).IsTree\n\nend Lax869952.SmallGames\n",
+      "statements": [
+        {
+          "id": "Lax869952.SmallGames.statement",
+          "signature": "statement : ∀ {n : Nat},\n  instLTNat.lt 0 n →\n    instLENat.le n 10 →\n      ∀ (s : Lax869952.NetworkCreationGame.Profile n) (α : NNReal),\n        NNReal.instPartialOrder.lt n.cast α →\n          Lax869952.NashEquilibrium.IsNashEquilibrium α s → (Lax869952.NetworkCreationGame.graph s).IsTree",
+          "startLine": 17,
+          "endLine": 19
+        }
+      ]
+    },
+    {
+      "id": "Lax869952.TreeAtDoublePrice",
+      "path": "concepts/Lax869952/TreeAtDoublePrice.lean",
+      "title": "Tree equilibria above twice the player count",
+      "type": "theorem",
+      "description": "On a positive number of players, an edge price $\\alpha>2n$ forces every pure Nash equilibrium graph to be a tree. This is the theorem of Dippel and Vetta (STACS 2024, Theorem 1).",
+      "imports": [
+        "Lax869952.NashEquilibrium"
+      ],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.Acyclic"
+      ],
+      "sourceText": "import Lax869952.NashEquilibrium\nimport Mathlib.Combinatorics.SimpleGraph.Acyclic\n\n/-!\n---\ntitle: Tree equilibria above twice the player count\ntype: theorem\n---\nOn a positive number of players, an edge price $\\alpha>2n$ forces every pure Nash equilibrium graph to be a tree. This is the theorem of Dippel and Vetta (STACS 2024, Theorem 1).\n-/\n\nnamespace Lax869952.TreeAtDoublePrice\n\nopen Lax869952.NetworkCreationGame Lax869952.NashEquilibrium\nopen scoped NNReal BigOperators\n\naxiom statement {n : ℕ} (hn : 0 < n) (α : ℝ≥0) (hα : 2 * (n : ℝ≥0) < α)\n    (s : Profile n) (hne : IsNashEquilibrium α s) : (graph s).IsTree\n\nend Lax869952.TreeAtDoublePrice\n",
+      "statements": [
+        {
+          "id": "Lax869952.TreeAtDoublePrice.statement",
+          "signature": "statement : ∀ {n : Nat},\n  instLTNat.lt 0 n →\n    ∀ (α : NNReal),\n      NNReal.instPartialOrder.lt (instHMul.hMul 2 n.cast) α →\n        ∀ (s : Lax869952.NetworkCreationGame.Profile n),\n          Lax869952.NashEquilibrium.IsNashEquilibrium α s → (Lax869952.NetworkCreationGame.graph s).IsTree",
+          "startLine": 17,
+          "endLine": 18
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax869952Proofs.girth_at_population_price",
+      "path": "proofs/Lax869952Proofs/ArchiveProofs.lean",
+      "conclusion": "Lax869952.GirthAtPopulationPrice.statement",
+      "assumptions": [],
+      "description": "After excluding triangles and squares, use the certificates for isometric cycles of length five, six and seven. Lean checks the normalized distance labels, orientation coverage and weighted deviation inequalities. Any shortest cycle of the equilibrium graph is isometric."
+    },
+    {
+      "id": "Lax869952Proofs.leaf_addition_inequality",
+      "path": "proofs/Lax869952Proofs/ArchiveProofs.lean",
+      "conclusion": "Lax869952.LeafAdditionInequality.statement",
+      "assumptions": [],
+      "description": "Choose a player outside the block attached at $v$. A link from that player to $r$ saves at least the positive part of the difference in block distances for each destination. Nash equilibrium bounds the sum of these savings by the edge price."
+    },
+    {
+      "id": "Lax869952Proofs.receiver_deletion_bound",
+      "path": "proofs/Lax869952Proofs/ArchiveProofs.lean",
+      "conclusion": "Lax869952.ReceiverDeletionBound.statement",
+      "assumptions": [],
+      "description": "Compare the equal-cost swap past the receiver with deletion of the edge. Two destinations on the complementary cycle arc improve the standard deletion estimate by two and four units, respectively."
+    },
+    {
+      "id": "Lax869952Proofs.tree_above_twice_population",
+      "path": "proofs/Lax869952Proofs/ArchiveProofs.lean",
+      "conclusion": "Lax869952.TreeAtDoublePrice.statement",
+      "assumptions": [],
+      "description": "The argument passes to a cyclic maximal biconnected block and a compatible shortest-path tree. Layered deviations bound the repeated purchase incidences and the resulting count contradicts the block degree sum."
+    },
+    {
+      "id": "Lax869952Proofs.tree_for_up_to_ten_players",
+      "path": "proofs/Lax869952Proofs/ArchiveProofs.lean",
+      "conclusion": "Lax869952.SmallGames.statement",
+      "assumptions": [],
+      "description": "In a cyclic block at the stated price, some vertex has block degree at least three. The girth-eight condition then requires at least eleven block vertices."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "0b77d327d63c2a4cd09064a47210c4a20ea3abf4f21db71bb06199dae1efd98e",
+    "sourceCommit": "74e2373388cdfe34d2ec9afe2e64d58c7936ae78",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax869952/BlockGeometry.c",
+        "bytes": 2401,
+        "sha256": "c9aae2066f4266688ad1dcc6616a9d0f963f8bfbf510679977cdde03c388b7e5"
+      },
+      {
+        "path": "concepts/ir/Lax869952/BlockGeometry.c.hash",
+        "bytes": 16,
+        "sha256": "0cad904c76d4b18a7fa5b4aaa28d8db7f9927a6385e0dca996b7ab55d8627c3c"
+      },
+      {
+        "path": "concepts/ir/Lax869952/GirthAtPopulationPrice.c",
+        "bytes": 1656,
+        "sha256": "d3b554b1acd94fcdf4f6ff0ecf20dc5dc7ba0015b256c86600534ed6fc6e13ba"
+      },
+      {
+        "path": "concepts/ir/Lax869952/GirthAtPopulationPrice.c.hash",
+        "bytes": 16,
+        "sha256": "d4a6e89bee9382e816e91352831f5c9e27129fc6a5c2b08bdb2d227f0f17e2bd"
+      },
+      {
+        "path": "concepts/ir/Lax869952/LeafAdditionInequality.c",
+        "bytes": 1609,
+        "sha256": "86038ea7d5da9af8d61ca7e23178a783bcb8080dca0239e16d63c4be2548396b"
+      },
+      {
+        "path": "concepts/ir/Lax869952/LeafAdditionInequality.c.hash",
+        "bytes": 16,
+        "sha256": "8316460143b8f2fe12ee5599bb3a8f125171187fed3dd4ee878059d4ec838050"
+      },
+      {
+        "path": "concepts/ir/Lax869952/NashEquilibrium.c",
+        "bytes": 1340,
+        "sha256": "1de06412a755274b93b40948b93f6071dafde66033052c046fa4f44f57d4acf5"
+      },
+      {
+        "path": "concepts/ir/Lax869952/NashEquilibrium.c.hash",
+        "bytes": 16,
+        "sha256": "73990dce1bde85468dad020b403d5f5cd9900bf2cf4cca0db3f533934726e223"
+      },
+      {
+        "path": "concepts/ir/Lax869952/NetworkCreationGame.c",
+        "bytes": 2316,
+        "sha256": "5831f737fbc9e9c44452c2f6112a86edacd623cc5da6e7f4e871a56a4951dacf"
+      },
+      {
+        "path": "concepts/ir/Lax869952/NetworkCreationGame.c.hash",
+        "bytes": 16,
+        "sha256": "6e58605d7d2c4ef947a69fafd865ed062f7f73abf7f35cd4b704b8025d42d5c4"
+      },
+      {
+        "path": "concepts/ir/Lax869952/PlayerCost.c",
+        "bytes": 2203,
+        "sha256": "df075c341789dea5ba066c1fef1f2f0578cc4c3ebc01461faba8be51c318681d"
+      },
+      {
+        "path": "concepts/ir/Lax869952/PlayerCost.c.hash",
+        "bytes": 16,
+        "sha256": "91f6a4c18bea9356c5a0caf64551fe15706796993fc1b275b1e68bd700e5b4ac"
+      },
+      {
+        "path": "concepts/ir/Lax869952/ReceiverDeletionBound.c",
+        "bytes": 1607,
+        "sha256": "985f297f7262abfc37f5faa9772f3a000367404645c901ab8a4869d3b14163e7"
+      },
+      {
+        "path": "concepts/ir/Lax869952/ReceiverDeletionBound.c.hash",
+        "bytes": 16,
+        "sha256": "81e4b4b773f42d1f310831270a4165cc39b29eeff6de7e0b153f24646523d8d9"
+      },
+      {
+        "path": "concepts/ir/Lax869952/SmallGames.c",
+        "bytes": 1635,
+        "sha256": "52a6e4ada1c840cf7d67ec21efced8e12949d919381108e74db327512f5866e3"
+      },
+      {
+        "path": "concepts/ir/Lax869952/SmallGames.c.hash",
+        "bytes": 16,
+        "sha256": "c9a6ef0e103aaef1faee3fc22331bc9a2806f9a3f44b96a68b68b2f061da3e24"
+      },
+      {
+        "path": "concepts/ir/Lax869952/TreeAtDoublePrice.c",
+        "bytes": 1649,
+        "sha256": "3182e08152adb0fa7f1c6d6e27a4e8c47908050d16d4d5725890be7460c17bb0"
+      },
+      {
+        "path": "concepts/ir/Lax869952/TreeAtDoublePrice.c.hash",
+        "bytes": 16,
+        "sha256": "f570f38300ede0f3885382001c6d89a9e96e44841607fe8075a82cbfc47c30c4"
+      },
+      {
+        "path": "concepts/ir/Lax869952.c",
+        "bytes": 3333,
+        "sha256": "c5d333bbd2c99e9e6dcd2345361453c9354d2922baa5692db82fa8e31ab076a7"
+      },
+      {
+        "path": "concepts/ir/Lax869952.c.hash",
+        "bytes": 16,
+        "sha256": "89901ca50366a335bd23143ecb909f0d6eae66937b0237259607f23e0be9358a"
+      },
+      {
+        "path": "concepts/lib/Lax869952/BlockGeometry.ilean",
+        "bytes": 5136,
+        "sha256": "c5f58a15c5ad068d8eb947f18623de51be26f0b7772ca503c5b29ac13ef6d7b7"
+      },
+      {
+        "path": "concepts/lib/Lax869952/BlockGeometry.ilean.hash",
+        "bytes": 16,
+        "sha256": "42cd7cdcfd923a3e0cb0d235d8cec072f9b5a41c208fad7b9fb5020d0b836fc7"
+      },
+      {
+        "path": "concepts/lib/Lax869952/BlockGeometry.olean",
+        "bytes": 53456,
+        "sha256": "7a7ab7bd69dce15a3456c1a20dce778f902c2acb6a27ecc559a0ebabd98293ef"
+      },
+      {
+        "path": "concepts/lib/Lax869952/BlockGeometry.olean.hash",
+        "bytes": 16,
+        "sha256": "53600304fff20eee8d61e676cbc27fafde7a324900813f60d4ff7c3af0296634"
+      },
+      {
+        "path": "concepts/lib/Lax869952/BlockGeometry.trace",
+        "bytes": 2445,
+        "sha256": "0b0ac5979e913ae4ee38eb375f1e507ae21fcf1e2243712ec1657cfbfd0e1355"
+      },
+      {
+        "path": "concepts/lib/Lax869952/GirthAtPopulationPrice.ilean",
+        "bytes": 2095,
+        "sha256": "46198cd7757d12dcb3cf5b576c4b0c1fb2ca7bcc900c3cadb3ef0af6ef79b054"
+      },
+      {
+        "path": "concepts/lib/Lax869952/GirthAtPopulationPrice.ilean.hash",
+        "bytes": 16,
+        "sha256": "e9bfd1bdfc6c385e404d0a662a4a183d8b57e3f7f7765a3e239115473bea62fc"
+      },
+      {
+        "path": "concepts/lib/Lax869952/GirthAtPopulationPrice.olean",
+        "bytes": 11552,
+        "sha256": "b101f29867afc9b5f3dc6f4725bea964da9a261622bb6df565aacedcdff324ea"
+      },
+      {
+        "path": "concepts/lib/Lax869952/GirthAtPopulationPrice.olean.hash",
+        "bytes": 16,
+        "sha256": "80c73f1f8608aeefa577dd366b21af9db32cd43bdd62f161b71cf39a0515224a"
+      },
+      {
+        "path": "concepts/lib/Lax869952/GirthAtPopulationPrice.trace",
+        "bytes": 2502,
+        "sha256": "0dca5004bb7d8a4cc5c51448896df3d7a460e2142c38d77c83e9361f641fd89f"
+      },
+      {
+        "path": "concepts/lib/Lax869952/LeafAdditionInequality.ilean",
+        "bytes": 3507,
+        "sha256": "f5eddbcde21949ace1fc6f18aa0a87b5f76efa1575cda97d8c608885c27a7366"
+      },
+      {
+        "path": "concepts/lib/Lax869952/LeafAdditionInequality.ilean.hash",
+        "bytes": 16,
+        "sha256": "fe84ce5b8605406e63f81e1bf88da450d5747295b4fffe7f3816fdfcbc73e352"
+      },
+      {
+        "path": "concepts/lib/Lax869952/LeafAdditionInequality.olean",
+        "bytes": 16608,
+        "sha256": "e5f28eca129fb82207232478f36103a4cc11e1be0def727921f67643961fb1b6"
+      },
+      {
+        "path": "concepts/lib/Lax869952/LeafAdditionInequality.olean.hash",
+        "bytes": 16,
+        "sha256": "ade1e9195b7fce496298da9c28dad372839f5262b2597380a6054dd50fcc71e6"
+      },
+      {
+        "path": "concepts/lib/Lax869952/LeafAdditionInequality.trace",
+        "bytes": 2461,
+        "sha256": "f9c509578bcfa6b95b0c33c0f22abd92ab726bae20ecf375ee66e02353c230a7"
+      },
+      {
+        "path": "concepts/lib/Lax869952/NashEquilibrium.ilean",
+        "bytes": 1328,
+        "sha256": "afd7411159df10a047390d91b8821b94ba11f032eb043f60d699fefa06cb3057"
+      },
+      {
+        "path": "concepts/lib/Lax869952/NashEquilibrium.ilean.hash",
+        "bytes": 16,
+        "sha256": "1f2204a66292e6e16483c267a43eab6e688ca6a9158a90f6e038be50317d2853"
+      },
+      {
+        "path": "concepts/lib/Lax869952/NashEquilibrium.olean",
+        "bytes": 9456,
+        "sha256": "6513cfad17cbb1ae0d82b17e21cf5f886665e635343b7ab86df6c001946f2064"
+      },
+      {
+        "path": "concepts/lib/Lax869952/NashEquilibrium.olean.hash",
+        "bytes": 16,
+        "sha256": "522436c208257d1c0d9557d8f3d3a3ee994adac15d47044829eda5c43d769b4b"
+      },
+      {
+        "path": "concepts/lib/Lax869952/NashEquilibrium.trace",
+        "bytes": 2236,
+        "sha256": "de060002494a41313c0f11266a95e37ec705c510c2aec3f88c8eddd27a14d0ae"
+      },
+      {
+        "path": "concepts/lib/Lax869952/NetworkCreationGame.ilean",
+        "bytes": 3124,
+        "sha256": "ccd208af5a47d9e1e885776b7b774eb68f83be95cc0d9be54f129b15e3a8f54b"
+      },
+      {
+        "path": "concepts/lib/Lax869952/NetworkCreationGame.ilean.hash",
+        "bytes": 16,
+        "sha256": "2c66aebc26006e18a88bab8ac46d1f5a664be2a2860f72fdde50b6c36630b10e"
+      },
+      {
+        "path": "concepts/lib/Lax869952/NetworkCreationGame.olean",
+        "bytes": 20312,
+        "sha256": "70fd0729c14d8845343cb513ba7bd6a2b052ff733270d173470c00bc5eb2144d"
+      },
+      {
+        "path": "concepts/lib/Lax869952/NetworkCreationGame.olean.hash",
+        "bytes": 16,
+        "sha256": "87df7543bc42d93072f7960cd6aaf84ede57882ecb9b991dbb1badb42958b2bb"
+      },
+      {
+        "path": "concepts/lib/Lax869952/NetworkCreationGame.trace",
+        "bytes": 2464,
+        "sha256": "d2c82dee4a63a53b84915c600a5b3362d446c9a6608819fcd0733c9172988db3"
+      },
+      {
+        "path": "concepts/lib/Lax869952/PlayerCost.ilean",
+        "bytes": 2109,
+        "sha256": "6d728279b886727f57acf246c4af80c6e59eedbcbbce08debb5f4f50ac23d30e"
+      },
+      {
+        "path": "concepts/lib/Lax869952/PlayerCost.ilean.hash",
+        "bytes": 16,
+        "sha256": "2e0ce622f4d13ab429c17440be517bfef151ec9a49b518b5498435edc984980a"
+      },
+      {
+        "path": "concepts/lib/Lax869952/PlayerCost.olean",
+        "bytes": 14384,
+        "sha256": "fb4e9159e85a2cd996849ae52f1dd56657c8b1296e4561d1057366cf9a7bc6ff"
+      },
+      {
+        "path": "concepts/lib/Lax869952/PlayerCost.olean.hash",
+        "bytes": 16,
+        "sha256": "fd08321649b40a079dd901a70513a8adcdb5b738660db7fe00bf424610535c7f"
+      },
+      {
+        "path": "concepts/lib/Lax869952/PlayerCost.trace",
+        "bytes": 2809,
+        "sha256": "4d22e3b76a1fadce9b4222dc2a9c7c960ff66db6d8a1787a859299d6daac7542"
+      },
+      {
+        "path": "concepts/lib/Lax869952/ReceiverDeletionBound.ilean",
+        "bytes": 4770,
+        "sha256": "c35d1a28331c9eecbb95398dbc13aae1f5db8d2c554d9a609bfab8c48c9a1b98"
+      },
+      {
+        "path": "concepts/lib/Lax869952/ReceiverDeletionBound.ilean.hash",
+        "bytes": 16,
+        "sha256": "5a44c59a0e0e4b82709e438ec28a43411f303aee8f5ff0c3a2db37867a834cf3"
+      },
+      {
+        "path": "concepts/lib/Lax869952/ReceiverDeletionBound.olean",
+        "bytes": 23472,
+        "sha256": "b261403d072c20b8b0c0310591addce79aa9750980d95300387dc67cd2c88c83"
+      },
+      {
+        "path": "concepts/lib/Lax869952/ReceiverDeletionBound.olean.hash",
+        "bytes": 16,
+        "sha256": "eb680013132f2d4596877a76b24709a4055b71a6b9ec9499e267e2e24e1d65cb"
+      },
+      {
+        "path": "concepts/lib/Lax869952/ReceiverDeletionBound.trace",
+        "bytes": 2454,
+        "sha256": "98c3b269a522d45cbd589ea387b7c159844ac3b31a391eab347a585a339316f9"
+      },
+      {
+        "path": "concepts/lib/Lax869952/SmallGames.ilean",
+        "bytes": 1434,
+        "sha256": "250c3e5efbc7833071f25d3410cf4ec65504ef4bdb720df15ba43377c40552f6"
+      },
+      {
+        "path": "concepts/lib/Lax869952/SmallGames.ilean.hash",
+        "bytes": 16,
+        "sha256": "0805dadbbc7acfc1a86bd57448ae87c0eed7a1b5b478a39f773a00f5e5907d9c"
+      },
+      {
+        "path": "concepts/lib/Lax869952/SmallGames.olean",
+        "bytes": 10984,
+        "sha256": "54d3ed7391eba3387bb7981dc091ad59a169dce8eb3ba8e686a9617f13ee5f5e"
+      },
+      {
+        "path": "concepts/lib/Lax869952/SmallGames.olean.hash",
+        "bytes": 16,
+        "sha256": "c5c4243c8a52c4ece0e29d5a0bab61094c79317f2981771ca404470b02e7ee24"
+      },
+      {
+        "path": "concepts/lib/Lax869952/SmallGames.trace",
+        "bytes": 2420,
+        "sha256": "4ce0bd7ce23bdf14be6ff2f93524874725c6d802a34e25388a2014ca43789840"
+      },
+      {
+        "path": "concepts/lib/Lax869952/TreeAtDoublePrice.ilean",
+        "bytes": 1518,
+        "sha256": "ea1bfb720e55b21bffee4e37b4f68f3f66f81274d7597cdd39d02d3a43cf83c7"
+      },
+      {
+        "path": "concepts/lib/Lax869952/TreeAtDoublePrice.ilean.hash",
+        "bytes": 16,
+        "sha256": "e4fffa776bd6b12a4a810a6067ad1a956dcbacd04a1ff09fe4f9c4d95edf112e"
+      },
+      {
+        "path": "concepts/lib/Lax869952/TreeAtDoublePrice.olean",
+        "bytes": 12264,
+        "sha256": "ecebfcbcaa1f0abb6e8fb67a2d1f6caf920bbe7eff284aa8aa01d582ed474f0b"
+      },
+      {
+        "path": "concepts/lib/Lax869952/TreeAtDoublePrice.olean.hash",
+        "bytes": 16,
+        "sha256": "bffb55356e5ea8c4e94a7d7cf3d5b4654eaa20e3fa3dc3bf91809a877f4c150e"
+      },
+      {
+        "path": "concepts/lib/Lax869952/TreeAtDoublePrice.trace",
+        "bytes": 2469,
+        "sha256": "c75ec524f7b1f4e26867ffa2a5298017de3b0beb0fc184d0ec1105a8a361d595"
+      },
+      {
+        "path": "concepts/lib/Lax869952.ilean",
+        "bytes": 525,
+        "sha256": "c0e20bf130897ec76e74db8cd3b1836378a477a42475670403999715d03b8361"
+      },
+      {
+        "path": "concepts/lib/Lax869952.ilean.hash",
+        "bytes": 16,
+        "sha256": "2e6c2e6aff389774cb9b6c9569990b32dbe304e8ecc6f224d00bd3654163040a"
+      },
+      {
+        "path": "concepts/lib/Lax869952.olean",
+        "bytes": 2464,
+        "sha256": "71a48459aadb3dad3436fcc34632904efda34563188108530cf435cad1b84072"
+      },
+      {
+        "path": "concepts/lib/Lax869952.olean.hash",
+        "bytes": 16,
+        "sha256": "1ea18c9067c540fc131f76b99668caa5799d547ac0299c8bf694d4feec2ca3c6"
+      },
+      {
+        "path": "concepts/lib/Lax869952.trace",
+        "bytes": 3456,
+        "sha256": "083dbfa95279e60a1ff2b8eb7358f4112b3c7c918c29c986d324a0abf9c32864"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3157,
+        "sha256": "41f5f01aa1417f81a350aa06374d13366a6e475d9d6be2017112464f6bb27727"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 255,
+        "sha256": "53a80f714102ed7c971e8746f582a39f77a7bafda8c0255cc284a84e5c64d4de"
+      },
+      {
+        "path": "concepts/package/Lax869952/BlockGeometry.lean",
+        "bytes": 1660,
+        "sha256": "cb9e5026e10513d76644dba53610f343c0246881f218a8b7f3fac2f92236b1eb"
+      },
+      {
+        "path": "concepts/package/Lax869952/GirthAtPopulationPrice.lean",
+        "bytes": 622,
+        "sha256": "a8f92cbe91bf8ee6dcf48ae0763f9973d8c1e5b2ccf2024bf92a129f074dddf9"
+      },
+      {
+        "path": "concepts/package/Lax869952/LeafAdditionInequality.lean",
+        "bytes": 1072,
+        "sha256": "002d9ca229ef26d86360f1c10e1bcdf6616f872bf493f1610833d9ffb5245f13"
+      },
+      {
+        "path": "concepts/package/Lax869952/NashEquilibrium.lean",
+        "bytes": 1218,
+        "sha256": "ece88d20ef9bae9dcc1c775581f88db7695df3d2dd10640550ff840233129a78"
+      },
+      {
+        "path": "concepts/package/Lax869952/NetworkCreationGame.lean",
+        "bytes": 1398,
+        "sha256": "99d0ba1f9facb24d7ff348dde734adbd02a7546a2c017026c4bb55b34f1bb77d"
+      },
+      {
+        "path": "concepts/package/Lax869952/PlayerCost.lean",
+        "bytes": 1279,
+        "sha256": "d0a4f7bebaf2c2d86002f827361e0036354405e882e9dd1bb4cb5479eb7d7363"
+      },
+      {
+        "path": "concepts/package/Lax869952/ReceiverDeletionBound.lean",
+        "bytes": 1415,
+        "sha256": "0cbfdd1c90c9fb12ade9b10df21eee5d9b31941d36978838effb6d25104a29b0"
+      },
+      {
+        "path": "concepts/package/Lax869952/SmallGames.lean",
+        "bytes": 568,
+        "sha256": "9306c1e739c278dcfc9467960bcf73fc55bdff059e8b1f0269343de0e15008dd"
+      },
+      {
+        "path": "concepts/package/Lax869952/TreeAtDoublePrice.lean",
+        "bytes": 665,
+        "sha256": "7ad8ce22d3f6388793ac37a48aed4ac3b68bf1de4fd80d04b4aa6112cfc7f34d"
+      },
+      {
+        "path": "concepts/package/Lax869952.lean",
+        "bytes": 311,
+        "sha256": "efa69457dc79a94c0de0465e07f6849e78b3ac38c2b6f29a6646892fcacb8c9d"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Addition.c",
+        "bytes": 1377,
+        "sha256": "1d17b690bf9b4c431a8fe79af7863a64f26495907607e838721dba465ae070b6"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Addition.c.hash",
+        "bytes": 16,
+        "sha256": "9406f53048eb05ec06935732b0851a8d1aa21dc115d3384e6e112467995b87b2"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/AncestorCredit.c",
+        "bytes": 1398,
+        "sha256": "2419e163d3c4d3d7fb77dfdde471d4f4346b7996d0c7e5d11b584fe332456c94"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/AncestorCredit.c.hash",
+        "bytes": 16,
+        "sha256": "307c4931c9590b20dd22c2b08c2fe340dd0669a0341121ee2757c239170bf83c"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ArchiveProofs.c",
+        "bytes": 3760,
+        "sha256": "1a79a59710781d04fcc43d0c28d066439fea5d623c12647e51bbcc9169722bef"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ArchiveProofs.c.hash",
+        "bytes": 16,
+        "sha256": "0722765eaef96325288355ca32c2177a25aacd81790dc8e76c98b9b170b9aa97"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Baseline.c",
+        "bytes": 1377,
+        "sha256": "59d842300a812aae248de3973842da53aaf2cef413bdcb6477fec7900c11c4be"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Baseline.c.hash",
+        "bytes": 16,
+        "sha256": "d448b03b113f77b6301f15843c9d09f4d071aa2badf38ae812f1f0861383cf58"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Biconnected.c",
+        "bytes": 2641,
+        "sha256": "3d741d1fb8e7f805f7103cc2e8fd256aab37eafaac5b9894b9f24cc0aeae4b10"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Biconnected.c.hash",
+        "bytes": 16,
+        "sha256": "ad31180161f4d86cf65724a47dcc99a0fe4e72af6e23380f1a8248df87a1803e"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockBranchAttachments.c",
+        "bytes": 1717,
+        "sha256": "57a33a06f4f308d41150f20ba9e8dea08e4c911285331ae8f0c642d86e7d5179"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockBranchAttachments.c.hash",
+        "bytes": 16,
+        "sha256": "4c247429f1f09138a92c8c2578928394091904db9580adabea61f3da63c2a02a"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockCycleDepth.c",
+        "bytes": 1649,
+        "sha256": "a93366253f8b44bfc3b459ef24020fa1d6b6d5a0bfa66f13c927c185bb2067de"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockCycleDepth.c.hash",
+        "bytes": 16,
+        "sha256": "679aa88c78fb9ea8f8f527b49cdbb870e8acf89fe160c3569b60db1334019111"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockCyclePurchases.c",
+        "bytes": 1678,
+        "sha256": "56cc8bc8c7252f935a0ed34b4d8a2f8fb9ee8c2a3411e723c36f366347ffa72e"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockCyclePurchases.c.hash",
+        "bytes": 16,
+        "sha256": "c7056e2712761c3be634bf0b1d42653dce4c9b5cfa73d8ed861b28f8ae3df609"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockDegreePattern.c",
+        "bytes": 2537,
+        "sha256": "3941f054db5ca3e48337b2a67953e7dd3456ebf063372027561a4864718cf478"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockDegreePattern.c.hash",
+        "bytes": 16,
+        "sha256": "9ed58d034bcb11f7cb29e2207ec9a5f8ec5088c9b416ddd58642aa99e4195519"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockDegreeTwo.c",
+        "bytes": 1644,
+        "sha256": "80ef34f6db2f2a9c47bfe406528e3f5a46f854df7201ac83dc49a39e90bc85d4"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockDegreeTwo.c.hash",
+        "bytes": 16,
+        "sha256": "d57e47975a36843f5b4126acd5a994c752a528430d4cc24058aedd6292033e92"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockLayerCount.c",
+        "bytes": 2240,
+        "sha256": "a7ff0c598491befbf0130c43b144a0023bbccf68ed87c42898d75d094f2ba378"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockLayerCount.c.hash",
+        "bytes": 16,
+        "sha256": "5d1ad06c7206393e94da74c59191538ed31b19a054a8ad41eac6c17462c1e18e"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockParentPurchases.c",
+        "bytes": 1692,
+        "sha256": "4f126b14075aa11702a2127d838afe38c52f5048ec65992eb9629c7f14ca68a9"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockParentPurchases.c.hash",
+        "bytes": 16,
+        "sha256": "e1fb734452e1004114b1e035db13a649e28e4e3537aee5c4cb3b230bb71e0bf0"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockPaths.c",
+        "bytes": 1668,
+        "sha256": "94a8143f90d5bebbfc2ecf36b384e4166f51c1a10388d9d6bdf393d2829a82f8"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockPaths.c.hash",
+        "bytes": 16,
+        "sha256": "eaf05364be560074152ca7e6dcc8ecb304b48fde19d6e353860cefe335c53a65"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockPurchaseCount.c",
+        "bytes": 8363,
+        "sha256": "faba7093c2bf0207d181cb3ed9d8b0b932fcfb360b7e86361c486c9d412a5033"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockPurchaseCount.c.hash",
+        "bytes": 16,
+        "sha256": "d63cbf7cde7e7f524e2d3060a715a0e30ad2b6aba5531a6805343a9a0837ec3d"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockRootBounds.c",
+        "bytes": 2245,
+        "sha256": "c2b1dc2028556fb3e674cfa737868d66e4a1b4719d090e71857e53815d997cde"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockRootBounds.c.hash",
+        "bytes": 16,
+        "sha256": "0f741dd31cbbb8c9047dd1bc2013436c024e1561ba810515e0996b3a66e25eb4"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockSwaps.c",
+        "bytes": 1390,
+        "sha256": "60c38cdc18cb40a3f96caa325d1cff659458b7be8e1fb2bdbf904a891a379aeb"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BlockSwaps.c.hash",
+        "bytes": 16,
+        "sha256": "67d061b2e6f3d8d89d5d067da2a2a58d0abe70509140bfe841f405c59de6cc67"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BranchDetours.c",
+        "bytes": 1390,
+        "sha256": "f29b5673387b76bfebcc9b097e0784b887109e79d036f2befc11c60f797bac05"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/BranchDetours.c.hash",
+        "bytes": 16,
+        "sha256": "39c2878c7f806c75ac46a90c81654f565d1631349562ebd90abfddcef592f765"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ChainWeights.c",
+        "bytes": 1394,
+        "sha256": "1203cfdd3ba6fe49da035a0f93633f3a83d7d43aecc593fb0b1afc7df69d0df0"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ChainWeights.c.hash",
+        "bytes": 16,
+        "sha256": "bc74e205ccce3e5d53edb10e8e470e7cf8000db858cad221effc579619afc704"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CoreCycleBudget.c",
+        "bytes": 2669,
+        "sha256": "c5c02d5b4acc968d55449bdbfaef8bd3bfb57f8d549e5ec236850ae18c2999c0"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CoreCycleBudget.c.hash",
+        "bytes": 16,
+        "sha256": "ef4609dea5d3f6b811acd1ca6c0cc3cb3fd4075f560d0f7c998dee8550c0f58f"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CycleBlocks.c",
+        "bytes": 1656,
+        "sha256": "547fbfe90fae8c376c6f4154fd54166f4b4a5ab95365b5f3f162bdb822784bf5"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CycleBlocks.c.hash",
+        "bytes": 16,
+        "sha256": "c79126753785e449b2a9e785ca62cdc096c203abbf66fd13af9553990101bb03"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CycleCertificate.c",
+        "bytes": 44827,
+        "sha256": "d4e5de88c5227060f74fa9ae33de7583c2aa75aa22fab62700d62171e2b04daf"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CycleCertificate.c.hash",
+        "bytes": 16,
+        "sha256": "d2def7af4c0f0ba35d45e5364548324f75e73cc76f3377d71b9a3804e58206e3"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CycleCertificateCheck.c",
+        "bytes": 49657,
+        "sha256": "3aecd256310e9dee01c640d8894c359412d0b44ba48ceb7787e132d9b2efcd2a"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CycleCertificateCheck.c.hash",
+        "bytes": 16,
+        "sha256": "8aebb545274b555623fd10988e6f5486891686b762d008977384af6add1837e2"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CycleDepth.c",
+        "bytes": 1951,
+        "sha256": "2733f7a9ffbf4b0d23a6db24e73e973055fcda3580a258bd0f24357ccb90b2cd"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CycleDepth.c.hash",
+        "bytes": 16,
+        "sha256": "4d48457c28137fafcddff9873aef477f3f12fc812552086e0afcb231b4091837"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CycleInequalities.c",
+        "bytes": 1348,
+        "sha256": "aadfc57ac42880f86262ea5d53f511b599315fe0aa920c7f35271fcbb355ad6a"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CycleInequalities.c.hash",
+        "bytes": 16,
+        "sha256": "bc8df3338dea25721f2d6547c4cc058b993c144bb4f3066ee75044eea71eada2"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CycleLabelCheck.c",
+        "bytes": 47957,
+        "sha256": "e89b0022370a826f5a5a51406aab6f8d9d7f5c038ed4cb8c02d6ffc3c8bfdf0c"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CycleLabelCheck.c.hash",
+        "bytes": 16,
+        "sha256": "b1584fb4a134062a39c9873915dd46a77da90522837d75338ea3c760a513b934"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CycleSymmetry.c",
+        "bytes": 20574,
+        "sha256": "86f8fb9e5888d3d96a8e8942eb2e4c6154cc2cb28f1d7b04739f9bb380451841"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/CycleSymmetry.c.hash",
+        "bytes": 16,
+        "sha256": "90b80b37726535cf208d802bda67ff3fa5ca2d4a94dd7090d5426ff394238d08"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/DegreeTwo.c",
+        "bytes": 1931,
+        "sha256": "54a8a1d9d01ed5c875f8b4db6098d9f4f2c11b64b8f541c445f0cbb706c05575"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/DegreeTwo.c.hash",
+        "bytes": 16,
+        "sha256": "4421d7bc7187d3c94260fd395a32e5fcc51d259c33f75cd67efd98d698782c95"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/DeviationCertificates.c",
+        "bytes": 31107,
+        "sha256": "5fa76a718f699c704605ebd956b456af5c8108b69f9886dc1852cda3f9dab103"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/DeviationCertificates.c.hash",
+        "bytes": 16,
+        "sha256": "d083b19406489cd6f29e833c36599a59417807cb062dad76634ae826c70c0348"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/DirectedGeodesics.c",
+        "bytes": 1674,
+        "sha256": "db0b55d9fa8799eca37086cc614c63f3568353e21ba08f724194e5c2a27aa3b7"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/DirectedGeodesics.c.hash",
+        "bytes": 16,
+        "sha256": "4d541d58af9d75df0929390a389f12d723ea97bdd70b172fd0962980ebfc20cb"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/DirectedMinCycles.c",
+        "bytes": 1902,
+        "sha256": "ca49e77372096953aa7a6ecd71205009fc22ca2ecae82137816ddce1ae8221d5"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/DirectedMinCycles.c.hash",
+        "bytes": 16,
+        "sha256": "5db56d8913fda5936419ed14d889b8a841ebab8c266cc1ddad3a5f5124716d3b"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/EarPruning.c",
+        "bytes": 1378,
+        "sha256": "0e4d42c782478df7f3b8415fb115b42b01339e2e24ddd7623a2d7f63de3d4217"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/EarPruning.c.hash",
+        "bytes": 16,
+        "sha256": "673a75e823a7d9980e712d498336b7e1bc636db26f0828c6ae2f02e4c03200da"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/EdgeLayers.c",
+        "bytes": 1378,
+        "sha256": "c9fc2e64d40b717a88ffff85d1d2f2659d5757c999d9d81f6529ac7447284e92"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/EdgeLayers.c.hash",
+        "bytes": 16,
+        "sha256": "4034c5d57a7a6d6632cd9a7c81daac72db8252e1ebb7fe5079876f61ab071888"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/EdgeMinCycles.c",
+        "bytes": 1381,
+        "sha256": "e9933660968d76b69e890c56235dc99f16e7f950c28d314e4f01efeb586dbd5b"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/EdgeMinCycles.c.hash",
+        "bytes": 16,
+        "sha256": "22a76533bd62f2e6eb0d69369c66181389436fcea556ef7b6277b365c4cd3d9a"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Foundations.c",
+        "bytes": 2157,
+        "sha256": "ec3b75572f6ae62534ac5383e22a04c2bc4b6dc45caf359559806a8bcc94c103"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Foundations.c.hash",
+        "bytes": 16,
+        "sha256": "6c94f362123e5d286e3e05155cabd166bdfa75a911bb459ca44d01423a409172"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/GeodesicPurchases.c",
+        "bytes": 1410,
+        "sha256": "ccd713f583727d2a8f6a32a946c9841845d7c2d4534200889b34838d9617cf5c"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/GeodesicPurchases.c.hash",
+        "bytes": 16,
+        "sha256": "e088081aa7dedcc67dbe8ed400d6dfb447a26fc4ae65a62535a6b7915982f75c"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Girth.c",
+        "bytes": 1628,
+        "sha256": "bff491d37b08c3ad27ff7bde4d1484d977d0664adf8b5e5615b7e5caa13f7803"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Girth.c.hash",
+        "bytes": 16,
+        "sha256": "8db711aafa8d718585431cc1d9d3e2f5ed8d303cc8316eaed6039950d691b403"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/GirthDistances.c",
+        "bytes": 1415,
+        "sha256": "870ac8a4d1850a6d0029f01fad3b03fea37639ce82deecd61e7e55d5d197c28b"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/GirthDistances.c.hash",
+        "bytes": 16,
+        "sha256": "0301b45af8f06b80a06e51116efd0a5be889fe35ff40677dfa552aedeb5f83ab"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HeavyAttachment.c",
+        "bytes": 1910,
+        "sha256": "da5884918839ebedd4a5e69ca28ff29505785abc2edeec732faa3385997745af"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HeavyAttachment.c.hash",
+        "bytes": 16,
+        "sha256": "f04bdbfb3c85d1e65adc1c00445b4ee3c3b8fdf55151c54897c426d4215a7abe"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Heptagon.c",
+        "bytes": 2196,
+        "sha256": "b7387aaa90fddba84c16f81a8aa40a8d1e36d59f87d38c39dd66375e3020243f"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Heptagon.c.hash",
+        "bytes": 16,
+        "sha256": "993ad137372c887fd4ab992a5520a4ef8e6818491c4122a8ec1412d5e7fe43e5"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HeptagonChecks0.c",
+        "bytes": 1394,
+        "sha256": "e90ca300cac4ab7b20ae778fdae647221a24f815b1134a9ec8582f26bb6a6684"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HeptagonChecks0.c.hash",
+        "bytes": 16,
+        "sha256": "a05caec61b955d386cd82b7df3534f3ca44dc04dce18f00636ee06f51a7387e4"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HeptagonChecks1.c",
+        "bytes": 1394,
+        "sha256": "9b3e0a3a36fe9a9dfc20262a08e2cac7bd455d47b7cf5c1f0f25197ad7c7f6ca"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HeptagonChecks1.c.hash",
+        "bytes": 16,
+        "sha256": "2ebaa55bd70a886e9e0329bfe88208bd4c0b697d4b37e4884d725edb47c0b5af"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HeptagonChecks2.c",
+        "bytes": 1394,
+        "sha256": "3fefeb40de40fc1558864f309e302704264818e9388eb129fbb2879f803024f5"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HeptagonChecks2.c.hash",
+        "bytes": 16,
+        "sha256": "127c102370096d2e096e32c565d795b92dfa8cfb29fe11ac02907b114ef6f7d7"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HeptagonData.c",
+        "bytes": 536144,
+        "sha256": "3570506264f9cf90326d092779c2206e5bb50a394c4eafb8e5fd413800a74ea4"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HeptagonData.c.hash",
+        "bytes": 16,
+        "sha256": "7531d891d5553272b4d7a84b562e10b0dd4c51626834662387e2f7d51185b243"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Hexagon.c",
+        "bytes": 1912,
+        "sha256": "eb4b596194de38a339b8291d56502e92c1faa0ed20434486837ae948d06b5a48"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Hexagon.c.hash",
+        "bytes": 16,
+        "sha256": "f905af78793c7ba69cff03e88bbcad65a772177d8b3370650c9edd61d5c4b073"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HexagonChecks0.c",
+        "bytes": 1389,
+        "sha256": "d5e6e56a05570848f8ab31cf47c2e68c1c147a97f036c5b2a1abe4ff07e5e8aa"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HexagonChecks0.c.hash",
+        "bytes": 16,
+        "sha256": "73c5b34ac11e5f55cc5e5d958aef89eee3ca93d5a2453c11222383fa8f87a5e1"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HexagonChecks1.c",
+        "bytes": 1389,
+        "sha256": "cb41886b01a9d19b57429b63d3b88279ce375d878af31113ff8ebaf6293c6b87"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HexagonChecks1.c.hash",
+        "bytes": 16,
+        "sha256": "70c0e4c130d4419c31945a360a51d66b512595629af97e5aa70f3ca5292aa9c5"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HexagonData.c",
+        "bytes": 316463,
+        "sha256": "66619ed23ebcddd212ee23762bfb0105f795a5ad66fc7f2484f1da6a8457f2de"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/HexagonData.c.hash",
+        "bytes": 16,
+        "sha256": "803c8d61fbab233d2288fbb8afef2faa5cc3d3d12a047abcbb6b5abceeafbd14"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/LayerDepth.c",
+        "bytes": 1387,
+        "sha256": "4dcb441ec130f97f8820744d59384b5fd73dd09321c4019b92250542b794d8c6"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/LayerDepth.c.hash",
+        "bytes": 16,
+        "sha256": "85b5f737adcead479ba8279365130a5c1fbd9aa9a4780bf410c086e5c52f22be"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/LayerDeviations.c",
+        "bytes": 1673,
+        "sha256": "3060c86d0c9b901719c333f945e42d71bca3d6d10e988a178a7984e2caf68f5d"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/LayerDeviations.c.hash",
+        "bytes": 16,
+        "sha256": "2075dcd56554fc310bc1b1e2a5ef14677f675070177b331ed11c910560e3496b"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/LayerPotential.c",
+        "bytes": 10628,
+        "sha256": "409fc69dce7c92ce64473b064082925701cf502997ed9924785dbebfdf1f33fe"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/LayerPotential.c.hash",
+        "bytes": 16,
+        "sha256": "5fb3caeb4440b9268c4f757c31f0bb57a558345474d672dd5bfc06241c71d02a"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/LayerRedirects.c",
+        "bytes": 1401,
+        "sha256": "9cff8cec266db54ce5eb9e6567e679f277692d33cd63cd66617dd91791d7e067"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/LayerRedirects.c.hash",
+        "bytes": 16,
+        "sha256": "12ed66c546ebdfaba865ca399dea83138913646e82dece6771912c4956beb8b4"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/LayerRestrictions.c",
+        "bytes": 1404,
+        "sha256": "727df21f813f919d70adf08a01206a21d638698f99f079210b208b21325fd90a"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/LayerRestrictions.c.hash",
+        "bytes": 16,
+        "sha256": "eab95f1b23ed447c56fe89a94c06b35e2a96b3aa701cc111aa3928855f4e8cc9"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/LayerRootLink.c",
+        "bytes": 1678,
+        "sha256": "6eba0b244c5c0f5b8c3e618ca6022ca63a606114309de926c972a2b34c7f808c"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/LayerRootLink.c.hash",
+        "bytes": 16,
+        "sha256": "25608293de169ba6682b701c6f212c559c59e29b8c87f1e513929449567549bc"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/MinCycles.c",
+        "bytes": 1402,
+        "sha256": "c8446e46cdb0969d3c101d66ef9e8079fb09023291bca72fc0a725c3071b6bb3"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/MinCycles.c.hash",
+        "bytes": 16,
+        "sha256": "5777ecfea5d26cec5b6b744004d47edb18764594f43b75bd10038808c17e7d0c"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/NashLayerSparsity.c",
+        "bytes": 1674,
+        "sha256": "a7a545ca2cdff9bafb1d534ef3737400efd7a18433c2007bc798ae91248fdfd6"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/NashLayerSparsity.c.hash",
+        "bytes": 16,
+        "sha256": "91bfce315c96bdbd5b47f2a358cee468e6c2102a3df8adc9da25451074a340f1"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ParallelThreads.c",
+        "bytes": 1394,
+        "sha256": "2746a635d88ddbbc1878ac2f517ca8816cdda91817cc074df52d364198948b4d"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ParallelThreads.c.hash",
+        "bytes": 16,
+        "sha256": "b9678e1517d98bfdbd570fa8be0908418bc1f5743407bd25bb0469e935edef0b"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Pentagon.c",
+        "bytes": 4991,
+        "sha256": "37878f5f6266f0a02f11ebf44349f5f809468596cc5d436d41a5825076fa7e0b"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Pentagon.c.hash",
+        "bytes": 16,
+        "sha256": "d01b57bcd801a8d4242e5e868c01dd0c6c566a9495127b118616d330dfc4d97c"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/PentagonData.c",
+        "bytes": 493849,
+        "sha256": "96dab58a2734e6eff66dc6deb59b1a03ede087277ad0fe6ef7f8f3c479151b4c"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/PentagonData.c.hash",
+        "bytes": 16,
+        "sha256": "45e9e1e0a7938fe5cadccf1d0cb71637b8c5a42293788b5a42299dbbf287e82c"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ReceiverCredits.c",
+        "bytes": 1661,
+        "sha256": "a0b151a26c16a7355c1d297d9b2185f25dd1f7f7548a8dc7b6f6ebffa8bf27f4"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ReceiverCredits.c.hash",
+        "bytes": 16,
+        "sha256": "8180392a1f160d1dc2063c2ee07ad372b0c79f0cbd823e06671cf88412d5494b"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Redirect.c",
+        "bytes": 1377,
+        "sha256": "a5c9ebf4f8aad36042bb855bf59a3a19ac0f77e07d1c1a51e676309c7a079adc"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/Redirect.c.hash",
+        "bytes": 16,
+        "sha256": "6c7f5122f2cba89853422c1df7fd0c01b8a2d8e91ac836a5064c0500bc0603b8"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/RetainedRoutes.c",
+        "bytes": 1398,
+        "sha256": "16accb4a9a16b6a43ebc8317de99a1ee04dd1aa757b3ece37bad2a800d1ae25d"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/RetainedRoutes.c.hash",
+        "bytes": 16,
+        "sha256": "dc08f380f40868733d58f5dc6ce2aaa19b2f8767459e875fbe6dcbff71304182"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/RootBranchSwap.c",
+        "bytes": 1653,
+        "sha256": "b1a951fd073c547c241cbdf7ebbdeefe2c598b86c606748f8f3febec5da3d925"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/RootBranchSwap.c.hash",
+        "bytes": 16,
+        "sha256": "107121d8fbef574becc4f8e7f5ae08156df5462e650f052524cb9fbe58821cef"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/RootedCycles.c",
+        "bytes": 1655,
+        "sha256": "946cb1089442be4a9cea91aa7591e4b5f76e74c9257f8023559f19a03468e01f"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/RootedCycles.c.hash",
+        "bytes": 16,
+        "sha256": "e4b9afd0b1ff95983300a7921013d46f59239f30174825c22630f9fdd295a5a2"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/RootedOwnership.c",
+        "bytes": 3755,
+        "sha256": "eeac20a72b615f6ede0a2d39f3686933b30c54a15e62cccb6455bea807b03986"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/RootedOwnership.c.hash",
+        "bytes": 16,
+        "sha256": "e1e4ca92048892095bfab1c9d41f406788799f41c1d1bf45693ccb9425e26c2c"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/RootedShortestPaths.c",
+        "bytes": 2321,
+        "sha256": "b9e68a32181af37302f5ef7a70612e0e821c16b80128274c6e09f6813835f101"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/RootedShortestPaths.c.hash",
+        "bytes": 16,
+        "sha256": "e43390caf5c15ac499c16805bf9404803113fa95049e1ee3d64e762e5e0dbf1f"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/RootLinkBudget.c",
+        "bytes": 1410,
+        "sha256": "5c3f6dc643a81300f069ff607eebe197872c7d3cda86d2db75be8d29df46219b"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/RootLinkBudget.c.hash",
+        "bytes": 16,
+        "sha256": "dd3f728dbe29446f176e68b89e412925e09ee6e86232ca6e52fd7189f3c67dae"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ShortCycleBounds.c",
+        "bytes": 1636,
+        "sha256": "7f94da9060d2ca3d0b6a02779043c0cb564db64f0fa16f0b7cea9cd70dd8db5f"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ShortCycleBounds.c.hash",
+        "bytes": 16,
+        "sha256": "f6ef15c2fef188e556cf58ca1d76c5c43189d7d3d0525fea1d9562b5b31de198"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ShortCycles.c",
+        "bytes": 1665,
+        "sha256": "b5d11e8049da2eefbbd5aeccc0dc2bb6571090c5ed9ca714aca14e119a70ac5d"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ShortCycles.c.hash",
+        "bytes": 16,
+        "sha256": "57379930401e5ee9cba8bbc4dcffb6041274356ed0a2a4b05b5071ee97c34f42"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ShortThreads.c",
+        "bytes": 1394,
+        "sha256": "49880b18be92a4cd449a597e2203f2eee53a18af93bee3627107d52c44791432"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ShortThreads.c.hash",
+        "bytes": 16,
+        "sha256": "a8a3ed9651474efbd22f627153847505eff02519afa60a6cb8ea0ec9f17ad035"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ThetaMetric.c",
+        "bytes": 1395,
+        "sha256": "b764eee906ba38ac661e354d44cc6a7b4536aad1cc58c000d2213c3e813057b5"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ThetaMetric.c.hash",
+        "bytes": 16,
+        "sha256": "e0c401f5e60691d68a2d322f09c2f7d3e49d5351d63b6859c2eb2199430cdf50"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ThreadDistances.c",
+        "bytes": 2880,
+        "sha256": "18e75e436c3dae180f1b301851763f748ea543ff8cf9105a930d8579c44f6100"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ThreadDistances.c.hash",
+        "bytes": 16,
+        "sha256": "86d1b1e3bb79406c134caea9ac3375947a74cb695c693174ce1051e3b9cbbb2d"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ThreadForest.c",
+        "bytes": 1385,
+        "sha256": "7ccab200fbd55215aaa39493f3db4181440f6c55f166570c5aa06ffc0128264b"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ThreadForest.c.hash",
+        "bytes": 16,
+        "sha256": "f5b2fcca79fcc49ec5bd0b6236f4cbd8d6189fb07b44a01f0a62795473ce49d8"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ThreadGeometry.c",
+        "bytes": 6964,
+        "sha256": "68a1b97cde51760528a318d0096e6f009c008bfc31615edbc280e88808bbbcf0"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ThreadGeometry.c.hash",
+        "bytes": 16,
+        "sha256": "fd2497495f17d1cc4c21f666e00df2ced9f4b98eca2e08e9b20fe978855999b1"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ThreadLengthBound.c",
+        "bytes": 2204,
+        "sha256": "20d2daf8d9bc4ecaacebe86cfb974dab51468f3d6d8068f530f3a3b1f92fccbb"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/ThreadLengthBound.c.hash",
+        "bytes": 16,
+        "sha256": "686a330eec0973f2b3b9f4e27bbf60d457f04cab2a0f5550e9e32961e5205e9d"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/TreeDistanceBudget.c",
+        "bytes": 1403,
+        "sha256": "e33a649be824563b5243420cae793ee81d09161016cf5d6f53406fae5377cf09"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/TreeDistanceBudget.c.hash",
+        "bytes": 16,
+        "sha256": "b1fa886a797a3482d97d26fdfefb96a2cae836dcecdabbf64ddea243d4cbb649"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/TreeTheorem.c",
+        "bytes": 1700,
+        "sha256": "a1f692ff16d7ca016862a0eebd1783e2b6b580005f48ec593873bd8611d84249"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/TreeTheorem.c.hash",
+        "bytes": 16,
+        "sha256": "b30afec9b7ff69e7eb1a501179134a2c17b30756a843641c78522125c9813f63"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/TwoLayerWeights.c",
+        "bytes": 1673,
+        "sha256": "da57bda013c40011594e0346a12b2419e526e25f9cedcbffa1fd78fbd53cac93"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/TwoLayerWeights.c.hash",
+        "bytes": 16,
+        "sha256": "0521a07a82c7c6db201c10e62ac54d6ea1f1ec79acb11660a55cc51d8781023b"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/TwoPortalCertificate.c",
+        "bytes": 52493,
+        "sha256": "03ba23391805dc565b7bc9e6589bb388999f27ca83356c13ef60b423c8c40392"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/TwoPortalCertificate.c.hash",
+        "bytes": 16,
+        "sha256": "c478aa450d505aee9817acedb284cc83dcba938a3cbb2da91a200329a6631dfa"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/TwoPortalCertificateCheck.c",
+        "bytes": 15629,
+        "sha256": "5a3720e251f0235470ef87e6011aff334ab0473ec8759d5eff6932039a0f5366"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/TwoPortalCertificateCheck.c.hash",
+        "bytes": 16,
+        "sha256": "1be1cd10058f2c2b96dff5df36176e372758b61bb5c0d914efb9f71d724a8df4"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/TwoPortalCertificateData.c",
+        "bytes": 2512084,
+        "sha256": "e1a1f8f2ef8c6c617b4fd4750066cecfef06fe7584cbfc35e52e5b120010c90b"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/TwoPortalCertificateData.c.hash",
+        "bytes": 16,
+        "sha256": "f228c25dac95430023d3ef1ea3b042ed00b4ecf941a8367dc0bf47b4cede30d8"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/TwoPortalPriceBound.c",
+        "bytes": 2228,
+        "sha256": "3f07f0141118403e75291a2aa784dad6fef55c077212e46464d47f43790d4958"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/TwoPortalPriceBound.c.hash",
+        "bytes": 16,
+        "sha256": "1cc377911097fa2164d89b9be54a75923a6a61e2bd5ff8af8319ff0f8d6e05bc"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/WeightedBlocks.c",
+        "bytes": 2184,
+        "sha256": "b66782c8d7d4ff66df0316ab2d60a11ddedd2533c227d66f7f2a9e25fc17632b"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/WeightedBlocks.c.hash",
+        "bytes": 16,
+        "sha256": "de30b47936e8686602f97426290b923f70d6b5c560b4b0fece6b12909473fdfd"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/WeightedCertificates.c",
+        "bytes": 1410,
+        "sha256": "9191340415720d104e081a60ec023fb4bcc03f769ce2bfe3706df986702f319b"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs/WeightedCertificates.c.hash",
+        "bytes": 16,
+        "sha256": "35689da61f7d8c776d95c6a84728c714dc372d94bcaa96706e1f5db7cb5c8ca0"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs.c",
+        "bytes": 23784,
+        "sha256": "9ed2471d3636530002ccd0d72ee6db367225312e86f6eb8b014d9472946b394a"
+      },
+      {
+        "path": "proofs/ir/Lax869952Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "5eb4bbdb8e65bf38fb9fa74befb3ab78aa6f3ebe8d4c5d60ca448ff7ab1f88ae"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Addition.ilean",
+        "bytes": 11276,
+        "sha256": "b5525c01f72e3caa786d111c0f489ae5935ff2e6ed7b0e62ed5d2a403e066c30"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Addition.ilean.hash",
+        "bytes": 16,
+        "sha256": "f21b633175a9752ebb98c2319b3bfe1854e8c2c415018f9d5cfa338a9e0f0066"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Addition.olean",
+        "bytes": 161152,
+        "sha256": "e3ea6b63848140cd753b9d6b6705d68cef30ef6891f8373d1887b9cf082472b4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Addition.olean.hash",
+        "bytes": 16,
+        "sha256": "ff281f8cdd901c6dd38503346b6b33c3fe8516d7c22a5a141962b2a6a8303807"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Addition.trace",
+        "bytes": 2495,
+        "sha256": "acd387ec6afead4f19d187e9e855f1521fbaf99c93b51d95871f08798383e4cb"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/AncestorCredit.ilean",
+        "bytes": 18551,
+        "sha256": "6209207da31e676ca269e1822186b6d6af6429b27d57046d12c5702e5f5ba834"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/AncestorCredit.ilean.hash",
+        "bytes": 16,
+        "sha256": "4e72ab8078957df139ccaeacfab348dd2b15e6e9116125db32a55e92f448b455"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/AncestorCredit.olean",
+        "bytes": 242040,
+        "sha256": "4df5c06b81e6418125223db1a5164a7ffbf8ba04a429e19cebf8173cc0deb4c2"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/AncestorCredit.olean.hash",
+        "bytes": 16,
+        "sha256": "8e3fd6bd5e0fab010db4b685ada109689972e31e41e854910f45d435ffd801c1"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/AncestorCredit.trace",
+        "bytes": 2577,
+        "sha256": "70d40a40cca68e39bc43d356438190c629ff256eae94fca3ba307d266d66f268"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ArchiveProofs.ilean",
+        "bytes": 12619,
+        "sha256": "e2e8ccc47c07e1db6ab6cf03cf9f710b809c6f7286ea11a7f3669cdce7548fb6"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ArchiveProofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "efb90683f888116c57821868742e3720585898732aa75b89268f39a16ff5b6de"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ArchiveProofs.olean",
+        "bytes": 52032,
+        "sha256": "c9b7b7b5403cc8066378e6ed22376565a83ed1764c7d5c71e769a99b26ac2892"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ArchiveProofs.olean.hash",
+        "bytes": 16,
+        "sha256": "a56c3063e0d58112d46eb505ca721a6b45a2d6296e8d1efa66109e02c89c362c"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ArchiveProofs.trace",
+        "bytes": 4806,
+        "sha256": "e44ca1e705fe874632c05d98d31856dce42577b9f223eb61cbcee6b78334fd2a"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Baseline.ilean",
+        "bytes": 7437,
+        "sha256": "e5e3184735ff0c88a7ae976dd45bce1c7ea79696488e3a50cb7377cb0af50f8b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Baseline.ilean.hash",
+        "bytes": 16,
+        "sha256": "50e837caa87421ccd5344b34ecf6393047feaaa17fcafe776574d1d873bf14c4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Baseline.olean",
+        "bytes": 152464,
+        "sha256": "da2e0be37c2a95d6720a051fd7799479c6e413b4266a89f875c9fbd70feea7df"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Baseline.olean.hash",
+        "bytes": 16,
+        "sha256": "0db037b6a7e323970d91bf6e7353cfef724b69bf21946631ca696395d6111d50"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Baseline.trace",
+        "bytes": 2499,
+        "sha256": "452c4c38008257ae3ffc0113e71d72a1a1a6f8f84fdc312e2291fe842797cc6c"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Biconnected.ilean",
+        "bytes": 30135,
+        "sha256": "3c3a4a2f555093f56767d76ca671dcbc4dc9fd5d7c4ba34069c3d8f747730401"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Biconnected.ilean.hash",
+        "bytes": 16,
+        "sha256": "50f16a1f5d17657934bbf8a752c00d2d9580bab2ba56c19c0580b97436cf6e0a"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Biconnected.olean",
+        "bytes": 311128,
+        "sha256": "affd6049ef9db4deabacb50d1258033633e4db5bb9552e4b2aaf74e63f0e5519"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Biconnected.olean.hash",
+        "bytes": 16,
+        "sha256": "c1cdef81f27bdda1b7a35033720ffafdccddc93c521adb83dca1b148de90c5f6"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Biconnected.trace",
+        "bytes": 3451,
+        "sha256": "c4b85452e9eee48e0a19d14cfc23f9e80a4d2e6164d10de85b74f8ed4d1d137b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockBranchAttachments.ilean",
+        "bytes": 26933,
+        "sha256": "cf71e8801de166ae9c46da255a55203e96fd827d1f3db125a6092f5f9c698d19"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockBranchAttachments.ilean.hash",
+        "bytes": 16,
+        "sha256": "d19b2f1527c1690c6603e891b8677e16611fda8bb8d48b00c25d18ae8d261c85"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockBranchAttachments.olean",
+        "bytes": 402320,
+        "sha256": "1a69e4297b6a1f48fdfa4bacade1f7fbb4cceff62a6fb7be82dce30c3d419426"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockBranchAttachments.olean.hash",
+        "bytes": 16,
+        "sha256": "feb4629c6c181009a771559ce4466c4e78030a93a185b983ddf130dacf55e2f1"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockBranchAttachments.trace",
+        "bytes": 3077,
+        "sha256": "9064bf6fd534f944fdb43d0cab4435b256b9b3eee6156a1af2725224cb236e41"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockCycleDepth.ilean",
+        "bytes": 12970,
+        "sha256": "445ce7c91aa310e9dc09a17a7e49c1447631a72fd2241fa205632de267b1b931"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockCycleDepth.ilean.hash",
+        "bytes": 16,
+        "sha256": "48c0114d0ba8fef2cdc8a1cc461d91d1ef85023751cf3715d66a61ae80052e86"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockCycleDepth.olean",
+        "bytes": 66488,
+        "sha256": "2f95dc1b288f11e83723d5eb533ee02250663381dfbea0ea4e9c698303c3bebc"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockCycleDepth.olean.hash",
+        "bytes": 16,
+        "sha256": "22505c85e3d5c2c89971516f167ff5b2159f1881207c28ae7110d43555c92741"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockCycleDepth.trace",
+        "bytes": 2715,
+        "sha256": "62cbbebb9e669c32f932633cd64d5234a596aa2f6a31c9b2afe3d974b3893aab"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockCyclePurchases.ilean",
+        "bytes": 13300,
+        "sha256": "7186ca1c00842e40d22e46fd7a283be3378af2029d99e083e129d14de9860fd0"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockCyclePurchases.ilean.hash",
+        "bytes": 16,
+        "sha256": "d1adb1b5d1ec4c7fd4746225aa2bd36352b55947bf2088aa27cbb764030b2c9c"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockCyclePurchases.olean",
+        "bytes": 170672,
+        "sha256": "cf2b41ace87dbfe6e515fd4736e1fb6839a2d8421483f91b6617b90e738cb3a1"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockCyclePurchases.olean.hash",
+        "bytes": 16,
+        "sha256": "afc086e05ff5f30a347c595d7b4cb0b337226c8c37b5c40df9fd0f86997b3c5a"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockCyclePurchases.trace",
+        "bytes": 2775,
+        "sha256": "2a67605a36028394e82415eba5bbac224c48d684f58584f32e4e4fcd529b41fb"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockDegreePattern.ilean",
+        "bytes": 35110,
+        "sha256": "ae98c616ea96e7a0fa75da54b5c3cf9990e9d641de32a23204f6d184e9242349"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockDegreePattern.ilean.hash",
+        "bytes": 16,
+        "sha256": "8d0f26eae1b28053a27a75b7f5488e96fea2bbd29f28687691a23ee59f37ba01"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockDegreePattern.olean",
+        "bytes": 838416,
+        "sha256": "a9875ab2fa4c27ce5a69935dfbfaae9e9d49477ecd079a41355cfcb706cb91e9"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockDegreePattern.olean.hash",
+        "bytes": 16,
+        "sha256": "3232cecc4dea834fab77568f63348f0b54f41a3be9f35f65ddf8b6bd5e9b227f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockDegreePattern.trace",
+        "bytes": 3321,
+        "sha256": "b1400ca604fb2f7b42c7bf86df4c810faca469e0facde29fbbc4f771801fb4a8"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockDegreeTwo.ilean",
+        "bytes": 30452,
+        "sha256": "41e27c0844ae45ff90afc8b5b7b612cab918273f635e90234fddc2f76a0badfb"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockDegreeTwo.ilean.hash",
+        "bytes": 16,
+        "sha256": "06b07d95d093ce8d658df2e3d8db2a7a48e7cf1785fd6a53552a058db6f856ca"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockDegreeTwo.olean",
+        "bytes": 214088,
+        "sha256": "9f9240cfbf2496e3b60d8f181649c88e329a508f4cd4597a8d0c19f553d7ef9b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockDegreeTwo.olean.hash",
+        "bytes": 16,
+        "sha256": "680439abbf6da703f11ebd506f6fcdca6fe68bd2d71a40bf75d510f509ce4687"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockDegreeTwo.trace",
+        "bytes": 3717,
+        "sha256": "b72e1243f4e61e2479483f562ac349befd841910db16f606f8c0d3508fd638ce"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockLayerCount.ilean",
+        "bytes": 21668,
+        "sha256": "9a32b3a82e63c359d976dc8267be82fb2b6c8fc00547ec5a923e6bf164906a88"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockLayerCount.ilean.hash",
+        "bytes": 16,
+        "sha256": "057badc40c2b158c4f49c4c7d777e65fecad586a310f0b989dd8886899b86771"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockLayerCount.olean",
+        "bytes": 290248,
+        "sha256": "9a5eb1664e864d5e89f332b66fc55a5e9179c40a2b4e842e5afebb72786f0a13"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockLayerCount.olean.hash",
+        "bytes": 16,
+        "sha256": "47261c3f44db74ca0794dc6bba89245198feb58f84feed97ecf11fd01df15fa9"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockLayerCount.trace",
+        "bytes": 3123,
+        "sha256": "df35f1c02501716ec8375920efa5a86c90af51b5639dcb98caa1f3af18f798ca"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockParentPurchases.ilean",
+        "bytes": 19621,
+        "sha256": "5a0040fef5d914cb7c3067e86c362df005bfb61f119e6fe63ecc852f586762bc"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockParentPurchases.ilean.hash",
+        "bytes": 16,
+        "sha256": "a6f8a6203688006417f503e3840994290d3b0ce43112f88ea281941ec9fdaff8"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockParentPurchases.olean",
+        "bytes": 177104,
+        "sha256": "92a7fcf74b6825280495da11953cf167e82161d3f208ae011b038868fa725cb4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockParentPurchases.olean.hash",
+        "bytes": 16,
+        "sha256": "67caef044b950f66fd89742f354c2cdf85b4d8834a66f9020ba8ce92080f74fb"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockParentPurchases.trace",
+        "bytes": 3003,
+        "sha256": "a011ffb5a19abfc522c82747ad3b3af87dd7f1204ed8eceb4e104f339957dbac"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockPaths.ilean",
+        "bytes": 37081,
+        "sha256": "b6df10f04ca2eccd87bf9838d1c94301fa7716c3c5441cdf4773bc40dbc76eed"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockPaths.ilean.hash",
+        "bytes": 16,
+        "sha256": "d408c3d27fdece315d3272bbe758cc16d43cc534fc0356fbe245f8951f182593"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockPaths.olean",
+        "bytes": 377808,
+        "sha256": "637d05e312a948a8343dfcb1eb01b840b078dad81c83dad54fd9f73a6a56bc7e"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockPaths.olean.hash",
+        "bytes": 16,
+        "sha256": "fdfdb32a12181a2d153c2a43b7c63d7eef204bae1487a30241fbd49d288e591a"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockPaths.trace",
+        "bytes": 3309,
+        "sha256": "81fd3d8018e57e1e51d3d5440b9fbb0fe00743be1ccdd9ad98195e1696e67207"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockPurchaseCount.ilean",
+        "bytes": 46721,
+        "sha256": "7c4ee248bbd6568e564f9ee6bb683c46032db3dd1b8b01cc45fa09dacbf7322e"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockPurchaseCount.ilean.hash",
+        "bytes": 16,
+        "sha256": "4f126908790c083205a5dc8b22e55750778bc6d251f901c94111091f6c08f789"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockPurchaseCount.olean",
+        "bytes": 651536,
+        "sha256": "62f24f35b7b58e742b568dae3652cfc8a6e901327132dc2d4d872d1698291d8f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockPurchaseCount.olean.hash",
+        "bytes": 16,
+        "sha256": "f2ec87638fdea0dfd0cd84599dec7ab66c983ad4662150883a4ab3a24b5b58e7"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockPurchaseCount.trace",
+        "bytes": 2772,
+        "sha256": "a16cd41650155c86e5d7dc27a00cbd77043559addd52af4107c9df942a289d79"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockRootBounds.ilean",
+        "bytes": 52041,
+        "sha256": "3df28d951d0f28750f219eea4024ebb8127cb057f403ee2fe91fdd432959f132"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockRootBounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "cf452cd6b7326144b75010ec624cb91e6fefae458aa3bc0dccff85201c07f19f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockRootBounds.olean",
+        "bytes": 434440,
+        "sha256": "152905db246655d96a902e4265948d5d931d72a61b794b2e841e426801cc6209"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockRootBounds.olean.hash",
+        "bytes": 16,
+        "sha256": "25fad86af04852ea975f0c1add7a6c1d923295bdc1ef265cde67bc6d8d169db6"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockRootBounds.trace",
+        "bytes": 4024,
+        "sha256": "e328f503a3f3a51c53bc6b688d6af38e94dee1fc2eca242a1eebb2cb5bddc3bd"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockSwaps.ilean",
+        "bytes": 37369,
+        "sha256": "b8a0bc9decacc37f4953c785920f5a29cd84bad8f22e2ab2099a56f8afd4d9c7"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockSwaps.ilean.hash",
+        "bytes": 16,
+        "sha256": "39b074c92ffba79c640e05d684c7474cf9a89a05c4b7fd3f227eb6939140922d"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockSwaps.olean",
+        "bytes": 297240,
+        "sha256": "02663a85bdfe45d1fab28e5c357129ba1612a752fe9ac5cd7c4f2c2f815ee00a"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockSwaps.olean.hash",
+        "bytes": 16,
+        "sha256": "5b0e93b1b2ef388ef6130d4d4a3ea78b5608da4347587fb2b5447dca1bc8c59e"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BlockSwaps.trace",
+        "bytes": 2935,
+        "sha256": "c626a79771f4f55e12d1d15ae61d523c76356c5422b3e6775043224fbeb7a72b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BranchDetours.ilean",
+        "bytes": 27204,
+        "sha256": "f32eda19e9bd217ce0e1ea2063413311c1a3069d7622aac65b0760e3fada0751"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BranchDetours.ilean.hash",
+        "bytes": 16,
+        "sha256": "fd8f6676df3dfb56f85a3fdf5a5d3368d550ecfcef9b932edc3f59e15a88d051"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BranchDetours.olean",
+        "bytes": 552832,
+        "sha256": "d08508956cbfad7f23ce8d1c7f9191446cc47d9aeb14a3c4fac8a5f1bc270707"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BranchDetours.olean.hash",
+        "bytes": 16,
+        "sha256": "e7b18ab1cbb3908c35a2bea32128d8dad879dcb7cb2bbacc0c56718c46624899"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/BranchDetours.trace",
+        "bytes": 2534,
+        "sha256": "3049ffb34fe889a15f5d2dcbfc49caf74ce23aff5d680a9d2a7e04901f364276"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ChainWeights.ilean",
+        "bytes": 41310,
+        "sha256": "478047ed88d4cb9601b3f9dbb42457534a67ea468c51a214bb96763b279bacc4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ChainWeights.ilean.hash",
+        "bytes": 16,
+        "sha256": "3bfd7b2d0175614f08dfc9ddaebe78b9b977d2f253a9a8a888da5177227960fd"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ChainWeights.olean",
+        "bytes": 631712,
+        "sha256": "7eac88c253fa648af9424b442850bf166672a2bf45e88364d5f2f1d9f490436f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ChainWeights.olean.hash",
+        "bytes": 16,
+        "sha256": "2d8aed7422190936a99071978fb8dce489db1200ecaf847db88d5c97ea3e9200"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ChainWeights.trace",
+        "bytes": 3526,
+        "sha256": "f1c185886c9b25de3fb8b8ba0484ccc768d9505920aa6b3405201bd704301e03"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CoreCycleBudget.ilean",
+        "bytes": 26000,
+        "sha256": "552b2acd3a7480b13be72c66abfce3f806b29f8cb4a57ef4dc97c0b09a5b8fb3"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CoreCycleBudget.ilean.hash",
+        "bytes": 16,
+        "sha256": "057bb99a5031d40e96b93fff38716d9752e1c81fe2d047b9808282b264477def"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CoreCycleBudget.olean",
+        "bytes": 513040,
+        "sha256": "570305db15a4ee24f557a63fb11ea6ebb8f73001252881af241eedbe73927b9f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CoreCycleBudget.olean.hash",
+        "bytes": 16,
+        "sha256": "8d32129c640d1cf526230a5c4cbb9f1f9460bde385a05ace143868c604f317c1"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CoreCycleBudget.trace",
+        "bytes": 2779,
+        "sha256": "89474ab95b9ae12a58c567d40dfee7c995a5bf10e0c9bf3c93cbd18e0d40443c"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleBlocks.ilean",
+        "bytes": 39324,
+        "sha256": "be01c10bea0dbbceca1c050a9ebfe536a77ae603be2259ffaf60d6cbbd515b77"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleBlocks.ilean.hash",
+        "bytes": 16,
+        "sha256": "52f3e6dc2db74aeb62f6e02640eac015af11e9ffff64f481127423330112221a"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleBlocks.olean",
+        "bytes": 569488,
+        "sha256": "f1cccc8bf9eb12e517d43601ce1b5e8d987744ffb75ac03d2cc50f98b1918a91"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleBlocks.olean.hash",
+        "bytes": 16,
+        "sha256": "abc4512c6b5081083262b0a9091cce1330a34311a95764427cc86263ce29b928"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleBlocks.trace",
+        "bytes": 2880,
+        "sha256": "e7ec7b2fbcd387a28a5b5b869221ad3d0ff8e1fc739f37ef9f9c7bb85785576f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleCertificate.ilean",
+        "bytes": 95350,
+        "sha256": "ccecf4b637a16e3b1330c61f9a0ea94b71f3b6524637fc9c7ff27c950b44170e"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleCertificate.ilean.hash",
+        "bytes": 16,
+        "sha256": "a3d59d619d30247018b2dd7ed490eb5ae9007d847d559241a89bfc2d36d1c23a"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleCertificate.olean",
+        "bytes": 1251144,
+        "sha256": "1347ef352830893030eea0c4802b532b3e9e122e74ef6fce696ad488611b2d1d"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleCertificate.olean.hash",
+        "bytes": 16,
+        "sha256": "379c44a4b41fc70e78b155de207ef59ded24a6174e851c00376fcd8c683a8d76"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleCertificate.trace",
+        "bytes": 2537,
+        "sha256": "e3a5d89e535dd283a595a31d5d305db291a800a55fbe8ad2058be5bb510b23ce"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleCertificateCheck.ilean",
+        "bytes": 11686,
+        "sha256": "fa7a4cd456fce416bdafbd47594a779b51d888c0a27c56eae1d92f2ec5530f4b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleCertificateCheck.ilean.hash",
+        "bytes": 16,
+        "sha256": "0ae5908e6ac437846760918d1695ca39106a4ae310b15fd810cc645fa1bb724f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleCertificateCheck.olean",
+        "bytes": 268992,
+        "sha256": "e8c18b64d461c1d56301b27490267afcd5f0bd6331ae8c09b256e7c86916ce93"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleCertificateCheck.olean.hash",
+        "bytes": 16,
+        "sha256": "3d27cc56c94baa84b3effa4425f940d6b7bd2ac62f6803ccc382e9c75ec1fcd4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleCertificateCheck.trace",
+        "bytes": 2420,
+        "sha256": "67fb21f6c6b3537a31bfdd9dd185c41dbae697e16fffea8e249e52ee96788522"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleDepth.ilean",
+        "bytes": 30998,
+        "sha256": "fa81c662a86fa6dd5886a4e089481fd6f3eb50e0f65ef18bcd35dfd91c084473"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleDepth.ilean.hash",
+        "bytes": 16,
+        "sha256": "9db8a33512615b2d907508cbcab121ef401c583c1dc0b6eb9f752edd308c8e4b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleDepth.olean",
+        "bytes": 308760,
+        "sha256": "732dab55b669a3b4bb5e98b5b7fabfd60dc3242d24a2d03e5dc1ea4063c27cc9"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleDepth.olean.hash",
+        "bytes": 16,
+        "sha256": "ea71b0befd398d9b53d8c02cf6955954a5d6401e43b31ae77203ac85ea484af6"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleDepth.trace",
+        "bytes": 2869,
+        "sha256": "eabf9855086e55f3948a1d9e891ac5a86ec957fd22360a7c263f748fddc9e0b7"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleInequalities.ilean",
+        "bytes": 2453,
+        "sha256": "d9f12e093f7adfa5d53e98d19a95d9c534500284d39149479691a311767ed7d3"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleInequalities.ilean.hash",
+        "bytes": 16,
+        "sha256": "29eae760eed221aea139de9e6a1fd94f10c3b954a3702120de6b3ba719ad5232"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleInequalities.olean",
+        "bytes": 493728,
+        "sha256": "a4510ce9d7faed840066e30e0d372a47265fd89991fc075bf8e956dcc9fde15c"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleInequalities.olean.hash",
+        "bytes": 16,
+        "sha256": "ad2aa93da2c45cccc098cec14316c74e41f6a9e9177f2ca2ff808c3b55cb9b73"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleInequalities.trace",
+        "bytes": 2560,
+        "sha256": "b254ee49f48d7e1b1f822ea8a18f0d7e8508b709fa2ec75a9bc7d8fefd8db498"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleLabelCheck.ilean",
+        "bytes": 39218,
+        "sha256": "991e0f98787f9f5076c4d7153bdea08ba72af6e991b69411dd5c93f22428c320"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleLabelCheck.ilean.hash",
+        "bytes": 16,
+        "sha256": "4ccab577d167b6188b574407f9a2c0e358b4a46d878b8a08add78fce856210f0"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleLabelCheck.olean",
+        "bytes": 590112,
+        "sha256": "6ac4472f1f498d73ca13460e2972f1ef1cd90a47e7a7c45cddc0a887ada05965"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleLabelCheck.olean.hash",
+        "bytes": 16,
+        "sha256": "b7847976fa2ec340cae7a0ed9e60322481548b943fdd77938c748e6b5b5e925e"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleLabelCheck.trace",
+        "bytes": 2388,
+        "sha256": "3872331c22f319c4ed1214e3bde0c05862320c85828d72e8d440c81d06624db6"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleSymmetry.ilean",
+        "bytes": 22751,
+        "sha256": "c68465cff6981c4d2072649a539e29bf93d08e599583e7811b691eff1d12c716"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleSymmetry.ilean.hash",
+        "bytes": 16,
+        "sha256": "edb6c90a38da70f65be7ece2daaa17d194c3f8009775489f7e448a522ba4e918"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleSymmetry.olean",
+        "bytes": 185616,
+        "sha256": "a2a4891355abb27c67c29525817c13f9817377c0b092598cb0d1f9328c0f58b9"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleSymmetry.olean.hash",
+        "bytes": 16,
+        "sha256": "fa38997557d518e3f4969e85faa06b52463453569c89b81b040d53bcb08a5de9"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/CycleSymmetry.trace",
+        "bytes": 2355,
+        "sha256": "8b5af4e56a8292c96b1d0d85e2a62834b320d84f46f83cea2d49e23407eecefd"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DegreeTwo.ilean",
+        "bytes": 84471,
+        "sha256": "68b4a8f8c6968226574eb4f794299e66ef8b7645c328e2651ea2e7015239c957"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DegreeTwo.ilean.hash",
+        "bytes": 16,
+        "sha256": "d2f8dfa90cd4e93bdf4875b4d808750bdf916d7d6a40339ceda6ad84b986d1f1"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DegreeTwo.olean",
+        "bytes": 956696,
+        "sha256": "7f1a1ae1484f80339ad705a7240741f5f9547e0b751db5203571cac490a78ae9"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DegreeTwo.olean.hash",
+        "bytes": 16,
+        "sha256": "f3118dea5a88c45b457cfa02bc4fadc9693e647febe9ebdfe2cd058747c944ce"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DegreeTwo.trace",
+        "bytes": 4163,
+        "sha256": "693bed7114b7ff28ef6fd5763cf1ebcb1926b9acbde784b280bf4859b6d909ee"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DeviationCertificates.ilean",
+        "bytes": 18832,
+        "sha256": "6106d0b0f944be72164e68ec3300073ace0eed2d20eaf58f6691bbda82c3df06"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DeviationCertificates.ilean.hash",
+        "bytes": 16,
+        "sha256": "727985ceb25dc182759b93bb9c206928bd656cd8f808c827746e461b82f7b55b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DeviationCertificates.olean",
+        "bytes": 287752,
+        "sha256": "2fa3beb660015bc7e81096f10ff5bc7a2248f2fd238d1c5d8f47e3ee8ac4f41f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DeviationCertificates.olean.hash",
+        "bytes": 16,
+        "sha256": "adcf5acfaef0d80947f62ab9d0fd99d0257610c9309c46eb63afe32fb319ef31"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DeviationCertificates.trace",
+        "bytes": 2806,
+        "sha256": "00309bb46dcc8d3115029af5ae29fd63ac5808c1b4a67fd9ecd26fb04d0a723f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DirectedGeodesics.ilean",
+        "bytes": 59809,
+        "sha256": "3003941468fe66cb46ead7169e524b948ba6c14e21887e068914b80776a24870"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DirectedGeodesics.ilean.hash",
+        "bytes": 16,
+        "sha256": "5d5d100ae985ddad92866af91eeedbf1cca48f5037c9163d6c76983abc6cb8e6"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DirectedGeodesics.olean",
+        "bytes": 970984,
+        "sha256": "33c74916b6af336f21da56a97265025adb56aee1ae86bc9db5b0e926fd761279"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DirectedGeodesics.olean.hash",
+        "bytes": 16,
+        "sha256": "ef04190a72d18bcc24b1a4a0c9f70a4b771bf2b1a8097ccf3d8a353155f1dae7"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DirectedGeodesics.trace",
+        "bytes": 2968,
+        "sha256": "101c44a51b28da8c079bfa5ca6bb2af4a359bbf6f34304f2f242512da57aa6b5"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DirectedMinCycles.ilean",
+        "bytes": 60101,
+        "sha256": "1c7dc530cd5f0f59fa569c7abf7c5e6e53d16c88ef6c8ea013efafd213a6dfda"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DirectedMinCycles.ilean.hash",
+        "bytes": 16,
+        "sha256": "462df99dcbe45f1a68c518507c1fd805de004c6f8796a59b63b904ddc4f5d63a"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DirectedMinCycles.olean",
+        "bytes": 1621656,
+        "sha256": "26b5b25afc9e81d7977e8d05f914efbb2124908b05dccca226d5e2886bc336e3"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DirectedMinCycles.olean.hash",
+        "bytes": 16,
+        "sha256": "7e27ca8c7b9475f6a138a389f6f56d08c75314c5556c81a04352ef78ea70a5dc"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/DirectedMinCycles.trace",
+        "bytes": 3905,
+        "sha256": "2e0262c715ecb7d9ac57097f2b04d5c69c838f67231e1d389fc4f9134ed7c608"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/EarPruning.ilean",
+        "bytes": 15762,
+        "sha256": "abc0ca3b9c88489319641b71cdbefa755ea9d66ae60c6ddd0dd149498149049c"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/EarPruning.ilean.hash",
+        "bytes": 16,
+        "sha256": "8ea4be6d479479b1bc869beb7f212de38059f2f37af453707440efd0979a0f30"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/EarPruning.olean",
+        "bytes": 196736,
+        "sha256": "2b24ab50cf00f76d894621d86bb8f23a78139ae6e6933528490f6b09ced4f98e"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/EarPruning.olean.hash",
+        "bytes": 16,
+        "sha256": "550e72081543242d31edaddc97e2f22992660effe41b9bccdf493604beace23c"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/EarPruning.trace",
+        "bytes": 2717,
+        "sha256": "c37c9c918296b6acbd3b62194149aabba472584c54e76e0b88a8aedaace0c3b2"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/EdgeLayers.ilean",
+        "bytes": 12893,
+        "sha256": "893fcde902abd120da7e63d5d3c7e7c089005af4cda7d7e42cf6a11d99b5dc15"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/EdgeLayers.ilean.hash",
+        "bytes": 16,
+        "sha256": "0731456b4e4604b0226b7f2cdfe793eb2cd76939438d1a5d4cc358b60b89c83d"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/EdgeLayers.olean",
+        "bytes": 392184,
+        "sha256": "296033746b578cea48fcbdc5d01295ef47137ea2496220214009063952058fa3"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/EdgeLayers.olean.hash",
+        "bytes": 16,
+        "sha256": "4eb76308c5c6aca9976593a776aaa5763caa8b9202d9b4f313455bff4f1fa1e7"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/EdgeLayers.trace",
+        "bytes": 2875,
+        "sha256": "2e356e427b3121fcf6ff0d0dd212d1f5295e1a2a1a854b6998d1d35d243517f2"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/EdgeMinCycles.ilean",
+        "bytes": 39156,
+        "sha256": "90542e6c62682d61185b252ffa42c05394aad18e233c65aaafd99b8f69bbe163"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/EdgeMinCycles.ilean.hash",
+        "bytes": 16,
+        "sha256": "c61dd6df03fd6fc4d36079207e9fba1ae6e79b9f3e498efd9d3b2a66ecbd5345"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/EdgeMinCycles.olean",
+        "bytes": 525472,
+        "sha256": "a42781057119c82271c4d7e299f21e8374c81ca306f76345ab1175d1b401c130"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/EdgeMinCycles.olean.hash",
+        "bytes": 16,
+        "sha256": "29336ec5e50e264e1794a6b735319145ca2bc610144e11cf7d332253d1224ccc"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/EdgeMinCycles.trace",
+        "bytes": 2741,
+        "sha256": "1bb6db82ede2ffd0780169c18a4c9d8e35a99546ca521088de8b15e4d88aa1ff"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Foundations.ilean",
+        "bytes": 21644,
+        "sha256": "a7c00a77f2e7d09c9914bf9e660819c5e730ef21a7681a0e5dcf02db244efc03"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Foundations.ilean.hash",
+        "bytes": 16,
+        "sha256": "65c205010d8d02f7950139d0322843df85f123608c0eb835038d7db72e06a516"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Foundations.olean",
+        "bytes": 258280,
+        "sha256": "0e93121347c9f966be06434e49fc652d26b4864350b5bbf1354ae9413a1b791d"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Foundations.olean.hash",
+        "bytes": 16,
+        "sha256": "0c4c516a845221fcc22245cf96a61c7184bd7af0068154e9c15ba49a783fc293"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Foundations.trace",
+        "bytes": 3569,
+        "sha256": "9a384060724b90d85afd348d7b073a0136f1c9f163c996ada831edf413ea9b8a"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/GeodesicPurchases.ilean",
+        "bytes": 28275,
+        "sha256": "05bd62f13ef2d6d742d706822e2322c8826289c7f41b766a6921b4ae85933923"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/GeodesicPurchases.ilean.hash",
+        "bytes": 16,
+        "sha256": "fa08cfea8bb408261725869c893d2efb577541f40b40bf301e35c3268b1ae089"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/GeodesicPurchases.olean",
+        "bytes": 382976,
+        "sha256": "be0a886f51708aabbaf5a13119df5b414cba3d08d1005e5cefa0345928570ef8"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/GeodesicPurchases.olean.hash",
+        "bytes": 16,
+        "sha256": "97a7c74b093eda10f3282b3cb9bc5e69d7f56a5be6a5ede63725b00a3e1c0a4d"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/GeodesicPurchases.trace",
+        "bytes": 2790,
+        "sha256": "c13faea025da8d64179b35a0fad4cb56f70542ac6683d829eb788312d76377d8"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Girth.ilean",
+        "bytes": 33012,
+        "sha256": "e95418a8c34e81af267c5172a6c0f35e86f168cc8c0f73fcead5b8d2cedfd5fe"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Girth.ilean.hash",
+        "bytes": 16,
+        "sha256": "4c76a43221474b92a17ad30195234fcdb498c786097132d5309ad9eba917e036"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Girth.olean",
+        "bytes": 691760,
+        "sha256": "53a956f78beaa3ab57af49539252f7e9b776b7b752f0b3236ce1c77797cd2400"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Girth.olean.hash",
+        "bytes": 16,
+        "sha256": "0039501e26b6844a78f9669b3b7638dcdc173161ce151b8bb007e25d6c100dde"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Girth.trace",
+        "bytes": 2999,
+        "sha256": "3896ba4ff7f122aac741ec452c46564f8e795f2abcc3b373b51f2752ddd254ed"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/GirthDistances.ilean",
+        "bytes": 19922,
+        "sha256": "78d699058704345bd2b273fb1b96036bec707da655b5b0820ba9ab22a9a437b8"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/GirthDistances.ilean.hash",
+        "bytes": 16,
+        "sha256": "a721dbb0f726defa4f52484ab5d73a0826404ff372f4154ecf6d5e24094bb34f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/GirthDistances.olean",
+        "bytes": 262272,
+        "sha256": "4e6219ad3b3ea4d5385f9cb98584f9f933d6909d9476e8e7a42c74df390a11a4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/GirthDistances.olean.hash",
+        "bytes": 16,
+        "sha256": "23521712dad0c86f78780c8997c5a96c0775ce88dc62a9ba17b4376a137ffa41"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/GirthDistances.trace",
+        "bytes": 2775,
+        "sha256": "aeb11d92f38baedc3530c9c76bcb864e89c4ea1d76114cd6ee7aae490afcb747"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeavyAttachment.ilean",
+        "bytes": 38825,
+        "sha256": "eedac689396f2084c91acdc24cb736bf19a473d7abd629a06a3735c9cbd56b16"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeavyAttachment.ilean.hash",
+        "bytes": 16,
+        "sha256": "fae6c575bc220c2388f241e50db1916ef1c04fb981f8cf5782b56243b3ccdb35"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeavyAttachment.olean",
+        "bytes": 581096,
+        "sha256": "dc31a61a1a0f5a09454a70cf8ac35dbb8ecf10b686a9609eff27718f536b5ccc"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeavyAttachment.olean.hash",
+        "bytes": 16,
+        "sha256": "5b08800a7edadb89690898973caeb518009d68861bdbb9657d323d2ca73ce72e"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeavyAttachment.trace",
+        "bytes": 3319,
+        "sha256": "b01f5832f35da6db645931c1956e7f3b25c3b375f506c30f4a50ea03b5ecbed6"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Heptagon.ilean",
+        "bytes": 9333,
+        "sha256": "1aa72e9e4c7b1e7adc3caa55ed1688531a75f5b2212cda50f82d2adc282b83db"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Heptagon.ilean.hash",
+        "bytes": 16,
+        "sha256": "eea43a86f732c709855ac3da2743a194942d33b549950e3d20fbe31b80606ed4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Heptagon.olean",
+        "bytes": 60400,
+        "sha256": "e47f6aa96872f37c4b7f5665aef16a637d6300adc5d00885cc805145791c2de3"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Heptagon.olean.hash",
+        "bytes": 16,
+        "sha256": "1d3112b29c441c0a376d7d3842cd1fcc2b842e71e1d5d24b4ab4af4bc2e55435"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Heptagon.trace",
+        "bytes": 3021,
+        "sha256": "e480200cce049afa94fa35d51ab59a9b609754ff83a6035d5609386ec80b5a3d"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonChecks0.ilean",
+        "bytes": 5881,
+        "sha256": "409c3baea7f75ee6a99279956029ef0b9e7591f0ee3a7a498a260cdc02953b2c"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonChecks0.ilean.hash",
+        "bytes": 16,
+        "sha256": "e5f783614da823ef43574c319b2b5948b6f4d5c6a4aaae82670aad789f5c94f4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonChecks0.olean",
+        "bytes": 35688,
+        "sha256": "48097f6362921d85bba8f4f9d9a1548275f60b5a109ff83414e23220c3037ea3"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonChecks0.olean.hash",
+        "bytes": 16,
+        "sha256": "f5972c386396a0e1ea71d2dda515dba352454c4aec30804084bb2c1a8537671f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonChecks0.trace",
+        "bytes": 2363,
+        "sha256": "4fed45dd58d727cc4e3ff742443b7e15f4ab80ba03239637e04c24ebb6dc1d24"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonChecks1.ilean",
+        "bytes": 18704,
+        "sha256": "379d5ea689db72008db9ce686d183b83a88fe0e12fbd6c45a1bfbd35ad04fdb4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonChecks1.ilean.hash",
+        "bytes": 16,
+        "sha256": "5f8308d5107af07b4e87bc5c9b88d546556f266efebb1e3968e611d9128edacf"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonChecks1.olean",
+        "bytes": 61104,
+        "sha256": "5c76a171212a1ed17d18390fec07e15698948a5f0b00c79ced885112a8376804"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonChecks1.olean.hash",
+        "bytes": 16,
+        "sha256": "01086d3e86d6af2c3edde4ef3519a8be90e9291569d2cf63c58c1abc73beb021"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonChecks1.trace",
+        "bytes": 2363,
+        "sha256": "ffea8716a4d3c77e027e0b196d4398ccb28b744dcfaaa9278bf6dfd96a0d1675"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonChecks2.ilean",
+        "bytes": 23051,
+        "sha256": "f9fd75dbb912f19a7e3a6dc545f10a3b802e9587738c9239a359323447de0428"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonChecks2.ilean.hash",
+        "bytes": 16,
+        "sha256": "96c412440828fcecf23453b6f24fae606c1e957a17e9c0fa92295cd3ad9757c6"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonChecks2.olean",
+        "bytes": 69576,
+        "sha256": "9081626be8405c052ad3f59a9b286740ad6ccfde9a69855194a6c904835f50b7"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonChecks2.olean.hash",
+        "bytes": 16,
+        "sha256": "58847d4005003afd2075555b3a0922607d974df576a0620da2ce44065616349a"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonChecks2.trace",
+        "bytes": 2363,
+        "sha256": "dcd12724d9c63132d9a41eb0008b47526de83647ce77d806f65ec17603be1f94"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonData.ilean",
+        "bytes": 24974,
+        "sha256": "b6ff6783d3924ee276f798f986198b0a7c0dccdc3737c2c06ca8cc92640dfaf3"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonData.ilean.hash",
+        "bytes": 16,
+        "sha256": "7420360f30da048ca995f1140a311da019257e83d0aff3afe99d383da7b28028"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonData.olean",
+        "bytes": 598024,
+        "sha256": "6f4bf38dbe9cf3d9deded76063f7c7d817dd8ca1e9dcc110a49be983e4097930"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonData.olean.hash",
+        "bytes": 16,
+        "sha256": "eb17bd5e6239d8cf3fd00eb5fd2d42f0498de91e6936576b15a273bbc7e11d12"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HeptagonData.trace",
+        "bytes": 2513,
+        "sha256": "00722617b4535fc3bd6f9dc3de952228d9c3156a4aa73642eea503065a85a4cf"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Hexagon.ilean",
+        "bytes": 8975,
+        "sha256": "cd29ac70ff2d83e1204ba138e2e35b57e176c21ff148cdbafd05b6514a63bb6d"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Hexagon.ilean.hash",
+        "bytes": 16,
+        "sha256": "f0c477056c6f70fef5630d39eaaf8185316755da0bfccb072bfadfbfff8af9dd"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Hexagon.olean",
+        "bytes": 57712,
+        "sha256": "352d33d269914065fe755b48ed2b15d4374f3e2b6425f9586dfbfb8a24c56b12"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Hexagon.olean.hash",
+        "bytes": 16,
+        "sha256": "c72f087648ce6f25b80f890f4245ac0b75285f0f7aa796b9956019e6f0ca9626"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Hexagon.trace",
+        "bytes": 2833,
+        "sha256": "4ff420cc2591c0827cf336bbf5b5961f6905c8112e8bdf577231f2dc343a9cf6"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HexagonChecks0.ilean",
+        "bytes": 18578,
+        "sha256": "8f2906730f1777fd4c3d458e5402d0954ff2a05f719906ad8bfcebef3312b320"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HexagonChecks0.ilean.hash",
+        "bytes": 16,
+        "sha256": "d3780c5db785804f27a1f7da806e1ac9c5181c1d891d3c6c93a31a86394eda41"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HexagonChecks0.olean",
+        "bytes": 61104,
+        "sha256": "d5faf14cfd55752a2bf485863800d84d65d786fea19e2fd65b8cce55d0cf9c4d"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HexagonChecks0.olean.hash",
+        "bytes": 16,
+        "sha256": "5b3d94e50555e8326dbb5369ad24c1157bd55e89ae9de37aa9048b42324a397c"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HexagonChecks0.trace",
+        "bytes": 2354,
+        "sha256": "d5fb1977003d4cb2ecdd93ae1d7d9b51f16257bc72ddc5ee9f4ca1e9e5be18c2"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HexagonChecks1.ilean",
+        "bytes": 22895,
+        "sha256": "7ced832c3dbba5f1b9cfcb737fdd61374670ea28325f6a75fc5857388ef1ea9d"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HexagonChecks1.ilean.hash",
+        "bytes": 16,
+        "sha256": "64e38bb78b4b40a2ee0c8fed289e440b599092f24266485e2dcc25f8d5ef6bc1"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HexagonChecks1.olean",
+        "bytes": 69576,
+        "sha256": "17266a93a39773b7f0b0ee9448989b92663ccc86f3a985c14346aa5b2b008b35"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HexagonChecks1.olean.hash",
+        "bytes": 16,
+        "sha256": "c359bfa7b78da440891218cdf63bc19a906036d3e418eea70745153bc6f38669"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HexagonChecks1.trace",
+        "bytes": 2354,
+        "sha256": "6f7ceaf8fd63676b11345c09910ee6344abf271a59b1775d912643f9e2bfc474"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HexagonData.ilean",
+        "bytes": 16386,
+        "sha256": "af1a3901e03779dad57132add045b3c98eab79b528d2ea9580a9b84db66efc5d"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HexagonData.ilean.hash",
+        "bytes": 16,
+        "sha256": "fe81da886524bf047e5a61ded32a491e7ee8c41bd927f6d131685da0bc35bd82"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HexagonData.olean",
+        "bytes": 364376,
+        "sha256": "8fd2a39866176c421ce4b87e071a71eabfc05c9fec070dd891c6c6557c9aac9d"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HexagonData.olean.hash",
+        "bytes": 16,
+        "sha256": "999abdce19413cde524a9c35abafb9c1d0ae5b472ee4132994cdb44b84ed67b9"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/HexagonData.trace",
+        "bytes": 2506,
+        "sha256": "246d8c14667a287aa2d9644f6f5fb236aab548b65dd8971a6ab20462c7ade15a"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerDepth.ilean",
+        "bytes": 29434,
+        "sha256": "a5a347cee5320174999a0f06d09318154b60bee81fdd49dc0f7da53c9d2be1ba"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerDepth.ilean.hash",
+        "bytes": 16,
+        "sha256": "8f22c1a5e66a093d050f61f8157fcf95cb49da6add73be73643b5b42f2c3daf4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerDepth.olean",
+        "bytes": 528880,
+        "sha256": "422bafdde082bd07470bf253a9aea3ed05e868e929882f8eb9ac6ca164da99f9"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerDepth.olean.hash",
+        "bytes": 16,
+        "sha256": "25695e8e3de7d9ae12d9cc2c7852f49d7023e9ed412dd33a15f6e29bc165fd6f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerDepth.trace",
+        "bytes": 2746,
+        "sha256": "75d808e6e8615d077721928851d3b96708c036ab7ce4184bad74f26ccf56e30c"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerDeviations.ilean",
+        "bytes": 40768,
+        "sha256": "e38cf5062883ea4043c038c32f5b19d765943ad49ff79376d655a8b7a659a7f1"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerDeviations.ilean.hash",
+        "bytes": 16,
+        "sha256": "355d7888cc53c7e3ab003a602ca7ca5c21226b78a09640c278819182843c0016"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerDeviations.olean",
+        "bytes": 506232,
+        "sha256": "0e53066df23d3825e3be3f3c6541fb6b75b67388dd1b7ec05dbf7ddf16f3a045"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerDeviations.olean.hash",
+        "bytes": 16,
+        "sha256": "b4f818dc89874a2f6c0706f7e1c203827392754a6ad07aa074c7b2a23952cab4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerDeviations.trace",
+        "bytes": 2740,
+        "sha256": "9fb89c1897edd1f20f34ce65f9783940539ca365d5cfcaf5e7e9b0cbea9c200d"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerPotential.ilean",
+        "bytes": 7665,
+        "sha256": "c7c089301ff3cc92f41f79a9e4cde49e4ae28b2b4d3c10e50058a288d7ad46ae"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerPotential.ilean.hash",
+        "bytes": 16,
+        "sha256": "0363006421c2df2285e1fd9f9a072986880c7be5e6316285d02e351ead8b37d6"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerPotential.olean",
+        "bytes": 779448,
+        "sha256": "365535a84373edd5fcd19752d06efaa328ea123ac377e70411090241a7ece170"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerPotential.olean.hash",
+        "bytes": 16,
+        "sha256": "565c763cbb5cf9fe6b7c5fef03f4ebacff67690eb9e4083926699d821d6d453f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerPotential.trace",
+        "bytes": 2360,
+        "sha256": "4e1b3d75b58739f818e8cc426c9dd838dccaeb6d718f921c44c70a4211463cc2"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerRedirects.ilean",
+        "bytes": 30075,
+        "sha256": "7b7d4ebcd3ecee98dc18182395ad26fe383c8b7d5972f0845d946b28bab95eb8"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerRedirects.ilean.hash",
+        "bytes": 16,
+        "sha256": "dc54f5e721d9088050812cd997d6c5a2fd8f1d1e047fbde997962e5f35f6e449"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerRedirects.olean",
+        "bytes": 453752,
+        "sha256": "598a1638ce2dd08dc38ea8d8a90734b374a452d0efca49e3497f4bf4f9ce5e74"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerRedirects.olean.hash",
+        "bytes": 16,
+        "sha256": "74cd8562d537372270726dbe179c94b34a7944d721fd9d25ac4b2315f7782430"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerRedirects.trace",
+        "bytes": 2554,
+        "sha256": "858ea65d39d13abe573ffc78cf59fa5ea1fba073ed99fb41ddd924a75ff4ac17"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerRestrictions.ilean",
+        "bytes": 23493,
+        "sha256": "50ad9ffef1f26d9ef634d0aeb2b1510ebcac6c2fbc2f9c9a57bf900b971a7e03"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerRestrictions.ilean.hash",
+        "bytes": 16,
+        "sha256": "65992ae8a2476d81a02c7fb3b4a21d808353e431d2817eda3ad01ee915bf8158"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerRestrictions.olean",
+        "bytes": 545304,
+        "sha256": "9c43e7279242c13f8e05ad78a6b47157f814881abe12afcebdb4099de3349727"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerRestrictions.olean.hash",
+        "bytes": 16,
+        "sha256": "838e6830348acd1372ea0b85e1ab76a4e947a822f1c7b25862ce8d26864647b8"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerRestrictions.trace",
+        "bytes": 2965,
+        "sha256": "bd7d99d72512ffb04f965fb9fb1bcac01f7f5b1edc87bf8f4de89f06a7d6c460"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerRootLink.ilean",
+        "bytes": 26321,
+        "sha256": "71d263ffd8d5eead60223cfc844c683b5a3185c341ee54bd61ae4bb434040116"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerRootLink.ilean.hash",
+        "bytes": 16,
+        "sha256": "73ea324af31dcdd58d2ecec1984bb21150d286f826c0374c538f3a9b29989531"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerRootLink.olean",
+        "bytes": 410608,
+        "sha256": "ce6b975af33528c841bef2e0bf82995c8c5a9ffbcc1101a1a88582722c63088a"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerRootLink.olean.hash",
+        "bytes": 16,
+        "sha256": "7f60ea2191b215eaeafcb60bbc34b65a0ba24757bf021750f98269f971224b37"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/LayerRootLink.trace",
+        "bytes": 2724,
+        "sha256": "ab18b1d4ef370f57e10946ae49aa228277e81dfd500165126015f603a84d025e"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/MinCycles.ilean",
+        "bytes": 20457,
+        "sha256": "3df52359ac4fa4028673f919071695a9e1252b0a55be689da41f3e484b0c59ea"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/MinCycles.ilean.hash",
+        "bytes": 16,
+        "sha256": "67d54f8fdc6e0f49ee5fe9f7c03c6fa571175b24265b12136d593ba10abf0379"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/MinCycles.olean",
+        "bytes": 297040,
+        "sha256": "e7e450353ed2bb55c5ffe6e357b225e11e29584cf82ff27d652bc4f768c443dd"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/MinCycles.olean.hash",
+        "bytes": 16,
+        "sha256": "9c2ef96f3678b0ce9fd084f9680630ce82b6ef48a732ef17dbb6630db4aa2923"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/MinCycles.trace",
+        "bytes": 2729,
+        "sha256": "a7a759d37cdf6df18d975e927da00332e0954a6b27e2ccb80e857a9699537cad"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/NashLayerSparsity.ilean",
+        "bytes": 35530,
+        "sha256": "c29b4cc3ad3528a72bcaa0929dc3378fe91770d44f499796d0fc9c591b56a633"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/NashLayerSparsity.ilean.hash",
+        "bytes": 16,
+        "sha256": "b7cb68dd332fe22d1cc824820a4a5e8d56940249f693c9c5f0f56d44a280ccf0"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/NashLayerSparsity.olean",
+        "bytes": 480360,
+        "sha256": "f9b0d91fd58d342d27f1bdc755a6be2a069b3f9b3d4844050c93ea29b3fad6cc"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/NashLayerSparsity.olean.hash",
+        "bytes": 16,
+        "sha256": "1606632c28efc7abf04d5d55cb542ae747ccbd22ced2476f807d053fb37f54e0"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/NashLayerSparsity.trace",
+        "bytes": 3174,
+        "sha256": "cb27189bbffab0fe5d9acec093acd0740fc29b9d51d6d5b3438cea564455c651"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ParallelThreads.ilean",
+        "bytes": 11346,
+        "sha256": "06b11307fbd6d3d0a751b47881f27fb433a5b7baaa7ef1a0ddf4a43579565f57"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ParallelThreads.ilean.hash",
+        "bytes": 16,
+        "sha256": "7613379828d869851d86c812e239e1110bfaee5c43ffb9e50b10ee7780e45c0f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ParallelThreads.olean",
+        "bytes": 115792,
+        "sha256": "5221a53e790891a579233855da3978163d0d794b4459a369202c117283f8b896"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ParallelThreads.olean.hash",
+        "bytes": 16,
+        "sha256": "4d08b9af4ca1fad0142872bc97cc21ed08226880c0aa8e380b8eb1e0e5507ad4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ParallelThreads.trace",
+        "bytes": 2561,
+        "sha256": "77dc5c7f980c5f0f36cbb6277c19152eba65afe03272dc6a4c7a01b06a6f6225"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Pentagon.ilean",
+        "bytes": 27941,
+        "sha256": "5d1339d79b8073743657b8b221a005882d84ef6e53503afd151b97146442eedb"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Pentagon.ilean.hash",
+        "bytes": 16,
+        "sha256": "3e8c1142be65ee3ba4141cb3a5c0d388d699afa28ec0e7361e6e1d37e0c4ee41"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Pentagon.olean",
+        "bytes": 346192,
+        "sha256": "7d888b0795e8c16ba9bc6aceb1c300f6d6c8cc922ec428c197abd421a67c2916"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Pentagon.olean.hash",
+        "bytes": 16,
+        "sha256": "b3e9e8eb507dd84f19c7fef90bfaf64ee850c1f0674b874cf81541bf69c9e8dd"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Pentagon.trace",
+        "bytes": 3300,
+        "sha256": "87357c1f130f178ca55f21a636a7f81af4ae1a40bc06b50e611eca91d71e8947"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/PentagonData.ilean",
+        "bytes": 35154,
+        "sha256": "c8fb183d1e21883b0bf9a4461f08bab7ea2dca22f98a79f0634dabb9787e7d25"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/PentagonData.ilean.hash",
+        "bytes": 16,
+        "sha256": "66ad2f69cba8e381c15d22c13e2d558111f865d1987c55c7b3bb1e4249436ef6"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/PentagonData.olean",
+        "bytes": 623968,
+        "sha256": "675027e24668c144e11869825e525466efa96e56785c9a44081cae7a2440537d"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/PentagonData.olean.hash",
+        "bytes": 16,
+        "sha256": "db87dd196e2bbf76c32f5058a28fa61c55e040c0a1499f9addbd5fa6abd3f9c1"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/PentagonData.trace",
+        "bytes": 2519,
+        "sha256": "5fed1c19c27e544d187434f13f0eb7d23499feb9c1ddfdc09df0a541e6e5b02b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ReceiverCredits.ilean",
+        "bytes": 40499,
+        "sha256": "e44468c7ffd7e7b6eb08a0bc09404be38327a6f2208f6b61d93eb9a4f095855a"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ReceiverCredits.ilean.hash",
+        "bytes": 16,
+        "sha256": "6dfeb2b308830520c5e357c1f515ad03a25af8ad8af6b46f2256dadcb15f815f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ReceiverCredits.olean",
+        "bytes": 660744,
+        "sha256": "eb293be94273051d4e89d9dedcb08e7dd62e28f5464480843003da6dea592d89"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ReceiverCredits.olean.hash",
+        "bytes": 16,
+        "sha256": "d343db98eafec1984403918c195b0fd11a415d1f2950288d7563c0dc3dc6963c"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ReceiverCredits.trace",
+        "bytes": 2733,
+        "sha256": "6faf9b7976ff964fcbee72e991dbe9639388c05059bdff0e25481abc496eee34"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Redirect.ilean",
+        "bytes": 39149,
+        "sha256": "0d02b2141a0b43c6d616b233e6e25bc8060f0365479e599003ab6c4d9919f307"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Redirect.ilean.hash",
+        "bytes": 16,
+        "sha256": "afc2a30e28b4f0f2c91096857505dab303cba761f5a8c8f39df931c5d1dda173"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Redirect.olean",
+        "bytes": 473056,
+        "sha256": "e344f4db94c4a172c01de3b815ce40c429b4db27e372c71dde34f10a3242ba37"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Redirect.olean.hash",
+        "bytes": 16,
+        "sha256": "2e018bab019ef91f477c648da101f4ae43e1c0c353d13aa92326576065402d93"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/Redirect.trace",
+        "bytes": 2868,
+        "sha256": "e6472e2504ec67a1109adada0893111f365aba57566216ce25433f202e80c7a1"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RetainedRoutes.ilean",
+        "bytes": 43953,
+        "sha256": "5670d4cc4162a39a47ad0b77b1305a7aaaf0b64e0ba8d3eb3a1325a6e9c4c579"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RetainedRoutes.ilean.hash",
+        "bytes": 16,
+        "sha256": "7475097469916691cc484fc0fb8565160d6390c467851502767b994c92652352"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RetainedRoutes.olean",
+        "bytes": 640256,
+        "sha256": "7043c2508947de00b233f3b0f00d6ca17045139a0f7afe2ed9853e78a8394af1"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RetainedRoutes.olean.hash",
+        "bytes": 16,
+        "sha256": "5795d40c8f9ff556c0d606bebd43facf6d43a093fc3149f53aa857616f21ff8a"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RetainedRoutes.trace",
+        "bytes": 2950,
+        "sha256": "e87ca34c82bb94f51e450a5a3fddfbac0607a07dee1b5aea9761396923d43f76"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootBranchSwap.ilean",
+        "bytes": 17826,
+        "sha256": "3dbbb2c313cdcbe435592ff9e2e3e46cc51953ea7bf604a00cba232ee0494e42"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootBranchSwap.ilean.hash",
+        "bytes": 16,
+        "sha256": "326698b41d9383b128910df7cc30674f1c12b8102ad5de4b5ed0d9e5814e57b2"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootBranchSwap.olean",
+        "bytes": 340640,
+        "sha256": "7a47adc4b5caef7f808145134a8a38aa368fe0c22658ebd6c4d105e7ad26fb61"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootBranchSwap.olean.hash",
+        "bytes": 16,
+        "sha256": "c828d09701d9a754e0cbc920cdcf6b6bbb40a7e6c0c71bd1c428c1110df7c747"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootBranchSwap.trace",
+        "bytes": 2710,
+        "sha256": "bb4b44ba8b07f5f78c8d9e771ab2b681f62fca0516d33f3b1ee561521221350b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootedCycles.ilean",
+        "bytes": 15836,
+        "sha256": "6f5bcff573563c97b52a68a23515676221df2292919c0d703215806017b15764"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootedCycles.ilean.hash",
+        "bytes": 16,
+        "sha256": "f19a9d6636266d1ff815c3a363fd5074a20dd59a928bbcfcb73e3dcd4f79ee29"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootedCycles.olean",
+        "bytes": 178408,
+        "sha256": "d22a2fbf434d32196350a13ab75dc1fc05ba43224a6dfa0837c4197468725b21"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootedCycles.olean.hash",
+        "bytes": 16,
+        "sha256": "07a42107a7e1fb9ed0c180caa7d5321997d2b20e453c57222bbe8c9bbee3662b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootedCycles.trace",
+        "bytes": 2893,
+        "sha256": "757707c756a784f9d8f0942fdeca6dc6adf68f83ca1a8a5be1e8e199eb9e2a62"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootedOwnership.ilean",
+        "bytes": 57478,
+        "sha256": "440a80d91812df3e2a3204ebbfd69665319ca436f3d6ca374e4aae604a18e847"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootedOwnership.ilean.hash",
+        "bytes": 16,
+        "sha256": "6776960fb0365aac171e7a7ae5fbb919c2a879c8b1191ed8c37c8586cffcd847"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootedOwnership.olean",
+        "bytes": 715616,
+        "sha256": "edd26f46c088c97eda2586052f13de446717887288542bfc91669bc8a23cc864"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootedOwnership.olean.hash",
+        "bytes": 16,
+        "sha256": "ef7f2f7e3e58b49c0877e8344a603514b7a1dc419a57dff75a6824611832a1f7"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootedOwnership.trace",
+        "bytes": 2367,
+        "sha256": "449d7d5fe68cb08e721442a5fbbc7c0f4bf4123dfb1da3539def42ed10d07012"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootedShortestPaths.ilean",
+        "bytes": 32042,
+        "sha256": "e689069e4e24906e6d7fc05b7572e248224b3b6feb97949decfb88d2b67885c5"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootedShortestPaths.ilean.hash",
+        "bytes": 16,
+        "sha256": "2e410da8f5bbba21cd04c52d42761d7b952078a367169e4f32d3537175f3bd1e"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootedShortestPaths.olean",
+        "bytes": 439400,
+        "sha256": "a15bd9645ad06fa42f19c99704086c59e7635009dd59035d7fb546855fc93be3"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootedShortestPaths.olean.hash",
+        "bytes": 16,
+        "sha256": "cdcf3df4bb3386ecc94ea7735f41ac2bb4b0d14c9a77a91a59b133081e34b263"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootedShortestPaths.trace",
+        "bytes": 2970,
+        "sha256": "f97784115b97e59f804da0d8a640d1deda68b80077fd56709b91ee95caf57da4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootLinkBudget.ilean",
+        "bytes": 35048,
+        "sha256": "09dc349f727543d3243b2c14874d646bbbb57f653a8cc7100efd058fff7156e2"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootLinkBudget.ilean.hash",
+        "bytes": 16,
+        "sha256": "28106cf851090210fda927f3c1645da4108c233c073653dd06f91f6cb34902ad"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootLinkBudget.olean",
+        "bytes": 1006360,
+        "sha256": "1282e30dd8407887b5c6579106a512b3aa3818274f54779f14d788413326f9b5"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootLinkBudget.olean.hash",
+        "bytes": 16,
+        "sha256": "4584a6e8e24f9a1bbedad1ab72a14e434235f69a475ce00765dce205d20a8c02"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/RootLinkBudget.trace",
+        "bytes": 2984,
+        "sha256": "1c28239f3a00f2d65667857597cec29c77813e62056c36bf9722ab33dee06f0b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ShortCycleBounds.ilean",
+        "bytes": 5862,
+        "sha256": "e8f9c4bf6f2e2da5323e959a0bd60c3e9670205c816bc2fe16a5771f4e3049af"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ShortCycleBounds.ilean.hash",
+        "bytes": 16,
+        "sha256": "f00fed3e8350647fdfd7b862293ee8ca1397ed876b398a0f582b66c22fe10da7"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ShortCycleBounds.olean",
+        "bytes": 85536,
+        "sha256": "a853d64e6fc6864e19d766de6ca7a1746fb156a3a505dda37d637b4fbc60b57c"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ShortCycleBounds.olean.hash",
+        "bytes": 16,
+        "sha256": "e7bdb0153879053ec86aee9ca94433a9f974c212b1fe1fe70c527031f46ee117"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ShortCycleBounds.trace",
+        "bytes": 2899,
+        "sha256": "aebc057bfaeda474ee5cdf8dc5bcd312e4683a6bbd35c32508e10fc4dce542eb"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ShortCycles.ilean",
+        "bytes": 85389,
+        "sha256": "127aa41fccce0df05d8724e95e99d3a12e379014d04be48f2c4cc9655dd4e0e3"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ShortCycles.ilean.hash",
+        "bytes": 16,
+        "sha256": "767ae4071736ac3443b229fe37f07136b3d27d3230c669d6aedc414a48c5ec2e"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ShortCycles.olean",
+        "bytes": 1359336,
+        "sha256": "78ab9ade675e2862d2025945e7a8cbff55c9cfb23a9a8e6fcd7a75d64d2f8396"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ShortCycles.olean.hash",
+        "bytes": 16,
+        "sha256": "2387d445acce59e2c21d64895c54a5db1b806c4937fcb19565ae49adb0206187"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ShortCycles.trace",
+        "bytes": 3600,
+        "sha256": "fc2b3ded65cf3fbc3a4b45373000d9d01e82a5fa03a42d85dd54cfe021cd60fc"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ShortThreads.ilean",
+        "bytes": 61934,
+        "sha256": "4b9e7837340d7bbda8e3360469d819c7fb77de688d117db5c4e91dff7fe3b37b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ShortThreads.ilean.hash",
+        "bytes": 16,
+        "sha256": "5bf1cc5f0fc9ab985f255f040436c271f3ff74940f7a9f5224b04cb9c1dce5d8"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ShortThreads.olean",
+        "bytes": 795712,
+        "sha256": "cb0aa2cdbe8324a65b54a81daa6c44c2fab0bf83f0c80a9adfcb4f4e6f1b4a8f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ShortThreads.olean.hash",
+        "bytes": 16,
+        "sha256": "e78a7775d1c411347116b0c02097067b81ceb0912d760fc99aac3baffd297b19"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ShortThreads.trace",
+        "bytes": 3565,
+        "sha256": "cce27c9e2aece96d0c1171fac863a4622d2933595ed9f1dd3b69a5510c6cb8aa"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThetaMetric.ilean",
+        "bytes": 41926,
+        "sha256": "c54f4ff4465bad096791a94c20d96100b2c8f42c43f7731af2712c3059e07807"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThetaMetric.ilean.hash",
+        "bytes": 16,
+        "sha256": "56b031bfaf05425e6c7aee0fa65cbc83cd7abf54efec9bcec023f690255419ae"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThetaMetric.olean",
+        "bytes": 1333744,
+        "sha256": "0cfbeaa6be723133800f4de8231cc63c89c195a733b3e4b86ccb4f0b1f480342"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThetaMetric.olean.hash",
+        "bytes": 16,
+        "sha256": "31533f6b28c61ce1a955d0ddc708023d120e1481b0db90b6d4b92e2cf2bb651c"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThetaMetric.trace",
+        "bytes": 3138,
+        "sha256": "5637eb5e0abe4c606e01fdd287747e60d5146e5c3763a85754043df16ed8d397"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadDistances.ilean",
+        "bytes": 15534,
+        "sha256": "a6f8e364baba52bf832fd5d2a19e53527eff9a47a772e3c2f8f952c90ebc227d"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadDistances.ilean.hash",
+        "bytes": 16,
+        "sha256": "d1533d856b1b76f65c19d98d599f14d2be45ee41305b588cc0c5196b77cf8b5e"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadDistances.olean",
+        "bytes": 1175496,
+        "sha256": "288d3dceb6838d6371906a549f95e38bcbd1064078db1c8ff15125fd33c28ae9"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadDistances.olean.hash",
+        "bytes": 16,
+        "sha256": "0dcaacc4bfa7c2997d0e2f951109dbf7cac4ef73031c2b7cc27ef51679f7ae99"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadDistances.trace",
+        "bytes": 2944,
+        "sha256": "8b71e124618f361e5dcdab732051159c71057fcdf5185148d9c8b2088227dace"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadForest.ilean",
+        "bytes": 24100,
+        "sha256": "244a80a9eef24b86a2110e7851a9c341b565243fd2acb85457bf952d44b10fa0"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadForest.ilean.hash",
+        "bytes": 16,
+        "sha256": "f3b15a83e605f6bf8f80739893e7714f23305818abac936252583eca6448f7d9"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadForest.olean",
+        "bytes": 328256,
+        "sha256": "95c86f07a4e12878bb2133615377c7d7c1b382e7446f0c973547befd8a1d0875"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadForest.olean.hash",
+        "bytes": 16,
+        "sha256": "37e459d0c3fe32c944f772f2bec62a1e4c13dc22131c2f5ad37e974da5884375"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadForest.trace",
+        "bytes": 2919,
+        "sha256": "abe3774b58cb188b546f91e02079b30ca3f905b46f1edf985c463a89f9eda85b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadGeometry.ilean",
+        "bytes": 48910,
+        "sha256": "08c110e983e3bd9fe5fa24cdcfe0da5d1df40624ebd9347e54918b3446ffe9d7"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadGeometry.ilean.hash",
+        "bytes": 16,
+        "sha256": "047fbf719f781e3109ff01d83e7fbb79e784c27098cec36a6ebfb1d1437cde5c"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadGeometry.olean",
+        "bytes": 1110176,
+        "sha256": "4b02316082efe8606f8841cab6275b1463f4fc7c2879010dd35ac6f5af97a87b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadGeometry.olean.hash",
+        "bytes": 16,
+        "sha256": "37e6ace182013298d22289bbdf6bae39ceb48cea8b3c2b45ec2e6825951d2683"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadGeometry.trace",
+        "bytes": 3715,
+        "sha256": "7c7cfedf3ed3d6a68dffe8118058d1a4c68d28ba8c26efc47cd195a541bb7101"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadLengthBound.ilean",
+        "bytes": 65145,
+        "sha256": "a18102aa1bc900bc0593a7e7c4e446796ee559548a1cf5efcb55f9c3c8b3b3d1"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadLengthBound.ilean.hash",
+        "bytes": 16,
+        "sha256": "75719ffe71e5da6327384b9d528888d5ece03e303d2174254f63c77e206e7d3f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadLengthBound.olean",
+        "bytes": 2147056,
+        "sha256": "52a6df7f3d4763dc89dd72c7c7c548e0643a74e8cc149b17346013a33139abc7"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadLengthBound.olean.hash",
+        "bytes": 16,
+        "sha256": "e33ad8a12c03319f623e7e2b2e54f6d9eee6ff1c26ec1bbcd656e8a9e2943cf5"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/ThreadLengthBound.trace",
+        "bytes": 3697,
+        "sha256": "783849576e1b489da4153c159d46abeb71229bfd758d5b909594ed1fb5f2fe15"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TreeDistanceBudget.ilean",
+        "bytes": 24767,
+        "sha256": "210147da2095725d597c6f67de554f09659e3c3b40f2554c126c0bb252370ff9"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TreeDistanceBudget.ilean.hash",
+        "bytes": 16,
+        "sha256": "a79794316953dae219520a0b77d5ca577d5da86a6e11b53233dcfa69ba40e9d6"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TreeDistanceBudget.olean",
+        "bytes": 387136,
+        "sha256": "ebb13dc22d9035e208b884b8b263dff6df143deb938cbb25cba791f03e9aa030"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TreeDistanceBudget.olean.hash",
+        "bytes": 16,
+        "sha256": "ba0734839b191ac70549c2d021dea899764ba1a133c7a673c5772a353ab53d04"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TreeDistanceBudget.trace",
+        "bytes": 2584,
+        "sha256": "222c34dd9c0df1296f5c52dde02d0f6e6f18a19b484aa07b0f4f0700868fda0b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TreeTheorem.ilean",
+        "bytes": 39987,
+        "sha256": "81a820e7daacf66a118d9c602cd4633c49806fa59ca0b7fb1581ac21c9facfd8"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TreeTheorem.ilean.hash",
+        "bytes": 16,
+        "sha256": "334dfea6bc30e0f0e6d66761c74e31277a7329b2141fe44bcf55761274d7dea7"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TreeTheorem.olean",
+        "bytes": 705352,
+        "sha256": "df1f35eced4f05f0f88ca1501cae573f04ae9dd397f961756a7217a90dd714e1"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TreeTheorem.olean.hash",
+        "bytes": 16,
+        "sha256": "950fc6f065f90d3d24ec8859660e3edde1e16b31b308a7a4ced17398d741ff3b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TreeTheorem.trace",
+        "bytes": 2909,
+        "sha256": "724d7fc174c8192a4ef9b57a8227dbee4ccd26180c246dc317e34e4d61260ead"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoLayerWeights.ilean",
+        "bytes": 38502,
+        "sha256": "824d6ada5cb1154d4a7a43a1ddffc13e27ca1ef95673eee29f7ddbc06cf98cbf"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoLayerWeights.ilean.hash",
+        "bytes": 16,
+        "sha256": "0acb1dda651ab518b531287efe92ebcaa95583b3c07c953a680cd22ea15779d4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoLayerWeights.olean",
+        "bytes": 627320,
+        "sha256": "9f210fd64d068103cb36ac3e52c8a6a65e6c951b043897cd873007d2310853e1"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoLayerWeights.olean.hash",
+        "bytes": 16,
+        "sha256": "0065627e1405af2b30550e2baee1033fb3398caad08dc5ee426764ea1bf956bf"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoLayerWeights.trace",
+        "bytes": 2962,
+        "sha256": "752c466cdafaede9fb4cf5e1c5b1564302eb966e522da4e2c1870f7da77489f4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalCertificate.ilean",
+        "bytes": 14853,
+        "sha256": "e052c7228c76458e4ba315ac9306f473af5e5ce7e67eb54979dc94aea7248244"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalCertificate.ilean.hash",
+        "bytes": 16,
+        "sha256": "0f14849c4a4080e10ac2c606f7ea7f51e847ba282509c318a089ff4a436ac4d0"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalCertificate.olean",
+        "bytes": 203184,
+        "sha256": "6ad098442993d3002b94c38f4dcc83d836a111fd981ada80f6cfd2a2961b78ac"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalCertificate.olean.hash",
+        "bytes": 16,
+        "sha256": "12b3c6c185125ace8c993dad52fbe988c1859c3073f2df96251b296490625f70"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalCertificate.trace",
+        "bytes": 2563,
+        "sha256": "94544f90b52091c90bb51ea49df2722162de5645b87923f2f11406dba06496c2"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalCertificateCheck.ilean",
+        "bytes": 20983,
+        "sha256": "1b811d54e8731d252be232908a9b01fc893df71f47f26ec118614a30ac74da3a"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalCertificateCheck.ilean.hash",
+        "bytes": 16,
+        "sha256": "94a03f81e4aa159bd075067bfe582830434b383b8d7df3d4d5cd097fd3371522"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalCertificateCheck.olean",
+        "bytes": 173704,
+        "sha256": "be6d6ae1052a721772c84fed662d39da62a60fa5ba71eb446f27717258ec535b"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalCertificateCheck.olean.hash",
+        "bytes": 16,
+        "sha256": "0af6d7450f6cf5762af97e250b0e4705ad92aa22274b3a1c99db25542dfb293f"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalCertificateCheck.trace",
+        "bytes": 2830,
+        "sha256": "fbae288ec8ca4f4927cd5609cba55cf0d74a5a5c4fab5521583c749eebddb7d3"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalCertificateData.ilean",
+        "bytes": 80941,
+        "sha256": "d869df9611fd2be2fa33f9a9e60e3cb2311055cea59862be09597db90cc70775"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalCertificateData.ilean.hash",
+        "bytes": 16,
+        "sha256": "6aba480bb29e8d6ad650b5e0e50a20fd7195bf73f721aed055dae595e174bdaa"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalCertificateData.olean",
+        "bytes": 4406072,
+        "sha256": "6da63729022722f728556a4cd4a50139475aaf509636fe615235e17f16a554ec"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalCertificateData.olean.hash",
+        "bytes": 16,
+        "sha256": "36a905480c143101df5e8ec6aa83400b754dac130bfebd3cf1c105e5439357ab"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalCertificateData.trace",
+        "bytes": 2449,
+        "sha256": "69297a7aac66ce9891d22a7f129e114dc7b09fcabd729db7ec7991d75aca6034"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalPriceBound.ilean",
+        "bytes": 11140,
+        "sha256": "a4e698a32c7f14f7e916cb4891e96c9b726ae825fcd15ce299cc645d80a1f433"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalPriceBound.ilean.hash",
+        "bytes": 16,
+        "sha256": "c041e910c27377ed48de97a329912db49ec8d980c17c20287766c998acbdb04e"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalPriceBound.olean",
+        "bytes": 92648,
+        "sha256": "4cb53e3f2a635214e7861926d592ec974787cb8f7812c6e20b09972812505ae3"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalPriceBound.olean.hash",
+        "bytes": 16,
+        "sha256": "b601d90d96881c0137f6ca061d83b32fbc225623043ba68e679e4962cbbba792"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/TwoPortalPriceBound.trace",
+        "bytes": 3158,
+        "sha256": "3e6b841a5f937b2565b866a4d8ee5a0886c65385dc1b781eb57f929ea4ff9245"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/WeightedBlocks.ilean",
+        "bytes": 93322,
+        "sha256": "407f8974f7f7f6eb793ed65a75da4cde0107feaf7b7603f3b2921979e2de34d9"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/WeightedBlocks.ilean.hash",
+        "bytes": 16,
+        "sha256": "f3eaa44ec8dda5fe313f13c62fc318b1266ef2e968e960a4fc9418fabf9d6654"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/WeightedBlocks.olean",
+        "bytes": 812808,
+        "sha256": "90342fc4a5689ef91de0c2de3663acc8a310d4279fcfb3ff09b19e5ffc8a5018"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/WeightedBlocks.olean.hash",
+        "bytes": 16,
+        "sha256": "231190a361f6931013fd1a80fefd11662cbd68936a43540306506f01ab2fd3c4"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/WeightedBlocks.trace",
+        "bytes": 3665,
+        "sha256": "655ec7fabbd6d2ced8262c1b7ba15724431f595a77849cbd4054059c86b4305d"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/WeightedCertificates.ilean",
+        "bytes": 4295,
+        "sha256": "c4e40ec57ba719e54a0de1650ad3256ec3570b5d1cd47508325a175e2806b064"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/WeightedCertificates.ilean.hash",
+        "bytes": 16,
+        "sha256": "6b36115650731ec8dab80a39686b5fbbada7a6ddba5f45b9d2fa8cb2b5fea14e"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/WeightedCertificates.olean",
+        "bytes": 98456,
+        "sha256": "605329c1ef9a1f80874cc2288a3eeb5b425ef13560063a67c7d49c2f1fa636e9"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/WeightedCertificates.olean.hash",
+        "bytes": 16,
+        "sha256": "87a119b3d51ded9aa714af42d4d41927eea210b035ce20e6a6dd66eb0295775c"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs/WeightedCertificates.trace",
+        "bytes": 2619,
+        "sha256": "6f65b07f7ea038141555e8bb9e333d29e5b2b530364b84f6a5ba57c183763ccb"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs.ilean",
+        "bytes": 4494,
+        "sha256": "183bc08447653560e434d1dd265b8497dd869eeddafed8f98e0b5709576c47cc"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "89076be8b18ab5ae3d06fb719191aa22c5b19e2e8c500aa5769d1c7e2a187411"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs.olean",
+        "bytes": 10896,
+        "sha256": "03db364fef483741c292f6cdf8c92c4aaf3129c79565fc3dd741df19d02981aa"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "5879a2d1f556893efed804c49e77aaf9ec893519cf2b865ef3978e68f92ff69e"
+      },
+      {
+        "path": "proofs/lib/Lax869952Proofs.trace",
+        "bytes": 16507,
+        "sha256": "28e39014b3f54b08cfe4d8618e62181aa4244e9dd12adb7df01274562df599bf"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 3347,
+        "sha256": "b87e87c0c81a108c0dcfc283409ad269769e34a16d7f38024eaf22f7e941291f"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 326,
+        "sha256": "5b857dbb01e3eda1dd47b2656fa1cf0313e1a6eab244f4dfccc2a38e5acf7c50"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/Addition.lean",
+        "bytes": 2737,
+        "sha256": "bf01df96b9350f25a650a0765a8017e26b0e5039505b75c0f0fefe6f29c790f5"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/AncestorCredit.lean",
+        "bytes": 4604,
+        "sha256": "f6f6facac5a0e834fce0217efe9878662347d64289a33fa385c9a2b3093b4908"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/ArchiveProofs.lean",
+        "bytes": 4722,
+        "sha256": "7e23de3c1314a5e45065b61026afdab3ca1c2e44918cf1ad30fef79023ad06cb"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/Baseline.lean",
+        "bytes": 2495,
+        "sha256": "b5f6981d47985b544e22249f8a1ec4e82389c46a48e0c023b14d88040f1a9763"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/Biconnected.lean",
+        "bytes": 9974,
+        "sha256": "f69c2fe9d1c219b3fdffdf7ffc49ea9d9887317b0b13c7617c70e60e62e45195"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/BlockBranchAttachments.lean",
+        "bytes": 7038,
+        "sha256": "8a2499e2d4bc3e3113ac635e3c0a1410788016f66c2bc41795b1d265c988c1e5"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/BlockCycleDepth.lean",
+        "bytes": 2787,
+        "sha256": "771f81537e3f1da52b11bca52c0bafe3e15318d828fd7ff4a5ad60d2ca0e6d71"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/BlockCyclePurchases.lean",
+        "bytes": 3218,
+        "sha256": "2b525f7ebc14e78b5adb3e5a8508cbfd4e77e537d40947571c9934a28cec13b9"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/BlockDegreePattern.lean",
+        "bytes": 11536,
+        "sha256": "7af0d2c20b55e6260875ea59adc7ab9c8090114ef09de11b5b02c878441fddc8"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/BlockDegreeTwo.lean",
+        "bytes": 8585,
+        "sha256": "1338babe7a2fe2db072a7c10c806430951328784ef43b436558aac40ca53adb2"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/BlockLayerCount.lean",
+        "bytes": 6108,
+        "sha256": "08609d5cbd7c51f6e710580253ed81513e89cbaa573a90f8f3bf0843594d29fe"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/BlockParentPurchases.lean",
+        "bytes": 4893,
+        "sha256": "0629fd824bd7604fdfd2458212054fc4641cf686ac4555309e0fffc59f1ee993"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/BlockPaths.lean",
+        "bytes": 11336,
+        "sha256": "2a763c543236516d85d0059b95ca1cdfb50a1f092765c5cd92546a2d200cadb8"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/BlockPurchaseCount.lean",
+        "bytes": 11832,
+        "sha256": "6689112df3b99e85555bfc0097af1ac6043d66c951cae8a96032342d9c61f30b"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/BlockRootBounds.lean",
+        "bytes": 13484,
+        "sha256": "337ed5735ea6cd799d26be909bee40b696f89f8699b6cac736122d5f92f488b4"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/BlockSwaps.lean",
+        "bytes": 10237,
+        "sha256": "c6d73b2e6bd7c42a7f080134a896d1529a336b809385f09c73e865c5c5455d9a"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/BranchDetours.lean",
+        "bytes": 8037,
+        "sha256": "9598792071c98d94b82debab534076782010d353cdcae9da69fa11ae98d0eefe"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/ChainWeights.lean",
+        "bytes": 12014,
+        "sha256": "537e5e1370144684c6316476ae6a5ee8507b51830672a3b45ba31a118f3ae2cd"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/CoreCycleBudget.lean",
+        "bytes": 8172,
+        "sha256": "13e4afed486cf8d9581fd5fc331bd8b2c4c51dc7f835f853915d8497686034f3"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/CycleBlocks.lean",
+        "bytes": 10083,
+        "sha256": "4691765e5d4dfcf5dce51489d99339d5ea786ef4928fac235fd24a60d5c88da7"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/CycleCertificate.lean",
+        "bytes": 18535,
+        "sha256": "5346efdaf68a11a6490d9070915d767c5eae777adfa6b79857defc07bf2e048c"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/CycleCertificateCheck.lean",
+        "bytes": 2062,
+        "sha256": "0a5b58de472952c231c55b5e656e295be1529f5e5420251fd4fe99ebb27af950"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/CycleDepth.lean",
+        "bytes": 7579,
+        "sha256": "4b81c05b5621b3d0785788d182636cdadf4af61dab42acec4490af16249e8ee2"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/CycleInequalities.lean",
+        "bytes": 2707,
+        "sha256": "0d589a589e71f4f682bcb6d832dad2fc1edb41dfde2332ee6877f93dd2fe8a65"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/CycleLabelCheck.lean",
+        "bytes": 7286,
+        "sha256": "a40607ef96681de2ae4616c528ff9198425d3a0c281147d453ee1d12db911e73"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/CycleSymmetry.lean",
+        "bytes": 3980,
+        "sha256": "6b205f19d017c19a3cab2046feb706ce68131f29f1c4ffeb0d3f223230227745"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/DegreeTwo.lean",
+        "bytes": 26562,
+        "sha256": "3cf13d49576057ebffdb5087d849785a1f541e3413c3377cd72719228d63e054"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/DeviationCertificates.lean",
+        "bytes": 5523,
+        "sha256": "dd36199ff83e27590d77af1a6126104195758ef7ef4044a63f6a5ae058008485"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/DirectedGeodesics.lean",
+        "bytes": 16001,
+        "sha256": "88599ea67fb89aebf51ce1299934c140be15a2b99432311c08f26c884cf16142"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/DirectedMinCycles.lean",
+        "bytes": 17435,
+        "sha256": "a00eca6a397f601c5e6ecb99bedfb66e4bfef791493bfca8678c71aa9f9618a2"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/EarPruning.lean",
+        "bytes": 4358,
+        "sha256": "cd907d2055cc8e96e6fdf110d2f2948f20bf6f26c34d86df8617cbbad1a0ebb5"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/EdgeLayers.lean",
+        "bytes": 4208,
+        "sha256": "e8acb4caaec8cd1c54d4cbfe768f3333aa4eafdf15444b7881532c50e1e955c2"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/EdgeMinCycles.lean",
+        "bytes": 8876,
+        "sha256": "1dca356261a052fec431025551dd974c9d3ea4dbf7777ceb6a64f4cc2a86d885"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/Foundations.lean",
+        "bytes": 7179,
+        "sha256": "905cf106a95cb03f8d8e77c2bef525098d7de0ceefa539e48db6292fceeace3b"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/GeodesicPurchases.lean",
+        "bytes": 6914,
+        "sha256": "1f194e14adba23473337d5d8a856d49859cfe20a971e697bcba8b994d2d8bca4"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/Girth.lean",
+        "bytes": 9278,
+        "sha256": "d426064e53282b4b3875becde8dd475f98cfcb6058204663b252b56685a1bcd9"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/GirthDistances.lean",
+        "bytes": 4874,
+        "sha256": "0b55f7d1457955b667ab92d789a45e919bda46c88e9aa3f4409b1cffad5a8bec"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/HeavyAttachment.lean",
+        "bytes": 10446,
+        "sha256": "f8e2a37385ee0f626203652d1a7477aaa2a399a14e487f22a559c281a1308853"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/Heptagon.lean",
+        "bytes": 1836,
+        "sha256": "4d073ba8c22399269f6cd5cb90ecfd37ac9c90e18e783b27127d2eb2ccc0fefe"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/HeptagonChecks0.lean",
+        "bytes": 1097,
+        "sha256": "7d0ec820acf04b404a0c7a65d9cfc05ec33e2472f58668774ab8b5a04dc94c9e"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/HeptagonChecks1.lean",
+        "bytes": 3605,
+        "sha256": "65b8a983505cbd3f8a4e1897d0a7acdb69efd147ca4c43c4406677703544c0e5"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/HeptagonChecks2.lean",
+        "bytes": 4441,
+        "sha256": "a8d446a3bca9b1886208ef9bf0bbed28b250f3984c093017ce2942df37b35a7b"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/HeptagonData.lean",
+        "bytes": 4831,
+        "sha256": "2025977406ac78e4577723efa03853569325d39b206fda64e1c1fcf17e9e9b30"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/Hexagon.lean",
+        "bytes": 1742,
+        "sha256": "25c4031dfb02c2226959786f2e151da4ba6fa6c078344d8754316db33f9612ee"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/HexagonChecks0.lean",
+        "bytes": 3604,
+        "sha256": "a4becebda48ae864d2da179386b2fec26b847b19dae18fea2df706826e7cc699"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/HexagonChecks1.lean",
+        "bytes": 4440,
+        "sha256": "7bed88fa4f1229e72bef501bbcb0c25dda6e36b89b373d18e9d87e73acbf892c"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/HexagonData.lean",
+        "bytes": 2981,
+        "sha256": "4c816117683f967a788d7a3cf0d9e99337d2ea12b8d968b3ca145eba95ee2613"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/LayerDepth.lean",
+        "bytes": 8055,
+        "sha256": "03afae3dad63f2bca56627320cec6bc10826a12626a763e3e2379e0c65bcce3c"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/LayerDeviations.lean",
+        "bytes": 10985,
+        "sha256": "d16102416e57885ba6b0ef4b307c4e99318e5a550234339f610c5652f33e14ad"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/LayerPotential.lean",
+        "bytes": 3079,
+        "sha256": "387aff8038466d6763e58def5007e44a137e3f3145821891e4915159924fa9e8"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/LayerRedirects.lean",
+        "bytes": 8788,
+        "sha256": "45fb268e35e6ae7de9e600790ece1781ddb883dfcc9409c62a16520e46b8c105"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/LayerRestrictions.lean",
+        "bytes": 7918,
+        "sha256": "c96084acb4ae820c069b6b895a5ed300fa525f7b04372c18050d981d9cfce323"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/LayerRootLink.lean",
+        "bytes": 6583,
+        "sha256": "ef1bc6ac970a785c21ffccdedfd3afe62b899f31c9b4cf7446abd965c33f3ed0"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/MinCycles.lean",
+        "bytes": 6008,
+        "sha256": "7645e53de6bb8aa8d0a2daa527d8272e55e35918c44a42eaa3f3761ec10bcfdc"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/NashLayerSparsity.lean",
+        "bytes": 12409,
+        "sha256": "9e5dab742d91c3eca729cdc5ebe46316885630dbf5907b3fb745dd742ca02dd6"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/ParallelThreads.lean",
+        "bytes": 2380,
+        "sha256": "4002c082eecd734a2445f7a310e202dbf268ba16322f3ffe089181e2b8991f2b"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/Pentagon.lean",
+        "bytes": 6451,
+        "sha256": "12489e005483461e81db524677f79ec51493ed4d4bbb9df1b23d058c90930540"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/PentagonData.lean",
+        "bytes": 5981,
+        "sha256": "34a868bd72df9400e0aa198d5e1512040fadfc0f067b6b0c6fd26c1a8cf0e4e8"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/ReceiverCredits.lean",
+        "bytes": 9660,
+        "sha256": "c6520397ff4fb18bd00e6eb665314038ec759f56b2c7412345b4bb3fbe3671b0"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/Redirect.lean",
+        "bytes": 11902,
+        "sha256": "8d70535a155f213bed9595f6a5a08db64aa40849761ab6130c6a35a4365575b8"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/RetainedRoutes.lean",
+        "bytes": 13461,
+        "sha256": "4a60a3b1d298e634fa36fdb5cb1d3eff5a0c50ab50e38a74fa5538fa9d99d0f6"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/RootBranchSwap.lean",
+        "bytes": 5028,
+        "sha256": "8332dca320ebd4c0c9e6b334409467a518994014e376291518f39e16bc34ff70"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/RootedCycles.lean",
+        "bytes": 3915,
+        "sha256": "1c90d893ce129e5559294fe079b50eb3aac794a61f1af635d844e01e13b20358"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/RootedOwnership.lean",
+        "bytes": 14653,
+        "sha256": "6f96ca5d7446b00c14845f25d015144f9fb62ce5c94c6dd95a639d276a68eaf6"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/RootedShortestPaths.lean",
+        "bytes": 8500,
+        "sha256": "61e8d41a89294e1d4035514216bd8c487ee19d1b78e3b9f26d821ed926d87116"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/RootLinkBudget.lean",
+        "bytes": 11002,
+        "sha256": "78cb27069db9ac0f9559dd020e0ccdf41be90ec91c74dc1c7b6fe77fad10fc94"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/ShortCycleBounds.lean",
+        "bytes": 1836,
+        "sha256": "25bf8027562c788e6a6ee4b4e1186080ba092d81a8d55c0a7071e6504e223f98"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/ShortCycles.lean",
+        "bytes": 25491,
+        "sha256": "321ae66725fc658a1cff41a3f0d334613ed152f484f5143cd912783fc25bf68f"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/ShortThreads.lean",
+        "bytes": 16819,
+        "sha256": "5ff06c6dd81a7fa650fc24eb93ac44d459bde5c929f9ee4258af71ec3eb5e817"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/ThetaMetric.lean",
+        "bytes": 13774,
+        "sha256": "23d63d3c28b4d4fbd880a898abf04880bf4d61b8b43f10cc1b169f93fadc303a"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/ThreadDistances.lean",
+        "bytes": 7727,
+        "sha256": "65f7dfe06e14279de92a5b77c0628bd1e1148ec3f3502e07563a179571468e35"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/ThreadForest.lean",
+        "bytes": 5963,
+        "sha256": "abd78c3c2b3fb7aa72079e606261115a207a4078fa4f808b7ae02d4966323fe7"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/ThreadGeometry.lean",
+        "bytes": 14467,
+        "sha256": "f3dd7552d9f2d7028dcb099cf56a0bd1d290a7ad78db22993eceb9f5499b30f2"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/ThreadLengthBound.lean",
+        "bytes": 18500,
+        "sha256": "51f69cacf88b3cc03ecb40160e33bdbf3de15184c17f877cf6885ebe9ee4923b"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/TreeDistanceBudget.lean",
+        "bytes": 5810,
+        "sha256": "f95bac33ca4df526a44c3ecd06c6e435d58968cb627871981ec6e94f1f6ac5f1"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/TreeTheorem.lean",
+        "bytes": 9202,
+        "sha256": "9ba0f4bcd09d8dcbfc742a2ec937cfc10357e0f9eb08d8f292b701a09bb4b8bd"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/TwoLayerWeights.lean",
+        "bytes": 10345,
+        "sha256": "200e010b33600a320a3537be66127011bacbf0be053179a426bbdf076ace3003"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/TwoPortalCertificate.lean",
+        "bytes": 2779,
+        "sha256": "cef5d018ca7fa2e0140c75b8df26acf8571e849d82a64e525e65a27a8ea4e35b"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/TwoPortalCertificateCheck.lean",
+        "bytes": 2654,
+        "sha256": "ecb73dbaa72a36c72d888fd505d48902ef46e6dfbee4e13005437abf1fad6df9"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/TwoPortalCertificateData.lean",
+        "bytes": 57257,
+        "sha256": "6d12935abef2aae24bbea5cd15cb877ebaadf67b24b59e5583cbf360737dbf79"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/TwoPortalPriceBound.lean",
+        "bytes": 2446,
+        "sha256": "26dc9580bc34561b7f571a174f24be8a1b73bf0149f4c3c4f6884050c569e8f1"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/WeightedBlocks.lean",
+        "bytes": 27135,
+        "sha256": "16db391e06d98546ba38edf3081bc41bb5afe4f56106910f19bb4885e0c1e0ed"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs/WeightedCertificates.lean",
+        "bytes": 2047,
+        "sha256": "220342f71dae71f06959ed8ea637b90dcf82a0237d38e2dd7153b164eb1d0c8e"
+      },
+      {
+        "path": "proofs/package/Lax869952Proofs.lean",
+        "bytes": 3164,
+        "sha256": "ae13a47b12dedff677532bce94c1f449c5f868eceda05fb68e31828582aa79f0"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:0b77d327d63c2a4cd09064a47210c4a20ea3abf4f21db71bb06199dae1efd98e"
+  },
+  "lastSubmission": {
+    "commentId": 7108120294,
+    "eventCreatedAt": "2026-11-23T17:04:55Z",
+    "record": "c32aa9bccb8324425fa57f461676bdb1264dfda6688d96b790d4533d74a1dec0",
+    "buildOutput": "c2924250237d09838887bc412d1e13b0b2c9e320b4b129426d39f043074f1e94",
+    "previous": {
+      "archiveSha": "90494175f0791e38a55fc19023cce09ffcff92f3",
+      "record": "c5715709ccd124e89455077bb5e3a1d0c697b1ae70b3dd5d9b5b810404291d16",
+      "buildOutput": "39df56a45790dadfd15b64ade7dcd6082df365f78fa74b2dd5fd01e7e2c84d8e"
+    }
   }
 }
