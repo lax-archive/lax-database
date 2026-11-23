@@ -4,5 +4,814 @@
   "issue": {
     "repositoryId": 1320232165,
     "number": 235
+  },
+  "inputs": {
+    "manifest": {
+      "specVersion": "1",
+      "id": "lax-906450",
+      "leanVersion": "v4.33.0",
+      "mathlibVersion": "db584cd6d46c92f209a44c0f1c829460d327499d",
+      "title": "The Strong Nemhauser–Trotter Theorem for Vertex Cover",
+      "authors": [
+        {
+          "name": "Édouard Bonnet",
+          "github": "EdouardBonnet"
+        },
+        {
+          "name": "Codex"
+        }
+      ],
+      "bibEntries": [
+        "@inproceedings{ChlebikChlebikova2004,\n  author = {Miroslav Chlebík and Janka Chlebíková},\n  title = {Improvement of Nemhauser--Trotter Theorem and Its Applications in Parametrized Complexity},\n  booktitle = {Algorithm Theory -- SWAT 2004}, series = {LNCS},\n  volume = {3111}, pages = {174--186}, year = {2004},\n  doi = {10.1007/978-3-540-27810-8_16}\n}\n",
+        "@article{NemhauserTrotter1974,\n  author = {Nemhauser, George L. and Trotter, Jr., Leslie E.},\n  title = {Properties of Vertex Packing and Independence System Polyhedra},\n  journal = {Mathematical Programming}, volume = {6},\n  pages = {48--61}, year = {1974}, doi = {10.1007/BF01580222}\n}\n"
+      ]
+    },
+    "abstract": "Given a finite simple graph $G$, one polynomial-time word-RAM algorithm partitions its vertices into $V_0$, $V_{1/2}$, and $V_1$. Every neighbor of $V_0$ lies in $V_1$. Every vertex cover of $G[V_{1/2}]$ has size at least $|V_{1/2}|/2$. Every minimum vertex cover of $G$ contains $V_1$ and avoids $V_0$.\n\nChlebík and Chlebíková strengthened the Nemhauser–Trotter theorem to obtain the guarantee for every minimum vertex cover. The algorithm maximizes $|A|-|B|$ subject to $N(A)\\subseteq B$, breaking ties by minimizing $|A|$. A single rational linear program finds such a pair. The RAM reads the adjacency matrix and writes one label per vertex.\n"
+  },
+  "requiredByConcepts": [
+    "Lax759944"
+  ],
+  "requiredByProofs": [
+    "Lax109476",
+    "Lax109476Proofs",
+    "Lax218471",
+    "Lax759944",
+    "Lax808846Proofs"
+  ],
+  "concepts": [
+    {
+      "id": "Lax906450.Deficiency",
+      "path": "concepts/Lax906450/Deficiency.lean",
+      "title": "Maximum deficiency and persistency",
+      "type": "lemma",
+      "description": "Consider pairs $(A,B)$ for which every neighbor of a vertex in $A$ belongs\nto $B$. Maximize the deficiency $|A|-|B|$ and, among all maximizers, minimize\n$|A|$. Any pair selected by these two rules gives the zero and one parts of a\npersistent vertex-cover partition.",
+      "imports": [
+        "Lax906450.Partition"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax906450.Partition\n\n/-!\n---\ntitle: Maximum deficiency and persistency\ntype: lemma\n---\nConsider pairs $(A,B)$ for which every neighbor of a vertex in $A$ belongs\nto $B$. Maximize the deficiency $|A|-|B|$ and, among all maximizers, minimize\n$|A|$. Any pair selected by these two rules gives the zero and one parts of a\npersistent vertex-cover partition.\n-/\n\nnamespace Lax906450.Deficiency\n\nvariable {V : Type*} [Fintype V] [DecidableEq V]\n\ndef Admissible (G : SimpleGraph V) (A B : Finset V) : Prop :=\n  ∀ u ∈ A, ∀ v, G.Adj u v → v ∈ B\n\ndef deficiency (A B : Finset V) : ℤ := (A.card : ℤ) - B.card\n\naxiom partition_of_maximum (G : SimpleGraph V) (A B : Finset V)\n    (h : Admissible G A B)\n    (hmax : ∀ X Y, Admissible G X Y → deficiency X Y ≤ deficiency A B)\n    (hmin : ∀ X Y, Admissible G X Y → deficiency X Y = deficiency A B → A.card ≤ X.card) :\n    Partition.IsPartition G A B\n\nend Lax906450.Deficiency\n",
+      "statements": [
+        {
+          "id": "Lax906450.Deficiency.partition_of_maximum",
+          "signature": "partition_of_maximum : ∀ {V : Type u_1} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V) (A B : Finset V),\n  Lax906450.Deficiency.Admissible G A B →\n    (∀ (X Y : Finset V),\n        Lax906450.Deficiency.Admissible G X Y →\n          Int.instLEInt.le (Lax906450.Deficiency.deficiency X Y) (Lax906450.Deficiency.deficiency A B)) →\n      (∀ (X Y : Finset V),\n          Lax906450.Deficiency.Admissible G X Y →\n            Eq (Lax906450.Deficiency.deficiency X Y) (Lax906450.Deficiency.deficiency A B) →\n              instLENat.le A.card X.card) →\n        Lax906450.Partition.IsPartition G A B",
+          "startLine": 23,
+          "endLine": 27
+        }
+      ]
+    },
+    {
+      "id": "Lax906450.Partition",
+      "path": "concepts/Lax906450/Partition.lean",
+      "title": "A persistent vertex-cover partition",
+      "type": "definition",
+      "description": "Write $Z=V_0$, $O=V_1$, and $H=V_{1/2}=V(G)\\setminus(Z\\cup O)$.\nAll neighbors of $Z$ belong to $O$. Every cover of $G[H]$ has size at least\n$|H|/2$. Every minimum vertex cover of $G$ contains $O$ and avoids $Z$.",
+      "imports": [],
+      "mathlibImports": [
+        "Mathlib.Combinatorics.SimpleGraph.VertexCover",
+        "Mathlib.Data.Finset.BooleanAlgebra"
+      ],
+      "sourceText": "import Mathlib.Combinatorics.SimpleGraph.VertexCover\nimport Mathlib.Data.Finset.BooleanAlgebra\n\n/-!\n---\ntitle: A persistent vertex-cover partition\ntype: definition\n---\nWrite $Z=V_0$, $O=V_1$, and $H=V_{1/2}=V(G)\\setminus(Z\\cup O)$.\nAll neighbors of $Z$ belong to $O$. Every cover of $G[H]$ has size at least\n$|H|/2$. Every minimum vertex cover of $G$ contains $O$ and avoids $Z$.\n-/\n\nnamespace Lax906450.Partition\n\nvariable {V : Type*} [Fintype V] [DecidableEq V]\n\n/-- The vertices left in the induced subproblem. -/\ndef middle (Z O : Finset V) : Finset V := (Z ∪ O)ᶜ\n\n/-- The edges with both endpoints in the specified set are covered by C. -/\ndef CoversOn (G : SimpleGraph V) (H C : Finset V) : Prop :=\n  ∀ u ∈ H, ∀ v ∈ H, G.Adj u v → u ∈ C ∨ v ∈ C\n\n/-- The three conclusions of the strong Nemhauser–Trotter theorem. -/\nstructure IsPartition (G : SimpleGraph V) (Z O : Finset V) : Prop where\n  disjoint : Disjoint Z O\n  neighbors : ∀ u ∈ Z, ∀ v, G.Adj u v → v ∈ O\n  half_bound : ∀ C ⊆ middle Z O, CoversOn G (middle Z O) C →\n    (middle Z O).card ≤ 2 * C.card\n  persistent : ∀ S : Finset V, G.IsVertexCover (S : Set V) →\n    (∀ T : Finset V, G.IsVertexCover (T : Set V) → S.card ≤ T.card) →\n    O ⊆ S ∧ Disjoint Z S\n\nend Lax906450.Partition\n",
+      "statements": []
+    },
+    {
+      "id": "Lax906450.StrongNemhauserTrotter",
+      "path": "concepts/Lax906450/StrongNemhauserTrotter.lean",
+      "title": "The strong Nemhauser–Trotter theorem",
+      "type": "theorem",
+      "description": "A single polynomial-time word-RAM program computes a persistent vertex-cover\npartition of any finite simple graph. The logical input consists of the vertex count\nfollowed by the adjacency matrix in row order. The program writes one word per\nvertex, in vertex order, with $0,1,2$ encoding membership in $V_0,V_{1/2},V_1$,\nrespectively. The instruction count and sufficient word width are polynomial\nin the binary input size.\n\nThe conclusion for every minimum vertex cover is the strengthening of the\nNemhauser–Trotter theorem due to Chlebík and Chlebíková.",
+      "sections": [
+        {
+          "title": "Formalization notes",
+          "markdown": "For a graph on $n$ vertices the logical input has $1+n^2$ words. The RAM\ninput convention prepends this length to the physical tape. The algorithm\nmakes one call to the certified rational LP solver from `lax-109476`."
+        }
+      ],
+      "imports": [
+        "Lax759944.RamPolytime",
+        "Lax906450.Partition"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax906450.Partition\nimport Lax759944.RamPolytime\n\n/-!\n---\ntitle: The strong Nemhauser–Trotter theorem\ntype: theorem\n---\nA single polynomial-time word-RAM program computes a persistent vertex-cover\npartition of any finite simple graph. The logical input consists of the vertex count\nfollowed by the adjacency matrix in row order. The program writes one word per\nvertex, in vertex order, with $0,1,2$ encoding membership in $V_0,V_{1/2},V_1$,\nrespectively. The instruction count and sufficient word width are polynomial\nin the binary input size.\n\nThe conclusion for every minimum vertex cover is the strengthening of the\nNemhauser–Trotter theorem due to Chlebík and Chlebíková.\n\n# Formalization notes\n\nFor a graph on $n$ vertices the logical input has $1+n^2$ words. The RAM\ninput convention prepends this length to the physical tape. The algorithm\nmakes one call to the certified rational LP solver from `lax-109476`.\n-/\n\nnamespace Lax906450.StrongNemhauserTrotter\n\n/-- The adjacency matrix of a numbered graph, preceded by its order. -/\ndef encodeGraph {n : ℕ} (G : SimpleGraph (Fin n)) [DecidableRel G.Adj] : List ℕ :=\n  n :: (List.ofFn fun u => List.ofFn fun v => if G.Adj u v then 1 else 0).flatten\n\n/-- Output labels in vertex order. -/\ndef labels {n : ℕ} (Z O : Finset (Fin n)) : List ℕ :=\n  List.ofFn fun v => if v ∈ Z then 0 else if v ∈ O then 2 else 1\n\n/-- One uniform RAM computes all three parts on every graph, including the empty graph. -/\naxiom polynomial_partition :\n  ∃ solve : List ℕ → List ℕ, Lax759944.RamPolytime.RamPolytime solve ∧\n    ∀ (n : ℕ) (G : SimpleGraph (Fin n)) [DecidableRel G.Adj],\n      ∃ Z O : Finset (Fin n), solve (encodeGraph G) = labels Z O ∧ Partition.IsPartition G Z O\n\nend Lax906450.StrongNemhauserTrotter\n",
+      "statements": [
+        {
+          "id": "Lax906450.StrongNemhauserTrotter.polynomial_partition",
+          "signature": "polynomial_partition : Exists fun solve =>\n  And (Lax759944.RamPolytime.RamPolytime solve)\n    (∀ (n : Nat) (G : SimpleGraph (Fin n)) [inst : DecidableRel G.Adj],\n      Exists fun Z =>\n        Exists fun O =>\n          And\n            (Eq (solve (Lax906450.StrongNemhauserTrotter.encodeGraph G)) (Lax906450.StrongNemhauserTrotter.labels Z O))\n            (Lax906450.Partition.IsPartition G Z O))",
+          "startLine": 36,
+          "endLine": 40,
+          "doc": "One uniform RAM computes all three parts on every graph, including the empty graph."
+        }
+      ]
+    }
+  ],
+  "proofs": [
+    {
+      "id": "Lax906450Proofs.Algorithm.polynomial_partition",
+      "path": "proofs/Lax906450Proofs/Algorithm.lean",
+      "conclusion": "Lax906450.StrongNemhauserTrotter.polynomial_partition",
+      "assumptions": [
+        "Lax109476.CertifiedOptimization.exists_certified_polynomial_time_solver",
+        "Lax218471.Combinators.comp",
+        "Lax759944.TuringRamPolytimeEquivalence.ramPolytime_iff_turingPolytime",
+        "Lax906450.Deficiency.partition_of_maximum"
+      ],
+      "description": "The RAM builds the order constraints $0\\le x_i,y_j\\le1$ and $x_i\\le y_j$ for\neach edge $ij$. It calls the exact polynomial-time LP solver and reads the\npositive coordinates of the two copies. Their supports maximize\n$n|A|-(n+1)|B|$. Indeed, subtracting a common sufficiently small amount\nfrom all positive coordinates leaves room to add that amount on any\nadmissible pair. An improvement of the support would improve the LP.\nThe integer objective maximizes deficiency and breaks ties by minimizing\nthe left part. The maximum-deficiency lemma gives all three conclusions."
+    },
+    {
+      "id": "Lax906450Proofs.Deficiency.partition_of_maximum",
+      "path": "proofs/Lax906450Proofs/Deficiency.lean",
+      "conclusion": "Lax906450.Deficiency.partition_of_maximum",
+      "assumptions": [],
+      "description": "Maximizers are closed under componentwise union and intersection. Consequently\nthe smallest left part is contained in every maximizing left part. Reflecting\na pair to the complements of its two parts in reverse order proves disjointness.\nExchanging the zero vertices of a minimum cover for the one vertices gives\npersistency. Extending the maximizing pair by the two sides of a residual\ncover gives the half-order bound."
+    }
+  ],
+  "capture": {
+    "formatVersion": 1,
+    "digest": "23152157dbdb3d6bb933b237ba3e075f60cc87a0b30225773537f9dfa30088d6",
+    "sourceCommit": "5cfe5266b3647c5b50e7bb12e736d4317565353b",
+    "leanToolchain": "leanprover/lean4:v4.33.0",
+    "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
+    "files": [
+      {
+        "path": "concepts/ir/Lax906450/Deficiency.c",
+        "bytes": 3367,
+        "sha256": "c9a803d74b45bad6237fd776111ae9d91028a56cb526e1bc22d622bde00b001e"
+      },
+      {
+        "path": "concepts/ir/Lax906450/Deficiency.c.hash",
+        "bytes": 16,
+        "sha256": "b295cecee441e994f90ed326f9b834e4423a35d32da89d10d47039218795b344"
+      },
+      {
+        "path": "concepts/ir/Lax906450/Partition.c",
+        "bytes": 2876,
+        "sha256": "7e5599395b2ece34cddde5c07f5e45d411cd6c44a7c916db92a566bf1ed0928e"
+      },
+      {
+        "path": "concepts/ir/Lax906450/Partition.c.hash",
+        "bytes": 16,
+        "sha256": "6de32351bfe8fdfb30b2b09bc43e63f62e91abae737b40fc22869b6ed70c7c8f"
+      },
+      {
+        "path": "concepts/ir/Lax906450/StrongNemhauserTrotter.c",
+        "bytes": 7794,
+        "sha256": "0f50364cc14a2bee31ac0416949e6380f9e0b6ac1972ece15b2267c7028ff2da"
+      },
+      {
+        "path": "concepts/ir/Lax906450/StrongNemhauserTrotter.c.hash",
+        "bytes": 16,
+        "sha256": "27ece84dd5b9a7657957562dc5f55fdcf13b00db5dd9bb86a659ef65e5ebe3c7"
+      },
+      {
+        "path": "concepts/ir/Lax906450.c",
+        "bytes": 1803,
+        "sha256": "dc14f0278f1db10797fa9acb5bfa941267c6a00c486be92ec47eb8566cdbea25"
+      },
+      {
+        "path": "concepts/ir/Lax906450.c.hash",
+        "bytes": 16,
+        "sha256": "ac528ebfab89f6891cd301a220a7c1e583222788f4cf0550b9c7d60c0e3934a1"
+      },
+      {
+        "path": "concepts/lib/Lax906450/Deficiency.ilean",
+        "bytes": 2663,
+        "sha256": "9344d091e8928e03e509682eed30450633e80623ab1eb7964bde411e77ee4fad"
+      },
+      {
+        "path": "concepts/lib/Lax906450/Deficiency.ilean.hash",
+        "bytes": 16,
+        "sha256": "8e4d51a6cafc8d4cfcd8c0be2786825469a894262b26001eb47c652b603b41f3"
+      },
+      {
+        "path": "concepts/lib/Lax906450/Deficiency.olean",
+        "bytes": 23360,
+        "sha256": "1abec3c3ab0c7df64643604b3def4c9ac45fb85f2f81944d4988b5c597554e46"
+      },
+      {
+        "path": "concepts/lib/Lax906450/Deficiency.olean.hash",
+        "bytes": 16,
+        "sha256": "6536247f7b1d0c96e216aa55bac7865e054131e9c12afc1f4b69121d213af39c"
+      },
+      {
+        "path": "concepts/lib/Lax906450/Deficiency.trace",
+        "bytes": 2208,
+        "sha256": "eb4884b329458d8ef794f653f8a804e6ad0a9b47f6aa1969eb4e51696b027073"
+      },
+      {
+        "path": "concepts/lib/Lax906450/Partition.ilean",
+        "bytes": 3406,
+        "sha256": "dabaec58b9bf9331b45c05bb31d2f5e82ef416e2aaedf5b86878d2f6877f16d7"
+      },
+      {
+        "path": "concepts/lib/Lax906450/Partition.ilean.hash",
+        "bytes": 16,
+        "sha256": "fc125c3b5643d408da49af0ad96b9af9785ecbb69a6f2571fcd17454f1014a6d"
+      },
+      {
+        "path": "concepts/lib/Lax906450/Partition.olean",
+        "bytes": 57392,
+        "sha256": "b64b3dae6974616e84289035dc3350da4a6c104b7806b4ad7b3ba0eeed0e2581"
+      },
+      {
+        "path": "concepts/lib/Lax906450/Partition.olean.hash",
+        "bytes": 16,
+        "sha256": "da58cec6eb5f71463dbd103d210bd6c5597efe887112d929f6a50046916b2d2d"
+      },
+      {
+        "path": "concepts/lib/Lax906450/Partition.trace",
+        "bytes": 2455,
+        "sha256": "1ee7f7a1438f4916b67277e88502c3234a62563a5ba5de11712b427403366767"
+      },
+      {
+        "path": "concepts/lib/Lax906450/StrongNemhauserTrotter.ilean",
+        "bytes": 4041,
+        "sha256": "f467f0f1486a63b46ca1f02b6fea49d74b053d0c82e8d13ee71aa5dd2c177b60"
+      },
+      {
+        "path": "concepts/lib/Lax906450/StrongNemhauserTrotter.ilean.hash",
+        "bytes": 16,
+        "sha256": "f3f25725b053eb7c635089dc0c324cc8a1d7772e419b8d152213e3043b248fa7"
+      },
+      {
+        "path": "concepts/lib/Lax906450/StrongNemhauserTrotter.olean",
+        "bytes": 38464,
+        "sha256": "972fef80060c71df9febad24fec2a9d7d21df5923425a713fb1278719daaf49b"
+      },
+      {
+        "path": "concepts/lib/Lax906450/StrongNemhauserTrotter.olean.hash",
+        "bytes": 16,
+        "sha256": "a22ea7927abdc9ec1510b72453865135a7cf7d869a5176b2b9ef4f4c8da33408"
+      },
+      {
+        "path": "concepts/lib/Lax906450/StrongNemhauserTrotter.trace",
+        "bytes": 2443,
+        "sha256": "6bc6fecdabcd72643b6361ac482c201583e2711b1f80d798fbf53662202046aa"
+      },
+      {
+        "path": "concepts/lib/Lax906450.ilean",
+        "bytes": 219,
+        "sha256": "854ecac8f95fc5c0dddf99dd44efdbc935badb3bbd1315f2eaadc6dbf6acf924"
+      },
+      {
+        "path": "concepts/lib/Lax906450.ilean.hash",
+        "bytes": 16,
+        "sha256": "09bb56e20834f3366284deb8a99a07045576cb003745fb7aca5e981f838f4479"
+      },
+      {
+        "path": "concepts/lib/Lax906450.olean",
+        "bytes": 1760,
+        "sha256": "94709edcf0423be9f17025455753a253e1eb6de2df0b8e0ce4fc06d9f398aebc"
+      },
+      {
+        "path": "concepts/lib/Lax906450.olean.hash",
+        "bytes": 16,
+        "sha256": "3ff874eab927d5f657e175b4b1de0d34b34a892570bdd2fc43c1b5358c040f62"
+      },
+      {
+        "path": "concepts/lib/Lax906450.trace",
+        "bytes": 2461,
+        "sha256": "498a81f34c2b63b041db2d9625f48f45b31ab3c4fa22539644f5686f078be159"
+      },
+      {
+        "path": "concepts/package/lake-manifest.json",
+        "bytes": 3581,
+        "sha256": "07f2cec29ad9522bda14c6e4aee12e134f341ec354a1f86a86b82cea5c7c8dab"
+      },
+      {
+        "path": "concepts/package/lakefile.toml",
+        "bytes": 398,
+        "sha256": "35267adeb9293c4bd5e88b5f12e1ae3869f1aa1408fee2159de185b59d28c72e"
+      },
+      {
+        "path": "concepts/package/Lax906450/Deficiency.lean",
+        "bytes": 944,
+        "sha256": "e30f4fa4fdfc13f86c35bf03d6d31ef1e9996deffffa04fdfbce77fa6b43ab82"
+      },
+      {
+        "path": "concepts/package/Lax906450/Partition.lean",
+        "bytes": 1299,
+        "sha256": "2da4fde7234c23b2acaa0682ef260bd904d790846b9f084a682521d1a80a4699"
+      },
+      {
+        "path": "concepts/package/Lax906450/StrongNemhauserTrotter.lean",
+        "bytes": 1791,
+        "sha256": "c84f77ce5e694e625d1ef617725cf258509e47287675d5e0ca01fc1163d3ffbf"
+      },
+      {
+        "path": "concepts/package/Lax906450.lean",
+        "bytes": 95,
+        "sha256": "383e6e57e097022f684a061f235c520dc446d07fb71527c6af6dd43a8a8ca0c7"
+      },
+      {
+        "path": "concepts/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/Algorithm.c",
+        "bytes": 2129,
+        "sha256": "1ec6bcd80d02d4cae34d3cf955888f1e2e540681ca11cf478ca7db229ac88020"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/Algorithm.c.hash",
+        "bytes": 16,
+        "sha256": "c67afe52ee5bb294a6095f202354e17345b695a8b3fa8f386d7b2718bc451040"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/ClosureLP.c",
+        "bytes": 35283,
+        "sha256": "878d3531dca7a7f6e2786491c49896a96286722828571b91260748f1a5121923"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/ClosureLP.c.hash",
+        "bytes": 16,
+        "sha256": "8838d2a8d80245911bdd0010323d75a40c59f45a351b3d4e2e9287f24f498307"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/Deficiency.c",
+        "bytes": 1557,
+        "sha256": "b2839cfeb28862ea972bf02173138b25282b47b45a15f167d7dcf1cab0130238"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/Deficiency.c.hash",
+        "bytes": 16,
+        "sha256": "06ecfc432dc29153f9c51acfc7cc3b755ea02cb7bf0757b3ce0a9be98578e9a4"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/Encoding.c",
+        "bytes": 42586,
+        "sha256": "fd41d8d7d54966dc1eecedb582a5c07d05e33e728fc29cae67e1a0f918f56834"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/Encoding.c.hash",
+        "bytes": 16,
+        "sha256": "2e1f9c937d537d45c962bd4d5e8e54d030480e2f877cb1f300952c51187b84be"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/Input.c",
+        "bytes": 2873,
+        "sha256": "cff34e23cbaf969b5ab8d54544eb29b83e2fb068e31335970f982db5df79857e"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/Input.c.hash",
+        "bytes": 16,
+        "sha256": "9ba9f01814a414165bcc5fcaa50b489fde919b0c03408b4b268649366df34f93"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/InputBuffer.c",
+        "bytes": 16979,
+        "sha256": "2d833939e29132418b6add75bce391d9688e567ce9cb6773c910a8bb1ecf4583"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/InputBuffer.c.hash",
+        "bytes": 16,
+        "sha256": "899fc9ec9b8e51e4f446f950ff1504b5107bfc2f072909fbc463909b6e7e2883"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/OptimalSupport.c",
+        "bytes": 5411,
+        "sha256": "5c9dd3cdfc02389ba46dc42fdb8f9c87d89a39623d5d72d2b27dbd60cb8a73e9"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/OptimalSupport.c.hash",
+        "bytes": 16,
+        "sha256": "b235640e07f006c325b487bee331a78482a8e88232dfa868412f91c7992ded99"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/Output.c",
+        "bytes": 17849,
+        "sha256": "d9f9f063d6a5339dbbe36c1ba690639c1cba8356efcaab22ce0f6be1a3c34bd0"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/Output.c.hash",
+        "bytes": 16,
+        "sha256": "c04b872c3fbec65540f4960ec2533c09d5bed55bc53ac627e4914ef2f0e1f355"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/Tabulation.c",
+        "bytes": 13401,
+        "sha256": "af0d7626bd66523e7f34afc20ce2e36a15dd98570bc99f0200950f703139b6b0"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/Tabulation.c.hash",
+        "bytes": 16,
+        "sha256": "064970aad6e0175c20d9d03cd3689b6a747fea52b47872e59606e8b35303fe01"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/WordExpressions.c",
+        "bytes": 53142,
+        "sha256": "5baf22f8c9fc970a786d734eb362dbe57e515c71322c8cde048f8931c1360426"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/WordExpressions.c.hash",
+        "bytes": 16,
+        "sha256": "c45b18439173f7a884c9cb80eedb9a6eb294b4f547c9b77127f6a216406a58f7"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/WordTables.c",
+        "bytes": 9936,
+        "sha256": "becd5219faa8d01de4a0a37cbb738b2d7d75f5502b25788f0c7f995d71ed13d2"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs/WordTables.c.hash",
+        "bytes": 16,
+        "sha256": "4513a7e90f91ef82022edb47a31785ec1e45366aa2a2a8d52c343d9cd5362f00"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs.c",
+        "bytes": 3957,
+        "sha256": "c613297429e065fb798551f23530356b14d18d2ff463358b2a87fbc683524059"
+      },
+      {
+        "path": "proofs/ir/Lax906450Proofs.c.hash",
+        "bytes": 16,
+        "sha256": "8994b757665543778283fd19dc760c11c1649ff6478a1240074dccc3849c1589"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Algorithm.ilean",
+        "bytes": 10817,
+        "sha256": "0da22dc5dd20449c536c637bfe688082c1020cd0d0fbeb15f2719b841806e593"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Algorithm.ilean.hash",
+        "bytes": 16,
+        "sha256": "d2dcc4aef47e9f9598e569f1020b65ad888773c5ef3c1e7d38a34c9e5e06c31b"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Algorithm.olean",
+        "bytes": 87624,
+        "sha256": "0777c143126ef4ebdb18287cff3f136e4492f735588a4cc2d627e1fc7ddca0f3"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Algorithm.olean.hash",
+        "bytes": 16,
+        "sha256": "1025d3474b53b3abd8dfba4a64c63b61c2a5ce6cf447e1e1ff9317511211f3ee"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Algorithm.trace",
+        "bytes": 3012,
+        "sha256": "dbd1ce7d664afa40173e7cf0b933eb3c32b4ef3994c10b94cfa3ac877169e391"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/ClosureLP.ilean",
+        "bytes": 29582,
+        "sha256": "3c523646e2ca3d7b92f4f6ca7b6a91b68250b7db0ec5ee9b347fe48235bbce43"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/ClosureLP.ilean.hash",
+        "bytes": 16,
+        "sha256": "45bd5189de3b1e000ef307936b9e5bf5d282d229b193a32755f8d7259d26d062"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/ClosureLP.olean",
+        "bytes": 527464,
+        "sha256": "dc94caae75482a425e5b7a1784bcde266982010881dbae22fb8d54d0a947d2e4"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/ClosureLP.olean.hash",
+        "bytes": 16,
+        "sha256": "d6dac8eb631bccc105bdab42ec8dc54e4d4d43a803abda951937a0b614ea575a"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/ClosureLP.trace",
+        "bytes": 2816,
+        "sha256": "25cddf85c1286b411ee2ffa86c1a1acc74f771c9c0095d8dfe95a1d80571041a"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Deficiency.ilean",
+        "bytes": 16664,
+        "sha256": "092d9d13cdbdc682748c987d5062079025dfbd4936cb810f16367d0ac8de8204"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Deficiency.ilean.hash",
+        "bytes": 16,
+        "sha256": "8fc3edae0a689a9933c8e0693b6244af460205c9cf413ca5a97aa6b6d726ae07"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Deficiency.olean",
+        "bytes": 282496,
+        "sha256": "1e33c9ec9342d5fd2c4f32f57b39ee29952c1a9b79da2e2fb5f2515feee07305"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Deficiency.olean.hash",
+        "bytes": 16,
+        "sha256": "f16f9c1e4438d2d9963d323008c10bb6d8d0d0b1d243323878912579dd9ba06f"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Deficiency.trace",
+        "bytes": 2650,
+        "sha256": "57912f708735b565e37c3c723dd9c6a50b1ceca3d44f856635edbc8d3063e74c"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Encoding.ilean",
+        "bytes": 48914,
+        "sha256": "5eb5c2992835eda749a54e83de48a307b03c36f1899501f591668527ae6729a4"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Encoding.ilean.hash",
+        "bytes": 16,
+        "sha256": "5b2c2b2229e7f186a442279884014c9ea4b19d5b15844f2af7f1a42bac593fce"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Encoding.olean",
+        "bytes": 483864,
+        "sha256": "005b9fbf81d3a75521f0db956518af46f4f6ef4047a408bd5ce54c142bf0c7a9"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Encoding.olean.hash",
+        "bytes": 16,
+        "sha256": "41b375801e22af2d0602c803fefef7766143da1170d7f25e2a45f3b8bf968717"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Encoding.trace",
+        "bytes": 3030,
+        "sha256": "256af0c737fa033b2ab62294d3fb104e8df3bfdd0d95eb67f57d927fc76187ed"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Input.ilean",
+        "bytes": 11703,
+        "sha256": "d8230691b09bccaf1c10df0dc7100d7b6242dc0af803294c6cece26bf9f801d5"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Input.ilean.hash",
+        "bytes": 16,
+        "sha256": "8168f58376ffe3efab454722f1f9a9f71d9cc8cccb5b54915ec28c2373534d77"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Input.olean",
+        "bytes": 129808,
+        "sha256": "9f3d461fb806d03299666cd6214837c5d330968efc7e4a135d5938079eb78cf5"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Input.olean.hash",
+        "bytes": 16,
+        "sha256": "f7ef38e9630f85892c40083ae6adee004c3d71cf472500e0115179b3a52db59b"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Input.trace",
+        "bytes": 2661,
+        "sha256": "08433af6a75d76516669cb03da400ac88f475c8576b00c3bad483aec674821d4"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/InputBuffer.ilean",
+        "bytes": 17721,
+        "sha256": "15d54b34abf9c142e58b48c8f80316ac3a717434c037263fd5e7e43a6d0da965"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/InputBuffer.ilean.hash",
+        "bytes": 16,
+        "sha256": "22fb881401b10c1a1342be95012140246fc6edbb77db295ef42748c6487f7481"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/InputBuffer.olean",
+        "bytes": 274776,
+        "sha256": "96aa29d343cebdafadda7e18f2c4adc3965230e4f1b6b8a09b9449e36b36a5d8"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/InputBuffer.olean.hash",
+        "bytes": 16,
+        "sha256": "c4179b6e2234bce4aa1404bfbb90a0d280145081fc2ecffdeb6a292ce0ca15a6"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/InputBuffer.trace",
+        "bytes": 2713,
+        "sha256": "fd904b001b9ddf90b0fc343fb596b40d4156defbf9a6f668ab09b8ad559e244c"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/OptimalSupport.ilean",
+        "bytes": 25239,
+        "sha256": "b02b0cec43fb7283e4e3391459d8d6cbd501b6b25b40d80b3e3ce05d386cc9e9"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/OptimalSupport.ilean.hash",
+        "bytes": 16,
+        "sha256": "3666781b4b7d39345f362664e0945597d0316a910503316fbdb61dcd70b77a12"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/OptimalSupport.olean",
+        "bytes": 451800,
+        "sha256": "8e0aa32d7e7395afde2cf57c3f6fb182c4f4ed861b50d275a1a21e6a5f828c4e"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/OptimalSupport.olean.hash",
+        "bytes": 16,
+        "sha256": "9dceae468e1077d5e13d3166e5ffe2d34e819317656047232a95c7ed84ad7ad2"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/OptimalSupport.trace",
+        "bytes": 2707,
+        "sha256": "001f4da4aee8ddc55470a7a39c03f82b1c8307f06d47915ad08eeaa509d3386b"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Output.ilean",
+        "bytes": 19849,
+        "sha256": "c7d91f5e494330556e449658164bf4b7bcf222ef6c109ee77029c82eff2afa23"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Output.ilean.hash",
+        "bytes": 16,
+        "sha256": "20542c57e4f0432a5de6576d36f99605ff8fdb00ffd6444dab1ff6e00cfb88a0"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Output.olean",
+        "bytes": 273240,
+        "sha256": "b98a3278b1c5321d35eb15d0e7671db3ec036c0bd131f65343eec21d2f83f73e"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Output.olean.hash",
+        "bytes": 16,
+        "sha256": "959cff404aba7be3cc2374683746237004f570c345a8ef115041e9aa73185d38"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Output.trace",
+        "bytes": 3026,
+        "sha256": "0deaa0cce78c8b2a4043ad98bae6db812bebc0979fbaa965c6825cfbe24369f6"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Tabulation.ilean",
+        "bytes": 32997,
+        "sha256": "ba858b7a4c478f3fd7b7a4c05ca060c46ccc598d1e5d872796c28ec14512edef"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Tabulation.ilean.hash",
+        "bytes": 16,
+        "sha256": "e638f42a8b4a657d4de3ce089ad507a4092394b2034a665d2bc1715fb87b84f7"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Tabulation.olean",
+        "bytes": 453888,
+        "sha256": "95afaff082586b8d667ecea01451db2180f908b270d8e303ac454374bd0c2dbf"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Tabulation.olean.hash",
+        "bytes": 16,
+        "sha256": "b9b1ee85f37aec83a16f9048e43b5b502f22d942be2000abe0e9bcd7f77a26c4"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/Tabulation.trace",
+        "bytes": 2887,
+        "sha256": "e99d1181fa667d2cf5e4dce371b3997fc6c88087c1d4dc8ae39ec992636e736d"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/WordExpressions.ilean",
+        "bytes": 37918,
+        "sha256": "82f4154af597e2f0bac70d4876cf0e7e592cba51b9c087a61c779d4862c59c51"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/WordExpressions.ilean.hash",
+        "bytes": 16,
+        "sha256": "5950b6ffc8f5e5eae6898bf97c7d8173c53ad117c7c02231643482b297b0b52d"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/WordExpressions.olean",
+        "bytes": 853120,
+        "sha256": "2699169fc4b5afc1cdceee186c2d85c1a6dd37b4ca7946203d835377a90153f3"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/WordExpressions.olean.hash",
+        "bytes": 16,
+        "sha256": "93b5c5b9fc2be4dd3f2479c7b333d24ccf97f246ba3f489ef5420d0f9ffe0721"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/WordExpressions.trace",
+        "bytes": 2568,
+        "sha256": "b68af2c270203553d688d9cf1624c53fa68152891f99eafa0568737a3cb86799"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/WordTables.ilean",
+        "bytes": 15299,
+        "sha256": "d5a951a45d4b0c46c8dcb7d039097b9075a71fd64536c2fcb768269c74a18dc7"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/WordTables.ilean.hash",
+        "bytes": 16,
+        "sha256": "070ba25eb5ed59a75b289900f4922c3d3bd94b2111bc4bd5634eb58f4ff0d012"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/WordTables.olean",
+        "bytes": 197280,
+        "sha256": "218c2aeebd149284d6f9d5add195e19a93f4fd30bf093562b3521ad75c0342bb"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/WordTables.olean.hash",
+        "bytes": 16,
+        "sha256": "b9f911173c0fafaf484278649b6e0326b46cee6344d8b609dd77d7bd8c0fb5f4"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs/WordTables.trace",
+        "bytes": 2873,
+        "sha256": "485f817b7bda01010623aab0016295cae4d10d26df5bac4ae07e39ede7d1d49b"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs.ilean",
+        "bytes": 621,
+        "sha256": "0d251d09ba43ea051447fe2b76ad8a490e701ab1deeb882ea598d148076d5c91"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs.ilean.hash",
+        "bytes": 16,
+        "sha256": "63be3b068198046d42a244351b8a81dadc2c35f5e720557b76f32ede15522a8c"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs.olean",
+        "bytes": 2632,
+        "sha256": "7a8f8759bdce2849d39ad35cd74a32aaa70f48be918530b7ebcebbcc79e34b3f"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs.olean.hash",
+        "bytes": 16,
+        "sha256": "4cf545cbc9608a3f5900946b4b61bbeaf79dc8c2ca6cd17771675671448db4ed"
+      },
+      {
+        "path": "proofs/lib/Lax906450Proofs.trace",
+        "bytes": 4095,
+        "sha256": "2fe6d98fbd794a492b949026e59c25ea9c09bb60482d676027bfaf3d90bd0992"
+      },
+      {
+        "path": "proofs/package/lake-manifest.json",
+        "bytes": 4627,
+        "sha256": "b87a6be0d0de00d1f4b6783521744dae44dacdaf7a3f296cefac657f344c34af"
+      },
+      {
+        "path": "proofs/package/lakefile.toml",
+        "bytes": 1107,
+        "sha256": "b4c715e8bb42856e51a21626aa491387b02bdda144671bef8f739c8e9d00783c"
+      },
+      {
+        "path": "proofs/package/Lax906450Proofs/Algorithm.lean",
+        "bytes": 2829,
+        "sha256": "ea747028c861afa2cfed8d470c3351f098b11303136dbb5b8f94e181ed3320e2"
+      },
+      {
+        "path": "proofs/package/Lax906450Proofs/ClosureLP.lean",
+        "bytes": 7018,
+        "sha256": "ce859358114ed456dbc736ecb536057e3e0e3c33725a1872a5cfc20138b4c2a8"
+      },
+      {
+        "path": "proofs/package/Lax906450Proofs/Deficiency.lean",
+        "bytes": 5668,
+        "sha256": "332f7ddd5f10cd86d6a38e0149860e31364eb2bb2afb5cee909f599b5eaf1c6d"
+      },
+      {
+        "path": "proofs/package/Lax906450Proofs/Encoding.lean",
+        "bytes": 9537,
+        "sha256": "a718ee3fb686d2c74a0cbe6f4e99e5e46ba7559473d5af432d06e0a77b887aa0"
+      },
+      {
+        "path": "proofs/package/Lax906450Proofs/Input.lean",
+        "bytes": 1685,
+        "sha256": "1ecc622dbf0e82483b9dc429a1ff2a161ee644c745026abaa1b7742caa9ab4b7"
+      },
+      {
+        "path": "proofs/package/Lax906450Proofs/InputBuffer.lean",
+        "bytes": 3964,
+        "sha256": "f8144b089a3164060c8d60a6c55858a8b0bc9fd6e16dcd9171bb9112f83c0e45"
+      },
+      {
+        "path": "proofs/package/Lax906450Proofs/OptimalSupport.lean",
+        "bytes": 5219,
+        "sha256": "12b71b03d682d049ef0e3fec5d6bb118fd69a7935c654612a8f91a40847b378b"
+      },
+      {
+        "path": "proofs/package/Lax906450Proofs/Output.lean",
+        "bytes": 3654,
+        "sha256": "349270af326031161fe9f6eedfa9399a4834859f46153fbe501f7506556599a3"
+      },
+      {
+        "path": "proofs/package/Lax906450Proofs/Tabulation.lean",
+        "bytes": 7656,
+        "sha256": "6589e36dbaa5ce495f95e3df658f300bf0642b26f4207a529e521ed9d2e4d1bc"
+      },
+      {
+        "path": "proofs/package/Lax906450Proofs/WordExpressions.lean",
+        "bytes": 7563,
+        "sha256": "6810691bd0f53dcbcdaa9cc572be08c108f3275aceacb05f042defce9b639ae9"
+      },
+      {
+        "path": "proofs/package/Lax906450Proofs/WordTables.lean",
+        "bytes": 3734,
+        "sha256": "2959cca54261478e9a910ac40506553b3faefff3555d759460de57c66df8cdc8"
+      },
+      {
+        "path": "proofs/package/Lax906450Proofs.lean",
+        "bytes": 371,
+        "sha256": "59ed9007d4a8cbc78dcba85ba61604b129dc5b6dfa32be1fa7f0630d8b4e8304"
+      },
+      {
+        "path": "proofs/package/lean-toolchain",
+        "bytes": 25,
+        "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
+      }
+    ],
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:23152157dbdb3d6bb933b237ba3e075f60cc87a0b30225773537f9dfa30088d6"
+  },
+  "lastSubmission": {
+    "commentId": 7110323838,
+    "eventCreatedAt": "2026-11-23T18:33:08Z",
+    "record": "8970fd6d842c10f726ef7d49b00a28ca5f2b8d15d6880e02db91293513a39ed4",
+    "buildOutput": "804ee6af54e481ef9524bc282c365b3ea8f08eaeb019ff9686c22f8c626982d3",
+    "previous": {
+      "archiveSha": "1a8bfdb83ab11687c30fbdd56c5725586fa63839",
+      "record": "136817398ece0500f63c2f139b734a307af8673159ff45edb8f87803129d8e4a",
+      "buildOutput": "a21cd7c0a8d833a0ac3d2ebb3244c2895aecc282b9598cf20773e23f7edaaa0b"
+    }
   }
 }
