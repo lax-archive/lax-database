@@ -19,6 +19,9 @@
         },
         {
           "name": "Kristóf Huszár"
+        },
+        {
+          "name": "GPT-6.2-Astra max"
         }
       ],
       "bibEntries": [
@@ -28,8 +31,7 @@
       "paper": {
         "folder": "paper",
         "main": "main.tex",
-        "engine": "pdflatex",
-        "web": false
+        "engine": "pdflatex"
       }
     },
     "abstract": "Every generalized triangulation of a $d$-manifold with $n$ top-dimensional simplices admits a refinement whose dual graph has twin-width at most $4$. For $d\\ge 1$, insert a stack of $s=2\\lceil\\log_2 n\\rceil-1$ pillows at each face gluing, taking $s=0$ for $n\\le 1$. With $m$ gluings the refinement has exactly $n+2sm$ simplices, hence at most $n+(d+1)ns$. This gives size $O(dn\\log n)$ for $d\\ge 1$ and $n\\ge 2$. In this range a shorter stack also gives the bound $2dn\\log_2 n$ from the abstract. For $n\\le5$ or $d=1$, the original triangulation already has dual twin-width at most $4$.\n\nThe construction gives a homeomorphism of quotient realizations. The contraction sequence routes the subdivided dual edges through a binary tree. It applies to triangulations with boundary, multiple face gluings between the same simplices, and gluings within a simplex.\n"
@@ -60,14 +62,14 @@
       "id": "Lax919488.MultigraphTwinWidth",
       "path": "concepts/Lax919488/MultigraphTwinWidth.lean",
       "title": "Twin-width of a dual multigraph",
-      "type": "theorem",
+      "type": "lemma",
       "description": "The initial black multiplicity between two cells counts the face gluings\njoining them, including loops. When two parts merge, each surviving part\nhas a black edge to the new part if it had a black edge to both old parts.\nIt has no edge if it had no edge to either. Every other case gives one red\nedge. Edges between surviving parts keep their multiplicities. The width is\nthe maximum red degree, counting red edges with multiplicity.\n\nA contraction sequence for the simple adjacency graph lifts to a sequence\nof the same width for the dual multigraph.",
       "imports": [
         "Lax228581.TwinWidth",
         "Lax919488.FacePairings"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax919488.FacePairings\nimport Lax228581.TwinWidth\n\n/-!\n---\ntitle: Twin-width of a dual multigraph\ntype: theorem\n---\nThe initial black multiplicity between two cells counts the face gluings\njoining them, including loops. When two parts merge, each surviving part\nhas a black edge to the new part if it had a black edge to both old parts.\nIt has no edge if it had no edge to either. Every other case gives one red\nedge. Edges between surviving parts keep their multiplicities. The width is\nthe maximum red degree, counting red edges with multiplicity.\n\nA contraction sequence for the simple adjacency graph lifts to a sequence\nof the same width for the dual multigraph.\n-/\n\nnamespace Lax919488.MultigraphTwinWidth\n\nopen FacePairings Lax228581.TwinWidth\n\nnoncomputable section\n\ndef edgeMultiplicity {d : ℕ} {V E : Type} [Fintype E] (T : Diagram d V E) (u v : V) : ℕ := by\n  classical\n  exact (Finset.univ.filter fun e =>\n    ∃ b, (T.side e b).cell = u ∧ (T.side e (!b)).cell = v).card\n\nstructure Entry where\n  black : ℕ\n  red : ℕ\n  deriving DecidableEq\n\ndef combine (a b : Entry) : Entry :=\n  if 0 < a.black ∧ 0 < b.black then ⟨1,0⟩\n  else if a = ⟨0,0⟩ ∧ b = ⟨0,0⟩ then ⟨0,0⟩ else ⟨0,1⟩\n\nstructure ContractionSequence {d : ℕ} {V E : Type} [Fintype V] [Fintype E] [DecidableEq V]\n    (T : Diagram d V E) (k : ℕ) where\n  steps : ℕ\n  parts : ℕ → Finset (Finset V)\n  edges : ℕ → Finset V → Finset V → Entry\n  symmetric : ∀ i A B, edges i A B = edges i B A\n  initial : parts 0 = singletonPartition V\n  initialEdges : ∀ u v, edges 0 {u} {v} = ⟨edgeMultiplicity T u v,0⟩\n  final : (parts steps).card ≤ 1\n  merge : ∀ i < steps, ∃ A ∈ parts i, ∃ B ∈ parts i, A ≠ B ∧\n    let rest := ((parts i).erase A).erase B\n    let C := A ∪ B\n    parts (i+1) = insert C rest ∧ edges (i+1) C C = ⟨0,0⟩ ∧\n    (∀ D ∈ rest, edges (i+1) C D = combine (edges i A D) (edges i B D)) ∧\n    ∀ D ∈ rest, ∀ F ∈ rest, edges (i+1) D F = edges i D F\n  width : ∀ i ≤ steps, ∀ A ∈ parts i, ∑ B ∈ parts i, (edges i A B).red ≤ k\n\ndef WidthAtMost {d : ℕ} {V E : Type} [Fintype V] [Fintype E] [DecidableEq V]\n    (T : Diagram d V E) (k : ℕ) : Prop := Nonempty (ContractionSequence T k)\n\naxiom lift_sequence {d : ℕ} {V E : Type} [Fintype V] [Fintype E] [DecidableEq V]\n    (T : Diagram d V E) {k : ℕ} (h : HasTwinWidthAtMost T.dual k) : WidthAtMost T k\n\nend\nend Lax919488.MultigraphTwinWidth\n",
+      "sourceText": "import Lax919488.FacePairings\nimport Lax228581.TwinWidth\n\n/-!\n---\ntitle: Twin-width of a dual multigraph\ntype: lemma\n---\nThe initial black multiplicity between two cells counts the face gluings\njoining them, including loops. When two parts merge, each surviving part\nhas a black edge to the new part if it had a black edge to both old parts.\nIt has no edge if it had no edge to either. Every other case gives one red\nedge. Edges between surviving parts keep their multiplicities. The width is\nthe maximum red degree, counting red edges with multiplicity.\n\nA contraction sequence for the simple adjacency graph lifts to a sequence\nof the same width for the dual multigraph.\n-/\n\nnamespace Lax919488.MultigraphTwinWidth\n\nopen FacePairings Lax228581.TwinWidth\n\nnoncomputable section\n\ndef edgeMultiplicity {d : ℕ} {V E : Type} [Fintype E] (T : Diagram d V E) (u v : V) : ℕ := by\n  classical\n  exact (Finset.univ.filter fun e =>\n    ∃ b, (T.side e b).cell = u ∧ (T.side e (!b)).cell = v).card\n\nstructure Entry where\n  black : ℕ\n  red : ℕ\n  deriving DecidableEq\n\ndef combine (a b : Entry) : Entry :=\n  if 0 < a.black ∧ 0 < b.black then ⟨1,0⟩\n  else if a = ⟨0,0⟩ ∧ b = ⟨0,0⟩ then ⟨0,0⟩ else ⟨0,1⟩\n\nstructure ContractionSequence {d : ℕ} {V E : Type} [Fintype V] [Fintype E] [DecidableEq V]\n    (T : Diagram d V E) (k : ℕ) where\n  steps : ℕ\n  parts : ℕ → Finset (Finset V)\n  edges : ℕ → Finset V → Finset V → Entry\n  symmetric : ∀ i A B, edges i A B = edges i B A\n  initial : parts 0 = singletonPartition V\n  initialEdges : ∀ u v, edges 0 {u} {v} = ⟨edgeMultiplicity T u v,0⟩\n  final : (parts steps).card ≤ 1\n  merge : ∀ i < steps, ∃ A ∈ parts i, ∃ B ∈ parts i, A ≠ B ∧\n    let rest := ((parts i).erase A).erase B\n    let C := A ∪ B\n    parts (i+1) = insert C rest ∧ edges (i+1) C C = ⟨0,0⟩ ∧\n    (∀ D ∈ rest, edges (i+1) C D = combine (edges i A D) (edges i B D)) ∧\n    ∀ D ∈ rest, ∀ F ∈ rest, edges (i+1) D F = edges i D F\n  width : ∀ i ≤ steps, ∀ A ∈ parts i, ∑ B ∈ parts i, (edges i A B).red ≤ k\n\ndef WidthAtMost {d : ℕ} {V E : Type} [Fintype V] [Fintype E] [DecidableEq V]\n    (T : Diagram d V E) (k : ℕ) : Prop := Nonempty (ContractionSequence T k)\n\naxiom lift_sequence {d : ℕ} {V E : Type} [Fintype V] [Fintype E] [DecidableEq V]\n    (T : Diagram d V E) {k : ℕ} (h : HasTwinWidthAtMost T.dual k) : WidthAtMost T k\n\nend\nend Lax919488.MultigraphTwinWidth\n",
       "statements": [
         {
           "id": "Lax919488.MultigraphTwinWidth.lift_sequence",
@@ -81,13 +83,13 @@
       "id": "Lax919488.PillowSubdivision",
       "path": "concepts/Lax919488/PillowSubdivision.lean",
       "title": "Realization of the stacked pillow refinement",
-      "type": "theorem",
+      "type": "lemma",
       "description": "In positive dimension, inserting any finite stack of pillows at every\ngluing preserves the quotient space. Under the homeomorphism, each new\nsimplex embeds as a closed subset of an original model simplex. The empty\nstack works in every dimension.",
       "imports": [
         "Lax919488.StackedPillows"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax919488.StackedPillows\n\n/-!\n---\ntitle: Realization of the stacked pillow refinement\ntype: theorem\n---\nIn positive dimension, inserting any finite stack of pillows at every\ngluing preserves the quotient space. Under the homeomorphism, each new\nsimplex embeds as a closed subset of an original model simplex. The empty\nstack works in every dimension.\n-/\n\nnamespace Lax919488.PillowSubdivision\n\nopen FacePairings StackedPillows\n\nvariable {d n m : ℕ} (T : Diagram d (Fin n) (Fin m))\n\naxiom pillow_refinement (s : ℕ) (hd : 0 < d ∨ s = 0) (h : T.IsPairing) :\n  (refine T s).IsPairing ∧ (refine T s).Refines T\n\nend Lax919488.PillowSubdivision\n",
+      "sourceText": "import Lax919488.StackedPillows\n\n/-!\n---\ntitle: Realization of the stacked pillow refinement\ntype: lemma\n---\nIn positive dimension, inserting any finite stack of pillows at every\ngluing preserves the quotient space. Under the homeomorphism, each new\nsimplex embeds as a closed subset of an original model simplex. The empty\nstack works in every dimension.\n-/\n\nnamespace Lax919488.PillowSubdivision\n\nopen FacePairings StackedPillows\n\nvariable {d n m : ℕ} (T : Diagram d (Fin n) (Fin m))\n\naxiom pillow_refinement (s : ℕ) (hd : 0 < d ∨ s = 0) (h : T.IsPairing) :\n  (refine T s).IsPairing ∧ (refine T s).Refines T\n\nend Lax919488.PillowSubdivision\n",
       "statements": [
         {
           "id": "Lax919488.PillowSubdivision.pillow_refinement",
@@ -101,14 +103,14 @@
       "id": "Lax919488.RefinedDual",
       "path": "concepts/Lax919488/RefinedDual.lean",
       "title": "Contraction sequence for the refined dual graph",
-      "type": "theorem",
+      "type": "lemma",
       "description": "Replace each dual edge by the path through its pillow simplices. The\nunderlying simple graph has a contraction sequence of width at most $4$\nwhen the stack has $2\\lceil\\log_2 n\\rceil-1$ pillows. For $n\\le1$ or $d=0$,\nthe trivial refinement suffices. Zipping the two vertices of each pillow\ndirectly onto the tree gives the same bound with the shorter stacks.",
       "imports": [
         "Lax228581.TwinWidth",
         "Lax919488.StackedPillows"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax919488.StackedPillows\nimport Lax228581.TwinWidth\n\n/-!\n---\ntitle: Contraction sequence for the refined dual graph\ntype: theorem\n---\nReplace each dual edge by the path through its pillow simplices. The\nunderlying simple graph has a contraction sequence of width at most $4$\nwhen the stack has $2\\lceil\\log_2 n\\rceil-1$ pillows. For $n\\le1$ or $d=0$,\nthe trivial refinement suffices. Zipping the two vertices of each pillow\ndirectly onto the tree gives the same bound with the shorter stacks.\n-/\n\nnamespace Lax919488.RefinedDual\n\nopen FacePairings StackedPillows\n\nvariable {d n m : ℕ} (T : Diagram d (Fin n) (Fin m))\n\naxiom dual_width (h : T.IsPairing) :\n  Lax228581.TwinWidth.HasTwinWidthAtMost (refine T (depth d n)).dual 4\n\n/-- The same routing works with one pillow per level of the binary tree. -/\naxiom short_dual_width (h : T.IsPairing) :\n  Lax228581.TwinWidth.HasTwinWidthAtMost (refine T (shortLayers d n)).dual 4\n\nend Lax919488.RefinedDual\n",
+      "sourceText": "import Lax919488.StackedPillows\nimport Lax228581.TwinWidth\n\n/-!\n---\ntitle: Contraction sequence for the refined dual graph\ntype: lemma\n---\nReplace each dual edge by the path through its pillow simplices. The\nunderlying simple graph has a contraction sequence of width at most $4$\nwhen the stack has $2\\lceil\\log_2 n\\rceil-1$ pillows. For $n\\le1$ or $d=0$,\nthe trivial refinement suffices. Zipping the two vertices of each pillow\ndirectly onto the tree gives the same bound with the shorter stacks.\n-/\n\nnamespace Lax919488.RefinedDual\n\nopen FacePairings StackedPillows\n\nvariable {d n m : ℕ} (T : Diagram d (Fin n) (Fin m))\n\naxiom dual_width (h : T.IsPairing) :\n  Lax228581.TwinWidth.HasTwinWidthAtMost (refine T (depth d n)).dual 4\n\n/-- The same routing works with one pillow per level of the binary tree. -/\naxiom short_dual_width (h : T.IsPairing) :\n  Lax228581.TwinWidth.HasTwinWidthAtMost (refine T (shortLayers d n)).dual 4\n\nend Lax919488.RefinedDual\n",
       "statements": [
         {
           "id": "Lax919488.RefinedDual.dual_width",
@@ -160,7 +162,7 @@
       "id": "Lax919488.RefinementSize",
       "path": "concepts/Lax919488/RefinementSize.lean",
       "title": "Size of the refinement",
-      "type": "theorem",
+      "type": "lemma",
       "description": "With $n$ simplices and $m$ face gluings, inserting $s$ pillows at each\ngluing gives $n+2sm$ simplices. Counting facet occurrences gives\n$2m\\le(d+1)n$. For $d\\ge1$ and $n\\ge2$, the resulting bound in equation (2)\nis at most $7dn\\log_2 n$. With the shorter stacks the estimate improves\nto $2dn\\log_2 n$.",
       "imports": [
         "Lax919488.StackedPillows"
@@ -168,7 +170,7 @@
       "mathlibImports": [
         "Mathlib.Analysis.SpecialFunctions.Log.Base"
       ],
-      "sourceText": "import Lax919488.StackedPillows\nimport Mathlib.Analysis.SpecialFunctions.Log.Base\n\n/-!\n---\ntitle: Size of the refinement\ntype: theorem\n---\nWith $n$ simplices and $m$ face gluings, inserting $s$ pillows at each\ngluing gives $n+2sm$ simplices. Counting facet occurrences gives\n$2m\\le(d+1)n$. For $d\\ge1$ and $n\\ge2$, the resulting bound in equation (2)\nis at most $7dn\\log_2 n$. With the shorter stacks the estimate improves\nto $2dn\\log_2 n$.\n-/\n\nnamespace Lax919488.RefinementSize\n\nopen FacePairings StackedPillows\n\nvariable {d n m : ℕ} (T : Diagram d (Fin n) (Fin m))\n\naxiom size_bound (s : ℕ) (h : T.IsPairing) :\n  Fintype.card (Cell (Fin n) (Fin m) s) = n + 2*s*m ∧\n  n + 2*s*m ≤ n + (d+1)*n*s\n\naxiom logarithmic_bound (d n : ℕ) (hd : 1 ≤ d) (hn : 2 ≤ n) :\n  ((n + (d+1)*n*layers n : ℕ) : ℝ) ≤ 7 * d * n * Real.logb 2 n\n\n/-- Size bound from the abstract using the shorter stacks. -/\naxiom short_size (hd : 1 ≤ d) (hn : 2 ≤ n) (h : T.IsPairing) :\n  (Fintype.card (Cell (Fin n) (Fin m) (shortLayers d n)) : ℝ) ≤ 2 * d * n * Real.logb 2 n\n\nend Lax919488.RefinementSize\n",
+      "sourceText": "import Lax919488.StackedPillows\nimport Mathlib.Analysis.SpecialFunctions.Log.Base\n\n/-!\n---\ntitle: Size of the refinement\ntype: lemma\n---\nWith $n$ simplices and $m$ face gluings, inserting $s$ pillows at each\ngluing gives $n+2sm$ simplices. Counting facet occurrences gives\n$2m\\le(d+1)n$. For $d\\ge1$ and $n\\ge2$, the resulting bound in equation (2)\nis at most $7dn\\log_2 n$. With the shorter stacks the estimate improves\nto $2dn\\log_2 n$.\n-/\n\nnamespace Lax919488.RefinementSize\n\nopen FacePairings StackedPillows\n\nvariable {d n m : ℕ} (T : Diagram d (Fin n) (Fin m))\n\naxiom size_bound (s : ℕ) (h : T.IsPairing) :\n  Fintype.card (Cell (Fin n) (Fin m) s) = n + 2*s*m ∧\n  n + 2*s*m ≤ n + (d+1)*n*s\n\naxiom logarithmic_bound (d n : ℕ) (hd : 1 ≤ d) (hn : 2 ≤ n) :\n  ((n + (d+1)*n*layers n : ℕ) : ℝ) ≤ 7 * d * n * Real.logb 2 n\n\n/-- Size bound from the abstract using the shorter stacks. -/\naxiom short_size (hd : 1 ≤ d) (hn : 2 ≤ n) (h : T.IsPairing) :\n  (Fintype.card (Cell (Fin n) (Fin m) (shortLayers d n)) : ℝ) ≤ 2 * d * n * Real.logb 2 n\n\nend Lax919488.RefinementSize\n",
       "statements": [
         {
           "id": "Lax919488.RefinementSize.logarithmic_bound",
@@ -287,8 +289,8 @@
   ],
   "capture": {
     "formatVersion": 1,
-    "digest": "92f564ce5ec74aea07914744d9df304db538df5d6ef2ac24cd02c8211020bc24",
-    "sourceCommit": "21a9b13427355bd913bd1ae7b9d507955ad9df3f",
+    "digest": "230809d075a0fab7ba62bf4db097a1c3002a5e25f0b42cfa3ddef3137f27e6a1",
+    "sourceCommit": "d9776d918521c84dc86698e97c36ea42b62b70f6",
     "leanToolchain": "leanprover/lean4:v4.33.0",
     "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
     "files": [
@@ -409,18 +411,18 @@
       },
       {
         "path": "concepts/lib/Lax919488/MultigraphTwinWidth.olean",
-        "bytes": 273312,
-        "sha256": "b468e16cf3c7acf9906872519e1625f6ee784b6ac0165bde272c793cce39702f"
+        "bytes": 273304,
+        "sha256": "9182a260a986d4be2a5175340d4d6a8cb794a84c372ef82a675866ab6703d23f"
       },
       {
         "path": "concepts/lib/Lax919488/MultigraphTwinWidth.olean.hash",
         "bytes": 16,
-        "sha256": "706d2e7246b18aa988df39f33fdbc87259cda8ee2c3dd4c6245b0eaabcc0d38b"
+        "sha256": "d75f194503b66d0cd49c7f1cdfb38dcb408079b6221cd7ad08bf09747a1aaaff"
       },
       {
         "path": "concepts/lib/Lax919488/MultigraphTwinWidth.trace",
         "bytes": 2373,
-        "sha256": "e946ec685584145a6d3f09916a9399981a891332480ff608cfedd14e75b4946f"
+        "sha256": "ccdc3706dd4901f70dad15b6a8fc9df75f7e4e43a96d03a48e1110d8f66efa48"
       },
       {
         "path": "concepts/lib/Lax919488/PillowSubdivision.ilean",
@@ -435,17 +437,17 @@
       {
         "path": "concepts/lib/Lax919488/PillowSubdivision.olean",
         "bytes": 9280,
-        "sha256": "388b6c56dcdb6acf2d028d66a9b9cc112db77904a1a9a13451b37dbee61d75dd"
+        "sha256": "486edac2bc0ef529f9414af61e9df6ddd881b42c34a6f767841d3b1bafaf374f"
       },
       {
         "path": "concepts/lib/Lax919488/PillowSubdivision.olean.hash",
         "bytes": 16,
-        "sha256": "c2c10aa02eaed2de6ca1ecb9f170f83dd2d8a95bb019fcfc92cedbe72dccdd9c"
+        "sha256": "037affd1421932b9ec0a444b58c39633537457dd5fca929dce5f1b89c313147f"
       },
       {
         "path": "concepts/lib/Lax919488/PillowSubdivision.trace",
         "bytes": 2219,
-        "sha256": "9ce4031d17bb9f0f21cb8e46be4802cf20ff3a45fdd98a8514357809782b0aed"
+        "sha256": "b34f041f908a75682d4db1474c4c0ec86b0af9fb66f7425151532503c9ea9b03"
       },
       {
         "path": "concepts/lib/Lax919488/RefinedDual.ilean",
@@ -459,18 +461,18 @@
       },
       {
         "path": "concepts/lib/Lax919488/RefinedDual.olean",
-        "bytes": 15120,
-        "sha256": "68203995b08c4e228bb38aa9965fe2d30553c2d66842ff225a32a8d817a89137"
+        "bytes": 15112,
+        "sha256": "8840559351d7f3837ef49ef9e26936954471001b670bc70e667386ee46f7082b"
       },
       {
         "path": "concepts/lib/Lax919488/RefinedDual.olean.hash",
         "bytes": 16,
-        "sha256": "c199c97b1a754a94c91ab7c6702ff59017d71cfb8bc2403cf373d75203cc16e4"
+        "sha256": "81a73f12bc8bdb19734e93ec92f10608fd32169a8ed9e5d5689859ddbb84b2a6"
       },
       {
         "path": "concepts/lib/Lax919488/RefinedDual.trace",
         "bytes": 2321,
-        "sha256": "ac04ba37ba05b1babe224be04ccaecb5d1060133b3cc4ba37feae564690c8b43"
+        "sha256": "09e3b13ffba4642330c80a1041f14f95deafbcc2b75afe5a7a85458a57758390"
       },
       {
         "path": "concepts/lib/Lax919488/RefinementBounds.ilean",
@@ -495,7 +497,7 @@
       {
         "path": "concepts/lib/Lax919488/RefinementBounds.trace",
         "bytes": 2698,
-        "sha256": "28844b64e416308f4388500c4970b61d4795c94b5a18db76078459e8904fea2a"
+        "sha256": "d9400ff0bff57e0368d52d530a28531d77ffea9f2aeb3b2f05af38e02c59f127"
       },
       {
         "path": "concepts/lib/Lax919488/RefinementSize.ilean",
@@ -510,17 +512,17 @@
       {
         "path": "concepts/lib/Lax919488/RefinementSize.olean",
         "bytes": 18280,
-        "sha256": "c7c670022d5397666a1a0015c64c21a1da328948aa4f9c6656a0b1465c9833d0"
+        "sha256": "28764060ad9d9ad34f884b8f73df16f8a65e23c8724662196b4bd7cdb743df24"
       },
       {
         "path": "concepts/lib/Lax919488/RefinementSize.olean.hash",
         "bytes": 16,
-        "sha256": "d152e80910a0d441582ddc6304a784c563f67401337f4e8712b49308c95710e2"
+        "sha256": "7faebd5654b11805f46ba0bad23a5ea99f08b19b950ebbcec43ad098d9d7f8a3"
       },
       {
         "path": "concepts/lib/Lax919488/RefinementSize.trace",
         "bytes": 2402,
-        "sha256": "775ba215910a65c89b1e6548943e247a8bb7e1638ec4bc77dff47f3d9f080e60"
+        "sha256": "2e0a9f68a48f1756cd40ad2cf85d9b00bc45ecd57cd8847e1f00a4a799dd45c8"
       },
       {
         "path": "concepts/lib/Lax919488/StackedPillows.ilean",
@@ -570,7 +572,7 @@
       {
         "path": "concepts/lib/Lax919488.trace",
         "bytes": 3062,
-        "sha256": "6036b897e9555e479c8da699896fc6f8600def0878d2ee3581bc5f53e939cf49"
+        "sha256": "e95fbe35fd4aa6a144bc598e2d04a302c18ed5011c916210d7fccfe62201f685"
       },
       {
         "path": "concepts/package/lake-manifest.json",
@@ -589,18 +591,18 @@
       },
       {
         "path": "concepts/package/Lax919488/MultigraphTwinWidth.lean",
-        "bytes": 2476,
-        "sha256": "6c7b0754b8daa3c3afd8c2d5ff955e35f307c1ad3c6836da5242a9c0bfc36a6f"
+        "bytes": 2474,
+        "sha256": "d744906b438f11ec9da765f71ed6c80be385fef7625767007c9f0c35dbfae592"
       },
       {
         "path": "concepts/package/Lax919488/PillowSubdivision.lean",
-        "bytes": 653,
-        "sha256": "85e9ab8c6a5a42a6e45bdd44d4c8c1d68dcae56fd300db3ffa45a2a4e816e407"
+        "bytes": 651,
+        "sha256": "7c30ff34af2b79c1e93c9c8aea3c8cfcb1afef5e520ecd26de534ecb53b03da4"
       },
       {
         "path": "concepts/package/Lax919488/RefinedDual.lean",
-        "bytes": 959,
-        "sha256": "7ba962c23fa0dea33fa64c8aad0089c1caef8ddf09f0c697216ecb46831e4ee8"
+        "bytes": 957,
+        "sha256": "4879c5d44da3049e12dc857161d255e8b2d33d6593c42bd27bbbad09a5ee4e19"
       },
       {
         "path": "concepts/package/Lax919488/RefinementBounds.lean",
@@ -609,8 +611,8 @@
       },
       {
         "path": "concepts/package/Lax919488/RefinementSize.lean",
-        "bytes": 1096,
-        "sha256": "40319af98abe17229bee9118524244009104f5b3e28183ac341671576a7e4ffd"
+        "bytes": 1094,
+        "sha256": "7b26b54d2723733c10e21ba91596eae87a8b547aae2831a063dcc6f9c598709b"
       },
       {
         "path": "concepts/package/Lax919488/StackedPillows.lean",
@@ -628,14 +630,129 @@
         "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
       },
       {
+        "path": "paper/cc-by.pdf",
+        "bytes": 58331,
+        "sha256": "91ab98989270efcbd884dff88f0cb67e48e4a7b8368895d761a070b2c43cf58a"
+      },
+      {
+        "path": "paper/figures/2-pillow.pdf",
+        "bytes": 4253,
+        "sha256": "b7f942fab2c41dcb882be14e6c9d6edd6433e9af328ca8b9cc06dd267c36d76d"
+      },
+      {
+        "path": "paper/figures/2-stacked-3-pillow.pdf",
+        "bytes": 5895,
+        "sha256": "01846a8413855d05664bedd759286ec38f80c0b15b27ab26185a7e6459483f32"
+      },
+      {
+        "path": "paper/figures/3-pillow.pdf",
+        "bytes": 4958,
+        "sha256": "ee2318be52fc7ef68c3a211a792e44e936a23cb952e1ced350e8cd5bd920f952"
+      },
+      {
+        "path": "paper/figures/contraction.pdf",
+        "bytes": 21659,
+        "sha256": "ef2eecebd6538d5c3e6469d36499ecd1bc87e762c6443208612d5eb9ecedc26a"
+      },
+      {
+        "path": "paper/figures/refined-dual-panels.tex",
+        "bytes": 1018,
+        "sha256": "182480d63df423f661e30f2c4dd72386a1742ae60de2fbbdb0f1a612f6188b59"
+      },
+      {
+        "path": "paper/figures/refined-edge-contracted.pdf",
+        "bytes": 4031,
+        "sha256": "daf8298829382f31bd740cf0fb463272499b5eb67fba25124ded15633525a40c"
+      },
+      {
+        "path": "paper/figures/refined-edge-panels.tex",
+        "bytes": 731,
+        "sha256": "9cfaebe55fac0cc7ca0d4c26509565f22d11616552bcd1cd2ef1bf14dc976bbf"
+      },
+      {
+        "path": "paper/figures/refined-edge.pdf",
+        "bytes": 13676,
+        "sha256": "347fdd26a8625419542be0e4ac79b9580ac73e26801dc5f9f7e3ba8cc47adabf"
+      },
+      {
+        "path": "paper/figures/refinement-0.pdf",
+        "bytes": 13859,
+        "sha256": "5e1bb827143a670a12b772f10945b95afc81b65488c8c4899e69bb652904d7a5"
+      },
+      {
+        "path": "paper/figures/refinement-1.pdf",
+        "bytes": 14175,
+        "sha256": "a33b857b3312900445acd92580384c4f7d903423da5fd13e8adf429f66e4d327"
+      },
+      {
+        "path": "paper/figures/refinement-2.pdf",
+        "bytes": 14452,
+        "sha256": "fa1fd6a74e4d4dc2bba239205869ab0951588d83cf1a58c51d1d76c01ca09a90"
+      },
+      {
+        "path": "paper/figures/refinement-example-1.pdf",
+        "bytes": 5018,
+        "sha256": "1151ec73f353ac5b183ddf4b375ae35a130083566173712d0d1a528a8ded5d52"
+      },
+      {
+        "path": "paper/figures/refinement-example-2.pdf",
+        "bytes": 7320,
+        "sha256": "8586e38b49f8b5d516c2c4e47d6b8e8f2dc35140de765661414ce9641d4f6532"
+      },
+      {
+        "path": "paper/figures/refinement-example-3-alt.pdf",
+        "bytes": 6815,
+        "sha256": "0f4179715fe099ecff8421d4da47a399054d33f2fd541839b9a561e9342b8662"
+      },
+      {
+        "path": "paper/figures/tetrahedra-dual.pdf",
+        "bytes": 57840,
+        "sha256": "6dd34a35b6595f62f5cc34e9ad896f3ed63205223d71498fb70110477df909e8"
+      },
+      {
+        "path": "paper/figures/tetrahedra.pdf",
+        "bytes": 61978,
+        "sha256": "7895a0ef4d71569298585bedac180242fa5708368b0f98f9496e871bf1317bab"
+      },
+      {
+        "path": "paper/figures/zipping-one-contraction.pdf",
+        "bytes": 39350,
+        "sha256": "4e43fbc6eea70f82e7adcb8e9cd1c44b77161b35d623b1df7681c48d408bdafa"
+      },
+      {
+        "path": "paper/figures/zipping.pdf",
+        "bytes": 65686,
+        "sha256": "13bc9782f02af734c926e642cdd7cb2e52696f3a8238f635b330530d92e31bfa"
+      },
+      {
+        "path": "paper/lipics-v2021.cls",
+        "bytes": 48381,
+        "sha256": "ecae53dfd29c7b22d02a9065327c104760fb726a028b146d556732021a5977f0"
+      },
+      {
         "path": "paper/main.tex",
-        "bytes": 2509,
-        "sha256": "b1c941315e43d5a9baaebb965d16c2e7ff6a41967d805083bb3721fd88664a46"
+        "bytes": 32927,
+        "sha256": "911215b08e0b30aca1da180be351f4161e08ff866b95005ee78fef2560c68e5c"
       },
       {
         "path": "paper/manuscript.pdf",
         "bytes": 808983,
         "sha256": "17e2001e9d5c9223ff1c40263c80894f6e8e4143854a435fffa520dc1798c4d8"
+      },
+      {
+        "path": "paper/orcid.pdf",
+        "bytes": 88694,
+        "sha256": "503580772e93ea803050d3a9db56736517ba78592010f486ba007e03e5a439cf"
+      },
+      {
+        "path": "paper/references.bib",
+        "bytes": 17513,
+        "sha256": "e48f6cbf6bbcde7c13425d61d6f80469576f23b69b81537627e2c0dcdba243e8"
+      },
+      {
+        "path": "paper/socg-lipics-v2021.cls",
+        "bytes": 12267,
+        "sha256": "d2449dafff7d6782c69f8281259b64042938e15d4053f62116525ba3ef685382"
       },
       {
         "path": "proofs/ir/Lax919488Proofs/DualWidth.c",
@@ -780,7 +897,7 @@
       {
         "path": "proofs/lib/Lax919488Proofs/DualWidth.trace",
         "bytes": 2896,
-        "sha256": "80d181f35bf013ed6a78d50d4cbdb53e6c7369e638a0955335cb28bc8f0dc0dd"
+        "sha256": "c3bf79db32612331376b865b5ab7f87969396b9066471dd826dd5b0c91bcec42"
       },
       {
         "path": "proofs/lib/Lax919488Proofs/Main.ilean",
@@ -805,7 +922,7 @@
       {
         "path": "proofs/lib/Lax919488Proofs/Main.trace",
         "bytes": 2356,
-        "sha256": "a74a50471c87dc4c117f8f42636e277c440ae4fc181224074aca4afe3e9d1715"
+        "sha256": "2dbc50fa16e2c17dc6711bb71df4a322e2e8ef3a4ef93502a991c15652c1dd50"
       },
       {
         "path": "proofs/lib/Lax919488Proofs/Multiplicities.ilean",
@@ -830,7 +947,7 @@
       {
         "path": "proofs/lib/Lax919488Proofs/Multiplicities.trace",
         "bytes": 2432,
-        "sha256": "363e429539691be36eb03c8a79dc4ae4f885e736af0b46e46062a48b0364bffc"
+        "sha256": "0d719cd031b9b3fb54a6f1f38609c7efa229cf4d8c4c5efc6b2dcacaa8776b98"
       },
       {
         "path": "proofs/lib/Lax919488Proofs/Pairing.ilean",
@@ -930,7 +1047,7 @@
       {
         "path": "proofs/lib/Lax919488Proofs/Realization.trace",
         "bytes": 2613,
-        "sha256": "8d77585987a2e826e90269891e9aec42cf5a918fb5988bc52233a135d5385114"
+        "sha256": "6dc8912ceeb45dd1e08072aedd9c48a6389ac4a2ba46b5cb2baf7d195a88194b"
       },
       {
         "path": "proofs/lib/Lax919488Proofs/Routing.ilean",
@@ -1005,7 +1122,7 @@
       {
         "path": "proofs/lib/Lax919488Proofs/Size.trace",
         "bytes": 2352,
-        "sha256": "edb8366f6a24ddca5634b2fb24fa5f39699f18059fc64e87a3522f69b0d9dfd9"
+        "sha256": "21c2892f870ca021ef02a920b16fd4f8e3c748cea491d1a83480d5e938281e64"
       },
       {
         "path": "proofs/lib/Lax919488Proofs/SmallDegree.ilean",
@@ -1055,7 +1172,7 @@
       {
         "path": "proofs/lib/Lax919488Proofs.trace",
         "bytes": 3821,
-        "sha256": "6ae51c969fa7fdb14b9e43ee5c00cbf8c1b969fb333db6747a41d42f49813803"
+        "sha256": "0a8f6a36ea306746b09a0b131319456c69c620062092d777e8dfa4ef582ad2b7"
       },
       {
         "path": "proofs/package/lake-manifest.json",
@@ -1133,17 +1250,17 @@
         "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
       }
     ],
-    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:92f564ce5ec74aea07914744d9df304db538df5d6ef2ac24cd02c8211020bc24"
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:230809d075a0fab7ba62bf4db097a1c3002a5e25f0b42cfa3ddef3137f27e6a1"
   },
   "paper": {
     "folder": "paper",
     "main": "main.tex",
     "engine": "pdflatex",
     "pdf": {
-      "digest": "c409d13447577780a1028fa3763bf4b12551fcc0fea680aec36a8602acb59cfd",
-      "bytes": 806844,
+      "digest": "a869b7f399c1e053eb701f78ca570d3a2f06fe13ef8b87d71587403c79bc1054",
+      "bytes": 807136,
       "pages": 10,
-      "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:c409d13447577780a1028fa3763bf4b12551fcc0fea680aec36a8602acb59cfd"
+      "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:a869b7f399c1e053eb701f78ca570d3a2f06fe13ef8b87d71587403c79bc1054"
     },
     "pageSizes": [
       [
@@ -1193,14 +1310,14 @@
         "kind": "proof",
         "begin": {
           "page": 1,
-          "x": 90,
-          "y": 655.99,
+          "x": 90.24,
+          "y": 648.13,
           "mode": "h"
         },
         "end": {
           "page": 1,
-          "x": 488.99,
-          "y": 608.99,
+          "x": 197.11,
+          "y": 624.22,
           "mode": "h"
         }
       },
@@ -1209,15 +1326,15 @@
         "kind": "concept",
         "begin": {
           "page": 2,
-          "x": 107,
-          "y": 462,
-          "mode": "h"
+          "x": 107.72,
+          "y": 472.24,
+          "mode": "v"
         },
         "end": {
           "page": 2,
-          "x": 504.99,
-          "y": 437,
-          "mode": "h"
+          "x": 107.72,
+          "y": 437.7,
+          "mode": "v"
         }
       },
       {
@@ -1225,15 +1342,15 @@
         "kind": "concept",
         "begin": {
           "page": 3,
-          "x": 91,
-          "y": 545.99,
-          "mode": "h"
+          "x": 90.71,
+          "y": 430.17,
+          "mode": "v"
         },
         "end": {
           "page": 3,
-          "x": 488.99,
-          "y": 230,
-          "mode": "h"
+          "x": 90.71,
+          "y": 229.61,
+          "mode": "v"
         }
       },
       {
@@ -1241,15 +1358,15 @@
         "kind": "concept",
         "begin": {
           "page": 4,
-          "x": 107,
-          "y": 740.99,
-          "mode": "h"
+          "x": 107.72,
+          "y": 724.52,
+          "mode": "v"
         },
         "end": {
           "page": 4,
-          "x": 505.99,
-          "y": 607.99,
-          "mode": "h"
+          "x": 107.72,
+          "y": 607.79,
+          "mode": "v"
         }
       },
       {
@@ -1257,14 +1374,14 @@
         "kind": "concept",
         "begin": {
           "page": 5,
-          "x": 91,
-          "y": 740.99,
-          "mode": "h"
+          "x": 90.71,
+          "y": 534.46,
+          "mode": "v"
         },
         "end": {
           "page": 5,
-          "x": 488.99,
-          "y": 322,
+          "x": 264.15,
+          "y": 422.95,
           "mode": "h"
         }
       },
@@ -1273,15 +1390,15 @@
         "kind": "concept",
         "begin": {
           "page": 5,
-          "x": 91,
-          "y": 294,
-          "mode": "h"
+          "x": 90.71,
+          "y": 298.71,
+          "mode": "v"
         },
         "end": {
           "page": 5,
-          "x": 488.99,
-          "y": 111,
-          "mode": "h"
+          "x": 90.71,
+          "y": 111.46,
+          "mode": "v"
         }
       },
       {
@@ -1289,30 +1406,30 @@
         "kind": "concept",
         "begin": {
           "page": 6,
-          "x": 107,
-          "y": 504.99,
-          "mode": "h"
+          "x": 107.72,
+          "y": 514.47,
+          "mode": "v"
         },
         "end": {
           "page": 6,
-          "x": 504.99,
-          "y": 384,
-          "mode": "h"
+          "x": 107.72,
+          "y": 383.89,
+          "mode": "v"
         }
       },
       {
         "id": "Lax919488.RefinedDual",
         "kind": "concept",
         "begin": {
-          "page": 7,
-          "x": 91,
-          "y": 474,
-          "mode": "h"
+          "page": 6,
+          "x": 107.72,
+          "y": 345.4,
+          "mode": "v"
         },
         "end": {
-          "page": 7,
-          "x": 488.99,
-          "y": 280,
+          "page": 6,
+          "x": 469.18,
+          "y": 208.37,
           "mode": "h"
         }
       },
@@ -1320,29 +1437,41 @@
         "id": "Lax919488Proofs.DualWidth.dual_width",
         "kind": "proof",
         "begin": {
-          "page": 8,
-          "x": 107,
-          "y": 737.99,
-          "mode": "h"
+          "page": 7,
+          "x": 90.71,
+          "y": 410.74,
+          "mode": "v"
         },
         "end": {
-          "page": 8,
-          "x": 504.99,
-          "y": 304,
+          "page": 7,
+          "x": 393.71,
+          "y": 283.16,
           "mode": "h"
         }
       }
-    ]
+    ],
+    "web": {
+      "format": {
+        "tool": "reflowtex",
+        "rev": "8469d226d6309dbb22086988a6bfc6ad9a01353a",
+        "schema": "5d012322eddbb8f0e0bcdaf4036ff690ae4b0fa9b711a486ff43ba5752535a09"
+      },
+      "bundle": {
+        "digest": "2d655ccd3f2a00b9a7ad8f1068f1c5515573344bf2d1ecf0d415d1851a1790e1",
+        "bytes": 2212352,
+        "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:2d655ccd3f2a00b9a7ad8f1068f1c5515573344bf2d1ecf0d415d1851a1790e1"
+      }
+    }
   },
   "lastSubmission": {
-    "commentId": 7200956195,
-    "eventCreatedAt": "2026-11-26T18:53:00Z",
-    "record": "5c69ea0c46c27525df932d4519ad027eb9d25ad049c7795de14ba7798453da30",
-    "buildOutput": "84fe370f766b62264ac52b56e205b7438a896a1f673f65a192c88696535f24d8",
+    "commentId": 7201721769,
+    "eventCreatedAt": "2026-11-26T19:33:38Z",
+    "record": "5938d9df13000765d8392eb5b4b613c44107b8c7948f95c388c35cf50372f125",
+    "buildOutput": "eced7c3da82466e0b8aa0734dd8b1c3fbd6220a9fe3596d73aae6ad9081fb918",
     "previous": {
-      "archiveSha": "b2c280a3b070dd94f4d1957ec8a27c09344434ad",
-      "record": "5c13e30f08fdaa5951963160c4a63752330e4eb7fdd0c96b536de804ea133f8f",
-      "buildOutput": "a2034546e701d35af7eccc9ecf69dcaf9520a1be75b949cb6e5060a7652ee1f6"
+      "archiveSha": "00c05ba06d69d863f76fb0913491e9e5b50cb6ae",
+      "record": "5c69ea0c46c27525df932d4519ad027eb9d25ad049c7795de14ba7798453da30",
+      "buildOutput": "9feac344f73373c76624d9d40c776ae43ebd9949fa89ad11ce61260c1049b863"
     }
   }
 }
