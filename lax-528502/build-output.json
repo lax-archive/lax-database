@@ -19,6 +19,9 @@
         },
         {
           "name": "Yeonsu Chang"
+        },
+        {
+          "name": "GPT-6.2-Astra max"
         }
       ],
       "bibEntries": [
@@ -30,7 +33,7 @@
         "engine": "pdflatex"
       }
     },
-    "abstract": "Every graph of twin-width at most $2$ has mim-width at most $8$. Given a $2$-sequence, a polynomial-time word-RAM algorithm constructs a branch decomposition witnessing the bound. This yields polynomial-time algorithms for fixed-$k$ Coloring, four domination problems, Weighted Feedback Vertex Set, Subset Feedback Vertex Set, and Longest Induced Path.\n\nFor $t \\ge 2$, an $n$-vertex graph of twin-width at most $2$ with no induced $K_{t,t}$ has tree-independence number at most $84(t-1)$. Given a $2$-sequence, a word RAM constructs a tree decomposition meeting this bound in $n^{O(t)}$ time.\n\nWhen the number of colors is part of the input, Minimum Coloring is NP-complete even when a $2$-sequence is supplied.\n"
+    "abstract": "Every graph of twin-width at most $2$ admits a branch decomposition of mim-width at most $8$. Given a $2$-sequence, one can construct such a decomposition in polynomial time. This gives polynomial-time algorithms for fixed-$k$ Coloring, Dominating Set, Total Dominating Set, Independent Dominating Set, Connected Dominating Set, Weighted Feedback Vertex Set, Subset Feedback Vertex Set, and Longest Induced Path.\n\nFor $t \\ge 2$, an $n$-vertex graph of twin-width at most $2$ with no induced $K_{t,t}$ has tree-independence number at most $84(t-1)$. Given a $2$-sequence, a word RAM constructs a tree decomposition meeting this bound in $n^{O(t)}$ time.\n\nWhen the number of colors is part of the input, Minimum Coloring is NP-complete even when a $2$-sequence is supplied.\n"
   },
   "requiredByConcepts": [
     "Lax183560",
@@ -104,54 +107,51 @@
       "type": "theorem",
       "description": "For fixed width $w$, the domination and fixed-color algorithms of Bergougnoux,\nDreier, and Jaffke, the induced-path and weighted feedback vertex set\nalgorithms of Jaffke, Kwon, and Telle, and the subset feedback vertex set\nalgorithm of Bergougnoux, Papadopoulos, and Telle take polynomial time given\na branch decomposition of width at most $w$.\n\nThe graph is the initial adjacency matrix on the input. A polynomial-time\nsubroutine supplies the encoded decomposition. The assertions apply wherever\nthe returned tree is valid. Framing the auxiliary data separately lets the\nsame subroutine handle all 7 optimization problems.",
       "imports": [
-        "Lax528502.ContractionInput",
-        "Lax528502.GraphProblems",
-        "Lax528502.MimWidth",
-        "Lax759944.RamPolytime"
+        "Lax528502.DecompositionAlgorithms"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax528502.ContractionInput\nimport Lax528502.MimWidth\nimport Lax528502.GraphProblems\nimport Lax759944.RamPolytime\n\n/-!\n---\ntitle: Algorithms supplied with a bounded-mim-width decomposition\ntype: theorem\n---\nFor fixed width $w$, the domination and fixed-color algorithms of Bergougnoux,\nDreier, and Jaffke, the induced-path and weighted feedback vertex set\nalgorithms of Jaffke, Kwon, and Telle, and the subset feedback vertex set\nalgorithm of Bergougnoux, Papadopoulos, and Telle take polynomial time given\na branch decomposition of width at most $w$.\n\nThe graph is the initial adjacency matrix on the input. A polynomial-time\nsubroutine supplies the encoded decomposition. The assertions apply wherever\nthe returned tree is valid. Framing the auxiliary data separately lets the\nsame subroutine handle all 7 optimization problems.\n-/\n\nnamespace Lax528502.BoundedMimAlgorithms\n\nopen Lax759944.RamPolytime Lax183560 GraphProblems\n\n/-- A polynomial-time branch-decomposition routine suffices for fixed-color decision. -/\naxiom fixedColoring (w k : ℕ) (branch : List ℕ → List ℕ) (hb : RamPolytime branch) :\n    ∃ solve : List ℕ → List ℕ, RamPolytime solve ∧\n      ∀ (x : List ℕ) (n : ℕ) (G : SimpleGraph (Fin n)) (T : Option (BranchDecompositions.BinaryTree (Fin n))),\n        (ContractionInput.graph (Equiv.refl _) G).IsPrefix x →\n        branch x = MimWidth.encode (Equiv.refl _) T → MimWidth.Decomposes G w T →\n        ∃ b : Bool, solve x = [b.toNat] ∧ (b = true ↔ G.Colorable k)\n\n/-- The three domination variants that allow the selected set to be disconnected. -/\naxiom domination (w : ℕ) (branch : List ℕ → List ℕ) (hb : RamPolytime branch) :\n    ∃ solve : List ℕ → List ℕ, RamPolytime solve ∧\n      ∀ (x : List ℕ) (n : ℕ) (G : SimpleGraph (Fin n)) (T : Option (BranchDecompositions.BinaryTree (Fin n))),\n        (ContractionInput.graph (Equiv.refl _) G).IsPrefix x →\n        branch x = MimWidth.encode (Equiv.refl _) T → MimWidth.Decomposes G w T →\n        ∀ P : Problem n, (P = .dominating ∨ P = .totalDominating ∨ P = .independentDominating) →\n          P.Answer G (solve (input x P))\n\n/-- A polynomial-time branch-decomposition routine suffices to find a minimum connected dominating set. -/\naxiom connectedDominating (w : ℕ) (branch : List ℕ → List ℕ) (hb : RamPolytime branch) :\n    ∃ solve : List ℕ → List ℕ, RamPolytime solve ∧\n      ∀ (x : List ℕ) (n : ℕ) (G : SimpleGraph (Fin n)) (T : Option (BranchDecompositions.BinaryTree (Fin n))),\n        (ContractionInput.graph (Equiv.refl _) G).IsPrefix x →\n        branch x = MimWidth.encode (Equiv.refl _) T → MimWidth.Decomposes G w T →\n        Problem.connectedDominating.Answer G (solve x)\n\n/-- A polynomial-time branch-decomposition routine suffices to find a longest induced path. -/\naxiom longestInducedPath (w : ℕ) (branch : List ℕ → List ℕ) (hb : RamPolytime branch) :\n    ∃ solve : List ℕ → List ℕ, RamPolytime solve ∧\n      ∀ (x : List ℕ) (n : ℕ) (G : SimpleGraph (Fin n)) (T : Option (BranchDecompositions.BinaryTree (Fin n))),\n        (ContractionInput.graph (Equiv.refl _) G).IsPrefix x →\n        branch x = MimWidth.encode (Equiv.refl _) T → MimWidth.Decomposes G w T →\n        Problem.longestInducedPath.Answer G (solve x)\n\n/-- A common word RAM minimizes deletion weight or hits all cycles through a marked vertex set. -/\naxiom feedback (w : ℕ) (branch : List ℕ → List ℕ) (hb : RamPolytime branch) :\n    ∃ solve : List ℕ → List ℕ, RamPolytime solve ∧\n      ∀ (x : List ℕ) (n : ℕ) (G : SimpleGraph (Fin n)) (T : Option (BranchDecompositions.BinaryTree (Fin n))),\n        (ContractionInput.graph (Equiv.refl _) G).IsPrefix x →\n        branch x = MimWidth.encode (Equiv.refl _) T → MimWidth.Decomposes G w T →\n        (∀ cost : Fin n → ℕ, (Problem.weightedFeedback cost).Answer G (solve (input x (.weightedFeedback cost)))) ∧\n        (∀ marked : Finset (Fin n), (Problem.subsetFeedback marked).Answer G (solve (input x (.subsetFeedback marked))))\n\n/-- A common solver for every optimization problem in the corollary. -/\naxiom optimization (w : ℕ) (branch : List ℕ → List ℕ) (hb : RamPolytime branch) :\n    ∃ solve : List ℕ → List ℕ, RamPolytime solve ∧\n      ∀ (x : List ℕ) (n : ℕ) (G : SimpleGraph (Fin n)) (T : Option (BranchDecompositions.BinaryTree (Fin n))),\n        (ContractionInput.graph (Equiv.refl _) G).IsPrefix x →\n        branch x = MimWidth.encode (Equiv.refl _) T → MimWidth.Decomposes G w T →\n        ∀ P : Problem n, P.Answer G (solve (input x P))\n\nend Lax528502.BoundedMimAlgorithms\n",
+      "sourceText": "import Lax528502.DecompositionAlgorithms\n\n/-!\n---\ntitle: Algorithms supplied with a bounded-mim-width decomposition\ntype: theorem\n---\nFor fixed width $w$, the domination and fixed-color algorithms of Bergougnoux,\nDreier, and Jaffke, the induced-path and weighted feedback vertex set\nalgorithms of Jaffke, Kwon, and Telle, and the subset feedback vertex set\nalgorithm of Bergougnoux, Papadopoulos, and Telle take polynomial time given\na branch decomposition of width at most $w$.\n\nThe graph is the initial adjacency matrix on the input. A polynomial-time\nsubroutine supplies the encoded decomposition. The assertions apply wherever\nthe returned tree is valid. Framing the auxiliary data separately lets the\nsame subroutine handle all 7 optimization problems.\n-/\n\nnamespace Lax528502.BoundedMimAlgorithms\n\nopen DecompositionAlgorithms GraphProblems\n\n/-- A polynomial-time branch-decomposition routine suffices for fixed-color decision. -/\naxiom fixedColoring (w k : ℕ) (decomposition : PolynomialTimeAlgorithm) :\n    ∃ algorithm : PolynomialTimeAlgorithm,\n      GivenBranchDecomposition w decomposition fun G input =>\n        algorithm.Decides input (G.Colorable k)\n\n/-- The three domination variants that allow the selected set to be disconnected. -/\naxiom domination (w : ℕ) (decomposition : PolynomialTimeAlgorithm) :\n    ∃ algorithm : PolynomialTimeAlgorithm,\n      GivenBranchDecomposition w decomposition fun {n} G input =>\n        ∀ problem : Problem n,\n          (problem = .dominating ∨ problem = .totalDominating ∨ problem = .independentDominating) →\n          algorithm.FindsOptimum problem G input\n\n/-- A polynomial-time branch-decomposition routine suffices to find a minimum connected dominating set. -/\naxiom connectedDominating (w : ℕ) (decomposition : PolynomialTimeAlgorithm) :\n    ∃ algorithm : PolynomialTimeAlgorithm,\n      GivenBranchDecomposition w decomposition fun G input =>\n        Problem.connectedDominating.Answer G (algorithm.run input)\n\n/-- A polynomial-time branch-decomposition routine suffices to find a longest induced path. -/\naxiom longestInducedPath (w : ℕ) (decomposition : PolynomialTimeAlgorithm) :\n    ∃ algorithm : PolynomialTimeAlgorithm,\n      GivenBranchDecomposition w decomposition fun G input =>\n        Problem.longestInducedPath.Answer G (algorithm.run input)\n\n/-- A common word RAM minimizes deletion weight or hits all cycles through a marked vertex set. -/\naxiom feedback (w : ℕ) (decomposition : PolynomialTimeAlgorithm) :\n    ∃ algorithm : PolynomialTimeAlgorithm,\n      GivenBranchDecomposition w decomposition fun {n} G input =>\n        (∀ weight : Fin n → ℕ, algorithm.FindsOptimum (.weightedFeedback weight) G input) ∧\n        (∀ marked : Finset (Fin n), algorithm.FindsOptimum (.subsetFeedback marked) G input)\n\n/-- A common solver for every optimization problem in the corollary. -/\naxiom optimization (w : ℕ) (decomposition : PolynomialTimeAlgorithm) :\n    ∃ algorithm : PolynomialTimeAlgorithm,\n      GivenBranchDecomposition w decomposition fun {n} G input =>\n        ∀ problem : Problem n, algorithm.FindsOptimum problem G input\n\nend Lax528502.BoundedMimAlgorithms\n",
       "statements": [
         {
           "id": "Lax528502.BoundedMimAlgorithms.connectedDominating",
-          "signature": "connectedDominating : ∀ (w : Nat) (branch : List Nat → List Nat),\n  Lax759944.RamPolytime.RamPolytime branch →\n    Exists fun solve =>\n      And (Lax759944.RamPolytime.RamPolytime solve)\n        (∀ (x : List Nat) (n : Nat) (G : SimpleGraph (Fin n))\n          (T : Option (Lax183560.BranchDecompositions.BinaryTree (Fin n))),\n          (Lax528502.ContractionInput.graph (Equiv.refl (Fin n)) G).IsPrefix x →\n            Eq (branch x) (Lax528502.MimWidth.encode (Equiv.refl (Fin n)) T) →\n              Lax528502.MimWidth.Decomposes G w T →\n                Lax528502.GraphProblems.Problem.connectedDominating.Answer G (solve x))",
-          "startLine": 44,
-          "endLine": 50,
+          "signature": "connectedDominating : ∀ (w : Nat) (decomposition : Lax528502.DecompositionAlgorithms.PolynomialTimeAlgorithm),\n  Exists fun algorithm =>\n    Lax528502.DecompositionAlgorithms.GivenBranchDecomposition w decomposition fun {n} G input =>\n      Lax528502.GraphProblems.Problem.connectedDominating.Answer G (algorithm.run input)",
+          "startLine": 38,
+          "endLine": 42,
           "doc": "A polynomial-time branch-decomposition routine suffices to find a minimum connected dominating set."
         },
         {
           "id": "Lax528502.BoundedMimAlgorithms.domination",
-          "signature": "domination : ∀ (w : Nat) (branch : List Nat → List Nat),\n  Lax759944.RamPolytime.RamPolytime branch →\n    Exists fun solve =>\n      And (Lax759944.RamPolytime.RamPolytime solve)\n        (∀ (x : List Nat) (n : Nat) (G : SimpleGraph (Fin n))\n          (T : Option (Lax183560.BranchDecompositions.BinaryTree (Fin n))),\n          (Lax528502.ContractionInput.graph (Equiv.refl (Fin n)) G).IsPrefix x →\n            Eq (branch x) (Lax528502.MimWidth.encode (Equiv.refl (Fin n)) T) →\n              Lax528502.MimWidth.Decomposes G w T →\n                ∀ (P : Lax528502.GraphProblems.Problem n),\n                  Or (Eq P Lax528502.GraphProblems.Problem.dominating)\n                      (Or (Eq P Lax528502.GraphProblems.Problem.totalDominating)\n                        (Eq P Lax528502.GraphProblems.Problem.independentDominating)) →\n                    P.Answer G (solve (Lax528502.GraphProblems.input x P)))",
-          "startLine": 35,
-          "endLine": 42,
+          "signature": "domination : ∀ (w : Nat) (decomposition : Lax528502.DecompositionAlgorithms.PolynomialTimeAlgorithm),\n  Exists fun algorithm =>\n    Lax528502.DecompositionAlgorithms.GivenBranchDecomposition w decomposition fun {n} G input =>\n      ∀ (problem : Lax528502.GraphProblems.Problem n),\n        Or (Eq problem Lax528502.GraphProblems.Problem.dominating)\n            (Or (Eq problem Lax528502.GraphProblems.Problem.totalDominating)\n              (Eq problem Lax528502.GraphProblems.Problem.independentDominating)) →\n          algorithm.FindsOptimum problem G input",
+          "startLine": 30,
+          "endLine": 36,
           "doc": "The three domination variants that allow the selected set to be disconnected."
         },
         {
           "id": "Lax528502.BoundedMimAlgorithms.feedback",
-          "signature": "feedback : ∀ (w : Nat) (branch : List Nat → List Nat),\n  Lax759944.RamPolytime.RamPolytime branch →\n    Exists fun solve =>\n      And (Lax759944.RamPolytime.RamPolytime solve)\n        (∀ (x : List Nat) (n : Nat) (G : SimpleGraph (Fin n))\n          (T : Option (Lax183560.BranchDecompositions.BinaryTree (Fin n))),\n          (Lax528502.ContractionInput.graph (Equiv.refl (Fin n)) G).IsPrefix x →\n            Eq (branch x) (Lax528502.MimWidth.encode (Equiv.refl (Fin n)) T) →\n              Lax528502.MimWidth.Decomposes G w T →\n                And\n                  (∀ (cost : Fin n → Nat),\n                    (Lax528502.GraphProblems.Problem.weightedFeedback cost).Answer G\n                      (solve (Lax528502.GraphProblems.input x (Lax528502.GraphProblems.Problem.weightedFeedback cost))))\n                  (∀ (marked : Finset (Fin n)),\n                    (Lax528502.GraphProblems.Problem.subsetFeedback marked).Answer G\n                      (solve\n                        (Lax528502.GraphProblems.input x (Lax528502.GraphProblems.Problem.subsetFeedback marked)))))",
-          "startLine": 60,
-          "endLine": 67,
+          "signature": "feedback : ∀ (w : Nat) (decomposition : Lax528502.DecompositionAlgorithms.PolynomialTimeAlgorithm),\n  Exists fun algorithm =>\n    Lax528502.DecompositionAlgorithms.GivenBranchDecomposition w decomposition fun {n} G input =>\n      And\n        (∀ (weight : Fin n → Nat),\n          algorithm.FindsOptimum (Lax528502.GraphProblems.Problem.weightedFeedback weight) G input)\n        (∀ (marked : Finset (Fin n)),\n          algorithm.FindsOptimum (Lax528502.GraphProblems.Problem.subsetFeedback marked) G input)",
+          "startLine": 50,
+          "endLine": 55,
           "doc": "A common word RAM minimizes deletion weight or hits all cycles through a marked vertex set."
         },
         {
           "id": "Lax528502.BoundedMimAlgorithms.fixedColoring",
-          "signature": "fixedColoring : ∀ (w k : Nat) (branch : List Nat → List Nat),\n  Lax759944.RamPolytime.RamPolytime branch →\n    Exists fun solve =>\n      And (Lax759944.RamPolytime.RamPolytime solve)\n        (∀ (x : List Nat) (n : Nat) (G : SimpleGraph (Fin n))\n          (T : Option (Lax183560.BranchDecompositions.BinaryTree (Fin n))),\n          (Lax528502.ContractionInput.graph (Equiv.refl (Fin n)) G).IsPrefix x →\n            Eq (branch x) (Lax528502.MimWidth.encode (Equiv.refl (Fin n)) T) →\n              Lax528502.MimWidth.Decomposes G w T →\n                Exists fun b => And (Eq (solve x) (List.cons b.toNat List.nil)) (Iff (Eq b Bool.true) (G.Colorable k)))",
-          "startLine": 27,
-          "endLine": 33,
+          "signature": "fixedColoring : ∀ (w k : Nat) (decomposition : Lax528502.DecompositionAlgorithms.PolynomialTimeAlgorithm),\n  Exists fun algorithm =>\n    Lax528502.DecompositionAlgorithms.GivenBranchDecomposition w decomposition fun {n} G input =>\n      algorithm.Decides input (G.Colorable k)",
+          "startLine": 24,
+          "endLine": 28,
           "doc": "A polynomial-time branch-decomposition routine suffices for fixed-color decision."
         },
         {
           "id": "Lax528502.BoundedMimAlgorithms.longestInducedPath",
-          "signature": "longestInducedPath : ∀ (w : Nat) (branch : List Nat → List Nat),\n  Lax759944.RamPolytime.RamPolytime branch →\n    Exists fun solve =>\n      And (Lax759944.RamPolytime.RamPolytime solve)\n        (∀ (x : List Nat) (n : Nat) (G : SimpleGraph (Fin n))\n          (T : Option (Lax183560.BranchDecompositions.BinaryTree (Fin n))),\n          (Lax528502.ContractionInput.graph (Equiv.refl (Fin n)) G).IsPrefix x →\n            Eq (branch x) (Lax528502.MimWidth.encode (Equiv.refl (Fin n)) T) →\n              Lax528502.MimWidth.Decomposes G w T →\n                Lax528502.GraphProblems.Problem.longestInducedPath.Answer G (solve x))",
-          "startLine": 52,
-          "endLine": 58,
+          "signature": "longestInducedPath : ∀ (w : Nat) (decomposition : Lax528502.DecompositionAlgorithms.PolynomialTimeAlgorithm),\n  Exists fun algorithm =>\n    Lax528502.DecompositionAlgorithms.GivenBranchDecomposition w decomposition fun {n} G input =>\n      Lax528502.GraphProblems.Problem.longestInducedPath.Answer G (algorithm.run input)",
+          "startLine": 44,
+          "endLine": 48,
           "doc": "A polynomial-time branch-decomposition routine suffices to find a longest induced path."
         },
         {
           "id": "Lax528502.BoundedMimAlgorithms.optimization",
-          "signature": "optimization : ∀ (w : Nat) (branch : List Nat → List Nat),\n  Lax759944.RamPolytime.RamPolytime branch →\n    Exists fun solve =>\n      And (Lax759944.RamPolytime.RamPolytime solve)\n        (∀ (x : List Nat) (n : Nat) (G : SimpleGraph (Fin n))\n          (T : Option (Lax183560.BranchDecompositions.BinaryTree (Fin n))),\n          (Lax528502.ContractionInput.graph (Equiv.refl (Fin n)) G).IsPrefix x →\n            Eq (branch x) (Lax528502.MimWidth.encode (Equiv.refl (Fin n)) T) →\n              Lax528502.MimWidth.Decomposes G w T →\n                ∀ (P : Lax528502.GraphProblems.Problem n), P.Answer G (solve (Lax528502.GraphProblems.input x P)))",
-          "startLine": 69,
-          "endLine": 75,
+          "signature": "optimization : ∀ (w : Nat) (decomposition : Lax528502.DecompositionAlgorithms.PolynomialTimeAlgorithm),\n  Exists fun algorithm =>\n    Lax528502.DecompositionAlgorithms.GivenBranchDecomposition w decomposition fun {n} G input =>\n      ∀ (problem : Lax528502.GraphProblems.Problem n), algorithm.FindsOptimum problem G input",
+          "startLine": 57,
+          "endLine": 61,
           "doc": "A common solver for every optimization problem in the corollary."
         }
       ]
@@ -243,7 +243,7 @@
       "mathlibImports": [
         "Mathlib.Combinatorics.SimpleGraph.Coloring.Vertex"
       ],
-      "sourceText": "import Lax528502.ContractionInput\nimport Lax434930.PolynomialTime\nimport Lax759944.BinaryWordEncoding\nimport Mathlib.Combinatorics.SimpleGraph.Coloring.Vertex\n\n/-!\n---\ntitle: Minimum Coloring with a witnessing 2-sequence\ntype: definition\n---\nAn instance consists of a graph $G$, a positive integer $k$, and a valid\n$2$-sequence of $G$. It is accepted if $G$ has a proper $k$-coloring.\nThe binary language contains exactly the encodings of accepted instances.\nThe promise consists of the encodings of all instances, including negative ones.\n-/\n\nnamespace Lax528502.ColoringInstances\n\nopen Lax228581.TwinWidth Lax434930.PolynomialTime Lax759944.BinaryWordEncoding\n\n/-- Write the RAM binary encoding over 2 symbols. A separator is 1, a zero\ndigit is 00, and a one digit is 01. These codewords form a prefix code. -/\ndef binary (words : List ℕ) : Word :=\n  (encode words).flatMap fun s => match s with\n    | .separator => [true]\n    | .zero => [false, false]\n    | .one => [false, true]\n\nstructure Instance where\n  n : ℕ\n  graph : SimpleGraph (Fin n)\n  sequence : PartitionSequence graph 2\n  colors : ℕ\n  positive : 0 < colors\n\nnoncomputable def Instance.words (I : Instance) : List ℕ :=\n  I.colors :: ContractionInput.encode (Equiv.refl _) I.graph I.sequence\n\nnoncomputable def Instance.bits (I : Instance) : Word := binary I.words\n\ndef wellFormed : Language := {w | ∃ I : Instance, I.bits = w}\n\ndef minimumColoring : Language :=\n  {w | ∃ I : Instance, I.bits = w ∧ I.graph.Colorable I.colors}\n\nend Lax528502.ColoringInstances\n",
+      "sourceText": "import Lax528502.ContractionInput\nimport Lax434930.PolynomialTime\nimport Lax759944.BinaryWordEncoding\nimport Mathlib.Combinatorics.SimpleGraph.Coloring.Vertex\n\n/-!\n---\ntitle: Minimum Coloring with a witnessing 2-sequence\ntype: definition\n---\nAn instance consists of a graph $G$, a positive integer $k$, and a valid\n$2$-sequence of $G$. It is accepted if $G$ has a proper $k$-coloring.\nThe binary language contains exactly the encodings of accepted instances.\nThe promise consists of the encodings of all instances, including negative ones.\n-/\n\nnamespace Lax528502.ColoringInstances\n\nopen Lax228581.TwinWidth Lax434930.PolynomialTime Lax759944.BinaryWordEncoding\n\n/-- Write the RAM binary encoding over 2 symbols. A separator is 1, a zero\ndigit is 00, and a one digit is 01. These codewords form a prefix code. -/\ndef binary (words : List ℕ) : Word :=\n  (encode words).flatMap fun s => match s with\n    | .separator => [true]\n    | .zero => [false, false]\n    | .one => [false, true]\n\n/-- A graph, a witnessing 2-sequence, and the positive number of colors supplied as input. -/\nstructure Instance where\n  n : ℕ\n  graph : SimpleGraph (Fin n)\n  sequence : PartitionSequence graph 2\n  colors : ℕ\n  positive : 0 < colors\n\nnoncomputable def Instance.words (I : Instance) : List ℕ :=\n  I.colors :: ContractionInput.encode (Equiv.refl _) I.graph I.sequence\n\nnoncomputable def Instance.bits (I : Instance) : Word := binary I.words\n\n/-- Encodings of all valid instances, including graphs that require more colors. -/\ndef validColoringInstances : Language := {w | ∃ I : Instance, I.bits = w}\n\n/-- Minimum Coloring with a given 2-sequence and the color bound as part of the input. -/\ndef minimumColoringWithTwoSequence : Language :=\n  {w | ∃ I : Instance, I.bits = w ∧ I.graph.Colorable I.colors}\n\n/-- A polynomial many-one reduction whose output satisfies the promise on every input. -/\ndef PolynomialManyOneReduction (source target : Language) (withOutputsIn : Language) : Prop :=\n  ∃ f : Word → Word, Nonempty (Turing.TM2ComputableInPolyTime id id f) ∧\n    ∀ x, f x ∈ withOutputsIn ∧ (x ∈ source ↔ f x ∈ target)\n\n/-- The promise language of the coloring verifier. -/\nabbrev wellFormed := validColoringInstances\n\n/-- The target language of the coloring reduction. -/\nabbrev minimumColoring := minimumColoringWithTwoSequence\n\nend Lax528502.ColoringInstances\n",
       "statements": []
     },
     {
@@ -258,7 +258,7 @@
         "Lax759944.RamPolytime"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax528502.CliqueConstruction\nimport Lax759944.RamPolytime\nimport Lax434930.NondeterministicPolynomialTime\n\n/-!\n---\ntitle: Reduction to Minimum Coloring with a 2-sequence\ntype: lemma\n---\nThe reduction of Section 5 turns disjoint directed paths in a DAG into\nMinimum Coloring. Its cyclically arranged cliques have a polynomial-size\n$2$-sequence which is included in the output. On every input, including a\nnegative input, the reduction returns a well-formed target instance.\n\nThe output is available both as a list of RAM words and under its binary\nencoding for polynomial many-one reductions. A certificate for the target\nlanguage is a color for each vertex. The graph, sequence, and coloring can\nall be checked in polynomial time.\n-/\n\nnamespace Lax528502.ColoringReduction\n\nopen Lax434930.PolynomialTime Lax434930.NondeterministicPolynomialTime\nopen Lax759944.RamPolytime ColoringInstances\n\n/-- The serialized clique graph carries a valid 2-sequence and is colorable\nexactly when the specified directed paths exist. -/\naxiom correct (I : DisjointPaths.Instance) : ∃ J : ColoringInstances.Instance,\n    CliqueConstruction.words I=J.words ∧ (J.graph.Colorable J.colors ↔ I.Routable)\n\n/-- The same reduction on the RAM and as a map on binary words. -/\naxiom reduce :\n    ∃ (ram : List ℕ → List ℕ) (f : Word → Word), RamPolytime ram ∧\n      Nonempty (Turing.TM2ComputableInPolyTime id id f) ∧\n      (∀ I : DisjointPaths.Instance, ram (I.bits.map Bool.toNat) = CliqueConstruction.words I) ∧\n      ∀ x, (∃ I : ColoringInstances.Instance, ram (x.map Bool.toNat) = I.words ∧ f x = I.bits) ∧\n        (x ∈ DisjointPaths.language ↔ f x ∈ minimumColoring)\n\n/-- Verifying a supplied sequence and a coloring gives membership in NP. -/\naxiom membership : minimumColoring ∈ NP\n\nend Lax528502.ColoringReduction\n",
+      "sourceText": "import Lax528502.CliqueConstruction\nimport Lax759944.RamPolytime\nimport Lax434930.NondeterministicPolynomialTime\n\n/-!\n---\ntitle: Reduction to Minimum Coloring with a 2-sequence\ntype: lemma\n---\nThe reduction of Section 5 turns disjoint directed paths in a DAG into\nMinimum Coloring. Its cyclically arranged cliques have a polynomial-size\n$2$-sequence which is included in the output. On every input, including a\nnegative input, the reduction returns a well-formed target instance.\n\nThe output is available both as a list of RAM words and under its binary\nencoding for polynomial many-one reductions. A certificate for the target\nlanguage is a color for each vertex. The graph, sequence, and coloring can\nall be checked in polynomial time.\n-/\n\nnamespace Lax528502.ColoringReduction\n\nopen Lax434930.PolynomialTime Lax434930.NondeterministicPolynomialTime\nopen Lax759944.RamPolytime ColoringInstances\n\n/-- The serialized clique graph carries a valid 2-sequence and is colorable\nexactly when the specified directed paths exist. -/\naxiom correct (I : DisjointPaths.Instance) : ∃ J : ColoringInstances.Instance,\n    CliqueConstruction.words I=J.words ∧ (J.graph.Colorable J.colors ↔ I.Routable)\n\n/-- The same reduction on the RAM and as a map on binary words. -/\naxiom reduce :\n    ∃ (ram : List ℕ → List ℕ) (f : Word → Word), RamPolytime ram ∧\n      Nonempty (Turing.TM2ComputableInPolyTime id id f) ∧\n      (∀ I : DisjointPaths.Instance, ram (I.bits.map Bool.toNat) = CliqueConstruction.words I) ∧\n      ∀ x, (∃ I : ColoringInstances.Instance, ram (x.map Bool.toNat) = I.words ∧ f x = I.bits) ∧\n        (x ∈ DisjointPaths.language ↔ f x ∈ minimumColoringWithTwoSequence)\n\n/-- Verifying a supplied sequence and a coloring gives membership in NP. -/\naxiom membership : minimumColoringWithTwoSequence ∈ NP\n\nend Lax528502.ColoringReduction\n",
       "statements": [
         {
           "id": "Lax528502.ColoringReduction.correct",
@@ -269,14 +269,14 @@
         },
         {
           "id": "Lax528502.ColoringReduction.membership",
-          "signature": "membership : Set.instMembership.mem Lax434930.NondeterministicPolynomialTime.NP Lax528502.ColoringInstances.minimumColoring",
+          "signature": "membership : Set.instMembership.mem Lax434930.NondeterministicPolynomialTime.NP\n  Lax528502.ColoringInstances.minimumColoringWithTwoSequence",
           "startLine": 39,
           "endLine": 40,
           "doc": "Verifying a supplied sequence and a coloring gives membership in NP."
         },
         {
           "id": "Lax528502.ColoringReduction.reduce",
-          "signature": "reduce : Exists fun ram =>\n  Exists fun f =>\n    And (Lax759944.RamPolytime.RamPolytime ram)\n      (And (Nonempty (Turing.TM2ComputableInPolyTime id id f))\n        (And\n          (∀ (I : Lax528502.DisjointPaths.Instance),\n            Eq (ram (List.map Bool.toNat I.bits)) (Lax528502.CliqueConstruction.words I))\n          (∀ (x : Lax434930.PolynomialTime.Word),\n            And (Exists fun I => And (Eq (ram (List.map Bool.toNat x)) I.words) (Eq (f x) I.bits))\n              (Iff (Set.instMembership.mem Lax528502.DisjointPaths.language x)\n                (Set.instMembership.mem Lax528502.ColoringInstances.minimumColoring (f x))))))",
+          "signature": "reduce : Exists fun ram =>\n  Exists fun f =>\n    And (Lax759944.RamPolytime.RamPolytime ram)\n      (And (Nonempty (Turing.TM2ComputableInPolyTime id id f))\n        (And\n          (∀ (I : Lax528502.DisjointPaths.Instance),\n            Eq (ram (List.map Bool.toNat I.bits)) (Lax528502.CliqueConstruction.words I))\n          (∀ (x : Lax434930.PolynomialTime.Word),\n            And (Exists fun I => And (Eq (ram (List.map Bool.toNat x)) I.words) (Eq (f x) I.bits))\n              (Iff (Set.instMembership.mem Lax528502.DisjointPaths.language x)\n                (Set.instMembership.mem Lax528502.ColoringInstances.minimumColoringWithTwoSequence (f x))))))",
           "startLine": 31,
           "endLine": 37,
           "doc": "The same reduction on the RAM and as a map on binary words."
@@ -296,6 +296,24 @@
         "Mathlib.Data.List.OfFn"
       ],
       "sourceText": "import Lax228581.TwinWidth\nimport Mathlib.Data.List.OfFn\n\n/-!\n---\ntitle: Graphs with a supplied contraction sequence\ntype: definition\n---\nNumber the vertices from $0$ to $n-1$. Write $n$ and the adjacency matrix of\nthe graph in row order. Append the number of merges and, for each partition\nfrom the singletons to the last partition, its equivalence matrix in the same\norder. An entry is $1$ precisely when the two vertices belong to the same part.\nThere are $n$ such matrices for a nonempty graph and 1 empty matrix for the\nempty graph. The input thus has polynomial size in $n$ and does not depend on\na choice of names for the parts.\n-/\n\nnamespace Lax528502.ContractionInput\n\nopen Lax228581.TwinWidth\n\n/-- The incidence matrix of a relation on numbered rows and columns. -/\nnoncomputable def matrix (m n : ℕ) (R : Fin m → Fin n → Prop) : List ℕ := by\n  classical\n  exact (List.ofFn fun i => List.ofFn fun j => if R i j then 1 else 0).flatten\n\n/-- The graph alone, as a prefix of an instance with a contraction sequence. -/\nnoncomputable def graph {V : Type} {n : ℕ} (order : Fin n ≃ V) (G : SimpleGraph V) : List ℕ :=\n  n :: matrix n n (fun i j => G.Adj (order i) (order j))\n\n/-- An explicit graph and its supplied partition sequence, in the given vertex order. -/\nnoncomputable def encode {V : Type} [Fintype V] [DecidableEq V] {n d : ℕ} (order : Fin n ≃ V)\n    (G : SimpleGraph V) (S : PartitionSequence G d) : List ℕ :=\n  graph order G ++ ([S.stepCount] ++\n    (List.range (S.stepCount + 1)).flatMap fun k =>\n      matrix n n fun i j => ∃ B ∈ S.partition k, order i ∈ B ∧ order j ∈ B)\n\n/-- The physical input convention of the polynomial-time word RAM. -/\ndef tape (x : List ℕ) : List ℕ := x.length :: x\n\nend Lax528502.ContractionInput\n",
+      "statements": []
+    },
+    {
+      "id": "Lax528502.DecompositionAlgorithms",
+      "path": "concepts/Lax528502/DecompositionAlgorithms.lean",
+      "title": "Computing decompositions from a given 2-sequence",
+      "type": "definition",
+      "description": "A graph with a given $2$-sequence comes with a numbering of its vertices.\nA branch-decomposition algorithm returns its tree in that numbering. A\ntree-decomposition algorithm also chooses a numbering of the bags and writes\nthe tree and its bags. A time bound of $B$ instructions applies at every word\nwidth large enough to address $B$.",
+      "imports": [
+        "Lax528502.ContractionInput",
+        "Lax528502.GraphProblems",
+        "Lax528502.MimWidth",
+        "Lax528502.TreeIndependence",
+        "Lax759944.RamPolytime",
+        "Lax808846.Ram"
+      ],
+      "mathlibImports": [],
+      "sourceText": "import Lax528502.ContractionInput\nimport Lax528502.GraphProblems\nimport Lax528502.MimWidth\nimport Lax528502.TreeIndependence\nimport Lax759944.RamPolytime\nimport Lax808846.Ram\n\n/-!\n---\ntitle: Computing decompositions from a given 2-sequence\ntype: definition\n---\nA graph with a given $2$-sequence comes with a numbering of its vertices.\nA branch-decomposition algorithm returns its tree in that numbering. A\ntree-decomposition algorithm also chooses a numbering of the bags and writes\nthe tree and its bags. A time bound of $B$ instructions applies at every word\nwidth large enough to address $B$.\n-/\n\nnamespace Lax528502.DecompositionAlgorithms\n\nopen Lax183560 Lax228581.TwinWidth Lax228581.Treewidth\nopen Lax759944.RamPolytime Lax808846.Ram\n\n/-- A finite graph, its vertex numbering, and a witnessing contraction sequence. -/\nstructure GraphWithTwoSequence where\n  Vertex : Type\n  [finiteVertices : Fintype Vertex]\n  [decidableVertices : DecidableEq Vertex]\n  n : ℕ\n  order : Fin n ≃ Vertex\n  graph : SimpleGraph Vertex\n  sequence : PartitionSequence graph 2\n\nattribute [instance] GraphWithTwoSequence.finiteVertices GraphWithTwoSequence.decidableVertices\n\n/-- Present a graph and its supplied sequence in the given vertex order. -/\ndef GraphWithTwoSequence.of {V : Type} [Fintype V] [DecidableEq V] {n : ℕ}\n    (order : Fin n ≃ V) (G : SimpleGraph V) (S : PartitionSequence G 2) : GraphWithTwoSequence :=\n  { Vertex := V, n := n, order := order, graph := G, sequence := S }\n\n/-- A numbered graph and its sequence on the RAM input. -/\nnoncomputable def GraphWithTwoSequence.input (I : GraphWithTwoSequence) : List ℕ :=\n  ContractionInput.encode I.order I.graph I.sequence\n\n/-- A word-RAM algorithm with a verified polynomial running time. -/\nstructure PolynomialTimeAlgorithm where\n  run : List ℕ → List ℕ\n  polynomialTime : RamPolytime run\n\n/-- Return the indicated branch tree, using the vertex numbers of the input. -/\ndef PolynomialTimeAlgorithm.OutputsBranchDecomposition (algorithm : PolynomialTimeAlgorithm)\n    (I : GraphWithTwoSequence) (T : Option (BranchDecompositions.BinaryTree I.Vertex)) : Prop :=\n  algorithm.run I.input = MimWidth.encode I.order T\n\n/-- Return the same tree and bags at every word width that can address the\ninstruction budget. The output includes the complete tree and bag incidence matrices. -/\ndef OutputsTreeDecompositionWithin (program : Program) (I : GraphWithTwoSequence) (t : ℕ)\n    (D : TreeDecomposition I.graph) (budget : ℕ) : Prop :=\n  ∃ (m : ℕ) (nodes : Fin m ≃ D.Node), ∀ w : ℕ, budget < 2 ^ w →\n    ∃ steps ≤ budget, RunsTo w program (ContractionInput.tape (t :: I.input))\n      (TreeIndependence.encode I.order D nodes) steps\n\n/-- Decide the proposition with a single Boolean answer on the given input. -/\ndef PolynomialTimeAlgorithm.Decides (algorithm : PolynomialTimeAlgorithm)\n    (input : List ℕ) (proposition : Prop) : Prop :=\n  ∃ answer : Bool, algorithm.run input = [answer.toNat] ∧ (answer = true ↔ proposition)\n\n/-- Return an optimal vertex set for the requested problem or report infeasibility. -/\ndef PolynomialTimeAlgorithm.FindsOptimum (algorithm : PolynomialTimeAlgorithm)\n    {n : ℕ} (problem : GraphProblems.Problem n) (G : SimpleGraph (Fin n))\n    (graphInput : List ℕ) : Prop :=\n  problem.Answer G (algorithm.run (GraphProblems.input graphInput problem))\n\n/-- A graph already numbered by the vertices of its contraction sequence. -/\nnoncomputable def numberedSequenceInput {n : ℕ} {G : SimpleGraph (Fin n)}\n    (sequence : PartitionSequence G 2) : List ℕ :=\n  ContractionInput.encode (Equiv.refl _) G sequence\n\n/-- A guarantee on every input whose graph and computed branch decomposition\nhave the stated width. Auxiliary problem data may follow the graph. -/\ndef GivenBranchDecomposition (width : ℕ) (branch : PolynomialTimeAlgorithm)\n    (guarantee : ∀ {n : ℕ}, SimpleGraph (Fin n) → List ℕ → Prop) : Prop :=\n  ∀ (x : List ℕ) (n : ℕ) (G : SimpleGraph (Fin n)) (T : Option (BranchDecompositions.BinaryTree (Fin n))),\n    (ContractionInput.graph (Equiv.refl _) G).IsPrefix x →\n    branch.run x = MimWidth.encode (Equiv.refl _) T →\n    MimWidth.IsBranchDecompositionOfWidthAtMost G T width → guarantee G x\n\nend Lax528502.DecompositionAlgorithms\n",
       "statements": []
     },
     {
@@ -356,28 +374,26 @@
       "path": "concepts/Lax528502/GraphAlgorithms.lean",
       "title": "Polynomial-time graph problems given a 2-sequence",
       "type": "corollary",
-      "description": "For every fixed $k$, a polynomial-time word RAM decides $k$-Coloring on graphs\nsupplied with a $2$-sequence. One can also find a minimum dominating, total\ndominating, independent dominating, or connected dominating set, a minimum-weight\nfeedback vertex set, a minimum subset feedback vertex set, or a longest induced path.\n\nThese are Corollaries 1.2 and 3.11. They apply the algorithms of Bergougnoux,\nDreier, and Jaffke, Jaffke, Kwon, and Telle, and Bergougnoux, Papadopoulos,\nand Telle to the branch decomposition of Theorem 1.1.",
+      "description": "For every fixed $k$, a polynomial-time word RAM decides $k$-Coloring on graphs\nsupplied with a $2$-sequence. One can also find a minimum dominating, total\ndominating, independent dominating, or connected dominating set, a minimum-weight\nfeedback vertex set, a minimum subset feedback vertex set, or a longest induced path.\n\nCorollaries 1.2 and 3.11 follow by applying the bounded-mim-width\nalgorithms to the branch decomposition from Theorem 1.1.",
       "imports": [
-        "Lax528502.ContractionInput",
-        "Lax528502.GraphProblems",
-        "Lax759944.RamPolytime"
+        "Lax528502.DecompositionAlgorithms"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax528502.ContractionInput\nimport Lax759944.RamPolytime\nimport Lax528502.GraphProblems\n\n/-!\n---\ntitle: Polynomial-time graph problems given a 2-sequence\ntype: corollary\n---\nFor every fixed $k$, a polynomial-time word RAM decides $k$-Coloring on graphs\nsupplied with a $2$-sequence. One can also find a minimum dominating, total\ndominating, independent dominating, or connected dominating set, a minimum-weight\nfeedback vertex set, a minimum subset feedback vertex set, or a longest induced path.\n\nThese are Corollaries 1.2 and 3.11. They apply the algorithms of Bergougnoux,\nDreier, and Jaffke, Jaffke, Kwon, and Telle, and Bergougnoux, Papadopoulos,\nand Telle to the branch decomposition of Theorem 1.1.\n-/\n\nnamespace Lax528502.GraphAlgorithms\n\nopen Lax228581.TwinWidth Lax759944.RamPolytime GraphProblems\n\n/-- The color bound is fixed before the polynomial-time program is chosen. -/\naxiom fixedColoring (k : ℕ) :\n    ∃ solve : List ℕ → List ℕ, RamPolytime solve ∧\n      ∀ (n : ℕ) (G : SimpleGraph (Fin n)) (S : PartitionSequence G 2),\n        ∃ b : Bool, solve (ContractionInput.encode (Equiv.refl _) G S) = [b.toNat] ∧\n          (b = true ↔ G.Colorable k)\n\n/-- Construct an optimum for each of the 7 optimization problems. -/\naxiom optimization :\n    ∃ solve : List ℕ → List ℕ, RamPolytime solve ∧\n      ∀ (n : ℕ) (G : SimpleGraph (Fin n)) (S : PartitionSequence G 2) (P : Problem n),\n        P.Answer G (solve (input (ContractionInput.encode (Equiv.refl _) G S) P))\n\nend Lax528502.GraphAlgorithms\n",
+      "sourceText": "import Lax528502.DecompositionAlgorithms\n\n/-!\n---\ntitle: Polynomial-time graph problems given a 2-sequence\ntype: corollary\n---\nFor every fixed $k$, a polynomial-time word RAM decides $k$-Coloring on graphs\nsupplied with a $2$-sequence. One can also find a minimum dominating, total\ndominating, independent dominating, or connected dominating set, a minimum-weight\nfeedback vertex set, a minimum subset feedback vertex set, or a longest induced path.\n\nCorollaries 1.2 and 3.11 follow by applying the bounded-mim-width\nalgorithms to the branch decomposition from Theorem 1.1.\n-/\n\nnamespace Lax528502.GraphAlgorithms\n\nopen DecompositionAlgorithms Lax228581.TwinWidth GraphProblems\n\n/-- For every fixed k, decide k-colorability from a 2-sequence in polynomial time. -/\naxiom fixedColoring (k : ℕ) :\n    ∃ algorithm : PolynomialTimeAlgorithm,\n      ∀ (n : ℕ) (G : SimpleGraph (Fin n)) (sequence : PartitionSequence G 2),\n        algorithm.Decides (numberedSequenceInput sequence) (G.Colorable k)\n\n/-- One polynomial-time algorithm finds an optimum for each of the 7 problems. -/\naxiom optimization :\n    ∃ algorithm : PolynomialTimeAlgorithm,\n      ∀ (n : ℕ) (G : SimpleGraph (Fin n)) (sequence : PartitionSequence G 2) (problem : Problem n),\n        algorithm.FindsOptimum problem G (numberedSequenceInput sequence)\n\nend Lax528502.GraphAlgorithms\n",
       "statements": [
         {
           "id": "Lax528502.GraphAlgorithms.fixedColoring",
-          "signature": "fixedColoring : ∀ (k : Nat),\n  Exists fun solve =>\n    And (Lax759944.RamPolytime.RamPolytime solve)\n      (∀ (n : Nat) (G : SimpleGraph (Fin n)) (S : Lax228581.TwinWidth.PartitionSequence G 2),\n        Exists fun b =>\n          And (Eq (solve (Lax528502.ContractionInput.encode (Equiv.refl (Fin n)) G S)) (List.cons b.toNat List.nil))\n            (Iff (Eq b Bool.true) (G.Colorable k)))",
-          "startLine": 24,
-          "endLine": 29,
-          "doc": "The color bound is fixed before the polynomial-time program is chosen."
+          "signature": "fixedColoring : ∀ (k : Nat),\n  Exists fun algorithm =>\n    ∀ (n : Nat) (G : SimpleGraph (Fin n)) (sequence : Lax228581.TwinWidth.PartitionSequence G 2),\n      algorithm.Decides (Lax528502.DecompositionAlgorithms.numberedSequenceInput sequence) (G.Colorable k)",
+          "startLine": 21,
+          "endLine": 25,
+          "doc": "For every fixed k, decide k-colorability from a 2-sequence in polynomial time."
         },
         {
           "id": "Lax528502.GraphAlgorithms.optimization",
-          "signature": "optimization : Exists fun solve =>\n  And (Lax759944.RamPolytime.RamPolytime solve)\n    (∀ (n : Nat) (G : SimpleGraph (Fin n)) (S : Lax228581.TwinWidth.PartitionSequence G 2)\n      (P : Lax528502.GraphProblems.Problem n),\n      P.Answer G (solve (Lax528502.GraphProblems.input (Lax528502.ContractionInput.encode (Equiv.refl (Fin n)) G S) P)))",
-          "startLine": 31,
-          "endLine": 35,
-          "doc": "Construct an optimum for each of the 7 optimization problems."
+          "signature": "optimization : Exists fun algorithm =>\n  ∀ (n : Nat) (G : SimpleGraph (Fin n)) (sequence : Lax228581.TwinWidth.PartitionSequence G 2)\n    (problem : Lax528502.GraphProblems.Problem n),\n    algorithm.FindsOptimum problem G (Lax528502.DecompositionAlgorithms.numberedSequenceInput sequence)",
+          "startLine": 27,
+          "endLine": 31,
+          "doc": "One polynomial-time algorithm finds an optimum for each of the 7 problems."
         }
       ]
     },
@@ -410,7 +426,7 @@
         "Mathlib.Data.Finset.Prod",
         "Mathlib.Data.Fintype.Powerset"
       ],
-      "sourceText": "import Lax183560.BranchDecompositions\nimport Mathlib.Data.Finset.Lattice.Fold\nimport Mathlib.Data.Finset.Prod\nimport Mathlib.Data.Fintype.Powerset\n\n/-!\n---\ntitle: Maximum induced matching width\ntype: definition\n---\nFor a vertex set $X$, keep only the edges crossing from $X$ to its complement.\nThe cut value is the maximum size of an induced matching in this bipartite\ngraph. Adjacencies between two endpoints on the same side play no role.\n\nRooting a subcubic branch decomposition at an edge gives a binary tree whose\nleaves are the vertices of the graph. Its width is the largest cut value below\na node. The mim-width of the graph is the minimum of these widths. The empty\ngraph has width $0$.\n-/\n\nnamespace Lax528502.MimWidth\n\nopen Lax183560\n\nvariable {V : Type} [Fintype V] [DecidableEq V]\n\n/-- Pairs are oriented from the cut side to its complement. Between the two\nendpoint sets, the only edges are the matching pairs themselves. -/\nstructure InducedMatching (G : SimpleGraph V) (X : Finset V) (M : Finset (V × V)) : Prop where\n  sides : ∀ e ∈ M, e.1 ∈ X ∧ e.2 ∉ X\n  induced : ∀ e ∈ M, ∀ f ∈ M, G.Adj e.1 f.2 ↔ e = f\n\n/-- The largest induced matching across a cut. -/\nnoncomputable def cutMim (G : SimpleGraph V) (X : Finset V) : ℕ := by\n  classical\n  exact (Finset.univ.filter (InducedMatching G X)).sup Finset.card\n\n/-- A branch decomposition of width at most the specified bound. The empty\ntree is available precisely when the vertex type is empty. -/\ndef Decomposes (G : SimpleGraph V) (k : ℕ) : Option (BranchDecompositions.BinaryTree V) → Prop\n  | none => IsEmpty V\n  | some T => T.Valid Finset.univ ∧ T.cutWidth (cutMim G) ≤ k\n\n/-- The minimum width of a branch decomposition. -/\nnoncomputable def mimWidth (G : SimpleGraph V) : ℕ :=\n  sInf {k | ∃ T, Decomposes G k T}\n\n/-- Prefix notation for a branch tree. A fork is 0 and a leaf is its\nvertex number plus 1. -/\ndef treeWord {n : ℕ} (order : Fin n ≃ V) : BranchDecompositions.BinaryTree V → List ℕ\n  | .leaf v => [(order.symm v).val + 1]\n  | .fork l r => 0 :: treeWord order l ++ treeWord order r\n\n/-- The empty list represents the empty decomposition. -/\ndef encode {n : ℕ} (order : Fin n ≃ V) (T : Option (BranchDecompositions.BinaryTree V)) : List ℕ :=\n  T.elim [] (treeWord order)\n\nend Lax528502.MimWidth\n",
+      "sourceText": "import Lax183560.BranchDecompositions\nimport Mathlib.Data.Finset.Lattice.Fold\nimport Mathlib.Data.Finset.Prod\nimport Mathlib.Data.Fintype.Powerset\n\n/-!\n---\ntitle: Maximum induced matching width\ntype: definition\n---\nFor a vertex set $X$, keep only the edges crossing from $X$ to its complement.\nThe cut value is the maximum size of an induced matching in this bipartite\ngraph. Adjacencies between two endpoints on the same side play no role.\n\nRooting a subcubic branch decomposition at an edge gives a binary tree whose\nleaves are the vertices of the graph. Its width is the largest cut value below\na node. The mim-width of the graph is the minimum of these widths. The empty\ngraph has width $0$.\n-/\n\nnamespace Lax528502.MimWidth\n\nopen Lax183560\n\nvariable {V : Type} [Fintype V] [DecidableEq V]\n\n/-- Pairs are oriented from the cut side to its complement. Between the two\nendpoint sets, the only edges are the matching pairs themselves. -/\nstructure InducedMatching (G : SimpleGraph V) (X : Finset V) (M : Finset (V × V)) : Prop where\n  sides : ∀ e ∈ M, e.1 ∈ X ∧ e.2 ∉ X\n  induced : ∀ e ∈ M, ∀ f ∈ M, G.Adj e.1 f.2 ↔ e = f\n\n/-- The largest induced matching across a cut. -/\nnoncomputable def cutMim (G : SimpleGraph V) (X : Finset V) : ℕ := by\n  classical\n  exact (Finset.univ.filter (InducedMatching G X)).sup Finset.card\n\n/-- A branch decomposition of width at most the specified bound. The empty\ntree is available precisely when the vertex type is empty. -/\ndef Decomposes (G : SimpleGraph V) (k : ℕ) : Option (BranchDecompositions.BinaryTree V) → Prop\n  | none => IsEmpty V\n  | some T => T.Valid Finset.univ ∧ T.cutWidth (cutMim G) ≤ k\n\n/-- The leaves of the branch tree are the vertices of G and every cut has\nmim-width at most the stated bound. The empty graph has an empty tree. -/\nabbrev IsBranchDecompositionOfWidthAtMost (G : SimpleGraph V) (T : Option (BranchDecompositions.BinaryTree V))\n    (widthAtMost : ℕ) : Prop := Decomposes G widthAtMost T\n\n/-- The minimum width of a branch decomposition. -/\nnoncomputable def mimWidth (G : SimpleGraph V) : ℕ :=\n  sInf {k | ∃ T, Decomposes G k T}\n\n/-- Prefix notation for a branch tree. A fork is 0 and a leaf is its\nvertex number plus 1. -/\ndef treeWord {n : ℕ} (order : Fin n ≃ V) : BranchDecompositions.BinaryTree V → List ℕ\n  | .leaf v => [(order.symm v).val + 1]\n  | .fork l r => 0 :: treeWord order l ++ treeWord order r\n\n/-- The empty list represents the empty decomposition. -/\ndef encode {n : ℕ} (order : Fin n ≃ V) (T : Option (BranchDecompositions.BinaryTree V)) : List ℕ :=\n  T.elim [] (treeWord order)\n\nend Lax528502.MimWidth\n",
       "statements": []
     },
     {
@@ -418,35 +434,40 @@
       "path": "concepts/Lax528502/MimWidthBound.lean",
       "title": "Twin-width at most 2 implies mim-width at most 8",
       "type": "theorem",
-      "description": "Every graph of twin-width at most $2$ has mim-width at most $8$. Given the\ngraph and a witnessing $2$-sequence, one uniform polynomial-time word RAM\nwrites a branch decomposition of width at most $8$ (Theorem 1.1).",
+      "description": "Every graph of twin-width at most $2$ admits a branch decomposition of\nmim-width at most $8$. Given a witnessing $2$-sequence, one can construct\nsuch a decomposition in polynomial time (Theorem 1.1).",
       "imports": [
-        "Lax528502.ContractionInput",
-        "Lax528502.MimWidth",
-        "Lax759944.RamPolytime"
+        "Lax528502.DecompositionAlgorithms"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax528502.ContractionInput\nimport Lax528502.MimWidth\nimport Lax759944.RamPolytime\n\n/-!\n---\ntitle: Twin-width at most 2 implies mim-width at most 8\ntype: theorem\n---\nEvery graph of twin-width at most $2$ has mim-width at most $8$. Given the\ngraph and a witnessing $2$-sequence, one uniform polynomial-time word RAM\nwrites a branch decomposition of width at most $8$ (Theorem 1.1).\n-/\n\nnamespace Lax528502.MimWidthBound\n\nopen Lax228581.TwinWidth Lax759944.RamPolytime\n\n/-- Construct a witnessing branch decomposition from the supplied 2-sequence. -/\naxiom construct :\n    ∃ solve : List ℕ → List ℕ, RamPolytime solve ∧\n      ∀ {V : Type} [Fintype V] [DecidableEq V] {n : ℕ} (order : Fin n ≃ V)\n        (G : SimpleGraph V) (S : PartitionSequence G 2),\n        ∃ T, MimWidth.Decomposes G 8 T ∧\n          solve (ContractionInput.encode order G S) = MimWidth.encode order T\n\n/-- The structural bound for every finite simple graph of twin-width at most 2. -/\naxiom mimWidth_le_eight {V : Type} [Fintype V] [DecidableEq V] (G : SimpleGraph V)\n    (h : HasTwinWidthAtMost G 2) : MimWidth.mimWidth G ≤ 8\n\nend Lax528502.MimWidthBound\n",
+      "sourceText": "import Lax528502.DecompositionAlgorithms\n\n/-!\n---\ntitle: Twin-width at most 2 implies mim-width at most 8\ntype: theorem\n---\nEvery graph of twin-width at most $2$ admits a branch decomposition of\nmim-width at most $8$. Given a witnessing $2$-sequence, one can construct\nsuch a decomposition in polynomial time (Theorem 1.1).\n-/\n\nnamespace Lax528502.MimWidthBound\n\nopen DecompositionAlgorithms Lax228581.TwinWidth\n\nvariable {V : Type} [Fintype V] [DecidableEq V]\n\n/-- Every graph of twin-width at most 2 admits a branch decomposition of mim-width at most 8. -/\naxiom exists_branchDecomposition (G : SimpleGraph V) (h : HasTwinWidthAtMost G 2) :\n    ∃ T, MimWidth.IsBranchDecompositionOfWidthAtMost G T 8\n\n/-- Every graph of twin-width at most 2 has mim-width at most 8. -/\naxiom mimWidth_le_eight (G : SimpleGraph V) (h : HasTwinWidthAtMost G 2) :\n    MimWidth.mimWidth G ≤ 8\n\n/-- Given a 2-sequence, find a branch decomposition of mim-width at most 8 in polynomial time. -/\naxiom construct :\n    ∃ algorithm : PolynomialTimeAlgorithm, ∀ I : GraphWithTwoSequence,\n      ∃ T, MimWidth.IsBranchDecompositionOfWidthAtMost I.graph T 8 ∧\n        algorithm.OutputsBranchDecomposition I T\n\nend Lax528502.MimWidthBound\n",
       "statements": [
         {
           "id": "Lax528502.MimWidthBound.construct",
-          "signature": "construct : Exists fun solve =>\n  And (Lax759944.RamPolytime.RamPolytime solve)\n    (∀ {V : Type} [inst : Fintype V] [inst_1 : DecidableEq V] {n : Nat} (order : Equiv (Fin n) V) (G : SimpleGraph V)\n      (S : Lax228581.TwinWidth.PartitionSequence G 2),\n      Exists fun T =>\n        And (Lax528502.MimWidth.Decomposes G 8 T)\n          (Eq (solve (Lax528502.ContractionInput.encode order G S)) (Lax528502.MimWidth.encode order T)))",
+          "signature": "construct : Exists fun algorithm =>\n  ∀ (I : Lax528502.DecompositionAlgorithms.GraphWithTwoSequence),\n    Exists fun T =>\n      And (Lax528502.MimWidth.IsBranchDecompositionOfWidthAtMost I.graph T 8) (algorithm.OutputsBranchDecomposition I T)",
+          "startLine": 27,
+          "endLine": 31,
+          "doc": "Given a 2-sequence, find a branch decomposition of mim-width at most 8 in polynomial time."
+        },
+        {
+          "id": "Lax528502.MimWidthBound.exists_branchDecomposition",
+          "signature": "exists_branchDecomposition : ∀ {V : Type} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V),\n  Lax228581.TwinWidth.HasTwinWidthAtMost G 2 →\n    Exists fun T => Lax528502.MimWidth.IsBranchDecompositionOfWidthAtMost G T 8",
           "startLine": 19,
-          "endLine": 25,
-          "doc": "Construct a witnessing branch decomposition from the supplied 2-sequence."
+          "endLine": 21,
+          "doc": "Every graph of twin-width at most 2 admits a branch decomposition of mim-width at most 8."
         },
         {
           "id": "Lax528502.MimWidthBound.mimWidth_le_eight",
           "signature": "mimWidth_le_eight : ∀ {V : Type} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V),\n  Lax228581.TwinWidth.HasTwinWidthAtMost G 2 → instLENat.le (Lax528502.MimWidth.mimWidth G) 8",
-          "startLine": 27,
-          "endLine": 29,
-          "doc": "The structural bound for every finite simple graph of twin-width at most 2."
+          "startLine": 23,
+          "endLine": 25,
+          "doc": "Every graph of twin-width at most 2 has mim-width at most 8."
         }
       ]
     },
     {
       "id": "Lax528502.MinimumColoring",
       "path": "concepts/Lax528502/MinimumColoring.lean",
-      "title": "Minimum Coloring is NP-complete at twin-width 2",
+      "title": "Minimum Coloring is NP-complete on graphs of twin-width at most 2",
       "type": "theorem",
       "description": "When $k$ is part of the input, deciding whether $G$ is $k$-colorable is\nNP-complete even if a $2$-sequence of $G$ is given (Theorem 5.2). Every\nlanguage in NP has a polynomial many-one reduction whose outputs satisfy\nthe promise on both yes and no instances.",
       "imports": [
@@ -454,21 +475,21 @@
         "Lax528502.ColoringInstances"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax528502.ColoringInstances\nimport Lax429075.Reductions\n\n/-!\n---\ntitle: Minimum Coloring is NP-complete at twin-width 2\ntype: theorem\n---\nWhen $k$ is part of the input, deciding whether $G$ is $k$-colorable is\nNP-complete even if a $2$-sequence of $G$ is given (Theorem 5.2). Every\nlanguage in NP has a polynomial many-one reduction whose outputs satisfy\nthe promise on both yes and no instances.\n-/\n\nnamespace Lax528502.MinimumColoring\n\nopen Lax434930.PolynomialTime Lax434930.NondeterministicPolynomialTime\nopen Lax429075.Reductions ColoringInstances\n\n/-- Every output belongs to the class and carries its own 2-sequence. -/\naxiom hardness_with_sequence (A : Language) (hA : A ∈ NP) :\n    ∃ f : Word → Word, Nonempty (Turing.TM2ComputableInPolyTime id id f) ∧\n      ∀ x, f x ∈ wellFormed ∧ (x ∈ A ↔ f x ∈ minimumColoring)\n\n/-- NP-completeness under polynomial many-one reductions. -/\naxiom np_complete : NPComplete minimumColoring\n\nend Lax528502.MinimumColoring\n",
+      "sourceText": "import Lax528502.ColoringInstances\nimport Lax429075.Reductions\n\n/-!\n---\ntitle: Minimum Coloring is NP-complete on graphs of twin-width at most 2\ntype: theorem\n---\nWhen $k$ is part of the input, deciding whether $G$ is $k$-colorable is\nNP-complete even if a $2$-sequence of $G$ is given (Theorem 5.2). Every\nlanguage in NP has a polynomial many-one reduction whose outputs satisfy\nthe promise on both yes and no instances.\n-/\n\nnamespace Lax528502.MinimumColoring\n\nopen Lax434930.PolynomialTime Lax434930.NondeterministicPolynomialTime\nopen Lax429075.Reductions ColoringInstances\n\n/-- Minimum Coloring is NP-complete even when the input supplies a 2-sequence. -/\naxiom np_complete : NPComplete minimumColoringWithTwoSequence\n\n/-- The reduction supplies a valid 2-sequence on both yes and no instances. -/\naxiom hardness_with_sequence (A : Language) (hA : A ∈ NP) :\n    PolynomialManyOneReduction A minimumColoringWithTwoSequence (withOutputsIn := validColoringInstances)\n\nend Lax528502.MinimumColoring\n",
       "statements": [
         {
           "id": "Lax528502.MinimumColoring.hardness_with_sequence",
-          "signature": "hardness_with_sequence : ∀ (A : Lax434930.PolynomialTime.Language),\n  Set.instMembership.mem Lax434930.NondeterministicPolynomialTime.NP A →\n    Exists fun f =>\n      And (Nonempty (Turing.TM2ComputableInPolyTime id id f))\n        (∀ (x : Lax434930.PolynomialTime.Word),\n          And (Set.instMembership.mem Lax528502.ColoringInstances.wellFormed (f x))\n            (Iff (Set.instMembership.mem A x)\n              (Set.instMembership.mem Lax528502.ColoringInstances.minimumColoring (f x))))",
-          "startLine": 20,
-          "endLine": 23,
-          "doc": "Every output belongs to the class and carries its own 2-sequence."
+          "signature": "hardness_with_sequence : ∀ (A : Lax434930.PolynomialTime.Language),\n  Set.instMembership.mem Lax434930.NondeterministicPolynomialTime.NP A →\n    Lax528502.ColoringInstances.PolynomialManyOneReduction A Lax528502.ColoringInstances.minimumColoringWithTwoSequence\n      Lax528502.ColoringInstances.validColoringInstances",
+          "startLine": 23,
+          "endLine": 25,
+          "doc": "The reduction supplies a valid 2-sequence on both yes and no instances."
         },
         {
           "id": "Lax528502.MinimumColoring.np_complete",
-          "signature": "np_complete : Lax429075.Reductions.NPComplete Lax528502.ColoringInstances.minimumColoring",
-          "startLine": 25,
-          "endLine": 26,
-          "doc": "NP-completeness under polynomial many-one reductions."
+          "signature": "np_complete : Lax429075.Reductions.NPComplete Lax528502.ColoringInstances.minimumColoringWithTwoSequence",
+          "startLine": 20,
+          "endLine": 21,
+          "doc": "Minimum Coloring is NP-complete even when the input supplies a 2-sequence."
         }
       ]
     },
@@ -570,7 +591,7 @@
       "mathlibImports": [
         "Mathlib.Combinatorics.SimpleGraph.Clique"
       ],
-      "sourceText": "import Lax228581.Treewidth\nimport Lax528502.ContractionInput\nimport Mathlib.Combinatorics.SimpleGraph.Clique\n\n/-!\n---\ntitle: Tree-independence number and induced bicliques\ntype: definition\n---\nThe independence number of a tree decomposition is the largest independence\nnumber of one of its bags. Minimizing over all tree decompositions gives the\ntree-independence number. An induced $K_{t,t}$ consists of 2 disjoint\nindependent sets of size $t$ with all edges between them present.\n-/\n\nnamespace Lax528502.TreeIndependence\n\nopen Lax228581.Treewidth\n\nvariable {V : Type} [Fintype V] [DecidableEq V]\n\n/-- Exclusion of an induced complete bipartite graph with both sides of size t. -/\ndef InducedBicliqueFree (G : SimpleGraph V) (t : ℕ) : Prop :=\n  ¬ ∃ A B : Finset V, A.card = t ∧ B.card = t ∧ Disjoint A B ∧\n    G.IsIndepSet (A : Set V) ∧ G.IsIndepSet (B : Set V) ∧\n    ∀ a ∈ A, ∀ b ∈ B, G.Adj a b\n\n/-- Every independent subset of a bag has at most k vertices. -/\ndef BagBound {G : SimpleGraph V} (D : TreeDecomposition G) (k : ℕ) : Prop :=\n  ∀ i, ∀ A ⊆ D.bag i, G.IsIndepSet (A : Set V) → A.card ≤ k\n\n/-- Minimum over the independence bounds of the decompositions of G. -/\nnoncomputable def treeIndependenceNumber (G : SimpleGraph V) : ℕ :=\n  sInf {k | ∃ D : TreeDecomposition G, BagBound D k}\n\n/-- Number of tree nodes, adjacency matrix of the tree, then the node-by-vertex\nbag membership matrix. The choice of node numbering belongs to the producer. -/\nnoncomputable def encode {n m : ℕ} {G : SimpleGraph V} (order : Fin n ≃ V)\n    (D : TreeDecomposition G) (nodes : Fin m ≃ D.Node) : List ℕ :=\n  m :: ContractionInput.matrix m m (fun i j => D.tree.Adj (nodes i) (nodes j)) ++\n    ContractionInput.matrix m n (fun i j => order j ∈ D.bag (nodes i))\n\nend Lax528502.TreeIndependence\n",
+      "sourceText": "import Lax228581.Treewidth\nimport Lax528502.ContractionInput\nimport Mathlib.Combinatorics.SimpleGraph.Clique\n\n/-!\n---\ntitle: Tree-independence number and induced bicliques\ntype: definition\n---\nThe independence number of a tree decomposition is the largest independence\nnumber of one of its bags. Minimizing over all tree decompositions gives the\ntree-independence number. An induced $K_{t,t}$ consists of 2 disjoint\nindependent sets of size $t$ with all edges between them present.\n-/\n\nnamespace Lax528502.TreeIndependence\n\nopen Lax228581.Treewidth\n\nvariable {V : Type} [DecidableEq V]\n\n/-- Exclusion of an induced complete bipartite graph with both sides of size t. -/\ndef InducedBicliqueFree (G : SimpleGraph V) (t : ℕ) : Prop :=\n  ¬ ∃ A B : Finset V, A.card = t ∧ B.card = t ∧ Disjoint A B ∧\n    G.IsIndepSet (A : Set V) ∧ G.IsIndepSet (B : Set V) ∧\n    ∀ a ∈ A, ∀ b ∈ B, G.Adj a b\n\n/-- Every independent subset of a bag has at most k vertices. -/\ndef BagBound {G : SimpleGraph V} (D : TreeDecomposition G) (k : ℕ) : Prop :=\n  ∀ i, ∀ A ⊆ D.bag i, G.IsIndepSet (A : Set V) → A.card ≤ k\n\n/-- The largest size of an independent set contained in a bag of the decomposition. -/\nnoncomputable def bagIndependenceNumber {G : SimpleGraph V} (D : TreeDecomposition G) : ℕ := by\n  classical\n  letI := D.nodeFintype\n  exact (Finset.univ : Finset D.Node).sup fun i =>\n    ((D.bag i).powerset.filter fun A : Finset V => G.IsIndepSet (A : Set V)).sup Finset.card\n\n/-- Bounding the maximum is equivalent to bounding every independent set in every bag. -/\ntheorem bagIndependenceNumber_le_iff {G : SimpleGraph V} (D : TreeDecomposition G) (k : ℕ) :\n    bagIndependenceNumber D ≤ k ↔ BagBound D k := by\n  classical\n  simp [bagIndependenceNumber, BagBound, Finset.sup_le_iff]\n\n/-- The minimum bag independence number over the tree decompositions of G. -/\nnoncomputable def treeIndependenceNumber (G : SimpleGraph V) : ℕ :=\n  sInf (Set.range fun D : TreeDecomposition G => bagIndependenceNumber D)\n\n/-- Number of tree nodes, adjacency matrix of the tree, then the node-by-vertex\nbag membership matrix. The choice of node numbering belongs to the producer. -/\nnoncomputable def encode {n m : ℕ} {G : SimpleGraph V} (order : Fin n ≃ V)\n    (D : TreeDecomposition G) (nodes : Fin m ≃ D.Node) : List ℕ :=\n  m :: ContractionInput.matrix m m (fun i j => D.tree.Adj (nodes i) (nodes j)) ++\n    ContractionInput.matrix m n (fun i j => order j ∈ D.bag (nodes i))\n\nend Lax528502.TreeIndependence\n",
       "statements": []
     },
     {
@@ -580,25 +601,24 @@
       "type": "theorem",
       "description": "Let $t\\ge 2$. If $G$ has twin-width at most $2$ and contains no induced\n$K_{t,t}$, its tree-independence number is at most $84(t-1)$. A word RAM\ngiven $t$, $G$, and a $2$-sequence outputs a tree decomposition with this\nbag bound in $n^{O(t)}$ instructions (Theorem 4.1).\n\nOne program and one absolute constant serve every $t$ and every graph order\n$n$. A word width sufficient to address $(n+2)^{ct}$ cells suffices. The\naddition of $2$ includes the cases $n=0$ and $n=1$.",
       "imports": [
-        "Lax528502.TreeIndependence",
-        "Lax808846.Ram"
+        "Lax528502.DecompositionAlgorithms"
       ],
       "mathlibImports": [],
-      "sourceText": "import Lax528502.TreeIndependence\nimport Lax808846.Ram\n\n/-!\n---\ntitle: Tree-independence number of induced-biclique-free graphs of twin-width at most 2\ntype: theorem\n---\nLet $t\\ge 2$. If $G$ has twin-width at most $2$ and contains no induced\n$K_{t,t}$, its tree-independence number is at most $84(t-1)$. A word RAM\ngiven $t$, $G$, and a $2$-sequence outputs a tree decomposition with this\nbag bound in $n^{O(t)}$ instructions (Theorem 4.1).\n\nOne program and one absolute constant serve every $t$ and every graph order\n$n$. A word width sufficient to address $(n+2)^{ct}$ cells suffices. The\naddition of $2$ includes the cases $n=0$ and $n=1$.\n-/\n\nnamespace Lax528502.TreeIndependenceBound\n\nopen Lax228581.TwinWidth Lax228581.Treewidth Lax808846.Ram TreeIndependence\n\n/-- A single program constructs a tree and its bags in time n to an exponent\nlinear in t. The word-width threshold is fixed by the input parameters. -/\naxiom construct :\n    ∃ (program : Program) (c : ℕ), 0 < c ∧\n      ∀ {V : Type} [Fintype V] [DecidableEq V] {n : ℕ} (order : Fin n ≃ V)\n        (G : SimpleGraph V) (S : PartitionSequence G 2) (t : ℕ),\n        2 ≤ t → InducedBicliqueFree G t →\n        ∀ w : ℕ, (n + 2) ^ (c * t) < 2 ^ w →\n          ∃ (D : TreeDecomposition G) (m : ℕ) (nodes : Fin m ≃ D.Node)\n            (steps : ℕ), BagBound D (84 * (t - 1)) ∧ steps ≤ (n + 2) ^ (c * t) ∧\n              RunsTo w program (ContractionInput.tape (t :: ContractionInput.encode order G S))\n                (TreeIndependence.encode order D nodes) steps\n\n/-- Excluding an induced biclique bounds the independence number of the bags. -/\naxiom treeIndependence_le {V : Type} [Fintype V] [DecidableEq V] (G : SimpleGraph V)\n    (t : ℕ) (ht : 2 ≤ t) (hfree : InducedBicliqueFree G t) (h : HasTwinWidthAtMost G 2) :\n    treeIndependenceNumber G ≤ 84 * (t - 1)\n\nend Lax528502.TreeIndependenceBound\n",
+      "sourceText": "import Lax528502.DecompositionAlgorithms\n\n/-!\n---\ntitle: Tree-independence number of induced-biclique-free graphs of twin-width at most 2\ntype: theorem\n---\nLet $t\\ge 2$. If $G$ has twin-width at most $2$ and contains no induced\n$K_{t,t}$, its tree-independence number is at most $84(t-1)$. A word RAM\ngiven $t$, $G$, and a $2$-sequence outputs a tree decomposition with this\nbag bound in $n^{O(t)}$ instructions (Theorem 4.1).\n\nOne program and one absolute constant serve every $t$ and every graph order\n$n$. A word width sufficient to address $(n+2)^{ct}$ cells suffices. The\naddition of $2$ includes the cases $n=0$ and $n=1$.\n-/\n\nnamespace Lax528502.TreeIndependenceBound\n\nopen DecompositionAlgorithms Lax228581.TwinWidth Lax228581.Treewidth Lax808846.Ram TreeIndependence\n\nvariable {V : Type} [Fintype V] [DecidableEq V]\n\n/-- For t ≥ 2, excluding an induced K_{t,t} bounds the tree-independence number. -/\naxiom treeIndependence_le (G : SimpleGraph V) (t : ℕ) (ht : 2 ≤ t)\n    (hfree : InducedBicliqueFree G t) (h : HasTwinWidthAtMost G 2) :\n    treeIndependenceNumber G ≤ 84 * (t - 1)\n\n/-- Given a 2-sequence, find a tree decomposition with the stated bag bound in time n^{O(t)}. -/\naxiom construct :\n    ∃ (program : Program) (c : ℕ), 0 < c ∧\n      ∀ (I : GraphWithTwoSequence) (t : ℕ), 2 ≤ t → InducedBicliqueFree I.graph t →\n        ∃ D : TreeDecomposition I.graph, bagIndependenceNumber D ≤ 84 * (t - 1) ∧\n          OutputsTreeDecompositionWithin program I t D ((I.n + 2) ^ (c * t))\n\nend Lax528502.TreeIndependenceBound\n",
       "statements": [
         {
           "id": "Lax528502.TreeIndependenceBound.construct",
-          "signature": "construct : Exists fun program =>\n  Exists fun c =>\n    And (instLTNat.lt 0 c)\n      (∀ {V : Type} [inst : Fintype V] [inst_1 : DecidableEq V] {n : Nat} (order : Equiv (Fin n) V) (G : SimpleGraph V)\n        (S : Lax228581.TwinWidth.PartitionSequence G 2) (t : Nat),\n        instLENat.le 2 t →\n          Lax528502.TreeIndependence.InducedBicliqueFree G t →\n            ∀ (w : Nat),\n              instLTNat.lt (instHPow.hPow (instHAdd.hAdd n 2) (instHMul.hMul c t)) (instHPow.hPow 2 w) →\n                Exists fun D =>\n                  Exists fun m =>\n                    Exists fun nodes =>\n                      Exists fun steps =>\n                        And (Lax528502.TreeIndependence.BagBound D (instHMul.hMul 84 (instHSub.hSub t 1)))\n                          (And (instLENat.le steps (instHPow.hPow (instHAdd.hAdd n 2) (instHMul.hMul c t)))\n                            (Lax808846.Ram.RunsTo w program\n                              (Lax528502.ContractionInput.tape\n                                (List.cons t (Lax528502.ContractionInput.encode order G S)))\n                              (Lax528502.TreeIndependence.encode order D nodes) steps)))",
-          "startLine": 23,
+          "signature": "construct : Exists fun program =>\n  Exists fun c =>\n    And (instLTNat.lt 0 c)\n      (∀ (I : Lax528502.DecompositionAlgorithms.GraphWithTwoSequence) (t : Nat),\n        instLENat.le 2 t →\n          Lax528502.TreeIndependence.InducedBicliqueFree I.graph t →\n            Exists fun D =>\n              And\n                (instLENat.le (Lax528502.TreeIndependence.bagIndependenceNumber D)\n                  (instHMul.hMul 84 (instHSub.hSub t 1)))\n                (Lax528502.DecompositionAlgorithms.OutputsTreeDecompositionWithin program I t D\n                  (instHPow.hPow (instHAdd.hAdd I.n 2) (instHMul.hMul c t))))",
+          "startLine": 29,
           "endLine": 34,
-          "doc": "A single program constructs a tree and its bags in time n to an exponent\nlinear in t. The word-width threshold is fixed by the input parameters."
+          "doc": "Given a 2-sequence, find a tree decomposition with the stated bag bound in time n^{O(t)}."
         },
         {
           "id": "Lax528502.TreeIndependenceBound.treeIndependence_le",
           "signature": "treeIndependence_le : ∀ {V : Type} [inst : Fintype V] [inst_1 : DecidableEq V] (G : SimpleGraph V) (t : Nat),\n  instLENat.le 2 t →\n    Lax528502.TreeIndependence.InducedBicliqueFree G t →\n      Lax228581.TwinWidth.HasTwinWidthAtMost G 2 →\n        instLENat.le (Lax528502.TreeIndependence.treeIndependenceNumber G) (instHMul.hMul 84 (instHSub.hSub t 1))",
-          "startLine": 36,
-          "endLine": 39,
-          "doc": "Excluding an induced biclique bounds the independence number of the bags."
+          "startLine": 24,
+          "endLine": 27,
+          "doc": "For t ≥ 2, excluding an induced K_{t,t} bounds the tree-independence number."
         }
       ]
     }
@@ -919,15 +939,24 @@
       "description": "The parent-child graph on preorder nodes is a tree. Inside labels reach down\nto their vertex's leaf. Heavy labels reach up to that leaf's branch, where\nthe sibling inequality connects them to an inside label. These paths connect\nthe occurrences of each vertex. For an edge, descend until its ends separate,\nthen use the cut labels to find a bag containing both ends."
     },
     {
-      "id": "Lax528502Proofs.WidthBounds.mimWidth_le_eight",
+      "id": "Lax528502Proofs.WidthBounds.exists_branchDecomposition",
       "path": "proofs/Lax528502Proofs/WidthBounds.lean",
-      "conclusion": "Lax528502.MimWidthBound.mimWidth_le_eight",
+      "conclusion": "Lax528502.MimWidthBound.exists_branchDecomposition",
       "assumptions": [
         "Lax528502.BinaryRefinement.width_le_eight",
         "Lax528502.Fringes.four_chains",
         "Lax528502.PartitionHierarchy.exists_tree"
       ],
-      "description": "Refine the tree of auxiliary parts to a binary tree. Its cuts witness the\nbound in the minimum over branch decompositions."
+      "description": "Refine the tree of auxiliary parts to a binary tree. Every cut of this\nbranch decomposition has mim-width at most 8."
+    },
+    {
+      "id": "Lax528502Proofs.WidthBounds.mimWidth_le_eight",
+      "path": "proofs/Lax528502Proofs/WidthBounds.lean",
+      "conclusion": "Lax528502.MimWidthBound.mimWidth_le_eight",
+      "assumptions": [
+        "Lax528502.MimWidthBound.exists_branchDecomposition"
+      ],
+      "description": "The graph's mim-width is the minimum over its branch decompositions."
     },
     {
       "id": "Lax528502Proofs.WidthBounds.treeIndependence_le",
@@ -944,8 +973,8 @@
   ],
   "capture": {
     "formatVersion": 1,
-    "digest": "1d9e5c64569ddc7283363ea369b3b9040c4efb5078f5de0f46fb34bb5cae0215",
-    "sourceCommit": "a6d225a3da500cceabebbd01c61d6c0c441318fc",
+    "digest": "dd009d4210f69fc268ddbc6e90a42fe3529db2237cf30adfc50a550bc8cd13fc",
+    "sourceCommit": "250f57ff8df9bbcb6f650ad04d2192ec9dcaa8a4",
     "leanToolchain": "leanprover/lean4:v4.33.0",
     "mathlibCommit": "db584cd6d46c92f209a44c0f1c829460d327499d",
     "files": [
@@ -971,13 +1000,13 @@
       },
       {
         "path": "concepts/ir/Lax528502/BoundedMimAlgorithms.c",
-        "bytes": 2067,
-        "sha256": "da26697d0d409b54a4458545891bdf29fdb67b1383957145e0d929700f6e872a"
+        "bytes": 1389,
+        "sha256": "af1ad139f050bb23b61330e981883b255dad466c301d192c7c6f1b0b099ab74a"
       },
       {
         "path": "concepts/ir/Lax528502/BoundedMimAlgorithms.c.hash",
         "bytes": 16,
-        "sha256": "f43703c040e59f2565493eae5a73f7ed78fb75ef183899040e9dc46eebae2bc6"
+        "sha256": "a2789cea0dd955e592784a17ea78f5e82f0ee59a5980916eb234a554af7cb8be"
       },
       {
         "path": "concepts/ir/Lax528502/ChainCuts.c",
@@ -1040,6 +1069,16 @@
         "sha256": "d4521b59139016f32b6bbc2b8553bd9d4240809e2b9f768dce609d400da6a127"
       },
       {
+        "path": "concepts/ir/Lax528502/DecompositionAlgorithms.c",
+        "bytes": 4068,
+        "sha256": "6cbf37c81d7d8eb89ffc630c17ef9a3d935be54b399c28a18a06c43724ccc716"
+      },
+      {
+        "path": "concepts/ir/Lax528502/DecompositionAlgorithms.c.hash",
+        "bytes": 16,
+        "sha256": "aba416d74a040a32e0289fdbe7c70d59df1a25368603dfb0e6484e5d4df64045"
+      },
+      {
         "path": "concepts/ir/Lax528502/DisjointPaths.c",
         "bytes": 1824,
         "sha256": "8e80ceaf054ef45215948beaa1fecd4b1d805747a320fa051bc5c617106b8ea3"
@@ -1061,13 +1100,13 @@
       },
       {
         "path": "concepts/ir/Lax528502/GraphAlgorithms.c",
-        "bytes": 1832,
-        "sha256": "6ba6437a56c4e21ccc296483422b17bea1cc2e29a642116d2bba5590b0d2b843"
+        "bytes": 1379,
+        "sha256": "93f75e8f6e8bb8b87962fd93a65f8fb7b54a8f8b5e1fa0b35adbd6070584081d"
       },
       {
         "path": "concepts/ir/Lax528502/GraphAlgorithms.c.hash",
         "bytes": 16,
-        "sha256": "4741173da78ccb67f5bd2f94fa6f5dc4a1ad39e07ef829324a0c9110daf7675f"
+        "sha256": "5913c6607e716836a34b12e1a66fdd1c4f7ba68d7a98fd10820e9ff13dc00b27"
       },
       {
         "path": "concepts/ir/Lax528502/GraphProblems.c",
@@ -1091,13 +1130,13 @@
       },
       {
         "path": "concepts/ir/Lax528502/MimWidthBound.c",
-        "bytes": 1813,
-        "sha256": "a5ce6b876a2fdf38caee5ef556ff434b9341df439020c07a357a06bbb61eb587"
+        "bytes": 1375,
+        "sha256": "a4254d025f679dc3e27853e1474f059da74f45fc99fab8be81c1968774cdf84a"
       },
       {
         "path": "concepts/ir/Lax528502/MimWidthBound.c.hash",
         "bytes": 16,
-        "sha256": "75860e36a745d9a3b161287982f83177ef3fefab523796dd8706d84d13af0bbe"
+        "sha256": "26022ac4a1d9b7d55c23da355584fd23ecdbcc8ab5b8340a87b2762d22419f69"
       },
       {
         "path": "concepts/ir/Lax528502/MinimumColoring.c",
@@ -1141,23 +1180,23 @@
       },
       {
         "path": "concepts/ir/Lax528502/TreeIndependenceBound.c",
-        "bytes": 1580,
-        "sha256": "e2f23589dd2733b9dfaac9f727c2ebef914f7deecd99e4d3e1c0a8d4dde04809"
+        "bytes": 1391,
+        "sha256": "900d49bd0803fbdb592a3825466b2f42d11ca40fd8938b6dffe1d638674ce6f8"
       },
       {
         "path": "concepts/ir/Lax528502/TreeIndependenceBound.c.hash",
         "bytes": 16,
-        "sha256": "9e3a2e0c38c722b9f606ebb89a415edcfe0f58351807bddf29e71ca078a08e6b"
+        "sha256": "85e50e574ecf9b114b7c75e554cfba6a33819f5fcddd8fb108e871fa8ff57886"
       },
       {
         "path": "concepts/ir/Lax528502.c",
-        "bytes": 5961,
-        "sha256": "27d7ebeb376bae22f15dc563da88cf50a1256910f47da040db514ded85fc7b60"
+        "bytes": 6231,
+        "sha256": "62a48dd30bdf38f6c0db73541cb77a36e86184c16d3337a405e5f851e5872664"
       },
       {
         "path": "concepts/ir/Lax528502.c.hash",
         "bytes": 16,
-        "sha256": "67803739ca1075879b9177bcd12703bd7c2f6d3a656d524198480d4a06127750"
+        "sha256": "b02293df7b442e2c46cd0de9518546353e651ad228039ea269a69b91de0bf469"
       },
       {
         "path": "concepts/lib/Lax528502/AuxiliaryTree.ilean",
@@ -1182,7 +1221,7 @@
       {
         "path": "concepts/lib/Lax528502/AuxiliaryTree.trace",
         "bytes": 2597,
-        "sha256": "2d5de4f83f23f3d262b12ff9c26ec62f0df3edf48f8b8586460cf317b5558e6c"
+        "sha256": "6155d065dfcfee73865c55de4a8034e20c20989a3bcba8800a54e6ec903c6c3f"
       },
       {
         "path": "concepts/lib/Lax528502/BinaryRefinement.ilean",
@@ -1207,32 +1246,32 @@
       {
         "path": "concepts/lib/Lax528502/BinaryRefinement.trace",
         "bytes": 2485,
-        "sha256": "41ab3274f5feb8b7e360db737759195632d04165d88808961c0b04281b22d64b"
+        "sha256": "d59123bf1da06d354ea00b2c81bc6afdea0c2f0494356d192c93089b7786ed84"
       },
       {
         "path": "concepts/lib/Lax528502/BoundedMimAlgorithms.ilean",
-        "bytes": 15832,
-        "sha256": "e606cd02a72505d78e92fae74a5fda6d7f1b21e21dc5ee03c623a016a195c47b"
+        "bytes": 6988,
+        "sha256": "792ec50c05448338857724b8e55c96f6482e6e3255b35a17029abd6999aceaa1"
       },
       {
         "path": "concepts/lib/Lax528502/BoundedMimAlgorithms.ilean.hash",
         "bytes": 16,
-        "sha256": "23664c5a4d9284afa6065c2d05177b57cb02c543093cd88ce371df14cb478582"
+        "sha256": "b21cfd546a58489183df63378093b458ed50b233518e12cd1e12bb3dd3910196"
       },
       {
         "path": "concepts/lib/Lax528502/BoundedMimAlgorithms.olean",
-        "bytes": 22808,
-        "sha256": "49c8db3112f7022d868250b2c850cfc81db924cf3f1f1b882ce4d8aed0f22e58"
+        "bytes": 17680,
+        "sha256": "adb720985c213a916347a2091ddb5375b15f8e0968e765d1bba7222580ea1ac9"
       },
       {
         "path": "concepts/lib/Lax528502/BoundedMimAlgorithms.olean.hash",
         "bytes": 16,
-        "sha256": "56aeac05c3481f2745a9e356ffd54cb99ec34578372b6b3fd75195100f69d40f"
+        "sha256": "c3292bd520cc63b0c82c17ad49a1bde8d7064dd6ee53b220a0539ba56b2ca5e9"
       },
       {
         "path": "concepts/lib/Lax528502/BoundedMimAlgorithms.trace",
-        "bytes": 2968,
-        "sha256": "98d812f5fad43fbebe173d21f1876b6b72aa93a6aa0e753288417ab753d0cabd"
+        "bytes": 2540,
+        "sha256": "e6e534e2914d9f02a76442582e96503d0a5609a80a49d98c87361a74292952fb"
       },
       {
         "path": "concepts/lib/Lax528502/ChainCuts.ilean",
@@ -1257,7 +1296,7 @@
       {
         "path": "concepts/lib/Lax528502/ChainCuts.trace",
         "bytes": 2584,
-        "sha256": "9f4f69c277618911e764dd55ae9ae21541d9ca6d3b53e062cce376a40d65f245"
+        "sha256": "3ab136124e05b03ceefdee9218e96c084176b51f9a6bde7187f050c6727e4a28"
       },
       {
         "path": "concepts/lib/Lax528502/CliqueConstruction.ilean",
@@ -1282,7 +1321,7 @@
       {
         "path": "concepts/lib/Lax528502/CliqueConstruction.trace",
         "bytes": 2662,
-        "sha256": "4fd25e7d3b4cc30c5ed2cf1a852a967d28639f155fe3a18edfcc4dd5441318d2"
+        "sha256": "5d14c9a4cd47e7553a708b9297ce83daec0a33d64091e370afa7d0bbedf5a4f6"
       },
       {
         "path": "concepts/lib/Lax528502/ColoringGadgets.ilean",
@@ -1311,53 +1350,53 @@
       },
       {
         "path": "concepts/lib/Lax528502/ColoringInstances.ilean",
-        "bytes": 6320,
-        "sha256": "40492ea5c54ec7bcde957955a834b87699cf573d1416a862139af6544defd14a"
+        "bytes": 8139,
+        "sha256": "e3d08c497013b67baae873a6e50b1a364b2af1be8d9d7f904dad1327fe15d49e"
       },
       {
         "path": "concepts/lib/Lax528502/ColoringInstances.ilean.hash",
         "bytes": 16,
-        "sha256": "c04613048580f57b4d03f27d44d08aa079a9bc78411946f4c07c71458d802864"
+        "sha256": "544d7a4998ef9f56b3664d1407ef167c352cd0f7d11572baa6d92bd72e4308e6"
       },
       {
         "path": "concepts/lib/Lax528502/ColoringInstances.olean",
-        "bytes": 88008,
-        "sha256": "f86a509ac8ec215bb256cd0fec17054ef577de1d3edcca6fe628d789df3f5425"
+        "bytes": 92984,
+        "sha256": "593fac801dc19d7be999a8a211c1c16ff918da8e7139dc0fd8891c3e10215d28"
       },
       {
         "path": "concepts/lib/Lax528502/ColoringInstances.olean.hash",
         "bytes": 16,
-        "sha256": "2d0cefe716bff33f566558aff0bb8120f00fea76184f6da63bdc3f086bc4cc02"
+        "sha256": "69380efd61aeb5e6a09fa5f8a9d5cd935c02642fe72ac57d5eeadb2e7eaebae0"
       },
       {
         "path": "concepts/lib/Lax528502/ColoringInstances.trace",
         "bytes": 3046,
-        "sha256": "cba5260e19b914b8542d683498630896629ae4eadb326df1536974fb38ffc01c"
+        "sha256": "7f8ccd5b714fe6e9c1d2fe650de8e09cbbf60fb70899769f51082ab8dca06a8c"
       },
       {
         "path": "concepts/lib/Lax528502/ColoringReduction.ilean",
-        "bytes": 5244,
-        "sha256": "0486fd627de25172630caa5fe4f6f01b45817aca4886d1e67afa227076448472"
+        "bytes": 5259,
+        "sha256": "18f487870e46d4aeac797646006256bf54da8d1a8d87ad9e2453cdd9b3284e29"
       },
       {
         "path": "concepts/lib/Lax528502/ColoringReduction.ilean.hash",
         "bytes": 16,
-        "sha256": "08a55a2aafca4e1bbb0f8c25f12965baf864d84b508cda89f5a7b4eed6e4189e"
+        "sha256": "63ef29d225b62a51a638eb7c892c495e4b9e18834fef234436ac90d2476040ce"
       },
       {
         "path": "concepts/lib/Lax528502/ColoringReduction.olean",
-        "bytes": 15072,
-        "sha256": "7b987b54a965fb0c20b697196712bd73d8bd2da04b17593988d4eaab82b181e2"
+        "bytes": 15088,
+        "sha256": "b81c7c5f8e7fe47598f3ff066f85c0e95f63dbdf735d8b005d5c51b24dbe1d50"
       },
       {
         "path": "concepts/lib/Lax528502/ColoringReduction.olean.hash",
         "bytes": 16,
-        "sha256": "4194c2ab915ac451a6ca94d51ba4276d2178377f502097917ccd38ce45e8b92a"
+        "sha256": "970a05cd3fe20613b899264d5e4f7bb427b8b27d96cef9bb93f96174653bcdff"
       },
       {
         "path": "concepts/lib/Lax528502/ColoringReduction.trace",
         "bytes": 2850,
-        "sha256": "95a6e184b52d908cb58acb1cc359b9cb454abfd9b345d6ff8108e2ca3cfade74"
+        "sha256": "22cfb1030731cbe5467c422d599b5018095ea3368ff7ec4dabf6fb7f9d35ea21"
       },
       {
         "path": "concepts/lib/Lax528502/ContractionInput.ilean",
@@ -1385,6 +1424,31 @@
         "sha256": "e881f72b4c4bc5f0b6e0777be09fe6a96d77d93abb44d5019836e08bc2f42dd0"
       },
       {
+        "path": "concepts/lib/Lax528502/DecompositionAlgorithms.ilean",
+        "bytes": 15628,
+        "sha256": "c924a68f3c1842b00db10a5f9278c75485d01200db01780102aeee2f195edf0f"
+      },
+      {
+        "path": "concepts/lib/Lax528502/DecompositionAlgorithms.ilean.hash",
+        "bytes": 16,
+        "sha256": "918bcbdbc29ec426a66c0aff2f6c5f78a944c1c28714201ed4b027ed9176d2fc"
+      },
+      {
+        "path": "concepts/lib/Lax528502/DecompositionAlgorithms.olean",
+        "bytes": 124864,
+        "sha256": "98ed7aa4e8133da280599884cc87e1219420091c19a4ce2f3808c6cd7c52c1da"
+      },
+      {
+        "path": "concepts/lib/Lax528502/DecompositionAlgorithms.olean.hash",
+        "bytes": 16,
+        "sha256": "7b4999233bbfe290c565f08a9071200172e9200512f63f57aab6231d3b2cf058"
+      },
+      {
+        "path": "concepts/lib/Lax528502/DecompositionAlgorithms.trace",
+        "bytes": 3289,
+        "sha256": "0c12c06ee684396d7856a8f0014277083e48931c7159ab8f245cc4e534facb85"
+      },
+      {
         "path": "concepts/lib/Lax528502/DisjointPaths.ilean",
         "bytes": 6943,
         "sha256": "85f9256a4ab9b28e409c73c6e7f66e30226bdaea55dd320d35f6a39a829a0416"
@@ -1407,7 +1471,7 @@
       {
         "path": "concepts/lib/Lax528502/DisjointPaths.trace",
         "bytes": 2777,
-        "sha256": "b68a297d4e133948d9a39656d067f20d7bb907fa1ee548a9466b3ce0165439ce"
+        "sha256": "e7d966cb5b6f5b8fb5a327ee5825231fde2f4a90a689267262e50cc3814417e9"
       },
       {
         "path": "concepts/lib/Lax528502/Fringes.ilean",
@@ -1432,32 +1496,32 @@
       {
         "path": "concepts/lib/Lax528502/Fringes.trace",
         "bytes": 2551,
-        "sha256": "3299103b653b697a59430077737bd277fbee2f28c65108455e5ff79b78a1b83c"
+        "sha256": "64223e86a4cbf0f17a4a4e8f4a75612aa4e14aa4b6c794a46bd7e77f963ba991"
       },
       {
         "path": "concepts/lib/Lax528502/GraphAlgorithms.ilean",
-        "bytes": 3959,
-        "sha256": "238ba814a877c559510aa2ca3e0a77fb5c493890d8336d0ca7d08aa5c8c8c336"
+        "bytes": 2871,
+        "sha256": "648094116c9441821a1abc6e8a2ed670ded76a384e6e8d27688bd8165b9e2484"
       },
       {
         "path": "concepts/lib/Lax528502/GraphAlgorithms.ilean.hash",
         "bytes": 16,
-        "sha256": "bb75a98265494aed0125fb7f21f18b01c5b6661fa44957308954df913cc191ec"
+        "sha256": "df55f0d09c65ecca216d52f140d73647243f0e23e75aa452488b32d93aeb8425"
       },
       {
         "path": "concepts/lib/Lax528502/GraphAlgorithms.olean",
-        "bytes": 13240,
-        "sha256": "7672791dd41697846f5d472481fb02216eab6b5a373c9e485f8feffb3318d16a"
+        "bytes": 10288,
+        "sha256": "815db77084b07a2e1e508063c10fe9d88e53dc17c39081a88d5cd76708a7364b"
       },
       {
         "path": "concepts/lib/Lax528502/GraphAlgorithms.olean.hash",
         "bytes": 16,
-        "sha256": "2a2edecaa0e6840f904b702e4fbe97aafa823a21e64604536e8b1427105874c4"
+        "sha256": "370c3c56c6c74ba953df5673613449e6d2b5964c3a9b40b5a3670551630eb284"
       },
       {
         "path": "concepts/lib/Lax528502/GraphAlgorithms.trace",
-        "bytes": 2791,
-        "sha256": "015ef915cd29371dd04258704a632722d2649f946fc78d583195b82d9b4b7d27"
+        "bytes": 2505,
+        "sha256": "1eeca5c5d6da929c467395d23d71c86afba64ecd5a6b2ed90d6eeaedfc1fbdba"
       },
       {
         "path": "concepts/lib/Lax528502/GraphProblems.ilean",
@@ -1486,78 +1550,78 @@
       },
       {
         "path": "concepts/lib/Lax528502/MimWidth.ilean",
-        "bytes": 6686,
-        "sha256": "cb4834557df7293a195472ef8d2d35015f6d307cf2f6c6f295a110878b7a638d"
+        "bytes": 7262,
+        "sha256": "5e6f438d3565491e6d9e9510cedb6e4bd6666c2a732ce99533d4a3fc15324089"
       },
       {
         "path": "concepts/lib/Lax528502/MimWidth.ilean.hash",
         "bytes": 16,
-        "sha256": "122f3ec089f9a424cfaf8bf32dfb3ee3e1b828ae75e6e6ab001fae9b3c9d2411"
+        "sha256": "fa60f31a720834c3d5755ca00ee6ea50fb1afff659487a554f56a21651e9dad9"
       },
       {
         "path": "concepts/lib/Lax528502/MimWidth.olean",
-        "bytes": 80464,
-        "sha256": "d6d51aa36b85199fb3d1090ff2dd9ca100831fd3b6a0be5875434d844c2b01f5"
+        "bytes": 82128,
+        "sha256": "78e08d9a275d86c2cce703a91406c836af4401da19bd50d3f3b270569b59a91b"
       },
       {
         "path": "concepts/lib/Lax528502/MimWidth.olean.hash",
         "bytes": 16,
-        "sha256": "93f9249b311607b84c60c35e53b2964237b421784c06f8dafc01359ac31f2778"
+        "sha256": "f274033277cefd8c6d9986177acd39aed8eefa32a1c75a6ce44f82b76758565b"
       },
       {
         "path": "concepts/lib/Lax528502/MimWidth.trace",
         "bytes": 2952,
-        "sha256": "8ec7f267b25f720109ff8769a79aeb6571946c12726416f553888fdfbf1a411c"
+        "sha256": "b315a2691cfedd8f34fec2f7485e8ba0e32a56f18b62479bdb24751b27ae8cb0"
       },
       {
         "path": "concepts/lib/Lax528502/MimWidthBound.ilean",
-        "bytes": 3047,
-        "sha256": "0a6dff29521abdb46742a8a1a5a0f5e8911df04e029e810d2661654ffd0eefbc"
+        "bytes": 2866,
+        "sha256": "d877271a5acb863868761de7305da4bc0860f04811e8763828916e1a283406eb"
       },
       {
         "path": "concepts/lib/Lax528502/MimWidthBound.ilean.hash",
         "bytes": 16,
-        "sha256": "fcef888a4c50aaa1c293a184d147c2d397aff0f2e70a24fd231174ac0799065c"
+        "sha256": "d3f2a585b360943865028662224f7e990233f272a940ea2e8bba8e592df096ca"
       },
       {
         "path": "concepts/lib/Lax528502/MimWidthBound.olean",
-        "bytes": 13848,
-        "sha256": "8b2b84a7b03be45b606ef6694a59470c161dfc526c6e6fe4e68adb2561d2a025"
+        "bytes": 13008,
+        "sha256": "d3c746f3b5a8865450e7a8d0771a8e2108152237d2ba8d6429af098fafc55aac"
       },
       {
         "path": "concepts/lib/Lax528502/MimWidthBound.olean.hash",
         "bytes": 16,
-        "sha256": "032499286256a0915ec0a4a7881e1c5c09bc702ed12e4f30213dfc665520962d"
+        "sha256": "d513679d3cd1384a98fb46c2f9545bac422dc373d1d4771d5d82caf241553979"
       },
       {
         "path": "concepts/lib/Lax528502/MimWidthBound.trace",
-        "bytes": 2760,
-        "sha256": "a3383fb3f6295040d53ad364fcd2ae6b251b1fba81a93ae09dcf5082c397158a"
+        "bytes": 2491,
+        "sha256": "1db0f57466a0c34673559ba3bd57a1fbd0f28fc30c4527a3ef0e0d40583218a4"
       },
       {
         "path": "concepts/lib/Lax528502/MinimumColoring.ilean",
-        "bytes": 2531,
-        "sha256": "dc57b0289e4e5078ecd135acb989325620369db43755c66eee9d2676a66974d6"
+        "bytes": 1957,
+        "sha256": "b0091c3c0400257442642370ce14b140768a66501144d0a69132032ee61492a7"
       },
       {
         "path": "concepts/lib/Lax528502/MinimumColoring.ilean.hash",
         "bytes": 16,
-        "sha256": "964a3da43bfe49e77b7b3c532360d0d546802ea19cf946a62d29cac7ae2aa15e"
+        "sha256": "85b2bd7101046df4cf96456838384ee4162a14eb15337b34ed00439688a1a2cd"
       },
       {
         "path": "concepts/lib/Lax528502/MinimumColoring.olean",
-        "bytes": 10344,
-        "sha256": "45a7ef3b0734817697927e71f6b1b88cbecb8d76b4edaa8ba5266a6d22e1cb60"
+        "bytes": 7728,
+        "sha256": "3bf7ba6c2b8d3f65a8c3a346227dd53f6baa6978ca82ea52df378fd956240c93"
       },
       {
         "path": "concepts/lib/Lax528502/MinimumColoring.olean.hash",
         "bytes": 16,
-        "sha256": "c70fece8e72aa5b688d1ca1441c197443638bee0f648c683f6b25435d9ff7e8a"
+        "sha256": "8b0007461d42aefa0896369a010ddfb4959f39272da53b141f7b5d3976c0ed4a"
       },
       {
         "path": "concepts/lib/Lax528502/MinimumColoring.trace",
         "bytes": 2632,
-        "sha256": "cebe07a261ba80bc123359002674aab96c69c74b821aa02ae587a3a5f7023700"
+        "sha256": "ffc48b390dc06020a35b5e4b81d9e153fbc000ce8b86b86cc04ac7ac321f576b"
       },
       {
         "path": "concepts/lib/Lax528502/PartitionHierarchy.ilean",
@@ -1582,7 +1646,7 @@
       {
         "path": "concepts/lib/Lax528502/PartitionHierarchy.trace",
         "bytes": 2639,
-        "sha256": "886aaceca2c2d1d8f43fc3b7eb293429f36ed6aad67743e40c7fd657449ef22e"
+        "sha256": "e90cfcfcc3bdffb0d5bee96a780e72c377b5df156ccf09d3ffa11d48baa6bd68"
       },
       {
         "path": "concepts/lib/Lax528502/TreeBags.ilean",
@@ -1607,82 +1671,82 @@
       {
         "path": "concepts/lib/Lax528502/TreeBags.trace",
         "bytes": 2561,
-        "sha256": "9779b1a27a6d8748b7470a195311ebc25c32a056b8ecba474d6a9b0348635a76"
+        "sha256": "421d4424520f301ea52c5127bb4272f02953f9f36414eddbd91d829efa04b66c"
       },
       {
         "path": "concepts/lib/Lax528502/TreeIndependence.ilean",
-        "bytes": 5033,
-        "sha256": "7bb1825410dc940a2f976b8072045d5a1feb7d500e8d6d7f0450cc8545435004"
+        "bytes": 7828,
+        "sha256": "8b2f9f4c6e2f6962fdb0193584f5a5c34811af0ecca152922d3d496042da1100"
       },
       {
         "path": "concepts/lib/Lax528502/TreeIndependence.ilean.hash",
         "bytes": 16,
-        "sha256": "c007e3bb3339e9bce71e773dbd8d518b5006e45ab1101831e50dffdf939c37ef"
+        "sha256": "2d82bc2293e3036d3cbb5f9fc4f1d53aa606adff0f16e9059b99d6f9df96ba38"
       },
       {
         "path": "concepts/lib/Lax528502/TreeIndependence.olean",
-        "bytes": 25184,
-        "sha256": "48271cf88f76252911a47b27d7171b490d288d9d02bbe8ffe1404087b998af16"
+        "bytes": 52888,
+        "sha256": "8cd457616cfe7b546287625bc6dae49bea69bc887cd73d9930c72cd747424772"
       },
       {
         "path": "concepts/lib/Lax528502/TreeIndependence.olean.hash",
         "bytes": 16,
-        "sha256": "5294ce418a6de09afb2283d9634694e041cb4dfd3e65d39e16b7e31457470b5e"
+        "sha256": "3856655de64dd53c853e854e10b493fe599c997640f0603dd87061edf951af4f"
       },
       {
         "path": "concepts/lib/Lax528502/TreeIndependence.trace",
         "bytes": 2835,
-        "sha256": "d379a65a5e91ad46cde82fae08cb9fd68b1a37ef8620afcd75552598e779970c"
+        "sha256": "331e839c5615de5e78cbc4532502d5b3af2e83b2a3ac234b7a8b03f3444e1db0"
       },
       {
         "path": "concepts/lib/Lax528502/TreeIndependenceBound.ilean",
-        "bytes": 4342,
-        "sha256": "ad77e3b6e297c8ff6f2e020799efb13d7f97877eb8845c16388531bac071bcf6"
+        "bytes": 3470,
+        "sha256": "c703a3ef4e6cac99f66786284b4fa95d3e9daa3b16f5451eaca794f5c7c82602"
       },
       {
         "path": "concepts/lib/Lax528502/TreeIndependenceBound.ilean.hash",
         "bytes": 16,
-        "sha256": "06e692f36337f55c78638d8b9b5865f7fb8f65e56209ec38e9e2579d937cec91"
+        "sha256": "51d8f97b8f9c20d08e29e04bb6e931822b79b0f714ececb7a9c93a13e64a9300"
       },
       {
         "path": "concepts/lib/Lax528502/TreeIndependenceBound.olean",
-        "bytes": 20968,
-        "sha256": "4dd58135d012f230b6aabc3ed0b0862a7ae6279390bd97e8ed584c44afc5c732"
+        "bytes": 17648,
+        "sha256": "af69b12af226c0f343a1388849f0660e5625c0f7a112653e721a15e38e335021"
       },
       {
         "path": "concepts/lib/Lax528502/TreeIndependenceBound.olean.hash",
         "bytes": 16,
-        "sha256": "0d6b15c799ea65d7905ac35ae3b2c314d8b23eac351c1225a884cba623f4494a"
+        "sha256": "2f8e7ef42a6e014b91d76f82f9df2fd8263f3ff90a0f04161f3e793834c289a5"
       },
       {
         "path": "concepts/lib/Lax528502/TreeIndependenceBound.trace",
-        "bytes": 2658,
-        "sha256": "ca396d5efb659463261fe947209188128335dd4b7d9bce632a6ae40d6bcd7a4d"
+        "bytes": 2547,
+        "sha256": "83d96e6fcbad2841424f0ac6db67d39d0e5d88999c246a3b1452d584afafbd4e"
       },
       {
         "path": "concepts/lib/Lax528502.ilean",
-        "bytes": 1027,
-        "sha256": "7ac700291e75a990af1e655fe37b126c3724526e52549a74851ed4d5dccabcc1"
+        "bytes": 1083,
+        "sha256": "4134dd8a06099be9aea55f70ffc5e760b2002d30f2e4c146e42916ad916189e9"
       },
       {
         "path": "concepts/lib/Lax528502.ilean.hash",
         "bytes": 16,
-        "sha256": "1c7e39a23b2759e5d8c338ed3e4d4d9f1052ae6b4a88c380c787a9a3a7c5e5e8"
+        "sha256": "93ede44331245a8208edd9647e17e20c61ca43192227b90e9cf378e35232f6b1"
       },
       {
         "path": "concepts/lib/Lax528502.olean",
-        "bytes": 3720,
-        "sha256": "2882d94a0d570afd2c14bb7e2fc790ecb6ac4abf22d419d860e6f0fbe4cb1617"
+        "bytes": 3840,
+        "sha256": "96d2e4151a0b1ba41d29d8c8d95abc7340ec0038a8a9c1afe6e169c39cbeacc9"
       },
       {
         "path": "concepts/lib/Lax528502.olean.hash",
         "bytes": 16,
-        "sha256": "68b0c28d21599a46295602a541b1a0f3722984130dcfb93b8a134308d4c7d028"
+        "sha256": "02758af647dd41ea62b5535e07f1e469204d8c3f53244b96efb752a32315c819"
       },
       {
         "path": "concepts/lib/Lax528502.trace",
-        "bytes": 5415,
-        "sha256": "98817bf40359efdf2862d4731469552c203419fffff71879f436130ef3248970"
+        "bytes": 5594,
+        "sha256": "7b6d46162bae0e385b462e14fd08d3e77afc7f8c0be24b0e167944c97e020c8a"
       },
       {
         "path": "concepts/package/lake-manifest.json",
@@ -1706,8 +1770,8 @@
       },
       {
         "path": "concepts/package/Lax528502/BoundedMimAlgorithms.lean",
-        "bytes": 4682,
-        "sha256": "035c83c6f8134b5247f7960a0403916fb1e6ec247d5daf55b6e5c4662674414f"
+        "bytes": 3174,
+        "sha256": "9e8e66c74ee06cab3d63178ecbeb918aa553d6fba8864ada1f8e79b16039f7d4"
       },
       {
         "path": "concepts/package/Lax528502/ChainCuts.lean",
@@ -1726,18 +1790,23 @@
       },
       {
         "path": "concepts/package/Lax528502/ColoringInstances.lean",
-        "bytes": 1538,
-        "sha256": "6c2b2707ddc5097e67cee4a8f7494e62f77499d82969d4ad178d90d9a0200fc7"
+        "bytes": 2380,
+        "sha256": "0abf422c425f062b0e91e37ef0faf8f6d063034a0260bf1b5767283820c6ecea"
       },
       {
         "path": "concepts/package/Lax528502/ColoringReduction.lean",
-        "bytes": 1841,
-        "sha256": "bce0e3b0143889ea07e079f44650bb9ce30e94cd65939e6bb024c062af16122c"
+        "bytes": 1871,
+        "sha256": "2c6dbbcfa68e9c99342d8b1bc7c3da429477f922d5f62c11e7de2120609dffef"
       },
       {
         "path": "concepts/package/Lax528502/ContractionInput.lean",
         "bytes": 1775,
         "sha256": "c93d3de0c7fd756c73e55d4eb2aab7b139c4ac8028bc956dfdedf09755d80145"
+      },
+      {
+        "path": "concepts/package/Lax528502/DecompositionAlgorithms.lean",
+        "bytes": 4285,
+        "sha256": "08a667927b08dc725b165971660bd86893963519a300a6abf194f000dc6e8397"
       },
       {
         "path": "concepts/package/Lax528502/DisjointPaths.lean",
@@ -1751,8 +1820,8 @@
       },
       {
         "path": "concepts/package/Lax528502/GraphAlgorithms.lean",
-        "bytes": 1545,
-        "sha256": "aece735d8ff0fe3acc8f94d80fa90dc195a9151a742e63d527a7c76889beb534"
+        "bytes": 1357,
+        "sha256": "c66eb3e418da0ac2c9db6f3f2731d536f54fa41ea3c1a7f4024178060eed3130"
       },
       {
         "path": "concepts/package/Lax528502/GraphProblems.lean",
@@ -1761,18 +1830,18 @@
       },
       {
         "path": "concepts/package/Lax528502/MimWidth.lean",
-        "bytes": 2323,
-        "sha256": "b74d4e6273128367c6f2edb928deb2260205631cb18a504f8c47a2393e31eb02"
+        "bytes": 2644,
+        "sha256": "9d17e92023b13a927ad7006fb1c2e9b34d33f2e5a05ca0cccd662b1138b236aa"
       },
       {
         "path": "concepts/package/Lax528502/MimWidthBound.lean",
-        "bytes": 1152,
-        "sha256": "2ef6212ba44a2213cdc9a57ebc38d88ad493272efa503498b7d8ce95931aefed"
+        "bytes": 1221,
+        "sha256": "fe026c6bd417e1b62ab0a4023ae44e19eefde883e9db875fc74078ff2860a4f8"
       },
       {
         "path": "concepts/package/Lax528502/MinimumColoring.lean",
-        "bytes": 991,
-        "sha256": "4e7cf4906fda2b879b8229aa7a5c331902e2717db0bef5fcf746dfcd7f403d55"
+        "bytes": 1002,
+        "sha256": "293b6f8804d91b680bf5171f4ea076964947a3cb362695660093b38b812eda0a"
       },
       {
         "path": "concepts/package/Lax528502/PartitionHierarchy.lean",
@@ -1786,18 +1855,18 @@
       },
       {
         "path": "concepts/package/Lax528502/TreeIndependence.lean",
-        "bytes": 1831,
-        "sha256": "51e15eb6ff46451e77338fedbfbb2058f2bdb588eb7388a53a88ff1528403f2c"
+        "bytes": 2525,
+        "sha256": "7b225d31e98ba194dbcd368902b743d68e790ba5c13d9e3ae7c9b2e18fc6b0ef"
       },
       {
         "path": "concepts/package/Lax528502/TreeIndependenceBound.lean",
-        "bytes": 1901,
-        "sha256": "33539e3c6aaefe8d2ac181ebaa5ffc52f80314182bfa600b5f79de6c2f1eb097"
+        "bytes": 1559,
+        "sha256": "2f173cef72ed8ad0af1893aad710858aa4fd2d90e736431ee8d8b4dd2ee3962d"
       },
       {
         "path": "concepts/package/Lax528502.lean",
-        "bytes": 648,
-        "sha256": "3cac5bb80b763859b064b79fed017da79c62ef6513b0db1edc8aba952972b6da"
+        "bytes": 689,
+        "sha256": "c050ed34b4c55d6cc77d4f97bbfe5cc6632196c9a9e06e0884c426ec5c476749"
       },
       {
         "path": "concepts/package/lean-toolchain",
@@ -3717,7 +3786,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ArchiveComponents.trace",
         "bytes": 3460,
-        "sha256": "9e755fe64d94c5c25d56a239dbe91ac11a84b6d379e8fffaa866a69921d8bfc5"
+        "sha256": "76ce5873a719270031710ef519283fa06f5fd97fed233ce50d0b8060f76b3dc4"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/AuxiliaryParts.ilean",
@@ -3742,7 +3811,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/AuxiliaryParts.trace",
         "bytes": 3113,
-        "sha256": "40efeefb611740a3090d7c1931f14a3e105c06db939faf38c86ee316401e456d"
+        "sha256": "dfc241c2e577b02891746192285c08640a891ff340092793302fa62958099f90"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/AuxiliaryTree.ilean",
@@ -3767,7 +3836,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/AuxiliaryTree.trace",
         "bytes": 2941,
-        "sha256": "addd7c4bc2c9ddb2136b08eee766d5d9a08dfd1bbfa1515998500ce89f557088"
+        "sha256": "30c9cca4770babc97bc79d74e314389e84eb2a4c6a978c44ab098a6cefa7c9a7"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BagCells.ilean",
@@ -3792,7 +3861,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BagCells.trace",
         "bytes": 2902,
-        "sha256": "e137b29d25be91e051b21ee5cd7b1fab25083243baf06a98994558780e343629"
+        "sha256": "b60e4c5be9071155a54c139114c258360b7aff7d75b72e9abe8427d2a6adde6c"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BagConstruction.ilean",
@@ -3817,7 +3886,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BagConstruction.trace",
         "bytes": 3285,
-        "sha256": "e6ad12e62cd5e417f5ba848a808f127d88008ce2bffae5f077da6bfdccd4d1bd"
+        "sha256": "728f90630b92fd54853e46cd793fcf78b52d2937664bd3437050cfdcae4c7172"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BagEntries.ilean",
@@ -3842,7 +3911,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BagEntries.trace",
         "bytes": 2912,
-        "sha256": "918ab1350909a1b3e540e37c5d32bb8187f16c0f9047370ad3cc6fb37832b6c4"
+        "sha256": "8eb2e7334f29c0bcb191babef145d8f8fff17c59608f425317339dfeb0624bdc"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BagMachine.ilean",
@@ -3867,7 +3936,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BagMachine.trace",
         "bytes": 3093,
-        "sha256": "89a7563e70f3827b2749280674dabe0843a6ca41ba097a30da16515deca6d549"
+        "sha256": "fd0a97b630f1872592d0a29cb1ace4dcc3d7febf9de628b89f66cf004f6f9655"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BagOutput.ilean",
@@ -3892,7 +3961,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BagOutput.trace",
         "bytes": 3084,
-        "sha256": "85d7e3414fb5028dfb43ecc04232993cb0764d60d5dbaacd9cd96ba34b44ecf6"
+        "sha256": "9e465458ffcb945287dc4cdd2b877a6432f8680a6cef328bb89552125ab17413"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BagQueries.ilean",
@@ -3917,7 +3986,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BagQueries.trace",
         "bytes": 3102,
-        "sha256": "c6d2a110418d813ea08f46cb28a430522ee6d1971a160f60057a520a70564bba"
+        "sha256": "daad7618f8866e6ba3a4e0ea8619f86e1ea402e43c1571823b111d9b6627ae56"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BagTape.ilean",
@@ -3942,7 +4011,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BagTape.trace",
         "bytes": 3229,
-        "sha256": "dea87965220e3680c32fe5ae259267cdef6a1c8af01adfe43fa69aac937adeec"
+        "sha256": "1803a08a08ce14404956d0b5580aca74bfc9bd0bdaeddd53fb6c62a6ea62e7a3"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BinaryBridge.ilean",
@@ -3967,7 +4036,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BinaryBridge.trace",
         "bytes": 3472,
-        "sha256": "01330be4980e63e082ac7d69df97ff501c67501e2cdc5adb36eec865a61d94cc"
+        "sha256": "e113704240f15294c3c6883290432029e89c3122c1a34922b1cf41c27c8c83ec"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BinaryRefinement.ilean",
@@ -3992,7 +4061,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BinaryRefinement.trace",
         "bytes": 3125,
-        "sha256": "f76cf8ceb42e471a48c085cfc4c6e43e50f1f4802ef41eb63ac4b2322b2cc148"
+        "sha256": "deb1dd521b791029f631c9f68d04a907ee6bd178a9568ded613d6cf55fb7b82f"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BitParsing.ilean",
@@ -4017,7 +4086,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BitParsing.trace",
         "bytes": 2918,
-        "sha256": "3b50517a46aebbb61e05d634dfc742741699553b1887730e56a32e7a7f76e803"
+        "sha256": "93c89e39dc21145ee13b1eab7dcaf55a48c90d0374f99f1f01a3797fb351e343"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BlockCollapse.ilean",
@@ -4042,7 +4111,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BlockCollapse.trace",
         "bytes": 3102,
-        "sha256": "d5f017e91a96eae3c434a55687752c8cd4be76d0089a2b5efb129cc204b71dc3"
+        "sha256": "96940fe9cbe41b891127ef51e5eb186766f26aa6865602001ce8337e0e839319"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BlockGeometry.ilean",
@@ -4067,7 +4136,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BlockGeometry.trace",
         "bytes": 3310,
-        "sha256": "758a44a05a26019de256e2478a11aaa1dae3bea476ef2be234ab7c722d9f1208"
+        "sha256": "a958fcb3f9bdb14f803d4a71a4843d78e6b4b75b1fde6a0484d137ec4b455b6e"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BlockGrid.ilean",
@@ -4092,7 +4161,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BlockGrid.trace",
         "bytes": 2915,
-        "sha256": "f108dd9286c411b2f622e1f1198a868fd35fde216dff428898c01040016f9a25"
+        "sha256": "6a8d2451c56b46cb108707c3c2f6400b55d405c96dba82c42294793544866389"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BlockGrowth.ilean",
@@ -4117,7 +4186,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BlockGrowth.trace",
         "bytes": 3100,
-        "sha256": "967013227cb9a912cf51edd10fa73986d4b6ad5a0c8c1e57dd0a4c98659f1a53"
+        "sha256": "f6fd19844c0b7bb13c6da12535145a9518b0599aae44779ba4d7fe55bb893fd8"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BlockPrefixes.ilean",
@@ -4142,7 +4211,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BlockPrefixes.trace",
         "bytes": 3102,
-        "sha256": "480c4ab0fb5b3c6709b1a8f55e11e4c35c231bc325aa815d236736336a936266"
+        "sha256": "3ad6e80f98202efc4ddd06a2696001d0bdc4df2bd0902e0decc06a8d0f902365"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BoundaryConnectivity.ilean",
@@ -4167,7 +4236,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BoundaryConnectivity.trace",
         "bytes": 3233,
-        "sha256": "ba28da949cef76fba1a0bea7bee733bd779263bc15ffab65bf760fcaca27b2e1"
+        "sha256": "8317f5aa29d6e30ccd35a5fe3d52b6f56c3b37cd3874fa5d4a5b22c6308b7323"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BoundedIteration.ilean",
@@ -4192,32 +4261,32 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BoundedIteration.trace",
         "bytes": 3131,
-        "sha256": "18f99d8694463cdd457b128251aff6a2406cfe3a6d29d8f6a19cc32071306019"
+        "sha256": "458c14099c162d1e38c73f8afd212782a7ec0be6b2f21894e81f6da809e7cdff"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BranchProgram.ilean",
-        "bytes": 27026,
-        "sha256": "4271dc242ad5fdd5c648343c5127c3405c3a399f60ed509211b150ebdf4d8620"
+        "bytes": 27497,
+        "sha256": "d8bcaf318124522246f5f2e0135a91080d1059ecdaa51168cb5978d32551b549"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BranchProgram.ilean.hash",
         "bytes": 16,
-        "sha256": "770d38df053229305d86ce9d0de035260d3487b91fdeb9b8b82682099d37e172"
+        "sha256": "c01c481581770bf4d4192f458934a94af453812e28e822604e11f31264581b46"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BranchProgram.olean",
-        "bytes": 891688,
-        "sha256": "2337bb06f41555f56aa6a175c039f9e21fd71801fad108ea25d3ed559e1f374c"
+        "bytes": 896096,
+        "sha256": "99057fabfaf8c69849c11821765f1a2496de80872cebe74cb57ae6fa8fd556a6"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BranchProgram.olean.hash",
         "bytes": 16,
-        "sha256": "ded217a301f578bd20580c72c86849f869ae40a18c023b0def8353b66d35f466"
+        "sha256": "d5a4be52427d7ecc8d17e08bb61c1fdb59632f5e27d176d2d1e33449847451eb"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BranchProgram.trace",
         "bytes": 3780,
-        "sha256": "c05842fea697da66782fc00211decd0770c72efb63951a2a8216b9a89bdabdf8"
+        "sha256": "e2722027e7ec1044fef61d4a2382f0787964a5bd1f1953a928bf820bb892ed6d"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/BudgetIteration.ilean",
@@ -4242,7 +4311,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/BudgetIteration.trace",
         "bytes": 3120,
-        "sha256": "268304056f12f6dbd48bee983f7d38a856d1b30620240375cf433fa281bdeb49"
+        "sha256": "6ffd5a8527def5af699da7f25f8302d8a9e2d936049029738aa2db0a4d9796d5"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/CertificateLength.ilean",
@@ -4267,7 +4336,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/CertificateLength.trace",
         "bytes": 3138,
-        "sha256": "d4887833818b36449bad506e94c240793843c939d5ee063d09cb628173776de1"
+        "sha256": "ac6ab3423c91e1b1694adbccb5668befcfbf8bfbbbf47aa7998637a28eed401a"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/CertificateTape.ilean",
@@ -4292,7 +4361,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/CertificateTape.trace",
         "bytes": 3108,
-        "sha256": "554cc5db45337fc933a35824379a5620cbb40a03136add61175277e4ab411844"
+        "sha256": "c7e5519a8f154614a0e0866e9ac41cea6d17f443159e3bcf8e112db713e0710d"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ChainHistory.ilean",
@@ -4317,7 +4386,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ChainHistory.trace",
         "bytes": 2940,
-        "sha256": "be2654c0103f3f54bfae85b8149a12b9e3e28cbebbe96e482ebbfa0b0fed6ab0"
+        "sha256": "d2d79be7f9c0550a6937fae73865861411f98d2965b91e91e38241059e8e2f1e"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ChainIndependence.ilean",
@@ -4342,7 +4411,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ChainIndependence.trace",
         "bytes": 3317,
-        "sha256": "5db9a5e516ef099a5d15a32a061b71e5b1a7aa693353a8d1067ea62193bcf459"
+        "sha256": "2063361b3358942b64eb05d9b1b24b9e0a318233d9a539c990f1685d3096c060"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ChainPieces.ilean",
@@ -4367,7 +4436,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ChainPieces.trace",
         "bytes": 2902,
-        "sha256": "3994a4e943b419ada5bbec4d9aef2e9c3738fe3f507f431b35b9537d360fe9a3"
+        "sha256": "39e37b8be166bbba686cc479dfe77fb7b71af79f0a1c45a0451ee59b9d58a345"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/CliqueColoring.ilean",
@@ -4392,7 +4461,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/CliqueColoring.trace",
         "bytes": 3125,
-        "sha256": "52693313e461290b619e270a47c49c0b16ed457d83e1f0c1e2170b49bc097510"
+        "sha256": "8bb5968a9ef9bdf70e1f961112a3bfc745d185dc111a81b57a4e673a6f604b1b"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/CliqueConstruction.ilean",
@@ -4417,7 +4486,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/CliqueConstruction.trace",
         "bytes": 3136,
-        "sha256": "0c789a8ee8a0f2073779623535f54cffb76c24cb9eb1365b0efad59246d0f525"
+        "sha256": "7e62c9e4158d4a26ad2c381b692bdd38d6072b0448595ac4a4f81552b503e257"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/CliqueCoordinates.ilean",
@@ -4442,7 +4511,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/CliqueCoordinates.trace",
         "bytes": 2969,
-        "sha256": "59f1bbfb903c7c109be44024788b172ac66c9b7f24cf7c79714042bc45de1375"
+        "sha256": "9ca84bb90b0581c9116808a006f9ab2b83165b48f45e7ae2d6ceb0a3f832d93d"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/CliquePalette.ilean",
@@ -4467,7 +4536,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/CliquePalette.trace",
         "bytes": 3116,
-        "sha256": "8901f4c1498fd6835a5f07da19ff7df57ff1b23054c69eefde70ec669d8292d2"
+        "sha256": "7925bb2723987933d2b45e83ab2816aa61f228a447003db58b44118e3be01117"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/CliqueSwitches.ilean",
@@ -4492,7 +4561,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/CliqueSwitches.trace",
         "bytes": 3107,
-        "sha256": "109a71dfa8e0efb6c41097fc9554c5656380fd1867323e3dbf81a896d47df2ee"
+        "sha256": "28693f9a8365f853a64ef8df461c5bc16968705936bc815abf8f4d045fdab65e"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/CliqueTrace.ilean",
@@ -4517,7 +4586,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/CliqueTrace.trace",
         "bytes": 2929,
-        "sha256": "f245a7d383441a595600d74e5debd7f4d2b74597dfc3f4b1642c5913862320c1"
+        "sha256": "13b2b1419864edead2ad06d90317bcf062e0c760b4d34f028d68a7ab1f925e21"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ColorCodes.ilean",
@@ -4542,7 +4611,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ColorCodes.trace",
         "bytes": 3079,
-        "sha256": "97a2c92c68acbef639f7550c5b0a3e595ec71b522f22f4e3283819ec8ac5c070"
+        "sha256": "2feaeb68083bf6c0d3af3acae8e003208a7f7e84ed5b539e677a4bc30455c0d9"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ColorDerivations.ilean",
@@ -4567,7 +4636,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ColorDerivations.trace",
         "bytes": 2966,
-        "sha256": "907dcd38b0a9c1b5971cae9d3cbd0f6c2a4585ec427f017758fc160e81b0e204"
+        "sha256": "5912a3e2f28a011637f4a7125ba93f4177cd474ea19b1bcfaf79653ffb1f4e11"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ColoringFields.ilean",
@@ -4592,7 +4661,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ColoringFields.trace",
         "bytes": 3305,
-        "sha256": "748f49ea1ab62ee51ca09454e083d3e2dcdff1912bc375f65fe034dee03de0b9"
+        "sha256": "cbfd61bc6cbd11b17ec835ca4ae85956c7dd329de63d5b6af30df6e83a382f59"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ColoringGadgets.ilean",
@@ -4642,7 +4711,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ColoringMatrices.trace",
         "bytes": 3141,
-        "sha256": "161fdcdb25cb800230e8409b65a127875b5374ddb9eafbfd7f518ee8ae1bf0b8"
+        "sha256": "fd97018bdd00877d59409d8cb5bd3b417c11b16474c6343796a24f56c8b94484"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ColoringMembership.ilean",
@@ -4667,7 +4736,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ColoringMembership.trace",
         "bytes": 3509,
-        "sha256": "239d5872c593abfc6fa5bb42b7ca1eecc0593421554d29574e5fcb3ba18dfda6"
+        "sha256": "4b4ac919a0e48a0a3cb602a3e17903a94f67128b459e3245d88130ba948d775d"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ColoringTests.ilean",
@@ -4692,7 +4761,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ColoringTests.trace",
         "bytes": 3116,
-        "sha256": "5ded12fa6d00dd7d25ac6c20b0c1cc87af404bbdd21adebf87f32467d61f3a1e"
+        "sha256": "02150388bd9fb2926909ea94297d048f9ba90a3bee1cd74fbfb6ae123cf39aa4"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ColoringWitness.ilean",
@@ -4717,7 +4786,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ColoringWitness.trace",
         "bytes": 2970,
-        "sha256": "35f7e6c7817e7a05f807e26965bb0bf340d02391ca439703028077297e8aa214"
+        "sha256": "73de5838ef726433b827850e438089c2eb480bfa80a66c1a6f7fcf77b9403401"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ColorProfiles.ilean",
@@ -4742,7 +4811,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ColorProfiles.trace",
         "bytes": 3167,
-        "sha256": "8179439cb6855494e599cd5633986369c8788fffd26fc07030d645c57b181b9a"
+        "sha256": "30202510fc9c97d29ca3696964308363277c1e860322769a09b50d02a83044f9"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ColorRules.ilean",
@@ -4767,7 +4836,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ColorRules.trace",
         "bytes": 2916,
-        "sha256": "c8d0b97254d56192c70f10ae5eef35c4e026ccc7a7eb0966f7463b3313be605f"
+        "sha256": "9c7d4906b6010770d521aece54a51a6e8c0f18dcf893821220ddce06c1e2dc1a"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ComponentCounts.ilean",
@@ -4792,7 +4861,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ComponentCounts.trace",
         "bytes": 2978,
-        "sha256": "98e8a4cd0c8f61edba31fdc423f50e0ef987f3bfcbf6bab22467fbfb815ea1eb"
+        "sha256": "aa1d52860e052a0e0f74009613fb5094fd90da45d5c4418898f9c74cfd8d6582"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ComponentProfiles.ilean",
@@ -4817,7 +4886,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ComponentProfiles.trace",
         "bytes": 3491,
-        "sha256": "52b5f28da32b6b95b1ac5dc551917f830af49b53d6d19751b7648334d90740c9"
+        "sha256": "d79241bf4dcb22384ab8e5b75b3b988f2a79c8971262c8b5586ebc11bfc925c4"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ComponentProgram.ilean",
@@ -4842,7 +4911,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ComponentProgram.trace",
         "bytes": 2964,
-        "sha256": "d10879b6d8d40724fd23b34711e051f6815cb36f2a825cd91f87d012eb8ad09f"
+        "sha256": "7899fe28263134be6767cd1f50e4920482a5cffc30317559516b6f8e673342e9"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ComponentQueries.ilean",
@@ -4867,7 +4936,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ComponentQueries.trace",
         "bytes": 3152,
-        "sha256": "f7976bab285dd8ea08f6787163fb1e9a98b00eec6d473889e440891d47f5598c"
+        "sha256": "92c1218aa4966344812e5635acdee261424bcee403db35452deae50c6ae1357a"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ComponentRows.ilean",
@@ -4892,32 +4961,32 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ComponentRows.trace",
         "bytes": 2958,
-        "sha256": "e5f38cb41b2bf5e791bff8908f1fe21af7cab9c1fa83c022443d2ae1814a42ae"
+        "sha256": "f1588b52496c169247819817cf3e522743619af445b00bfe071f654995f341df"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ConnectedDomination.ilean",
-        "bytes": 22305,
-        "sha256": "e069f2aac01adbca6b0d97b8ad59c9a85cac07efc430132682ca436b89c779ef"
+        "bytes": 21642,
+        "sha256": "b3b6a5ed05a2425a720fea84bd443e8c22bdd98ba380762cbea62c996e88679b"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ConnectedDomination.ilean.hash",
         "bytes": 16,
-        "sha256": "1371224328c45e20befedb4aebcc9cf863622f80423619bf3f69c64fa27ccb0f"
+        "sha256": "1d9177fc31bf79247971dd7257c8423bf9fdf1d916e609048d7869fee21a88ea"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ConnectedDomination.olean",
-        "bytes": 153720,
-        "sha256": "d5789cce630ad5b61ad8995a29ffa37702a895990080105a6cd9f3a51e437340"
+        "bytes": 154336,
+        "sha256": "c32b911b9673b15010b090d81a454cd73eac6b1e164871fecedf9a415b583f17"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ConnectedDomination.olean.hash",
         "bytes": 16,
-        "sha256": "4ee6a8acf2fb4c3b52662ac8e2c075a3e049b26316870c56fd42708891aa9a74"
+        "sha256": "313783b77ea3693964e94f1c226619358091bb58a87453559054d004102cb21f"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ConnectedDomination.trace",
         "bytes": 3517,
-        "sha256": "a4ab5cc47bb066277df5adfbc18afa00c8c3a8c78e03d038adb8b39326fa76aa"
+        "sha256": "0576a5e655ce7e1aa6ef7050985aa73991f9ce24123a0f1f9a88a878d433219f"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ConnectionPorts.ilean",
@@ -4942,7 +5011,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ConnectionPorts.trace",
         "bytes": 2978,
-        "sha256": "ae8535985c2fde27ecaee7e96dc489bee7a97f8cd8719fe30d4d54520a74d256"
+        "sha256": "d751171080e45960fd006d79b188c52ce07a542b2f331f6260c76db71d1aafc0"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ConnectivityProfiles.ilean",
@@ -4967,7 +5036,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ConnectivityProfiles.trace",
         "bytes": 3187,
-        "sha256": "3513374d36ae6dbc571dfc5214082f958960bdc510265ab94cf8121b89af87ae"
+        "sha256": "1f6482aac3f16707161a57373c6b78b84ac6a0c322fa2976133819cd4d5b0efd"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ContextMaps.ilean",
@@ -5142,7 +5211,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/CountingPorts.trace",
         "bytes": 2947,
-        "sha256": "b4d374c63f64596e9cbbf96f0fe3e76f4c76863c6e1f648d224bbe1e28531fd8"
+        "sha256": "9f61032a694d31483eaa407ad8b587afa82b87d8bad8db1a6ec794154814b336"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/CountingProgram.ilean",
@@ -5217,7 +5286,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/CrossingProfiles.trace",
         "bytes": 3325,
-        "sha256": "fc7251c5d1b234fdca10aff9db08ab9cca62b26d677c1845726aa3cb497ebc88"
+        "sha256": "7d96ce5ce0ba38364bf209084f584d0fffcca04295d06eaa627619f7ba3319c7"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/CutCodes.ilean",
@@ -5242,7 +5311,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/CutCodes.trace",
         "bytes": 2908,
-        "sha256": "fbcf780feb58235b014972c4eedc98b6e4ae906f0b735661dfdb96b2fc6fdebb"
+        "sha256": "6ae4eebc511a3c218f7c3572c66a111cba75efd60203bc75b2b15b47a255330a"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/CutMatching.ilean",
@@ -5267,7 +5336,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/CutMatching.trace",
         "bytes": 3065,
-        "sha256": "f59da14f9b49c1fb0c4e2c63cf138e72a322f227a3fa1a457c79d373779f93b1"
+        "sha256": "4f8cc6f46b80a3039f37c4a8826f694bfe4ddb7ff836cb07ecdd2be175e9a9e5"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/DecompositionTape.ilean",
@@ -5292,7 +5361,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/DecompositionTape.trace",
         "bytes": 3315,
-        "sha256": "c11f1ccb001c498d6a99b56763a0c07f7d249375767d9b79354cdb1975afd58c"
+        "sha256": "a18cd5e1191ae06f86d4dd7456c619ac27be05cb491a79b9517c1396fd7a37c8"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/DegreeProfiles.ilean",
@@ -5317,7 +5386,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/DegreeProfiles.trace",
         "bytes": 2963,
-        "sha256": "064ffa9b74a123c5633d1176ab5b1d73f2fc9baeac9074c4951a6ee8f7352764"
+        "sha256": "7fa625e1434bb51238246b25bf674a8730021887e2c9beedb67aeca3bf071ab1"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/DisjointPaths.ilean",
@@ -5342,32 +5411,32 @@
       {
         "path": "proofs/lib/Lax528502Proofs/DisjointPaths.trace",
         "bytes": 3441,
-        "sha256": "4faaf8a91fec5bf894bd2ac486e4e2f004230b5b239dec636d343e362938b179"
+        "sha256": "41cd52f9e2fb5764a924dff09152deaebecde60e37ec0a2df5a6bca53b6ace76"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/DominationAlgorithms.ilean",
-        "bytes": 10881,
-        "sha256": "5c18a21fbbe352880c4618ebff31209c2d2f69755bd38399ceef6679ce0017a7"
+        "bytes": 9146,
+        "sha256": "c8dbb22d777f17232bd60cabcd7398b4c5131bc2d5a80af05f4fdfc3b95eba84"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/DominationAlgorithms.ilean.hash",
         "bytes": 16,
-        "sha256": "86182a0980eeb4e4f6f67d6a6199f51c0fb40a2ade562ed341788171c89a7401"
+        "sha256": "8c31beb9a620df371286356e57acc351cdddd7f313b4b65529ea9b2f5593cdd5"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/DominationAlgorithms.olean",
-        "bytes": 83728,
-        "sha256": "5f36032ee45a5a5bb0d0746d0687544f1b4337fb7c865a6f2dd169ab6a78732f"
+        "bytes": 83536,
+        "sha256": "3e7f0a22142f7da2a4aabb92e4249a28b4c62a7a4ed420658e70058222f827b5"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/DominationAlgorithms.olean.hash",
         "bytes": 16,
-        "sha256": "f9a0a53870de0a28562a0e4ab2d6b537587d160d68c8793a8f6d7f39b571e15c"
+        "sha256": "4d991c17d4ec19eeaa968217dcd9a3d7d20463d6631cf32d6e916e9517970d7e"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/DominationAlgorithms.trace",
         "bytes": 3183,
-        "sha256": "738400006fee17ba31401485f79eebe79faab0fe183be337fa426c9491fa9f08"
+        "sha256": "34d4dd9c6e8ca3898db1ac5a0cffc0802ba8b15777633b32a7a3a4d94c8bcbf6"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/DominationProfiles.ilean",
@@ -5392,7 +5461,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/DominationProfiles.trace",
         "bytes": 3309,
-        "sha256": "0e695a4a0bbd6fa85ea5ab386e6f949b5eeac1cdbaa178dbdd68a8fc4fae507a"
+        "sha256": "a579bdcbca95cf9697964e1e907258c1abdcd4cc71ca7631fa0ab6bc2a599d3a"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/DominationProgram.ilean",
@@ -5417,7 +5486,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/DominationProgram.trace",
         "bytes": 3492,
-        "sha256": "e974b40b6b5903ecfeb5500f0bd227df2e9eb1046811e8e08c3fda077e2da58e"
+        "sha256": "563a805c7e6df3e9f7c4929fd11de894a5ba1571c69c04575dfe63500f7692b9"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/EdgeCountProgram.ilean",
@@ -5442,7 +5511,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/EdgeCountProgram.trace",
         "bytes": 3142,
-        "sha256": "2667cca4cb83be631e78e56b15f609ab2003c33e740779a0f22cc294be8a19ac"
+        "sha256": "532690151bcf074e999eb4cd8c299037d8ad18e45a51b0678f34e55391631d4a"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/EdgeCounts.ilean",
@@ -5467,7 +5536,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/EdgeCounts.trace",
         "bytes": 3371,
-        "sha256": "1e674c49cbd180a06c51e547be193d8e149b68a18b05929408fd2248a6e45271"
+        "sha256": "50f1f1607dd2c6cd20613a7f3804386065141f41998bae4e94e6ee5667dbddaa"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/EdgeRank.ilean",
@@ -5492,7 +5561,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/EdgeRank.trace",
         "bytes": 3328,
-        "sha256": "7c3c8d67acde5921a919292f225c5f97568f5c25f3a6b10b8dfa54e9c51e6f9d"
+        "sha256": "300d9906de0478bd7c6473d95c565948ec47658b6cb93fdc76b45e13b1b8cda8"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FeedbackProfiles.ilean",
@@ -5517,32 +5586,32 @@
       {
         "path": "proofs/lib/Lax528502Proofs/FeedbackProfiles.trace",
         "bytes": 3160,
-        "sha256": "003bcc91a64f51650f3fdd0b9baa80aca577bf76adc16aac01ac9543d94a11c6"
+        "sha256": "85d71b3859ff9495501081ed14d91a9e5e29004f4e2f1046ce8aafdca29cb416"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FeedbackProgram.ilean",
-        "bytes": 34138,
-        "sha256": "45a34215a9fdddf43561b3f935e795f819bc00084c5504826e965cee98925491"
+        "bytes": 32939,
+        "sha256": "b03697118b9c86abd1588d00c9796cb17d357f0f2453099d6faab11e9171558e"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FeedbackProgram.ilean.hash",
         "bytes": 16,
-        "sha256": "670c4eee83e7beb5d1190588f29e5da9cd5f76db14b18e38bed5186f046a1ce2"
+        "sha256": "09c5a23fedfcb4624d43f4a750a0ede1707ee873fc954194e35fcaf6a6004ed1"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FeedbackProgram.olean",
-        "bytes": 384024,
-        "sha256": "476267dc8d2414e91c488037b4793ffd6b58553b72a40fdb45ea1f0526767eb6"
+        "bytes": 382216,
+        "sha256": "bef6bb3682fca8004d0897fd5c2f77d915244f1c6febc6f4151365f771e0bbe9"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FeedbackProgram.olean.hash",
         "bytes": 16,
-        "sha256": "6943f906722898154fae01f7c80fe628739624be15310d99ebc73f7aa8cae91f"
+        "sha256": "f8b02ea83222034c6ea5561351a6e7ea04871e78652a255d90667bb538bb0b82"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FeedbackProgram.trace",
         "bytes": 3315,
-        "sha256": "e074bebd2ab1717866e059b16d38abeb7ffe17ce8df00e11e1d63b9870afca5a"
+        "sha256": "ca819e13108275d1a582661350a03e3dc093bf073e789734163b8333436a1a23"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FinitePass.ilean",
@@ -5596,28 +5665,28 @@
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FixedColoring.ilean",
-        "bytes": 13351,
-        "sha256": "0a0fa182a47b49de9dda1b5528cbab4e74df5356ec74b7bf8b17fe8c9094d01b"
+        "bytes": 11560,
+        "sha256": "a12fccbf8d2ba475313751ee5dca9373ec093d5407c793e23279fd7f39a291ce"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FixedColoring.ilean.hash",
         "bytes": 16,
-        "sha256": "50facf7e0602b3d3f147e80102b72b415ad8af2fe53d9a600d37eddb60e1bad0"
+        "sha256": "c94fc4e9b9e396e6af9901f1d0d28dcfbcc4971f48f1ef2737bb94270d1844e6"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FixedColoring.olean",
-        "bytes": 71368,
-        "sha256": "98f7aaa9000f29e3674da4645a312df4eb3eeea8ea5db4528c619ece1a65f19f"
+        "bytes": 72592,
+        "sha256": "cc0140c4920657a65432bdb59c0d1b67564947725858b3abcba280299625f38d"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FixedColoring.olean.hash",
         "bytes": 16,
-        "sha256": "7f94bba89a0afb292d77268e5dcb4f509b136814b8a94e424d88550dbd0a5fe1"
+        "sha256": "de51a4547782955d7da6d8de4e30d1eef57d55718fd858ba3667c11a86a62048"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FixedColoring.trace",
         "bytes": 3277,
-        "sha256": "0daeee09887080317e1339a65cc2329aa60a3d83fcbd93c75e34b32d1f04cea8"
+        "sha256": "229047544ab6ec7fffb07c7d708cff5ebb9e41c8e74ef69fa6289d905b54d344"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FlatRows.ilean",
@@ -5692,7 +5761,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ForkProgram.trace",
         "bytes": 3101,
-        "sha256": "bcbee85cc371b6a68afd1dfc54ffac4d5ffe8edfd375f4652fb01bb941f4efd8"
+        "sha256": "45a199d86db1a7238bd3d745d67ac58c0046d00d116d98911be623ee8fbc1f64"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FreePositions.ilean",
@@ -5717,7 +5786,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/FreePositions.trace",
         "bytes": 2945,
-        "sha256": "abd9f90af67c93f69f2ffe3ccaa40b2c35e875005a1527a4ef45a30476b6c395"
+        "sha256": "88855998fabf2eedf83c104678fc76f4d4ebf9fb2def42a62dfd8bfd7b633079"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FringeCover.ilean",
@@ -5742,7 +5811,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/FringeCover.trace",
         "bytes": 3098,
-        "sha256": "3054f4ff8ceb1ab3c2ab333a65886ddce802f0ba865edec85980ab17e7c622cb"
+        "sha256": "f767ef7d9015c685f7521ffc48cb32fa7fe1d5d524698d06c2a7b511e65ea6bb"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FringeLift.ilean",
@@ -5767,7 +5836,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/FringeLift.trace",
         "bytes": 2918,
-        "sha256": "aae7aeafb7f9ed1f7dc061148718cb5957ce4c996451825aa1e628a563ab7d90"
+        "sha256": "85b340a2629a15729c6a17c8bd7e04b1d28a088d99dd827da2050307f56ce983"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FringeLocal.ilean",
@@ -5792,7 +5861,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/FringeLocal.trace",
         "bytes": 2925,
-        "sha256": "d0ac3db07480fb7bba50bea63bbd038599cfcf381747ec9ffaa3f5cfb66bfae3"
+        "sha256": "70bd1d2d8896b4b1d4416dfeb7d66a27e545198473e222088205086967b6e493"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FringeQueries.ilean",
@@ -5817,7 +5886,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/FringeQueries.trace",
         "bytes": 3100,
-        "sha256": "8937555bce0fe253e0ca6f354e3bafe9f7fb194cb4fbecff8011c4d90b21277a"
+        "sha256": "9f210822b93204fbbbc15f717776f6ff63a5f98ec3f076a1008eaff9b97fb4ce"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/FringeTrace.ilean",
@@ -5842,7 +5911,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/FringeTrace.trace",
         "bytes": 3090,
-        "sha256": "f9322a6b82de3c4ab00da778644075bec39e95fe9c13f8d1b33ea895f17ccb82"
+        "sha256": "2f693459c73870c6bffc7b067c72a54192610d3dcd9803981cf325350c5f5734"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/GeometricBounds.ilean",
@@ -5867,32 +5936,32 @@
       {
         "path": "proofs/lib/Lax528502Proofs/GeometricBounds.trace",
         "bytes": 3118,
-        "sha256": "84086d42624a9aca639d663c83f971e34c31cde28bc378e54f84d24ae06afacc"
+        "sha256": "7ee472fd7dc1be2ef63cb39646acd4dad77cb9bac3f41b5000b73f035f1f05ce"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/GraphAlgorithms.ilean",
-        "bytes": 6618,
-        "sha256": "50bf51d5b17049e770c84df977e9ed52236359c0d6613ce73ac4431f5384a0bd"
+        "bytes": 6036,
+        "sha256": "7f01fee3a1c1f772ba1e128dbb983b9e3da2fb3fe8d5d9cb4ad6ae68a271766c"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/GraphAlgorithms.ilean.hash",
         "bytes": 16,
-        "sha256": "ec0ef670f10198775a4c89c4bc16ae154114562737e8737622dba96241e20f9e"
+        "sha256": "3ff8b541c4530cc79eff46636d56fe30f6ed832ea9896ab7619b4407cf61aee0"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/GraphAlgorithms.olean",
-        "bytes": 46936,
-        "sha256": "499d8688f45577e00f96c87c92e338ade7d5828e78172c8e777eebee3fdefb37"
+        "bytes": 36216,
+        "sha256": "7c7e7ff92e82e96ce36533bd4c3097fc97922985904813eaa58957f3b1fe608b"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/GraphAlgorithms.olean.hash",
         "bytes": 16,
-        "sha256": "d939241ec64102d78e4e022d49224b10726ec454ba16645bb199b0d36aaa6a1b"
+        "sha256": "2ee36d90b7fe72e67a655e753c17c2c4a775bea9f2f7b2ab281e2a22501c51df"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/GraphAlgorithms.trace",
         "bytes": 3281,
-        "sha256": "32ade7c28da7d65788084d79328170b71c67ee301acc449a73d30481728d91ac"
+        "sha256": "f790c1671956f1660e1bf71d80e666a6473d585a4ddf80dced3207ca3765a080"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/GraphQueries.ilean",
@@ -5917,7 +5986,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/GraphQueries.trace",
         "bytes": 3101,
-        "sha256": "c8980721d0066f5ca0deb0da553602a6ce5c9c42455fbb905731fedfa9ce2a28"
+        "sha256": "ef19cf60c9bdd9efcd5dbc4d87929446b8348104bddd17c71ed9dc7fd65e19d9"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/GraphTables.ilean",
@@ -5942,7 +6011,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/GraphTables.trace",
         "bytes": 2923,
-        "sha256": "fc0f19b8c8d2cec0586c9e768ba63fda3333f74673909466209056e94ee471ea"
+        "sha256": "b1518f2fccdd22245f96525451d7c782f546e76722dbb8c5a29bdd67a214040b"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/HeavyQuery.ilean",
@@ -5967,7 +6036,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/HeavyQuery.trace",
         "bytes": 2910,
-        "sha256": "851dd782093e0d8b6284fb30c25d9838ebd1a43ff351f9a25546d36c4bc35bd1"
+        "sha256": "1ba9f084a0e3b5cc1ef3629ab06e0765b37838884a712674b1919c2c149f9655"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/HierarchyGeometry.ilean",
@@ -5992,7 +6061,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/HierarchyGeometry.trace",
         "bytes": 3138,
-        "sha256": "a81e518daa6050ce22a89826916c7f3bbd6be607de235841257c2d6416d040dc"
+        "sha256": "5f898c136e8751128b9ea6fc7624238628e2824c954c9e3c62242d7f4c8df481"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/HierarchyProgram.ilean",
@@ -6017,7 +6086,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/HierarchyProgram.trace",
         "bytes": 3306,
-        "sha256": "70fb06493b4f0e6917ee10d361e6543dd9342072f3b561784bfd74458ed1e9b6"
+        "sha256": "7821434df3b918579e932cc9219ede8a03de58ab92f3bc594d2d92f67cdc6a10"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/HierarchyTree.ilean",
@@ -6042,7 +6111,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/HierarchyTree.trace",
         "bytes": 3112,
-        "sha256": "db0e963ffd8afb22bd1fc9e4e34d143268708aae24ddbcee2476898afb4e6395"
+        "sha256": "d7f13176387b85c01a341c2c945fa19eaedd996ba3b4e68d2c58a8c52b2cd242"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/IntervalColors.ilean",
@@ -6067,7 +6136,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/IntervalColors.trace",
         "bytes": 3282,
-        "sha256": "07bca9a6f0696085e78c67177108e4bc7651fd69a7edae25be0b80b93422fc06"
+        "sha256": "e53435b6e393edb076a24b58edb16f15d3150676e3d15a6ce00fcb3dd8c60353"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/JointProfiles.ilean",
@@ -6092,7 +6161,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/JointProfiles.trace",
         "bytes": 3116,
-        "sha256": "44d4dc3d5431f6bebbeda3f7fff8690c0bd75e3a395af7ed436ceb4e21de441a"
+        "sha256": "9c4d8940ff7c54e65845d5ddd5248ac760badea713f2b83bd9d00b10b18e5ecd"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ListTables.ilean",
@@ -6142,7 +6211,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/MarkedCycles.trace",
         "bytes": 3250,
-        "sha256": "25d8876b1bee6d2639e2031715b7f1ea809df5e64dbcd04e0a9a79d46e0d239a"
+        "sha256": "9a72f34bdd2a1efb2cffb66579582b3c8c283e2e4dd5938052a0e15085e8b8e0"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/MarkerEdges.ilean",
@@ -6167,7 +6236,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/MarkerEdges.trace",
         "bytes": 2929,
-        "sha256": "ea96092850cd5b33d6e35446f477954b07dfb7106967d7c26d96555b88c69b30"
+        "sha256": "16ce275d5295b2d4f11bafc9bda74db447b5d9a29e34adf3f84b79cfd5e13efb"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/MarkerIndices.ilean",
@@ -6192,7 +6261,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/MarkerIndices.trace",
         "bytes": 2937,
-        "sha256": "7d63d3effb0bba7693179fc8f0556096752cc544ae28d1d891408acf616609b6"
+        "sha256": "6a2f3b62f1f4609e22fdd421b7cb61ede71f07fad37b2f73b2fab8e7f1128b32"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/MatrixRead.ilean",
@@ -6217,7 +6286,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/MatrixRead.trace",
         "bytes": 3091,
-        "sha256": "e2d76c74e9b82c7b05b32421e33c416a3fc71b41c039a67d8b71d0bcef185b59"
+        "sha256": "336882616b12bacf3a01258aee50eb4a03013bf3ec22acf140adf662e0376a39"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/MergeChecks.ilean",
@@ -6242,7 +6311,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/MergeChecks.trace",
         "bytes": 3113,
-        "sha256": "a4789306ace9e1b108434e6b4dad42bdd87ae1888db5ceeadddd9f24c4d80bd7"
+        "sha256": "309dce9616e189b1957e1bad8ed5fa055ba869f4738634fe169fb82d8aa30403"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/MergePhases.ilean",
@@ -6267,7 +6336,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/MergePhases.trace",
         "bytes": 2927,
-        "sha256": "51fd1f608023a08b77ecb6cad39ef961dbf242dc4119de4a25be152ea963fe8f"
+        "sha256": "e5bf559b2d0a631362811d520b1e82b8e196cded2bdb48c806ef1139c929cc0b"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/MergeTables.ilean",
@@ -6292,32 +6361,32 @@
       {
         "path": "proofs/lib/Lax528502Proofs/MergeTables.trace",
         "bytes": 3092,
-        "sha256": "6fb3e2d81c8830cffad0514bdc97c8353030f55e400e892de6ff01daba39116e"
+        "sha256": "e71cae8bebbc5d6b6389a0b901cf169c4031644ccbac5f3f392dec6643fbd427"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/MinimumColoring.ilean",
-        "bytes": 4090,
-        "sha256": "cd52d95c738295f737863e07d8e8d94d12bd82cd455908757cd4805f4461afcb"
+        "bytes": 3485,
+        "sha256": "095b56e46dfc63216428b7868ca181ff2fe9018ba8319dfd2d80fec62c484e97"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/MinimumColoring.ilean.hash",
         "bytes": 16,
-        "sha256": "6fa9ca9f20d70959ae13af6faf4e50f30198ca4273526ae7f169aa95c6ccdc87"
+        "sha256": "70f8499ef4f31620f1020be7d894a447e223be1587bc56ef03e59f4124a90312"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/MinimumColoring.olean",
-        "bytes": 38472,
-        "sha256": "ff65b826a39bcd446cf032aa1f3e9df4d341e619b1590c00fcb0e61e8493f6d0"
+        "bytes": 36808,
+        "sha256": "190c2038bffb810b0aae6a271a73518a56fe465fb5102ca8ac9df4b3c891be2a"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/MinimumColoring.olean.hash",
         "bytes": 16,
-        "sha256": "e909de8631acad10e0f84d362ae66886c9d46839724302796964b45e66804b62"
+        "sha256": "dcb94ca6c3cf07a5c786d3a0b8db9859c4f6fd8ba6793f6cb45246bd597c29ba"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/MinimumColoring.trace",
         "bytes": 3264,
-        "sha256": "fc4fe3ad5a1271c8161f297efaebf88700bf1f2278dcccdbc7a63971922d3faa"
+        "sha256": "826e8b90ccb4a7ad1728badae4946e37676182b500dc537792b4bafd01a5b462"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/NeighborProfiles.ilean",
@@ -6342,32 +6411,32 @@
       {
         "path": "proofs/lib/Lax528502Proofs/NeighborProfiles.trace",
         "bytes": 2960,
-        "sha256": "8e979eefea205e7b8e6670004bdfa6058a3942478f07c59f8e12e398c0c82720"
+        "sha256": "f8ff660c7bbf8f5ba71f216afa908e3f5e717b560df3d79a28681ab6e5044899"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/OptimizationAlgorithms.ilean",
-        "bytes": 14785,
-        "sha256": "a7858ab603f908546a9ccb6c45a57ef72b9bb1e4fdb9b3214734b7bf8de9029a"
+        "bytes": 13375,
+        "sha256": "eaa62b356899d6bd2eb0b823d05ed24bdb1836a6a089e4a54269b9a53cd8584e"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/OptimizationAlgorithms.ilean.hash",
         "bytes": 16,
-        "sha256": "d146cbf555264cf1447fb5eea3e181e586c442769fc2368bc884187a90c60827"
+        "sha256": "db9c57dc54f4404ceb784a85b0389978dbe3e6b87fd589e0e5ac076d4a29746b"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/OptimizationAlgorithms.olean",
-        "bytes": 211872,
-        "sha256": "16bda1290d9f05515badda58594f3f00df7742e14983944cb6ca5065016a84f8"
+        "bytes": 203776,
+        "sha256": "08d122aba4f8678988b917cb5865816729530999fd7e224565c91676873c04e7"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/OptimizationAlgorithms.olean.hash",
         "bytes": 16,
-        "sha256": "0d9a59233ed8ba7aa72f1b4ddd9ad5325b09f16e998b3d93672ba1cb6d09b1d3"
+        "sha256": "91cebf692b21a16a99c4e7c29b5f7b110d4bd70495ad88f209723793b9fb0952"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/OptimizationAlgorithms.trace",
         "bytes": 3360,
-        "sha256": "81f7224307476fb8fab261bb91a5a25d35bef18f9bba22a364b71295ac0e0398"
+        "sha256": "bb2642fbb8fde5a581625971efd64f42c7674c18700937ae6d2b0bb6c957a056"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/OptimizationProgram.ilean",
@@ -6392,7 +6461,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/OptimizationProgram.trace",
         "bytes": 3003,
-        "sha256": "30524d9b90b3e30bbd508472a3277613477fbefd9bc366925d949feb0f1d91a3"
+        "sha256": "edef00e5632db9a56b7b2b7dbf3f37113efe7f6ea95b01c9c2e67cc38167aceb"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/OptimizationStack.ilean",
@@ -6417,7 +6486,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/OptimizationStack.trace",
         "bytes": 2988,
-        "sha256": "9a1f2708c0abf3c0fad850b52e62c90388326b99dea4e2688a3c6a3952887d88"
+        "sha256": "02d41735e8a1592fce28567c4fea6cbced331737ddd0352072ba50bd572e1a60"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/OptimizationTables.ilean",
@@ -6442,7 +6511,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/OptimizationTables.trace",
         "bytes": 2977,
-        "sha256": "27f5d031f119d7d31d0248c9186a1c5dfca70825eec49e03bba6958fd1578dfc"
+        "sha256": "8a989ba405044e352e4e0a6564d4da60b4261201c8bbdc2bdd1377d21732a442"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PaddingTables.ilean",
@@ -6467,7 +6536,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PaddingTables.trace",
         "bytes": 3125,
-        "sha256": "b9aeb2cd2a5f37df6b75563f2d3147ff831921c0c019b7c7d950c682289f1fa5"
+        "sha256": "7d1a5f9a6feb3f2b5eab2b15dbec671dd4011f856db0ca3d55c689e6d291c9dd"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PartitionHierarchy.ilean",
@@ -6492,7 +6561,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PartitionHierarchy.trace",
         "bytes": 3165,
-        "sha256": "b755de4f128e31ae76eacfe62119c47d5322191b6b211d4b9744462a6f7ccbc0"
+        "sha256": "0448b5952ad1ced60c1d81fcac35324916811c5d1f0cc85c1263ee78d694c1d1"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PartitionStages.ilean",
@@ -6517,7 +6586,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PartitionStages.trace",
         "bytes": 2926,
-        "sha256": "4447a0d261dcd5923e0b77cce0146a3c413f7f2f3c1b15d815c024b2dc3f9cc0"
+        "sha256": "3ec38668b197560b1f4e55c86342bff497cdb6d79b72ddc57ec278022f194c57"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PartitionTables.ilean",
@@ -6542,7 +6611,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PartitionTables.trace",
         "bytes": 3136,
-        "sha256": "357e0b3b905c290b1dbc71c84a841153c08c0821d850ad517f313dc365918a0a"
+        "sha256": "fa438f25142b75eed2558aac770c931c2ba0bec42aad48436c7acca3699232fd"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PathCertificate.ilean",
@@ -6567,7 +6636,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PathCertificate.trace",
         "bytes": 3289,
-        "sha256": "80f0b25e47a1fb30064e58785f797c9a7cd7b5f540d5ab507fd1d808c9f3f764"
+        "sha256": "ee17e7f8dd8a87fc773e29ab62ca063796f29d4f6eb755e27edc262c68ca9119"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PathDegrees.ilean",
@@ -6592,7 +6661,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PathDegrees.trace",
         "bytes": 3441,
-        "sha256": "28c86c15525f750b489e211829c993ab10e469e68e6b1bd343588330764af668"
+        "sha256": "2c5515efeac70f20af5174761bfb444cb311c739d29c9a5c42778e2ce3a9c291"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PathFormatQuery.ilean",
@@ -6617,7 +6686,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PathFormatQuery.trace",
         "bytes": 3136,
-        "sha256": "a33dfe05c3c2bb6e0013848e6b0f3b39a4060e7ac8f1b54d874eb43efb59a2a7"
+        "sha256": "54af443d1a7f072e6af3f560142e6bb5a8a97ccbffd4a21b4480adcfe4eb3bc4"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PathNormalize.ilean",
@@ -6642,7 +6711,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PathNormalize.trace",
         "bytes": 3118,
-        "sha256": "a22dddb9e5eba5a84bc1f3d1673929d5aa86c23371f2872a864f763054c6c942"
+        "sha256": "215410440f1e4d6ff756542db63495ec85d5d6bb2f7093fcff0299e559347029"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PathOwners.ilean",
@@ -6667,7 +6736,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PathOwners.trace",
         "bytes": 2910,
-        "sha256": "fe9b2d2065b9e724b8872260fa746ed8dbca2199926b3813a170b4fa7a65d280"
+        "sha256": "641accf5bf3fede072b27c91d44b71e2e6e4cb632f08138da3dd933f74b8be87"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PathProfiles.ilean",
@@ -6692,32 +6761,32 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PathProfiles.trace",
         "bytes": 3120,
-        "sha256": "6f20f118196ec84fb86984b8259a3c3c1830986ec34837cc91d51de5211dc6a1"
+        "sha256": "8151664a2ea2428414aca121e4e974c17bd9bb22e5b2afb82bc6bce84d3140e1"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PathProgram.ilean",
-        "bytes": 27865,
-        "sha256": "5aaeca9d41d0b70f367134b3a3b98cf870a61b47739589d0932d7c171029e0a6"
+        "bytes": 27290,
+        "sha256": "fbf3b6aeb292aa0d6dffec901c3dd9caaa4060465141df773b19c577a777e98e"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PathProgram.ilean.hash",
         "bytes": 16,
-        "sha256": "cceb1e17ec4923f951e829e8d7e3e2ba7bf7cef8b3923daf55d3902dd18ddc67"
+        "sha256": "d0b6fd06d15dedc5bfc09964deb9108654010034ab613cb474bfd6dbd34e6dca"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PathProgram.olean",
-        "bytes": 182768,
-        "sha256": "63f5088a7c5f085d211c1e4d5f2c63e4ed2d5addc0e45df3bfe8f5c331f00285"
+        "bytes": 183224,
+        "sha256": "a035fefd968615daff88743d810ce56191cec74395554876d4016b1337546e8d"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PathProgram.olean.hash",
         "bytes": 16,
-        "sha256": "03d0fbc4f7a19f350d0e6d0f0b0da3c16c23b3d686bc362752446f82ca50e1e1"
+        "sha256": "62f9b937099775f96953309013cc2d5ec17c18c337bd3a04efe3806d5cdda0d2"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PathProgram.trace",
         "bytes": 3117,
-        "sha256": "8eb7599c33a89af760e68292889ba29db55fc5fcdef94f8900525bb873f0f543"
+        "sha256": "8c477af4bed6c0e1fae769b4aecf2dfd84728d0a5c6407bb4d19d6953025471b"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PathSchema.ilean",
@@ -6742,7 +6811,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PathSchema.trace",
         "bytes": 3085,
-        "sha256": "7839670e3fb28a24dc5120f9eb2d896b9a326c83c9bff733c74a749a3ce92304"
+        "sha256": "0445095cf5c58e1b0f764ebc1c039dfce88331f5613f23ffce4222a4b1e1c7ec"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PathWords.ilean",
@@ -6767,7 +6836,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PathWords.trace",
         "bytes": 3233,
-        "sha256": "e1dfeb343ce99c38c7d1066402e50a48a3c81a9d45bd30ff3b33e143148b6a71"
+        "sha256": "c44e63f08c637e3361bf27c5cce46175d349c47d1555eb1d9469d5ba71d75800"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PlanClosing.ilean",
@@ -6792,7 +6861,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PlanClosing.trace",
         "bytes": 3098,
-        "sha256": "4e46c9fc9700c76434cd7a2bed75812217f73d669f82b30cffd41b9b0f907e29"
+        "sha256": "b784716be6cfe0e9cbfd5ad288b81c3809042d5da804f7798807eca354314b15"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PlanColoring.ilean",
@@ -6817,7 +6886,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PlanColoring.trace",
         "bytes": 3270,
-        "sha256": "11ae79442a6aa11a687752c71373aeed1323459e452816f86f8a4e38ae2711d8"
+        "sha256": "f9ffde9f8f867a252f58a39080a9c836d7704cbe1058d278531c40a8d752a440"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PlanInstance.ilean",
@@ -6842,7 +6911,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PlanInstance.trace",
         "bytes": 3101,
-        "sha256": "c0d9b6fe3d130c3d66cc341d77956df3a965ae8ce594dbcfe2c9a0c597f5dabb"
+        "sha256": "ef1166d2e43d23a2b8672c80482bafc2575d6d03694f4e78c2ed28a840acb3d5"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PlanLayout.ilean",
@@ -6867,7 +6936,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PlanLayout.trace",
         "bytes": 3246,
-        "sha256": "13aea3197d86d0b189ef3cb1a96f4cd4671066a0cc8962c9e495b1a20c6104dd"
+        "sha256": "09740394d8ab455c8a2710069e0349125d70e64cf6bd20014650db1af9e973e0"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PlanRoutes.ilean",
@@ -6892,7 +6961,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PlanRoutes.trace",
         "bytes": 2920,
-        "sha256": "a85716221ab82875db8e1ad2907c32338c9f0f4363695f672106de6324602a92"
+        "sha256": "45639beaa94061624622a10fb8462c5d27c554712e62178f734f7a7cfdadc7c9"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PlanSequence.ilean",
@@ -6917,7 +6986,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PlanSequence.trace",
         "bytes": 3449,
-        "sha256": "9edc81b6153a9b8ec72135ece558a4ba27b8255a871156d1887e705bff3afa0e"
+        "sha256": "6dbaa84df817cb441af231e4d941d8c495d4e4b51072171cf060de80796223f0"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PlanTables.ilean",
@@ -6942,7 +7011,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PlanTables.trace",
         "bytes": 3089,
-        "sha256": "80afa0fac920cbc51a4d2914e4e601174ff54770e5697da2a35dbb28d7198198"
+        "sha256": "e853b5e26643e2af337afa666f06ed954ce1a0eb3c5c5301cca010fa4206e541"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PowerBuffer.ilean",
@@ -6967,7 +7036,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PowerBuffer.trace",
         "bytes": 3090,
-        "sha256": "744573730d99466186c78dc822cfdf81d5f7ea1fb84b4e0b82d374d0c1ed6d2b"
+        "sha256": "e60bb712aa05a6c4368b6646734aaa6a2503d8cd67d34b01b73dde452fae67a5"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/PrefixLayout.ilean",
@@ -6992,7 +7061,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/PrefixLayout.trace",
         "bytes": 2936,
-        "sha256": "71cfe3ec6fca682ccc8e7a504bb1ae8056a257223bb7a1f2e9a12fefb17f3f58"
+        "sha256": "c958bad0b29c679d42b623f07eba837b586e204d402818711cba7c70bfa3ce2e"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/QueryArithmetic.ilean",
@@ -7042,7 +7111,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/RailArcs.trace",
         "bytes": 2902,
-        "sha256": "59f6ced76e2abaeef243dd3fd07130a85870a97f6704d6114c7234d32bec3ce0"
+        "sha256": "1246ad5555e41405667c4164a4a42e3bb96e1ab0380763c411bd1f84e3401053"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/RailMachine.ilean",
@@ -7067,7 +7136,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/RailMachine.trace",
         "bytes": 3226,
-        "sha256": "b470bd261b9d6a62d180ed4ba9670c5c259b4716ae0efec24e86658d0837ef01"
+        "sha256": "173c64936228d9d7521a5c8a324bd9a872983cab23f9f58855846b1dc68dd386"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/RailNumbering.ilean",
@@ -7092,7 +7161,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/RailNumbering.trace",
         "bytes": 3106,
-        "sha256": "7e6d04aa9e8f87c9ea2a5d4b33b51180f5e51191ab4be536be1405aa7bd3e8fd"
+        "sha256": "093e76010f35059f6ca7f5ecc6c8b1f86a4ee641c2f220e3f1c4e8a31a95209c"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/RailPaths.ilean",
@@ -7117,7 +7186,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/RailPaths.trace",
         "bytes": 2903,
-        "sha256": "9324f690a7e47921418a121c9c0444f912993bb5eb642c9a2de94ac391416ae8"
+        "sha256": "0c0d7a2d1982d442af028cfced40848f3c4d60ee9371799d4f50d25dee22bcb9"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/RawTables.ilean",
@@ -7142,7 +7211,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/RawTables.trace",
         "bytes": 2905,
-        "sha256": "2c46104338a3c4f4287f462944a1984d1ea0db6e1306cb373e51cd85529ad8f9"
+        "sha256": "8362329f38d466e40b8a4d8d0316713e3ec657bd6875cb7d3fca0686866b3169"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/Receivers.ilean",
@@ -7167,7 +7236,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/Receivers.trace",
         "bytes": 3076,
-        "sha256": "03014d14171a559787e80c3b695973247f26a8d49cb709f4a3671ef42bdcf723"
+        "sha256": "621d013672ecf53a6d2e7606f8cc40779878598d8bd7e2fb4724b90649b4dbb3"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ReceiverTransport.ilean",
@@ -7192,7 +7261,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ReceiverTransport.trace",
         "bytes": 2973,
-        "sha256": "dd4e49a9b5cc5303d1f9a535cbe4b9ec182b01d488cc18f82a965139bcb9916b"
+        "sha256": "2e6bbbaa33a06b8b9a09328ce51cafa2c30a816704c5297656cef927985539ca"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/RedComponents.ilean",
@@ -7217,7 +7286,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/RedComponents.trace",
         "bytes": 2939,
-        "sha256": "d98da738df4db4c9ddbe3a0f12650f44c5c60e10aadd68d0b8b12e88c2eeded0"
+        "sha256": "cac6be73ab6eb002b82fabf6e43fea42626766e68f3c81732b28b9433179663d"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/RedMerges.ilean",
@@ -7242,7 +7311,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/RedMerges.trace",
         "bytes": 2919,
-        "sha256": "e6f23e8f4b6787d5cb394418f306ca083f9da0a83d70dc7af51cf4bbe0aa33cc"
+        "sha256": "3e3a52b8da6d5ac6522942aafb1ab6e1e29f127d484c490ce9299318bf71b3cb"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/RedQueries.ilean",
@@ -7267,7 +7336,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/RedQueries.trace",
         "bytes": 3087,
-        "sha256": "ba8ba9f8d7125b16be1a53b6e4cb46df6bc39121d05a86dc5a871fea70c83f6d"
+        "sha256": "202cf87bc75e033320371a7e577d76e79d9c11be51fba23ed90fda5ad6b91419"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ReductionBoundary.ilean",
@@ -7292,7 +7361,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ReductionBoundary.trace",
         "bytes": 3661,
-        "sha256": "9e6b5bd76655bd2dbef85ee2cf2d3a970e2e71eade923430109a422b1a6c5bd0"
+        "sha256": "9c1fdf2bde3248e09e0726fbc8027f99849c51398ce3c322c9772a294f87a1af"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ReductionProgram.ilean",
@@ -7317,7 +7386,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ReductionProgram.trace",
         "bytes": 3302,
-        "sha256": "cf6035321c8876f75d78b6778a21d55ee2783e47bd46f50c983daf9a801465d2"
+        "sha256": "1d4381af50c4db675bcfe4036d339c5d567f07d6ae751e0eb6caebb2bfa6c142"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/RelationPrograms.ilean",
@@ -7342,7 +7411,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/RelationPrograms.trace",
         "bytes": 3162,
-        "sha256": "2aad187e900e44df693ef33c3869bbd08c273c993ebf48afed7f3386ccb6f4ab"
+        "sha256": "d50902134874c4f763d2b8d52a6bd1077a8cce385b15abf545fb3f00a5608e7b"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/Representatives.ilean",
@@ -7367,7 +7436,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/Representatives.trace",
         "bytes": 3114,
-        "sha256": "ad4ea28eca50c76810928fe6d133849290d912c12116cb7d41fd09ed6b2ea56c"
+        "sha256": "2ab669a915685cbebba3be98c556e3b2d06beabb7006ab5008d4015c70d32cc5"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/RouteSelection.ilean",
@@ -7392,7 +7461,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/RouteSelection.trace",
         "bytes": 2944,
-        "sha256": "384c847a0b7fead2b7bb05339878a5b89d8540c53b0b5f6f1ca6bdb0ad2a5617"
+        "sha256": "4b7bdf473ca2f1f483fe765fd68457e3962b23cc10bf63c859bcaf381abfeb33"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/RoutingSweep.ilean",
@@ -7417,7 +7486,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/RoutingSweep.trace",
         "bytes": 2936,
-        "sha256": "af28408a889f2c0bd56b67a8603fbea165d909d187bb28fbd5b744fc6865b133"
+        "sha256": "3acf341d85eb3058da04ba2b5b3070c8d5697a31449c5855c7700913f03941d2"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/RowEncoding.ilean",
@@ -7442,7 +7511,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/RowEncoding.trace",
         "bytes": 3247,
-        "sha256": "bfaffe3ec2d8fc5a75d1f934949db9da38ccadb0d33d0397954ae6e6b315d6ec"
+        "sha256": "0b4c4778a545465dabbdc33b57d5f33d2b4e641ba212339ceaa1b4e236a9d9f7"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/RuleEncoding.ilean",
@@ -7467,7 +7536,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/RuleEncoding.trace",
         "bytes": 2932,
-        "sha256": "3d7955c208b17a6687fd0837f1d976cd28d82087cbf81dddd490b8c0ea4daba0"
+        "sha256": "20b220f35462d2c19af600a461b27d5d1e35f2cd960c226d990aed0981d699c4"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/RuleMachine.ilean",
@@ -7492,7 +7561,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/RuleMachine.trace",
         "bytes": 3105,
-        "sha256": "7700c7c6cf345e9d76e0515a71187a7cfa9e8ab6df29ba7f24f2a15b41ba1540"
+        "sha256": "1da7eb1735b4451d28745bace95cc6028e84ef60f090d7b8f765de5d42d118f9"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/SatMarks.ilean",
@@ -7517,7 +7586,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/SatMarks.trace",
         "bytes": 3261,
-        "sha256": "8eb15e142955260c2d3524ae0403d1a584034bd973df5bf4f0f7737bb68784f9"
+        "sha256": "1ab1dea91250a631eb82d2be9ff99859317f538866ea29e18d372ee527952ea7"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/SatOccurrences.ilean",
@@ -7542,7 +7611,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/SatOccurrences.trace",
         "bytes": 3280,
-        "sha256": "df08b58e10f71690cef37d29ac73d35938822d2dffa8d8e5a5f4fd27395c3bb7"
+        "sha256": "65117e24a8ec106f60ca2d21268414dd18dd72d9f8e65383ec7bffe4e4ce29d1"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/SatQueries.ilean",
@@ -7567,7 +7636,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/SatQueries.trace",
         "bytes": 3099,
-        "sha256": "a15f803daf62aec36c697a3cd3427e7737fc4380ef4cbbce5e57dcddc395ad8c"
+        "sha256": "4edfed759ac78d1e0328a4fb0ad3a7b07e01fd6f5f924b55a251767048d09418"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/SatWindows.ilean",
@@ -7592,7 +7661,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/SatWindows.trace",
         "bytes": 3069,
-        "sha256": "c52a41fb5181eec464005e59ce679cf4e5703b298ec7489ea12683c0b7548b07"
+        "sha256": "313878b48b646c8793ec96464fd46d707df6d101e8d371e7f62af443d77ac783"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/SequenceRelations.ilean",
@@ -7617,7 +7686,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/SequenceRelations.trace",
         "bytes": 2975,
-        "sha256": "eb04db41481f3dac8ac4d36f51febccdc6a2940127f2fbbbdd6054e7ea6ddfa0"
+        "sha256": "d8a112e89e3bddfa1e43e9d23cc04ca7b19e1999c82f93c3f918aa6814d100f9"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/SetQueries.ilean",
@@ -7642,7 +7711,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/SetQueries.trace",
         "bytes": 2937,
-        "sha256": "e34ed4e807b6c2d22268c9ebc94748105137fb60dbae6c88478a9966bb4bf4f2"
+        "sha256": "1b448718ae54a0a931a0393c2613d28276a69ad23261c24842de449e035f64d0"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/ShiftProgram.ilean",
@@ -7667,7 +7736,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/ShiftProgram.trace",
         "bytes": 2932,
-        "sha256": "7de9392c55d2f2a41257b0d7405702f59de4cfd6f04f8081b4a4c5a54d77551e"
+        "sha256": "de0a1a259775521337f5fe429611028b53951083cf870666d5c934e3f9568012"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/SourceTables.ilean",
@@ -7692,7 +7761,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/SourceTables.trace",
         "bytes": 3260,
-        "sha256": "00a7c7060e2a57c1c30e459a28b80ecce43053c8153737943faf8e8f94b4e915"
+        "sha256": "b4785e8bdaffa0896d809a8a443460255151c133706e2ad15b5419eed164aa1a"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/StageMarks.ilean",
@@ -7717,7 +7786,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/StageMarks.trace",
         "bytes": 2918,
-        "sha256": "4af07a0c9881dbb1fca1b03fdef88fb79d31a9c30efe6d14ac8d56dabb322042"
+        "sha256": "3061d75be871f7b1e9b18784e7f7c898e679e756160381e7de9734375b3e835c"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/StageWords.ilean",
@@ -7742,7 +7811,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/StageWords.trace",
         "bytes": 2937,
-        "sha256": "5c2677bcd57e271689e9719f3d076090894040b7592b2fc82af78d0818157b07"
+        "sha256": "c17e6d901cf659bbfabb0942fcb5f34fd51839193ecc0b676722962db56643c1"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/SweepComplete.ilean",
@@ -7767,7 +7836,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/SweepComplete.trace",
         "bytes": 2945,
-        "sha256": "e5caf8fa8d48b87877ab77d1fa675cf258bf01a1e57d9084ad9cdae8b3f67614"
+        "sha256": "28b7dbd99313419e4396a47d7ab6f170e303cb66ef470919d675a402d6c90f91"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/SweepSound.ilean",
@@ -7792,7 +7861,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/SweepSound.trace",
         "bytes": 3085,
-        "sha256": "bc586d02c9587c851520448141de850cdbf9f4f76f6045e7639df91fcfda60b0"
+        "sha256": "6c0d5249ffe9fbf6681890446b82deb0e7cae7c25a81ba4b061389805ff6b9e3"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/SymbolComposition.ilean",
@@ -7867,7 +7936,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/TableMachine.trace",
         "bytes": 3274,
-        "sha256": "1f12662297ba8d113e3014324d2e9b2e3f301a32e5db03e967f3269bcaffef1a"
+        "sha256": "f4e2426f61ef201149fc42c896291ddedf2001007fa57c23554c84891d48e5ae"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/TableOps.ilean",
@@ -7892,7 +7961,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/TableOps.trace",
         "bytes": 2906,
-        "sha256": "3d53c090375c695bc442b750aaee1815ac0cce0aea0c28501a26af3d2b93e498"
+        "sha256": "dd27488797646b8e7b701cab848f2c0910f0796d465b722cfe29f959d0382faa"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/TaggedLoop.ilean",
@@ -7917,7 +7986,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/TaggedLoop.trace",
         "bytes": 3087,
-        "sha256": "188ef2e4cc47deaa7244c5e73a0e1616910484c6b21921462df79f821a68490f"
+        "sha256": "4320e15f4d6ef467f7283a7d6805e8d644e7c25f4a29088a6649e179937091a6"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/TapeWindow.ilean",
@@ -7942,7 +8011,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/TapeWindow.trace",
         "bytes": 2918,
-        "sha256": "d9384c19dbe96136994db2b69f72892b3b0245a8ceb5a44cbe30e31741b9672d"
+        "sha256": "5c64e720ae59c3bf5909c9315b587e8ced3fec0de2433443081ee5ced3745c13"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/TestBuilders.ilean",
@@ -7967,7 +8036,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/TestBuilders.trace",
         "bytes": 3097,
-        "sha256": "9c20960a6a56f5b4987ad33e7e34535ca3aca4799de7eb5a082a77d31d8e58d9"
+        "sha256": "750fb5184448cb380257cac75634752127d8731b8950b1a3106909f9e8398771"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/TreeBagPaths.ilean",
@@ -7992,32 +8061,32 @@
       {
         "path": "proofs/lib/Lax528502Proofs/TreeBagPaths.trace",
         "bytes": 2934,
-        "sha256": "ade16f61e7fb079fc6725a58fd295107ada3af58231c1313a81d56d87724a79d"
+        "sha256": "10e262d6f0c97e00f05576a8f7016473fdeddab3848d9d4a9b9e1c781abd7c05"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/TreeBags.ilean",
-        "bytes": 22300,
-        "sha256": "0957d1ae51e7742b36cacf332562bb3e4d2996f0be0381fc5980108e3a635d94"
+        "bytes": 22785,
+        "sha256": "e8cda675d0d409b847e70c7933cb8398c187db3167f9962ea0f5772e90c94156"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/TreeBags.ilean.hash",
         "bytes": 16,
-        "sha256": "f1ae39ad498aa9f21e03bea4249f5f892fb6f6a590c79c0367fa0e6196903716"
+        "sha256": "b5792e9a86c660b256aa7c0635a76a2d33848c4089eca2d13093c008ea883de1"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/TreeBags.olean",
-        "bytes": 799648,
-        "sha256": "e47be1006a437490696fe7637d9a29eb75af3eca2ab3867a26c56ca379168b37"
+        "bytes": 798512,
+        "sha256": "d84bb18567a68619e72b2499b54871f409a0a33abb648adacdb3b75c4418f281"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/TreeBags.olean.hash",
         "bytes": 16,
-        "sha256": "c34ae388a20f47fe7e94e6e5af2885e64165614cae067c520777ba4eb838d9da"
+        "sha256": "d88fa7e62bf9482949b2c5bb330df091a1ae4d996e88c510f8fe0d34ebaec1f9"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/TreeBags.trace",
         "bytes": 3054,
-        "sha256": "489fa6612763d7bdd4f4d009294a4024bf9e88e91a0939006e86d0c4d50ae806"
+        "sha256": "c585f377978e10ef95e15c44f059609b50783d758314201c05dafabf73bb5a09"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/TreeDecomposition.ilean",
@@ -8042,7 +8111,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/TreeDecomposition.trace",
         "bytes": 3140,
-        "sha256": "98e6c96b9bd2171bff23a234dffa6156e5661f65d3763b15024d81d20d854b81"
+        "sha256": "6d12eb2c3cc972201a27387354f426d49cfc41af2652506cdd367fc47823c29f"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/TreeMarkers.ilean",
@@ -8067,7 +8136,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/TreeMarkers.trace",
         "bytes": 3098,
-        "sha256": "63ebbf7ca4beeebfc3abbf9ae64a7585214e387dba56a21c102361f4956fbb6a"
+        "sha256": "8f35f38b24223dcc647f34e6965c91697108c0195c395bd44239e5b630930be5"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/TreeNodeGraph.ilean",
@@ -8092,7 +8161,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/TreeNodeGraph.trace",
         "bytes": 2941,
-        "sha256": "779ab007a86b81f932ca96370f26ebeb5396486e0c64cb2ca0f1858c63b67216"
+        "sha256": "4a4121879d631e2d4ab2a285cec4a55199190e3793ac0c444d60380e897f43cb"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/TreeTopology.ilean",
@@ -8117,7 +8186,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/TreeTopology.trace",
         "bytes": 3066,
-        "sha256": "111a2bd2b18465b45ff0b4b0310fadab77307959f55300a7cacbfb3ce7e2ac79"
+        "sha256": "32a0c54470237c404fe7049af309349c106f5de86b5e91147d83d35018886406"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/TupleWitness.ilean",
@@ -8142,7 +8211,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/TupleWitness.trace",
         "bytes": 2909,
-        "sha256": "e6becd75b997d256c7d58ecffc8a2a65e0ec92680a74f6db009da3f1e3475e88"
+        "sha256": "03263a0c37e14cdadc148d1fe683e6bd1daa691dda3a7314a666fdc9da2b86ce"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/VertexScans.ilean",
@@ -8167,32 +8236,32 @@
       {
         "path": "proofs/lib/Lax528502Proofs/VertexScans.trace",
         "bytes": 3121,
-        "sha256": "9b3380aa141e24125590cdf489bfc20c306de887421b208c239da31421c905e7"
+        "sha256": "509864cdadf2b916711fea1bf1fd65b0ffd7d656b99e12cd30af37d73fa02cc3"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/WidthBounds.ilean",
-        "bytes": 4056,
-        "sha256": "bbd1998475742cf4d60148f204044dd6e6e8b5910404108ca540342bc7f3d8ff"
+        "bytes": 5761,
+        "sha256": "2c92ec5b44ab49a4f71e65e759882527dced2b5b0531fa2237c27e74dd123629"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/WidthBounds.ilean.hash",
         "bytes": 16,
-        "sha256": "7a7b2989430ca0948a0dca53e9ac396ebb5b7251861c41da16196dec6e248885"
+        "sha256": "718a2ce8a4c983900d0444128241a7050313c9f26d99ec891f114f5905056ea5"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/WidthBounds.olean",
-        "bytes": 50040,
-        "sha256": "804449937cd41063312e50490cb17d1c3a42c42725bb2369f240da1aed377aec"
+        "bytes": 55152,
+        "sha256": "ab02b58743377391e6300998085f277e2413bc7463593f93b96be1b4f980821c"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/WidthBounds.olean.hash",
         "bytes": 16,
-        "sha256": "5fbcbaad285dbd9d818436b6543b244cecfa1c07b75a60b5a766b1a3f3c9d45b"
+        "sha256": "46a5440a8f426ec204e99155c72efe057fc3edcef59b4c121aaa88be4ea0a983"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/WidthBounds.trace",
         "bytes": 3570,
-        "sha256": "a553a31b231230187486523ea6f4daa3cee413103475dbe9d3e109e6118d449f"
+        "sha256": "6f77132d47c3e1d16e94fc81e68c81054ccf364394310676cf702d4f6a162479"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/WordChoice.ilean",
@@ -8217,7 +8286,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/WordChoice.trace",
         "bytes": 3089,
-        "sha256": "baaaa90e4c0660639687f5f5d878eefd4a92b2f6ccc17be928e73ed0eeabe4bd"
+        "sha256": "67f4ba20881e3b11f9bbe744a0dbb066912104db90bf7a70ad73b0da76bd267d"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/WordEnumeration.ilean",
@@ -8242,7 +8311,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/WordEnumeration.trace",
         "bytes": 2961,
-        "sha256": "e8afc126bb50fecda3fbdadd60af3e987bbe9d60120f05ad5745092f43b8992b"
+        "sha256": "fb594cdb4203c37da419480423414f88a6023e2b4b0eccf9d662c1ae38d8646a"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/WordGraph.ilean",
@@ -8267,7 +8336,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/WordGraph.trace",
         "bytes": 3099,
-        "sha256": "7b869dd3ba191a81107ae618b8baa0ad1d7fbaa346f94b2e17002b8d111c470c"
+        "sha256": "8ecd43317a9592eaf2d38079d9077d61e88b213ba784ebe73e73bb9ad623b3c6"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/WordLogic.ilean",
@@ -8292,7 +8361,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/WordLogic.trace",
         "bytes": 2919,
-        "sha256": "9faa063c7bd6a8620b60e73a8f9da66638c11c940666a27a45fecb476a1501d2"
+        "sha256": "464bc71f97c28027beb1367218f501f304014bab456fb00b11295e1262431eb2"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/WordParsing.ilean",
@@ -8317,7 +8386,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/WordParsing.trace",
         "bytes": 2927,
-        "sha256": "e9a6fe1e9ed7d81406e6553af9db1fef64641dab9e40c0a03f90a41344c93bfe"
+        "sha256": "e2b50538275aebc726db7b4ee896c4fa8d63a98c10b9c3351b8be7730423cfc4"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/WordPositions.ilean",
@@ -8342,7 +8411,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/WordPositions.trace",
         "bytes": 2937,
-        "sha256": "acda2efc5e0a1049486abf299b885b14782e6e24179e4e0b13a2e521490120a8"
+        "sha256": "492af52349280078f596c9e7cbf8dae60d53f7d32698baff393656cb4c0e5859"
       },
       {
         "path": "proofs/lib/Lax528502Proofs/WordPrograms.ilean",
@@ -8367,7 +8436,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs/WordPrograms.trace",
         "bytes": 3270,
-        "sha256": "b0e71db394694d9db66f89121bdcf3b822631586b6bfc5a0dc9ea3af9dc0e3f1"
+        "sha256": "ea02917fd1aaeb6ba64f8a6fefa1f63b6e69c1b0a96155e8cf08d503fb22878c"
       },
       {
         "path": "proofs/lib/Lax528502Proofs.ilean",
@@ -8392,7 +8461,7 @@
       {
         "path": "proofs/lib/Lax528502Proofs.trace",
         "bytes": 34629,
-        "sha256": "67afd94fe24c1f794cd111bb3f874f50d101c34e67aa84947749cadd631a19e8"
+        "sha256": "bc97d9fc27ef30e32882b03c4698795849689a0ab1b4dc6de2726d30a5334c11"
       },
       {
         "path": "proofs/package/lake-manifest.json",
@@ -8506,8 +8575,8 @@
       },
       {
         "path": "proofs/package/Lax528502Proofs/BranchProgram.lean",
-        "bytes": 5595,
-        "sha256": "67e3dd217d1141dacf5ab4e7f012861ae51c7ee5392080e4c0c26a98a8e40950"
+        "bytes": 5570,
+        "sha256": "7871927dc6f79df82754e4ed88621aafa774069955b23dfbe0bbfc59cafa8e1a"
       },
       {
         "path": "proofs/package/Lax528502Proofs/BudgetIteration.lean",
@@ -8646,8 +8715,8 @@
       },
       {
         "path": "proofs/package/Lax528502Proofs/ConnectedDomination.lean",
-        "bytes": 4596,
-        "sha256": "62dcfaf543e2c668eae0321a45f02444229a061052422f738e303e719b4468e9"
+        "bytes": 4607,
+        "sha256": "4a8ddf2e244c66025a86fb98783efa631d210b3b2d7a4c56fd8772482ab40917"
       },
       {
         "path": "proofs/package/Lax528502Proofs/ConnectionPorts.lean",
@@ -8736,8 +8805,8 @@
       },
       {
         "path": "proofs/package/Lax528502Proofs/DominationAlgorithms.lean",
-        "bytes": 2232,
-        "sha256": "94998d067d2bb4867bc23251fde0d665cec37c7faa185c6c1a6ddc13e128b8b1"
+        "bytes": 2169,
+        "sha256": "5c4bcc69f70ec368fb807ab50d1794de3664fbdd129ca9b46db9762147d73e87"
       },
       {
         "path": "proofs/package/Lax528502Proofs/DominationProfiles.lean",
@@ -8771,8 +8840,8 @@
       },
       {
         "path": "proofs/package/Lax528502Proofs/FeedbackProgram.lean",
-        "bytes": 6526,
-        "sha256": "c8166a67056f7571aacaaf30aabc01940ac37e404df2fcd335f88fb5fbc071dc"
+        "bytes": 6416,
+        "sha256": "e918a17e0cf1beaaf7e40a63cbd937dd2b50d02f1367b6811affcdcf1417ea8a"
       },
       {
         "path": "proofs/package/Lax528502Proofs/FinitePass.lean",
@@ -8786,8 +8855,8 @@
       },
       {
         "path": "proofs/package/Lax528502Proofs/FixedColoring.lean",
-        "bytes": 3259,
-        "sha256": "aea2b369af47363836c37ab2ef75340175e99ce6fa49a4663ff129642b50b387"
+        "bytes": 3180,
+        "sha256": "d289513fcef770ede71c717fed25b0ac0c73b6449e216a49541acf689ba64206"
       },
       {
         "path": "proofs/package/Lax528502Proofs/FlatRows.lean",
@@ -8841,8 +8910,8 @@
       },
       {
         "path": "proofs/package/Lax528502Proofs/GraphAlgorithms.lean",
-        "bytes": 1881,
-        "sha256": "94fca42faaca1c4cc4476b557a062a0d68079ef2e4d8200930857a04026835b4"
+        "bytes": 1874,
+        "sha256": "12531e64dbc1e491ebf3c9b9a3243b3e02df20e4fb6736b632ca717fa0a72f49"
       },
       {
         "path": "proofs/package/Lax528502Proofs/GraphQueries.lean",
@@ -8926,8 +8995,8 @@
       },
       {
         "path": "proofs/package/Lax528502Proofs/MinimumColoring.lean",
-        "bytes": 1426,
-        "sha256": "fdde8f78564a296b1c6a88433c96e03375e28a326864bc53c5d3f1c6347f90c5"
+        "bytes": 1392,
+        "sha256": "0c9edc29cb137407a55eb6618dab5148eed396169a626d3d64ad0ccdfcee2263"
       },
       {
         "path": "proofs/package/Lax528502Proofs/NeighborProfiles.lean",
@@ -8936,8 +9005,8 @@
       },
       {
         "path": "proofs/package/Lax528502Proofs/OptimizationAlgorithms.lean",
-        "bytes": 3381,
-        "sha256": "9e8127f0edbd25406af3a89d7e296183f125d67dda3979c98a896e0e35f43460"
+        "bytes": 3378,
+        "sha256": "22136213affcbd1f5d95fff630e30399e7280125f8d7b9a14bc2d6ac71e5af2d"
       },
       {
         "path": "proofs/package/Lax528502Proofs/OptimizationProgram.lean",
@@ -9006,8 +9075,8 @@
       },
       {
         "path": "proofs/package/Lax528502Proofs/PathProgram.lean",
-        "bytes": 6714,
-        "sha256": "19d67f0717451a62976e73e0b2a3d6a81eeb11168facf004e703ddfc0ec30a69"
+        "bytes": 6725,
+        "sha256": "5b79cd4fc33c0169b035b612505b511059735ce3ddd00018d804a719d1ecb551"
       },
       {
         "path": "proofs/package/Lax528502Proofs/PathSchema.lean",
@@ -9266,8 +9335,8 @@
       },
       {
         "path": "proofs/package/Lax528502Proofs/TreeBags.lean",
-        "bytes": 5807,
-        "sha256": "fad80abd9b3211d358b1250afdb1bf23fd710711c540f299c863c2b140744b48"
+        "bytes": 5671,
+        "sha256": "80b20ec33cdadb6976b4561d920803c50ee9f1d3a5c44c959201047863b28c56"
       },
       {
         "path": "proofs/package/Lax528502Proofs/TreeDecomposition.lean",
@@ -9301,8 +9370,8 @@
       },
       {
         "path": "proofs/package/Lax528502Proofs/WidthBounds.lean",
-        "bytes": 1711,
-        "sha256": "7eeb72098a213716dd2327b9279dc5d1f204b4d36a83957e38778f9de860f0aa"
+        "bytes": 2166,
+        "sha256": "c0204580b7d58bcb2ab9195e1d5cc334d2b96a46007a5101df1f7c5a59df94de"
       },
       {
         "path": "proofs/package/Lax528502Proofs/WordChoice.lean",
@@ -9350,17 +9419,17 @@
         "sha256": "302cd63c54178885b89e669f33b38f12f4dd7ae7e5cac537b3203e3768d8fb2b"
       }
     ],
-    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:1d9e5c64569ddc7283363ea369b3b9040c4efb5078f5de0f46fb34bb5cae0215"
+    "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:dd009d4210f69fc268ddbc6e90a42fe3529db2237cf30adfc50a550bc8cd13fc"
   },
   "paper": {
     "folder": "paper",
     "main": "main.tex",
     "engine": "pdflatex",
     "pdf": {
-      "digest": "19a2bc591de7c684bad4fffae3fa0fbc20dc3d598e266ddbd3f0f5eaf811a086",
+      "digest": "a16bc1ea28348ea043b90e3ed438d87208167e2b3b03c17029d699289a5b72f8",
       "bytes": 476505,
       "pages": 23,
-      "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:19a2bc591de7c684bad4fffae3fa0fbc20dc3d598e266ddbd3f0f5eaf811a086"
+      "registryBlob": "ghcr.io/lax-archive/lax-captures@sha256:a16bc1ea28348ea043b90e3ed438d87208167e2b3b03c17029d699289a5b72f8"
     },
     "pageSizes": [
       [
@@ -9856,14 +9925,14 @@
     }
   },
   "lastSubmission": {
-    "commentId": 7205131314,
-    "eventCreatedAt": "2026-11-26T22:57:30Z",
-    "record": "1460ffaf1ecd47987f438908460981b3e5843cc4ea0977f2acbcf7c074d5e23b",
-    "buildOutput": "c8d326aabc54e8519c8abf74eb74ec2e6c85eaedbee1ac56a2c5492390f351e3",
+    "commentId": 7223124641,
+    "eventCreatedAt": "2026-11-27T16:19:30Z",
+    "record": "b566c1df4a00be79766e69dec58ab8c0ce60d675ca5d5b9a5a827469b78ea94d",
+    "buildOutput": "6edbac166e54218e73afbbf4f75be7d0c4317e35da3d8501534bd428c9e6b18a",
     "previous": {
-      "archiveSha": "a461d23a201eeb1fb1f0cf371103c14b6744fff0",
-      "record": "c24cb5eefe43d9ea2b8d94521af1e04d4dd70a1ec49417a35fad563c6853f3ca",
-      "buildOutput": "0380458212a0a9a4264a7e7dcd82561b45db8a2731e29a09b1e41f1e77cd568b"
+      "archiveSha": "5a8b12c24c168acbeefed7d24598cf918df4eb75",
+      "record": "1460ffaf1ecd47987f438908460981b3e5843cc4ea0977f2acbcf7c074d5e23b",
+      "buildOutput": "3e66296b2f6423a58f1cdb3d09caff3046670f335681419df8b050cb9a008285"
     }
   }
 }
